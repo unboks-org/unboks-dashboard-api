@@ -1,0 +1,316 @@
+TASK: Create a full technical handover report for Jr for the Unboks Customer Dashboard.
+
+CONTEXT:
+This is the standalone Unboks Customer Dashboard project.
+Jr will take over the next phase and connect the LLM/AI system to all communication channels.
+He needs maximum context about the current dashboard codebase, routes, auth, API wiring, hooks, pages, settings, SOT, channel toggles, escalations, bookings/orders, analytics, dependencies, and what still needs backend/LLM work.
+
+DO NOT CHANGE CODE.
+DO NOT DELETE FILES.
+DO NOT INSTALL PACKAGES.
+ONLY INSPECT AND DOCUMENT.
+
+OUTPUT FILE:
+Create:
+
+JR_DASHBOARD_TECHNICAL_HANDOVER.md
+
+REPORT MUST INCLUDE:
+
+1. Project Overview
+- What this dashboard is
+- What this dashboard is not
+- Whether it has a backend or only calls remote API
+- Current deployment/domain if present
+
+2. Current App Architecture
+- Framework
+- Build tool
+- package manager
+- folder structure
+- entry points
+- routing system
+- providers/wrappers
+- deployment type
+
+3. Current Routes
+List every active route:
+- path
+- component/file used
+- purpose
+- protected/public
+- whether it works
+- whether it uses real data or placeholder data
+
+4. Authentication State
+Document:
+- login page file
+- auth provider file
+- protected route file
+- token storage keys
+- client/workspace storage key
+- logout behavior
+- 401 behavior
+- login endpoint
+- current default client slug
+- whether auth is working
+
+Search for:
+- AuthProvider
+- ProtectedRoute
+- useAuthContext
+- useAuth
+- wtyj_client
+- wtyj_token
+- setOnUnauthorized
+- api.login
+
+5. Remote API Usage
+Document all API usage.
+
+Search for:
+- fetch(
+- axios
+- api.
+- api.wetakeyourjob.com
+- dashboard/api
+- import.meta.env
+- process.env
+- VITE_
+
+For every API endpoint found, list:
+- method
+- path
+- file/function using it
+- purpose
+- auth required yes/no
+- request shape if visible
+- response shape/type if visible
+- whether currently used by UI
+
+6. Data Models / Types
+List all relevant TypeScript interfaces/types:
+- Conversation
+- ConversationDetail
+- Customer
+- Escalation
+- Booking/Order
+- AvailabilitySlot
+- Channel
+- Platform
+- Settings
+- Source of Truth
+- Analytics
+- StatusResponse
+- any others found
+
+For each:
+- file path
+- fields
+- where used
+
+7. Pages State
+For every dashboard page, document:
+- file path
+- purpose
+- hooks used
+- API endpoints used
+- UI actions/buttons
+- real data vs placeholder
+- known issues
+
+Must include:
+- Inbox / Messages
+- Escalations
+- Bookings / Orders
+- Channels
+- Settings
+- Source of Truth section
+- Analytics
+- Login
+- any other page found
+
+8. Inbox / Messages Flow
+Document:
+- how conversations load
+- how selected conversation opens
+- channel filtering
+- read/unread behavior
+- archive/hide behavior
+- reply/suggest reply behavior
+- localStorage usage
+- missing backend endpoints if any
+
+9. Escalation Flow
+Document:
+- how escalations load
+- open/resolved states
+- hard vs soft escalation handling if implemented
+- reply behavior
+- resolve/delete behavior
+- whether bookings/orders are derived from escalations
+- missing backend logic if any
+
+10. Bookings / Orders Flow
+Important product definition:
+Bookings/Orders are NOT a booking form.
+They are paid-order handoffs from AI to human.
+
+Document:
+- current implementation
+- data source
+- whether it uses escalations, conversations, availability, or placeholder data
+- fields shown
+- actions available
+- missing backend requirements for paid-order handoff detection
+
+11. Settings State
+Document all Settings sections:
+- Channels toggles
+- Source of Truth
+- Dry run
+- Schedule slots
+- Email preference
+- Bookings label
+- Feature toggles
+- System status/heartbeat
+- any other settings found
+
+For each:
+- file path
+- hook/state used
+- localStorage key if any
+- API endpoint if any
+- whether changes update immediately without refresh
+
+12. Channel Toggles
+Document:
+- enabled channels list
+- default enabled channels
+- localStorage key
+- hook name
+- whether custom events are used for instant UI update
+- where disabled channels are hidden
+- supported channels:
+  WhatsApp
+  Instagram
+  Facebook
+  Email
+  X
+  TikTok
+  Telegram
+  Messenger
+
+13. Source of Truth State
+Document:
+- where SOT lives
+- whether it is hardcoded, localStorage, API-backed, or placeholder
+- structure of SOT data
+- edit capability if any
+- what content is currently present
+- what Jr must do later to connect SOT to AI responses
+
+14. Analytics State
+Document:
+- current cards/charts
+- data source
+- whether analytics are real or derived locally
+- endpoints used
+- missing analytics backend requirements
+
+15. LocalStorage Usage
+Search and document every localStorage key:
+- key name
+- file path
+- purpose
+- whether cleared on logout
+- whether client-specific or global
+
+16. Secrets / Environment Variables
+Document:
+- required Replit secrets
+- optional secrets
+- SESSION_SECRET usage if present
+- DATABASE_URL usage if present
+- platform-managed variables
+- whether any secrets are missing
+
+17. Dependencies
+List package.json dependencies and devDependencies.
+Classify each as:
+- required for dashboard
+- required for UI only
+- required for auth/API
+- unused / possible removal
+- unknown
+
+18. Assets / Branding
+Document:
+- logo files
+- public assets
+- imported images
+- whether Unboks logo is used
+- whether backgrounds are transparent
+- any old branding left
+
+19. Build / Deployment
+Document:
+- dev command
+- build command
+- typecheck command
+- output folder
+- artifact.toml settings
+- rewrite rules
+- domain notes
+- DNS assumptions
+
+20. LLM / Channel Integration Readiness
+For Jr specifically:
+- what exists already
+- what does not exist
+- what should be connected to backend/LLM
+- where channel integrations should live
+- what should not be done in frontend
+- how AI should use:
+  - SOT
+  - conversations
+  - escalation rules
+  - structured data extraction
+  - channel toggles
+  - paid-order handoffs
+
+21. Risks / Warnings
+List:
+- placeholder data
+- fake data
+- dead code
+- missing endpoints
+- hardcoded values
+- localStorage-only state
+- frontend-only assumptions
+- areas where UI exists but backend is not connected
+- anything likely to break when LLM/channel integration begins
+
+22. Final Summary For Jr
+Write a plain-English summary:
+- what this dashboard currently does
+- what works
+- what is frontend-only
+- what is connected to remote API
+- what Jr should touch
+- what Jr should not touch
+- recommended next engineering steps
+
+REQUIRED VERIFICATION:
+Run:
+- typecheck
+- build
+
+Include results in the report.
+
+FINAL RULE:
+This is an inspection and documentation task only.
+Do not modify app behavior.
+Do not refactor.
+Do not clean up.
+Only create JR_DASHBOARD_TECHNICAL_HANDOVER.md.
