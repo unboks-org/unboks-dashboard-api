@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { useConfig, useScheduleSlots, useScheduleSlotMutations } from "@/hooks/use-client-api";
 import { useDryRun } from "@/hooks/use-dry-run";
 import { useEmailSettings } from "@/hooks/use-email-settings";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import { useFeatureToggles } from "@/lib/feature-toggles";
+import { useEnabledChannels, TOGGLEABLE_CHANNELS } from "@/hooks/use-enabled-channels";
 import { getClientSlug, getApiBase } from "@/lib/tenant";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -71,8 +73,10 @@ export default function Settings() {
   const { emailClient, setEmailClient } = useEmailSettings();
   const { label: bookingsLabel, setLabel: setBookingsLabel } = useBookingsLabel();
   const { toggles, setToggle } = useFeatureToggles();
+  const { isChannelEnabled, toggleChannel } = useEnabledChannels();
 
   const [customLabel, setCustomLabel] = useState(bookingsLabel);
+  const [channelsOpen, setChannelsOpen] = useState(false);
 
   return (
     <DashboardShell activeNav="settings" pageTitle="Settings">
@@ -218,6 +222,37 @@ export default function Settings() {
             />
           </div>
         </Section>
+
+        {/* Channels */}
+        <div className="border-b border-[#f1f3f4]">
+          <button
+            onClick={() => setChannelsOpen((o) => !o)}
+            className="w-full flex items-center justify-between px-5 py-6 text-left"
+          >
+            <div>
+              <p className="text-[14px] font-semibold text-[#202124]">Channels</p>
+              <p className="text-[13px] text-[#5f6368] mt-0.5">Show or hide channels across the dashboard.</p>
+            </div>
+            <ChevronDown
+              className={cn(
+                "w-4 h-4 text-[#5f6368] flex-shrink-0 transition-transform duration-200",
+                channelsOpen && "rotate-180"
+              )}
+            />
+          </button>
+          {channelsOpen && (
+            <div className="px-5 pb-6 space-y-1">
+              {TOGGLEABLE_CHANNELS.map((ch) => (
+                <ToggleRow
+                  key={ch}
+                  label={ch}
+                  checked={isChannelEnabled(ch)}
+                  onChange={() => toggleChannel(ch)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Feature Toggles */}
         <Section title="Feature Visibility" description="Show or hide sections in the sidebar.">

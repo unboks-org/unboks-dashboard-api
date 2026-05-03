@@ -8,6 +8,7 @@ import { useConversations } from "@/hooks/use-client-api";
 import { platformToChannel } from "@/lib/channel-map";
 import type { ApiConversation } from "@/lib/api";
 import type { NavId } from "@/components/inbox/Drawer";
+import { useEnabledChannels } from "@/hooks/use-enabled-channels";
 
 function mapApiConversation(c: ApiConversation): Conversation {
   const parts = c.lastMessage?.split("\n") ?? [];
@@ -42,6 +43,7 @@ export default function Inbox() {
   const [, navigate] = useLocation();
   const [searchQuery, setSearchQueryState] = useState("");
   const [activeNav, setActiveNavState] = useState<NavId>("inbox");
+  const { isChannelEnabled } = useEnabledChannels();
 
   const { data: apiConversations, isLoading, isError } = useConversations();
 
@@ -65,7 +67,7 @@ export default function Inbox() {
   }, [activeNav]);
 
   const filtered = useMemo(() => {
-    let list = allConversations;
+    let list = allConversations.filter((c) => isChannelEnabled(c.channel));
     if (activeNav === "escalations") {
       list = list.filter((c) => c.escalated);
     } else if (activeNav.startsWith("channel:")) {
@@ -82,7 +84,7 @@ export default function Inbox() {
       );
     }
     return list;
-  }, [allConversations, activeNav, searchQuery]);
+  }, [allConversations, activeNav, searchQuery, isChannelEnabled]);
 
   return (
     <DashboardShell

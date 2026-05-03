@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useEnabledChannels } from "@/hooks/use-enabled-channels";
 import {
   Inbox as InboxIcon,
   AlertCircle,
@@ -73,7 +74,9 @@ export function Drawer({
     { id: "escalations", icon: AlertCircle, label: "Escalations", count: escalationsCount },
   ];
 
-  const CHANNELS: NavItem[] = [
+  const { isChannelEnabled } = useEnabledChannels();
+
+  const ALL_CHANNELS: NavItem[] = [
     { id: "channel:WhatsApp", icon: MessageCircle, label: "WhatsApp", count: channelCounts.WhatsApp },
     { id: "channel:Email", icon: Mail, label: "Email", count: channelCounts.Email },
     { id: "channel:Instagram", icon: Instagram, label: "Instagram", count: channelCounts.Instagram },
@@ -82,6 +85,11 @@ export function Drawer({
     { id: "channel:TikTok", icon: Video, label: "TikTok", count: channelCounts.TikTok },
     { id: "channel:Messenger", icon: MessageSquare, label: "Messenger", count: channelCounts.Messenger },
   ];
+
+  const CHANNELS = ALL_CHANNELS.filter((item) => {
+    const ch = item.id.split(":")[1];
+    return isChannelEnabled(ch as Parameters<typeof isChannelEnabled>[0]);
+  });
 
   const FOOTER: NavItem[] = [
     { id: "bookings", icon: Calendar, label: "Bookings" },
