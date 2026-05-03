@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { Channel } from "@/data/conversations";
 
 export type ToggledChannel = Exclude<Channel, "All" | "Messenger">;
@@ -14,6 +14,7 @@ export const TOGGLEABLE_CHANNELS: ToggledChannel[] = [
 
 const DEFAULT_ENABLED: ToggledChannel[] = ["WhatsApp", "Instagram", "Facebook", "Email"];
 const STORAGE_KEY = "unboks_enabled_channels";
+const EVENT_NAME = "unboks_enabled_channels_changed";
 
 function readFromStorage(): ToggledChannel[] {
   try {
@@ -32,6 +33,7 @@ function readFromStorage(): ToggledChannel[] {
 function writeToStorage(channels: ToggledChannel[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(channels));
+    window.dispatchEvent(new CustomEvent(EVENT_NAME));
   } catch {
     // ignore
   }
@@ -39,6 +41,17 @@ function writeToStorage(channels: ToggledChannel[]) {
 
 export function useEnabledChannels() {
   const [enabledChannels, setEnabledChannelsState] = useState<ToggledChannel[]>(readFromStorage);
+
+  // Re-sync from storage on storage event (cross-tab) or our custom event (same-tab)
+  useEffect(() => {
+    const sync = () => setEnabledChannelsState(readFromStorage());
+    window.addEventListener("storage", sync);
+    window.addEventListener(EVENT_NAME, sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener(EVENT_NAME, sync);
+    };
+  }, []);
 
   const setEnabledChannels = useCallback((channels: ToggledChannel[]) => {
     setEnabledChannelsState(channels);
