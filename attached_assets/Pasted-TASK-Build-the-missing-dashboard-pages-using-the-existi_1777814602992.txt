@@ -1,0 +1,197 @@
+TASK: Build the missing dashboard pages using the existing hooks and remote API. Keep the current dashboard design unchanged.
+
+CONTEXT:
+The hooks/API layer is already migrated.
+The UI exists, but these pages still need to be built:
+1. Bookings / Orders
+2. Settings
+3. Analytics
+
+IMPORTANT PRODUCT CORRECTION:
+“Bookings” is NOT a booking form.
+It is NOT where the client creates bookings.
+
+Bookings/Orders means:
+A customer saw an ad or contacted the business.
+The AI agent, Marina, handled the WhatsApp/DM conversation.
+Marina guided the customer to sign up and pay for a service.
+After payment/order completion, Marina escalates the paid order to a human.
+The human then prepares onboarding, fulfillment, or service delivery.
+
+So this page should behave like an escalation/order handoff inbox.
+
+PAGE 1 — BOOKINGS / ORDERS
+
+Build this as a paid-order escalation page.
+
+Use the existing design language of the new dashboard.
+
+Data source:
+- First inspect the existing hooks and available API types.
+- Use useAvailability only if it helps show capacity/service context.
+- Prefer existing escalation/order/conversation data if paid-order escalations are represented there.
+- If the backend does not yet have a dedicated paid-order endpoint, derive this page from escalations/conversations using clear filters and leave a TODO.
+
+Required UI:
+- List/table of paid orders / service handoffs.
+- Each row/card should show:
+  - customer name
+  - customer contact
+  - service/product ordered
+  - payment/order status if available
+  - date/time
+  - channel, e.g. WhatsApp
+  - current handoff status
+  - short AI summary
+- Clicking an order opens a detail panel, same interaction style as Escalations.
+- Detail panel should show:
+  - customer info
+  - ordered service
+  - payment/order info if available
+  - conversation summary
+  - AI notes
+  - onboarding/preparation notes
+  - next action needed by human
+- Human actions:
+  - mark as handled / resolved if backend supports it
+  - reply or contact customer if backend supports it
+  - otherwise show disabled action with clear TODO
+
+Do NOT create a public booking form.
+Do NOT create customer-facing checkout.
+Do NOT show availability as the main page.
+Do NOT make this a calendar page.
+
+PAGE 2 — SETTINGS
+
+Build Settings using the old version’s functional data.
+
+Use existing hooks:
+- useScheduleSlots()
+- useScheduleSlotMutations()
+- useDryRun()
+- useEmailSettings()
+- useBookingsLabel()
+- useFeatureToggles()
+- useConfig()
+
+Required Settings sections:
+
+1. Client / System Info
+- show current client slug
+- show API target if available
+- show config/context from GET /config
+- read-only display is fine
+
+2. Source of Truth
+- place under Settings, not main nav
+- simple area explaining that this is where client knowledge belongs
+- if upload/training hooks already exist, connect them
+- if not fully wired, create a clean placeholder panel with TODO
+- examples:
+  - FAQ documents
+  - service descriptions
+  - prices
+  - tone of voice
+  - escalation rules
+  - holiday updates
+  - temporary offers
+  - policies
+
+3. Posting Schedule
+- use useScheduleSlots()
+- allow viewing/editing schedule slots if UI support exists
+- save with useScheduleSlotMutations()
+
+4. Dry Run Mode
+- use useDryRun()
+- toggle dry-run on/off
+- explain in normal language:
+  “When dry-run is on, the system prepares actions but does not publish/send automatically.”
+
+5. Email Reply Preference
+- use useEmailSettings()
+- options:
+  - Gmail
+  - Mailto
+- persist locally
+
+6. Navigation / Feature Toggles
+- use useFeatureToggles()
+- toggles:
+  - show/hide Social
+  - show/hide Create
+- keep advanced options visually secondary
+
+7. Bookings Label
+- use useBookingsLabel()
+- allow label to be “Bookings”, “Orders”, or custom label
+- but internal meaning remains paid-order handoff
+
+Settings design rules:
+- calm premium layout
+- grouped cards/sections
+- no clutter
+- no developer-looking raw JSON unless inside a collapsed advanced area
+- no old CSS
+- no old layout imports
+
+PAGE 3 — ANALYTICS
+
+Build basic analytics for now.
+
+Use:
+- useStatus()
+- useConversations()
+- useEscalations()
+
+Required analytics cards:
+1. Total conversations
+2. Open escalations
+3. Resolved escalations
+4. Paid orders / booking handoffs if detectable
+5. Messages by channel
+6. Recent activity trend, simple 14-day view if easy
+
+Required charts:
+- Keep basic.
+- Use the chart library already in the project if present.
+- If no chart library exists, use simple premium stat cards and clean bars made with CSS.
+- Do not add heavy new dependencies unless necessary.
+
+Analytics logic:
+- Derive analytics locally from fetched data.
+- Count conversations by channel.
+- Count escalations by status.
+- Count activity by date using last_message_at and created_at.
+- If paid-order detection is not available from backend, show “Orders detected: unavailable” and add TODO in MIGRATION_STATUS.md.
+
+GENERAL RULES:
+- Keep current dashboard design.
+- Do not redesign global layout.
+- Do not touch login unless needed.
+- Do not touch public Unboks.org website.
+- Do not create fake backend endpoints.
+- Do not create booking/checkout functionality.
+- Do not copy old dashboard page JSX.
+- Use existing hooks and adapt them into the new UI.
+
+OUTPUT:
+Update MIGRATION_STATUS.md with:
+1. Bookings/Orders page status
+2. Settings page status
+3. Analytics page status
+4. Which hooks are used
+5. Which API endpoints are used
+6. What is real data
+7. What is placeholder/TODO
+8. Any missing backend endpoint needed for paid-order handoff detection
+
+FINAL ACCEPTANCE:
+- App builds
+- No TypeScript errors
+- Bookings page behaves like paid-order handoff inbox
+- Settings page uses old functional settings data
+- Analytics page shows basic real analytics
+- No old design imported
+- Current new dashboard design remains intact

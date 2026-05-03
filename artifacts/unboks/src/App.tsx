@@ -31,11 +31,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
-      <Route path="/">
-        <ProtectedRoute>
-          <Inbox />
-        </ProtectedRoute>
-      </Route>
+      <Route path="/" component={Inbox} />
       <Route component={NotFound} />
     </Switch>
   );
