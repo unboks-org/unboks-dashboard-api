@@ -1,0 +1,253 @@
+TASK: Migrate the old working login/auth system into this new Unboks dashboard.
+
+CONTEXT:
+The new dashboard UI is already correct.
+Only the login/auth functionality must be migrated.
+Keep the new login design, but replace its logic with the old working auth flow.
+
+ABSOLUTE RULES:
+- Do NOT redesign the login page.
+- Do NOT change dashboard design.
+- Do NOT touch public Unboks.org website.
+- Do NOT create backend code.
+- Do NOT create mock login.
+- Do NOT hardcode a token.
+- Do NOT remove existing dashboard pages.
+- Only migrate auth logic.
+
+REMOTE API:
+Base URL pattern:
+https://api.wetakeyourjob.com/{client}/dashboard/api
+
+Valid clients:
+bluemarlin
+adamus
+consultadespertares
+unboks
+
+Login endpoint:
+POST /login
+Body:
+{ "password": string }
+
+Response:
+{ "token": string }
+
+LOCAL STORAGE:
+Client slug:
+wtyj_client
+
+Token:
+wtyj_token_{clientSlug}
+
+Example:
+wtyj_token_unboks
+
+FILES TO CREATE:
+
+src/auth/useAuthContext.ts
+src/auth/AuthProvider.tsx
+src/auth/ProtectedRoute.tsx
+
+Update/create auth logic inside:
+
+src/lib/api.ts
+src/hooks/use-client-api.ts
+or wherever the current hooks live.
+
+REQUIRED IMPLEMENTATION:
+
+1. Create useAuthContext.ts:
+
+- AuthContextValue:
+  - isAuthenticated: boolean
+  - token: string | null
+  - login(token: string): void
+  - logout(): void
+
+- create AuthContext
+- export useAuthContext()
+- throw error if used outside AuthProvider
+
+2. Create AuthProvider.tsx:
+
+- use localStorage token key:
+  `wtyj_token_${localStorage.getItem("wtyj_client") ?? "default"}`
+
+- On login:
+  - store token in localStorage under current client token key
+  - update React state
+
+- On logout:
+  - remove current token key
+  - remove wtyj_client
+  - set token state null
+  - navigate to /login
+
+- Register API unauthorized handler:
+  setOnUnauthorized(() => {
+    clear auth
+    navigate("/login", { replace: true })
+  })
+
+IMPORTANT:
+AuthProvider must be rendered inside BrowserRouter because it uses useNavigate().
+
+3. Create ProtectedRoute.tsx:
+
+- if not authenticated:
+  redirect to /login
+  preserve attempted route in location.state.from
+- if authenticated:
+  render <Outlet />
+
+4. Update api.ts auth logic:
+
+Implement:
+- VALID_CLIENTS:
+  ["bluemarlin", "adamus", "consultadespertares", "unboks"]
+
+- getClient()
+  - reads localStorage["wtyj_client"]
+  - defaults to "unboks" for this new dashboard unless another valid client was chosen
+
+- setClient(client)
+  - writes localStorage["wtyj_client"]
+  - updates BASE_URL to:
+    https://api.wetakeyourjob.com/{client}/dashboard/api
+
+- BASE_URL:
+  initialized using getClient()
+
+- setOnUnauthorized(fn)
+
+- 401 guard:
+  - count 401s within 60 seconds
+  - first 401 can be ignored if token exists
+  - second 401 clears auth
+  - if no token exists, clear auth immediately
+
+- getHeaders()
+  - reads token from localStorage[`wtyj_token_${getClient()}`]
+  - adds Authorization: Bearer token
+  - adds Content-Type: application/json
+
+- apiFetch()
+  - calls `${BASE_URL}${path}`
+  - handles 401 via handle401()
+  - throws readable errors
+  - returns JSON
+
+- api.login(password)
+  - calls POST `${BASE_URL}/login`
+  - sends { password }
+  - no Authorization header
+  - returns { token }
+
+5. Update/create useAuth hook:
+
+useAuth() must:
+- get login function from useAuthContext()
+- use React Query useMutation
+- mutationFn: api.login
+- onSuccess:
+  - call setAuthToken(data.token)
+- return:
+  - login
+  - isAuthenticated
+
+6. Wire the existing Login page UI:
+
+Keep the current UI exactly as it is.
+
+Connect:
+- password input to password state
+- workspace/client selector if present
+- if no workspace selector exists, default client to "unboks"
+- form submit:
+  - preventDefault()
+  - validate password is not empty
+  - call setClient(selectedClient || "unboks")
+  - call login.mutate(password)
+
+After successful login:
+- redirect to previous attempted route from location.state.from
+- otherwise redirect to /dashboard
+
+Error messages:
+- network/server unreachable:
+  “Can’t reach server — check your connection or contact support”
+- invalid password:
+  “Invalid access key”
+
+Button state:
+- disabled while pending
+- disabled when password is empty
+- show loading state while login.isPending
+
+7. Router setup:
+
+Wrap app in correct order:
+
+<BrowserRouter>
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard/*" element={<Dashboard />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </AuthProvider>
+  </QueryClientProvider>
+</BrowserRouter>
+
+If BrowserRouter already exists, do not duplicate it.
+Only place AuthProvider inside it.
+
+8. Final redirect behavior:
+
+- unauthenticated user visiting /dashboard must go to /login
+- successful login goes to /dashboard
+- authenticated user visiting /login must go to /dashboard
+- logout goes to /login
+
+9. Do not break existing dashboard UI.
+
+OUTPUT REQUIRED:
+Update or create:
+
+MIGRATION_STATUS.md
+
+Include:
+- auth files created
+- files changed
+- login route status
+- protected route status
+- localStorage keys used
+- API endpoint used
+- manual test checklist
+
+MANUAL TEST CHECKLIST:
+- Clear localStorage
+- Visit /dashboard
+- Confirm redirect to /login
+- Enter password
+- Confirm POST /login is called
+- Confirm wtyj_client = unboks
+- Confirm wtyj_token_unboks exists
+- Confirm redirect to /dashboard
+- Refresh page
+- Confirm user stays logged in
+- Click logout
+- Confirm token and client are cleared
+- Confirm redirect to /login
+- Enter wrong password
+- Confirm “Invalid access key”
+- Disconnect network or block API
+- Confirm “Can’t reach server — check your connection or contact support”
+
+FINAL ACCEPTANCE:
+The login must behave exactly like the old working login system, but inside the new dashboard design.
+No old visual design may be imported.

@@ -1,8 +1,9 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { FeatureTogglesProvider } from "@/lib/feature-toggles";
 import NotFound from "@/pages/not-found";
 import Inbox from "@/pages/Inbox";
@@ -33,10 +34,18 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
-      <Route path="/bookings" component={Bookings} />
-      <Route path="/settings" component={Settings} />
-      <Route path="/analytics" component={Analytics} />
-      <Route path="/" component={Inbox} />
+      <Route path="/bookings">
+        <ProtectedRoute><Bookings /></ProtectedRoute>
+      </Route>
+      <Route path="/settings">
+        <ProtectedRoute><Settings /></ProtectedRoute>
+      </Route>
+      <Route path="/analytics">
+        <ProtectedRoute><Analytics /></ProtectedRoute>
+      </Route>
+      <Route path="/">
+        <ProtectedRoute><Inbox /></ProtectedRoute>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

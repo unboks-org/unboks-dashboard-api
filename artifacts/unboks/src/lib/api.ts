@@ -2,6 +2,19 @@ import { ApiError } from "@/lib/error";
 import { getApiBase, getToken, clearAuth } from "@/lib/tenant";
 
 // ---------------------------------------------------------------------------
+// Valid clients
+// ---------------------------------------------------------------------------
+
+export const VALID_CLIENTS = [
+  "unboks",
+  "bluemarlin",
+  "adamus",
+  "consultadespertares",
+] as const;
+
+export type ValidClient = (typeof VALID_CLIENTS)[number];
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -75,16 +88,45 @@ export interface LoginResponse {
 // Core fetch wrapper
 // ---------------------------------------------------------------------------
 
-let _lastUnauthorizedAt: number | null = null;
+let _first401At: number | null = null;
 let _onUnauthorized: (() => void) | null = null;
 
 export function registerUnauthorizedHandler(fn: () => void) {
   _onUnauthorized = fn;
 }
 
+function handle401() {
+  const token = getToken();
+  const now = Date.now();
+
+  if (!token) {
+    // No token at all — clear immediately
+    clearAuth();
+    _onUnauthorized?.();
+    return;
+  }
+
+  if (_first401At === null) {
+    // First 401 with a token — record but tolerate (might be a stale request)
+    _first401At = now;
+    return;
+  }
+
+  if (now - _first401At < 60_000) {
+    // Second 401 within 60 s — session is truly invalid
+    _first401At = null;
+    clearAuth();
+    _onUnauthorized?.();
+  } else {
+    // More than 60 s since first — reset window
+    _first401At = now;
+  }
+}
+
 async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
+  skipAuth = false,
 ): Promise<T> {
   const base = getApiBase();
   const token = getToken();
@@ -94,18 +136,12 @@ async function apiFetch<T>(
     ...(options.headers as Record<string, string>),
   };
 
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (!skipAuth && token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(`${base}${path}`, { ...options, headers });
 
   if (res.status === 401) {
-    const now = Date.now();
-    const tooSoon = _lastUnauthorizedAt && now - _lastUnauthorizedAt < 60_000;
-    _lastUnauthorizedAt = now;
-    if (!tooSoon && _onUnauthorized) {
-      clearAuth();
-      _onUnauthorized();
-    }
+    handle401();
     throw new ApiError(401, "Unauthorized");
   }
 
@@ -129,10 +165,11 @@ async function apiFetch<T>(
 // ---------------------------------------------------------------------------
 
 export async function apiLogin(password: string): Promise<LoginResponse> {
+  // Login must NOT send an Authorization header
   return apiFetch<LoginResponse>("/login", {
     method: "POST",
     body: JSON.stringify({ password }),
-  });
+  }, true);
 }
 
 // ---------------------------------------------------------------------------

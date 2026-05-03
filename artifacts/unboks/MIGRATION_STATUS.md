@@ -37,8 +37,10 @@ Default client slug: `unboks`
 
 | File | What changed |
 |---|---|
-| `src/App.tsx` | Added routes for `/bookings`, `/settings`, `/analytics` |
+| `src/App.tsx` | Routes for `/bookings`, `/settings`, `/analytics`; all dashboard routes now wrapped in `ProtectedRoute` |
 | `src/pages/Inbox.tsx` | Refactored to use `DashboardShell`; filter state stays in page |
+| `src/pages/Login.tsx` | Client selector (4 workspaces), `useMutation` for login, specific error messages, redirects if already authenticated |
+| `src/lib/api.ts` | Added `VALID_CLIENTS` + `ValidClient` type; `apiLogin` now skips auth header (`skipAuth=true`); 401 handler: first 401 tolerated if token exists, second within 60s clears auth |
 | `src/components/inbox/Drawer.tsx` | Added `analytics` to `NavId` type; added Analytics nav item with `BarChart2` icon |
 | `src/hooks/use-client-api.ts` | Added `useScheduleSlots()` and `useScheduleSlotMutations()` |
 
@@ -142,6 +144,55 @@ Default client slug: `unboks`
 | `GET /orders` or `GET /escalations?type=paid` | Distinct paid-order escalation list for Bookings page |
 | `POST /training` | Upload knowledge base documents for Source of Truth |
 | `PATCH /messages/:id/read` | Server-side read/unread state |
+
+---
+
+## Auth Files
+
+| File | Purpose |
+|---|---|
+| `src/components/auth/AuthContext.ts` | `AuthContext` + `AuthState` interface |
+| `src/components/auth/AuthProvider.tsx` | Stores token in `wtyj_token_{client}`, registers 401 handler, login/logout |
+| `src/components/auth/ProtectedRoute.tsx` | Redirects to `/login` if not authenticated (wouter `<Redirect>`) |
+| `src/components/auth/useAuth.ts` | `useAuth()` — throws if used outside `AuthProvider` |
+
+### Login route: ✅ `/login`
+### Protected routes: ✅ `/`, `/bookings`, `/settings`, `/analytics`
+
+### localStorage keys
+| Key | Value |
+|---|---|
+| `wtyj_client` | Active client slug (e.g. `unboks`) |
+| `wtyj_token_unboks` | Auth token for the `unboks` client |
+| `wtyj_token_bluemarlin` | Auth token for the `bluemarlin` client |
+| `wtyj_token_adamus` | Auth token for the `adamus` client |
+| `wtyj_token_consultadespertares` | Auth token for the `consultadespertares` client |
+
+### API endpoint used
+`POST https://api.wetakeyourjob.com/{client}/dashboard/api/login`
+Body: `{ "password": string }`
+Response: `{ "token": string }`
+No `Authorization` header sent on login.
+
+### Error messages
+| Condition | Message |
+|---|---|
+| Network unreachable / server error | "Can't reach server — check your connection or contact support" |
+| Wrong password (401/403) | "Invalid access key" |
+
+### Manual test checklist
+- [ ] Clear localStorage → visit `/` → confirms redirect to `/login`
+- [ ] Enter wrong password → "Invalid access key" shown
+- [ ] Disconnect network / block API → "Can't reach server…" shown
+- [ ] Select workspace from dropdown → confirms correct client in selector
+- [ ] Enter correct password → POST `/login` called, `wtyj_client` + `wtyj_token_unboks` written to localStorage
+- [ ] Redirect to `/` (inbox) after login
+- [ ] Refresh page → stays logged in (token persists)
+- [ ] Visit `/bookings`, `/settings`, `/analytics` while logged in → all accessible
+- [ ] Click "Sign out" → token + client cleared from localStorage, redirected to `/login`
+- [ ] Visit any protected route after logout → redirected to `/login`
+- [ ] Visit `/login` while already authenticated → redirected to `/`
+- [ ] Simulate 2nd 401 within 60 s → auto-logout fires, toast shown
 
 ---
 
