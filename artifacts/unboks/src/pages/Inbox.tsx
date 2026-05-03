@@ -1,35 +1,86 @@
 import { useState, useMemo } from "react";
 import { Header } from "@/components/inbox/Header";
-import { Drawer } from "@/components/inbox/Drawer";
+import { Drawer, NavId } from "@/components/inbox/Drawer";
 import { MessageRow } from "@/components/inbox/MessageRow";
 import { Fab } from "@/components/inbox/Fab";
 import { BottomNav } from "@/components/inbox/BottomNav";
-import { conversations } from "@/data/conversations";
+import { conversations, Channel } from "@/data/conversations";
+
+const CHANNEL_LIST: Channel[] = [
+  "WhatsApp",
+  "Email",
+  "Instagram",
+  "Facebook",
+  "X",
+  "TikTok",
+  "Messenger",
+];
+
+const NAV_LABELS: Record<string, string> = {
+  inbox: "Inbox",
+  escalations: "Escalations",
+  bookings: "Bookings",
+  settings: "Settings",
+};
 
 export default function Inbox() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeNav, setActiveNav] = useState("inbox");
+  const [activeNav, setActiveNav] = useState<NavId>("inbox");
   const [bottomTab, setBottomTab] = useState("mail");
 
-  const filtered = useMemo(() => {
-    if (!searchQuery.trim()) return conversations;
-    const q = searchQuery.toLowerCase();
-    return conversations.filter(
-      (c) =>
-        c.sender.toLowerCase().includes(q) ||
-        c.subject.toLowerCase().includes(q) ||
-        c.preview.toLowerCase().includes(q)
-    );
-  }, [searchQuery]);
+  const channelCounts = useMemo(() => {
+    const counts: Record<Channel, number> = {
+      All: conversations.length,
+      WhatsApp: 0, Email: 0, Instagram: 0, Facebook: 0, X: 0, TikTok: 0, Messenger: 0,
+    };
+    conversations.forEach((c) => {
+      counts[c.channel] = (counts[c.channel] || 0) + 1;
+    });
+    return counts;
+  }, []);
 
-  const unreadCount = useMemo(
+  const inboxCount = useMemo(
     () => conversations.filter((c) => c.unread).length,
     []
   );
+  const escalationsCount = useMemo(
+    () => conversations.filter((c) => c.escalated).length,
+    []
+  );
+
+  const sectionTitle = useMemo(() => {
+    if (activeNav.startsWith("channel:")) return activeNav.split(":")[1];
+    return NAV_LABELS[activeNav] || "Inbox";
+  }, [activeNav]);
+
+  const filtered = useMemo(() => {
+    let list = conversations;
+
+    if (activeNav === "escalations") {
+      list = list.filter((c) => c.escalated);
+    } else if (activeNav === "bookings") {
+      list = list.filter((c) => /booking|reschedul|appointment/i.test(c.subject + " " + c.preview));
+    } else if (activeNav.startsWith("channel:")) {
+      const ch = activeNav.split(":")[1] as Channel;
+      list = list.filter((c) => c.channel === ch);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(
+        (c) =>
+          c.sender.toLowerCase().includes(q) ||
+          c.subject.toLowerCase().includes(q) ||
+          c.preview.toLowerCase().includes(q)
+      );
+    }
+
+    return list;
+  }, [activeNav, searchQuery]);
 
   return (
-    <div className="flex flex-col h-screen w-full bg-white overflow-hidden font-sans mx-auto max-w-[480px] sm:max-w-[560px] sm:shadow-xl sm:my-0 relative">
+    <div className="flex flex-col h-screen w-full bg-white overflow-hidden font-sans mx-auto max-w-[480px] sm:max-w-[560px] sm:shadow-xl relative">
       <Header
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -37,7 +88,7 @@ export default function Inbox() {
       />
 
       <div className="px-5 pt-2 pb-2 flex-shrink-0">
-        <h2 className="text-[14px] text-[#5f6368]">Inbox</h2>
+        <h2 className="text-[14px] text-[#5f6368]">{sectionTitle}</h2>
       </div>
 
       <main className="flex-1 overflow-y-auto bg-white">
@@ -45,7 +96,7 @@ export default function Inbox() {
           filtered.map((conv) => <MessageRow key={conv.id} conversation={conv} />)
         ) : (
           <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-            <p className="text-[14px] text-[#5f6368]">No messages match your search.</p>
+            <p className="text-[14px] text-[#5f6368]">No conversations to show.</p>
           </div>
         )}
         <div className="h-24" aria-hidden="true" />
@@ -56,8 +107,8 @@ export default function Inbox() {
       <BottomNav
         active={bottomTab}
         onChange={setBottomTab}
-        mailBadge={unreadCount}
-        chatBadge={12}
+        mailBadge={inboxCount}
+        chatBadge={channelCounts.WhatsApp + channelCounts.Messenger}
       />
 
       <Drawer
@@ -68,7 +119,9 @@ export default function Inbox() {
           setActiveNav(id);
           setDrawerOpen(false);
         }}
-        inboxCount={unreadCount}
+        inboxCount={inboxCount}
+        escalationsCount={escalationsCount}
+        channelCounts={channelCounts}
       />
     </div>
   );

@@ -1,58 +1,63 @@
 import { useEffect } from "react";
 import {
   Inbox as InboxIcon,
-  Star,
-  Clock,
-  ChevronRight,
-  Send,
-  CalendarClock,
-  Outdent,
-  FileText,
+  AlertCircle,
+  Calendar,
+  Settings as SettingsIcon,
   Mail,
-  AlertOctagon,
-  Trash2,
+  MessageCircle,
+  Instagram,
+  Facebook,
+  Video,
+  MessageSquare,
   Pencil,
   Circle,
   ChevronUp,
-  Layers,
   Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Channel } from "@/data/conversations";
+
+// X glyph (not Twitter bird)
+const XIcon = ({ className, strokeWidth: _sw }: { className?: string; strokeWidth?: number }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
+
+export type NavId =
+  | "inbox"
+  | "escalations"
+  | "bookings"
+  | "settings"
+  | `channel:${Channel}`;
 
 interface DrawerProps {
   open: boolean;
   onClose: () => void;
-  active: string;
-  onSelect: (id: string) => void;
+  active: NavId;
+  onSelect: (id: NavId) => void;
   inboxCount: number;
+  escalationsCount: number;
+  channelCounts: Record<Channel, number>;
 }
 
 interface NavItem {
-  id: string;
+  id: NavId;
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   label: string;
-  count?: number | string;
+  count?: number;
 }
 
-const PRIMARY: NavItem[] = [
-  { id: "all", icon: Layers, label: "All inboxes", count: 17 },
-  { id: "inbox", icon: InboxIcon, label: "Inbox" },
-];
-
-const SECONDARY: NavItem[] = [
-  { id: "starred", icon: Star, label: "Starred" },
-  { id: "snoozed", icon: Clock, label: "Snoozed" },
-  { id: "important", icon: ChevronRight, label: "Important", count: "99+" },
-  { id: "sent", icon: Send, label: "Sent" },
-  { id: "scheduled", icon: CalendarClock, label: "Scheduled" },
-  { id: "outbox", icon: Outdent, label: "Outbox" },
-  { id: "drafts", icon: FileText, label: "Drafts", count: 2 },
-  { id: "allmail", icon: Mail, label: "All mail" },
-  { id: "spam", icon: AlertOctagon, label: "Spam" },
-  { id: "trash", icon: Trash2, label: "Trash" },
-];
-
-export function Drawer({ open, onClose, active, onSelect, inboxCount }: DrawerProps) {
+export function Drawer({
+  open,
+  onClose,
+  active,
+  onSelect,
+  inboxCount,
+  escalationsCount,
+  channelCounts,
+}: DrawerProps) {
   // Close on Escape
   useEffect(() => {
     if (!open) return;
@@ -60,6 +65,26 @@ export function Drawer({ open, onClose, active, onSelect, inboxCount }: DrawerPr
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  const PRIMARY: NavItem[] = [
+    { id: "inbox", icon: InboxIcon, label: "Inbox", count: inboxCount },
+    { id: "escalations", icon: AlertCircle, label: "Escalations", count: escalationsCount },
+  ];
+
+  const CHANNELS: NavItem[] = [
+    { id: "channel:WhatsApp", icon: MessageCircle, label: "WhatsApp", count: channelCounts.WhatsApp },
+    { id: "channel:Email", icon: Mail, label: "Email", count: channelCounts.Email },
+    { id: "channel:Instagram", icon: Instagram, label: "Instagram", count: channelCounts.Instagram },
+    { id: "channel:Facebook", icon: Facebook, label: "Facebook", count: channelCounts.Facebook },
+    { id: "channel:X", icon: XIcon, label: "X", count: channelCounts.X },
+    { id: "channel:TikTok", icon: Video, label: "TikTok", count: channelCounts.TikTok },
+    { id: "channel:Messenger", icon: MessageSquare, label: "Messenger", count: channelCounts.Messenger },
+  ];
+
+  const FOOTER: NavItem[] = [
+    { id: "bookings", icon: Calendar, label: "Bookings" },
+    { id: "settings", icon: SettingsIcon, label: "Settings" },
+  ];
 
   return (
     <>
@@ -88,12 +113,12 @@ export function Drawer({ open, onClose, active, onSelect, inboxCount }: DrawerPr
           <div className="w-7 h-7 bg-[#1a73e8] rounded-md flex items-center justify-center">
             <Package className="w-4 h-4 text-white" />
           </div>
-          <span className="text-[20px] text-[#5f6368] font-normal">Unboks</span>
+          <span className="text-[20px] text-[#202124] font-medium">Unboks</span>
         </div>
 
         {/* Active status */}
         <button
-          onClick={() => onSelect("active")}
+          onClick={onClose}
           className="w-full flex items-center justify-between px-5 py-3 hover:bg-[#f6f8fc] transition-colors"
         >
           <div className="flex items-center gap-4">
@@ -115,19 +140,28 @@ export function Drawer({ open, onClose, active, onSelect, inboxCount }: DrawerPr
               key={item.id}
               item={item}
               active={active === item.id}
-              count={item.id === "inbox" ? inboxCount : item.count}
+              onSelect={onSelect}
+            />
+          ))}
+
+          <SectionHeader label="Channels" />
+
+          {CHANNELS.map((item) => (
+            <NavRow
+              key={item.id}
+              item={item}
+              active={active === item.id}
               onSelect={onSelect}
             />
           ))}
 
           <div className="h-px bg-[#f1f3f4] my-2" />
 
-          {SECONDARY.map((item) => (
+          {FOOTER.map((item) => (
             <NavRow
               key={item.id}
               item={item}
               active={active === item.id}
-              count={item.count}
               onSelect={onSelect}
             />
           ))}
@@ -137,16 +171,22 @@ export function Drawer({ open, onClose, active, onSelect, inboxCount }: DrawerPr
   );
 }
 
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <div className="px-5 pt-4 pb-2 text-[12px] font-medium uppercase tracking-wider text-[#5f6368]">
+      {label}
+    </div>
+  );
+}
+
 function NavRow({
   item,
   active,
-  count,
   onSelect,
 }: {
   item: NavItem;
   active: boolean;
-  count?: number | string;
-  onSelect: (id: string) => void;
+  onSelect: (id: NavId) => void;
 }) {
   const Icon = item.icon;
   return (
@@ -155,20 +195,23 @@ function NavRow({
       className={cn(
         "w-full flex items-center gap-5 pl-5 pr-4 h-12 rounded-r-full text-[14px] transition-colors",
         active
-          ? "bg-[#fce8e6] text-[#d93025] font-semibold"
+          ? "bg-[#e8f0fe] text-[#1a73e8] font-semibold"
           : "text-[#202124] hover:bg-[#f6f8fc]"
       )}
     >
-      <Icon className={cn("w-5 h-5", active ? "text-[#d93025]" : "text-[#5f6368]")} strokeWidth={1.75} />
+      <Icon
+        className={cn("w-5 h-5", active ? "text-[#1a73e8]" : "text-[#5f6368]")}
+        strokeWidth={1.75}
+      />
       <span className="flex-1 text-left">{item.label}</span>
-      {count !== undefined && count !== 0 && (
+      {item.count !== undefined && item.count > 0 && (
         <span
           className={cn(
             "text-[12px]",
-            active ? "text-[#d93025] font-semibold" : "text-[#5f6368]"
+            active ? "text-[#1a73e8] font-semibold" : "text-[#5f6368]"
           )}
         >
-          {count}
+          {item.count}
         </span>
       )}
     </button>
