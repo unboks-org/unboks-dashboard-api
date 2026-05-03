@@ -1,0 +1,355 @@
+==================
+GOAL
+==================================================
+
+Create a premium, practical, production-ready inbox UI for Unboks.
+
+Design direction:
+- premium
+- calm
+- clean
+- operational
+- billion-dollar product feel
+- Apple / Google level restraint
+- Gmail-style practicality
+- less decoration, more clarity
+- dense enough to be useful
+- not cramped
+- visually sharp
+- no fluff
+
+This must NOT look like:
+- a generic SaaS card dashboard
+- a startup template
+- rounded bubbles everywhere
+- a Dribbble concept
+- a landing page
+- a colorful admin panel
+
+This MUST look like:
+- a serious inbox product
+- a professional tool people can work in all day
+- a polished operational interface
+- a premium inbox where everything has hierarchy and purpose
+
+==================================================
+MAIN DESIGN RULES
+==================================================
+
+1. NO giant rounded cards.
+2. NO bubbly pills.
+3. NO segmented-control nonsense.
+4. NO rainbow platform colors.
+5. NO dark mode.
+6. NO soft startup-card aesthetic.
+7. NO overdesigned empty state.
+8. NO giant margins wasting space.
+9. NO weak font hierarchy.
+10. NO cramped spacing.
+11. NO cheap-looking icons or badges.
+12. NO Twitter bird — X must be X only.
+13. NO BlueMarlin branding.
+14. NO WTYJ branding.
+15. NO “looks inspired by Gmail”.
+16. Structurally use Gmail-style inbox logic, but with Unboks branding.
+
+==================================================
+OVERALL LAYOUT
+==================================================
+
+The inbox page should have this structure:
+
+1. Left sidebar
+2. Top header bar
+3. Action/toolbar row
+4. Channel filter/tab row
+5. Main message list area
+
+Everything should be flat, clean, and aligned.
+
+Use full viewport height.
+No floating main card.
+
+Layout:
+- sidebar fixed left
+- main content to the right
+- white/light background
+- subtle dividers
+- compact and professional spacing
+
+==================================================
+VISUAL LANGUAGE
+==================================================
+
+Colors:
+- background: white or near-white
+- borders/dividers: soft gray
+- primary text: dark navy / almost black
+- secondary text: muted gray
+- accent: Unboks blue
+- active row/tab/nav: subtle blue tint
+- hover: subtle neutral gray/blue
+- no heavy shadows
+- no glassmorphism
+- no gold
+- no loud platform colors
+
+Typography:
+- use Inter/system for the inbox UI
+- not Manrope for the dashboard UI
+- sharp, neutral, readable
+- premium product feel
+- clear hierarchy
+
+Typography scale:
+- page title: 16–18px semibold
+- navigation: 14px
+- tabs: 13px semibold
+- row text: 14px
+- metadata: 12–13px
+- muted labels: 12–13px
+
+Spacing:
+- use disciplined spacing
+- use an 8px rhythm
+- align everything properly
+- avoid dead space
+- avoid crowded text/icon collisions
+
+==================================================
+LEFT SIDEBAR
+==================================================
+
+Make the sidebar premium and practical.
+
+Requirements:
+- clean white background
+- subtle right border
+- no card blocks
+- no giant logo area
+- no weird spacing
+- compact navigation
+
+Top of sidebar:
+- real Unboks logo
+- clean placement
+- logo readable
+- not oversized
+- not tiny
+
+Navigation items:
+- Inbox
+- Escalations
+- Channels
+- Settings
+- Bookings if already present
+
+Style:
+- compact rows
+- strong alignment
+- icon + label
+- subtle hover
+- active row = soft blue background, blue icon/text
+- no giant rounded buttons
+- no floating card feeling
+
+==================================================
+TOP HEADER
+==================================================
+
+Create a polished header.
+
+Header contains:
+- current page title (Inbox)
+- large search field
+- right-side utility area (date, notifications, sign out if already present)
+
+Search bar requirements:
+- premium Gmail-style practical search box
+- large enough to be useful
+- rectangular with slight radius
+- icon correctly aligned
+- placeholder never overlaps icon
+- no cheap input styling
+- strong visual clarity
+
+Right-side area:
+- properly spaced
+- not touching right edge
+- clean muted icons/text
+- no clutter
+
+==================================================
+TOOLBAR ROW
+==================================================
+
+Below the header, create a proper action row.
+
+Include existing controls only if they already exist, such as:
+- select checkbox
+- dropdown arrow
+- refresh
+- more
+
+Style:
+- clean flat toolbar
+- subtle divider
+- compact height
+- icon buttons clean and consistent
+- hover state subtle
+- no bubble buttons
+- no chunky controls
+
+==================================================
+CHANNEL FILTER ROW
+==================================================
+
+This row needs to be fully redesigned.
+
+Current row is ugly and must be replaced completely.
+
+Design it as a premium Gmail-style tab row:
+- not plain text
+- not pills
+- not segmented control
+- not chip buttons
+
+Render these as proper tabs:
+- All
+- WhatsApp
+- Email
+- Instagram
+- Facebook
+- X
+- TikTok
+- Messenger if already supported
+
+Style:
+- horizontal tab strip
+- active tab has clean underline
+- inactive tabs muted
+- hover subtle
+- icon + label clearly spaced
+- no loud platform colors
+- no text jammed against icons
+- tabs should feel intentional and premium
+
+Must work on smaller widths:
+- horizontal scroll allowed
+- no ugly wrapping
+- still clean
+
+==================================================
+MESSAGE LIST AREA
+==================================================
+
+This is the core of the inbox.
+Design it like a serious working inbox.
+
+Requirements:
+- full-width flat list area
+- no rounded outer card
+- no giant empty white container
+- no useless decorative blocks
+- message rows separated by subtle dividers
+- strong hierarchy
+- easy scanning
+
+Each message row should support:
+- checkbox or selection affordance
+- channel indicator
+- sender/customer name
+- subject or summary
+- message preview
+- timestamp
+- escalation/important indicator if relevant
+- read/unread distinction
+
+Row style:
+- compact but not cramped
+- hover state subtle
+- selected state subtle blue tint
+- unread clearly stronger
+- text truncates correctly
+- alignment is clean and professional
+
+This should feel immediately useful.
+
+==================================================
+EMPTY STATE
+==================================================
+
+If there are no conversations:
+- keep it minimal
+- no giant illustration
+- no huge blue circle
+- no card
+- no overdesigned empty state
+
+Use:
+- small icon
+- “No conversations yet”
+- “New messages will appear here.”
+
+Keep it quiet and premium.
+
+==================================================
+PRACTICAL UX EXPECTATIONS
+==================================================
+
+The design should help a real operator work fast.
+
+That means:
+- easy scanning
+- clear visual hierarchy
+- no wasted UI
+- no gimmicks
+- everything aligned
+- everything easy to understand
+- everything feels expensive and intentional
+
+The inbox must feel like software that real businesses pay for.
+
+==================================================
+TECHNICAL IMPLEMENTATION RULES
+==================================================
+
+If the current components are fighting the design:
+- rewrite the inbox UI structure cleanly
+- do not keep bad visual structure just because it exists
+
+If shadcn Button/Card components keep forcing rounded/pill/card styling:
+- replace them with plain elements styled explicitly
+
+Do not preserve ugly UI patterns.
+
+Likely files involved:
+- src/dashboard/components/layout/AppLayout.tsx
+- src/dashboard/pages/Messages.tsx
+- src/dashboard/components/PlatformFilterBar.tsx
+- any inbox-specific dashboard styles
+
+Do not edit unrelated surfaces.
+
+==================================================
+ACCEPTANCE CRITERIA
+==================================================
+
+Final inbox UI must satisfy all of these:
+
+1. The inbox looks premium and production-ready.
+2. The inbox feels like a serious product, not a template.
+3. The sidebar is clean and practical.
+4. The header and search look polished.
+5. The toolbar feels operational and minimal.
+6. The channel row is fully redesigned and no longer ugly.
+7. The channel row is not plain text, not pills, not chips.
+8. The message list is flat, useful, and easy to scan.
+9. There is no giant rounded main card.
+10. Spacing is balanced and intentional.
+11. Typography feels premium and sharp.
+12. No dark mode.
+13. No WTYJ/BlueMarlin branding in the inbox.
+14. X uses X only.
+15. The result feels like a premium Google/Apple-level operational inbox.
+
