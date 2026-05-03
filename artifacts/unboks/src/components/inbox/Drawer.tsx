@@ -4,6 +4,7 @@ import {
   AlertCircle,
   Calendar,
   Settings as SettingsIcon,
+  BarChart2,
   Mail,
   MessageCircle,
   Instagram,
@@ -31,6 +32,7 @@ export type NavId =
   | "escalations"
   | "bookings"
   | "settings"
+  | "analytics"
   | `channel:${Channel}`;
 
 interface DrawerProps {
@@ -86,6 +88,7 @@ export function Drawer({
 
   const FOOTER: NavItem[] = [
     { id: "bookings", icon: Calendar, label: "Bookings" },
+    { id: "analytics", icon: BarChart2, label: "Analytics" },
     { id: "settings", icon: SettingsIcon, label: "Settings" },
   ];
 

@@ -1,0 +1,236 @@
+import { useState } from "react";
+import { DashboardShell } from "@/components/inbox/DashboardShell";
+import { useConfig, useScheduleSlots, useScheduleSlotMutations } from "@/hooks/use-client-api";
+import { useDryRun } from "@/hooks/use-dry-run";
+import { useEmailSettings } from "@/hooks/use-email-settings";
+import { useBookingsLabel } from "@/hooks/use-bookings-label";
+import { useFeatureToggles } from "@/lib/feature-toggles";
+import { getClientSlug, getApiBase } from "@/lib/tenant";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+function Section({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+  return (
+    <div className="border-b border-[#f1f3f4] px-5 py-6">
+      <div className="mb-4">
+        <h3 className="text-[14px] font-semibold text-[#202124]">{title}</h3>
+        {description && <p className="text-[13px] text-[#5f6368] mt-0.5">{description}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function ToggleRow({ label, description, checked, onChange, disabled }: {
+  label: string;
+  description?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-2">
+      <div>
+        <p className="text-[14px] text-[#202124]">{label}</p>
+        {description && <p className="text-[12px] text-[#5f6368] mt-0.5">{description}</p>}
+      </div>
+      <button
+        role="switch"
+        aria-checked={checked}
+        onClick={() => !disabled && onChange(!checked)}
+        disabled={disabled}
+        className={cn(
+          "relative w-10 h-6 rounded-full transition-colors flex-shrink-0 mt-0.5",
+          checked ? "bg-[#1a73e8]" : "bg-[#dadce0]",
+          disabled && "opacity-50 cursor-not-allowed",
+        )}
+      >
+        <span className={cn(
+          "absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform",
+          checked ? "translate-x-5" : "translate-x-1",
+        )} />
+      </button>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline gap-4 py-1.5">
+      <span className="text-[13px] text-[#5f6368] w-36 flex-shrink-0">{label}</span>
+      <span className="text-[13px] text-[#202124] font-mono bg-[#f6f8fc] px-2 py-0.5 rounded">{value}</span>
+    </div>
+  );
+}
+
+export default function Settings() {
+  const { data: config, isLoading: configLoading } = useConfig();
+  const { data: slots } = useScheduleSlots();
+  const { save: saveSlots, isSaving: slotsSaving } = useScheduleSlotMutations();
+  const { enabled: dryRun, toggle: toggleDryRun, isSaving: dryRunSaving, isError: dryRunError } = useDryRun();
+  const { emailClient, setEmailClient } = useEmailSettings();
+  const { label: bookingsLabel, setLabel: setBookingsLabel } = useBookingsLabel();
+  const { toggles, setToggle } = useFeatureToggles();
+
+  const [customLabel, setCustomLabel] = useState(bookingsLabel);
+
+  return (
+    <DashboardShell activeNav="settings" pageTitle="Settings">
+      <div className="max-w-2xl">
+
+        {/* Client / System Info */}
+        <Section title="Client & System" description="Current configuration for this workspace.">
+          <div className="space-y-0.5">
+            <InfoRow label="Client slug" value={getClientSlug()} />
+            <InfoRow label="API endpoint" value={getApiBase()} />
+            {configLoading && <p className="text-[12px] text-[#1a73e8] mt-2">Loading config…</p>}
+            {config && (
+              <>
+                <InfoRow label="Client name" value={config.clientName} />
+                <InfoRow label="Platforms" value={config.connectedPlatforms.join(", ") || "—"} />
+              </>
+            )}
+          </div>
+        </Section>
+
+        {/* Source of Truth */}
+        <Section
+          title="Source of Truth"
+          description="The knowledge base Marina uses to answer customer questions accurately."
+        >
+          <div className="bg-[#f6f8fc] rounded-lg p-4 space-y-2">
+            <p className="text-[13px] text-[#202124] font-medium">What belongs here:</p>
+            <ul className="text-[13px] text-[#5f6368] space-y-1 list-disc list-inside">
+              <li>FAQ documents & service descriptions</li>
+              <li>Pricing lists & policies</li>
+              <li>Tone of voice guidelines</li>
+              <li>Escalation rules & conditions</li>
+              <li>Holiday updates & temporary offers</li>
+            </ul>
+            <p className="text-[12px] text-[#9aa0a6] mt-3">
+              TODO: Upload interface pending backend endpoint <code>/training</code>
+            </p>
+          </div>
+        </Section>
+
+        {/* Posting Schedule */}
+        <Section title="Posting Schedule" description="Manage when Marina is active and posting.">
+          {slots && slots.length > 0 ? (
+            <div className="space-y-2">
+              {slots.map((slot, i) => (
+                <div key={i} className="flex items-center justify-between py-2 border-b border-[#f1f3f4] last:border-0">
+                  <span className="text-[14px] text-[#202124] w-24">{slot.day}</span>
+                  <span className="text-[13px] text-[#5f6368]">{slot.startTime} – {slot.endTime}</span>
+                  <span className={cn(
+                    "text-[11px] px-2 py-0.5 rounded-full",
+                    slot.enabled ? "bg-[#e6f4ea] text-[#137333]" : "bg-[#f6f8fc] text-[#5f6368]",
+                  )}>
+                    {slot.enabled ? "Active" : "Off"}
+                  </span>
+                </div>
+              ))}
+              <button
+                onClick={() => { saveSlots.mutate(slots); toast.success("Schedule saved"); }}
+                disabled={slotsSaving}
+                className="mt-3 text-[13px] text-[#1a73e8] hover:underline disabled:opacity-50"
+              >
+                {slotsSaving ? "Saving…" : "Save schedule"}
+              </button>
+            </div>
+          ) : (
+            <p className="text-[13px] text-[#9aa0a6]">
+              Schedule not available — API connection required.
+            </p>
+          )}
+        </Section>
+
+        {/* Dry Run */}
+        <Section
+          title="Dry Run Mode"
+          description="When enabled, the system prepares actions but does not publish or send automatically."
+        >
+          {dryRunError ? (
+            <p className="text-[12px] text-[#9aa0a6]">Dry-run status unavailable — API connection required.</p>
+          ) : (
+            <ToggleRow
+              label="Dry Run"
+              description="Enable to review actions before they go live."
+              checked={dryRun}
+              onChange={toggleDryRun}
+              disabled={dryRunSaving}
+            />
+          )}
+        </Section>
+
+        {/* Email Reply Preference */}
+        <Section title="Email Reply Preference" description="Choose how email replies are opened.">
+          <div className="flex gap-3">
+            {(["gmail", "mailto"] as const).map((option) => (
+              <button
+                key={option}
+                onClick={() => setEmailClient(option)}
+                className={cn(
+                  "px-4 py-2 rounded-lg text-[13px] font-medium border transition-colors",
+                  emailClient === option
+                    ? "border-[#1a73e8] bg-[#e8f0fe] text-[#1a73e8]"
+                    : "border-[#dadce0] text-[#5f6368] hover:bg-[#f6f8fc]",
+                )}
+              >
+                {option === "gmail" ? "Gmail" : "Default mail app"}
+              </button>
+            ))}
+          </div>
+        </Section>
+
+        {/* Bookings Label */}
+        <Section title="Orders Label" description="Customize what this section is called in the sidebar.">
+          <div className="flex items-center gap-3">
+            <div className="flex gap-2">
+              {["Bookings", "Orders"].map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => { setCustomLabel(opt); setBookingsLabel(opt); }}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-[13px] font-medium border transition-colors",
+                    customLabel === opt
+                      ? "border-[#1a73e8] bg-[#e8f0fe] text-[#1a73e8]"
+                      : "border-[#dadce0] text-[#5f6368] hover:bg-[#f6f8fc]",
+                  )}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+            <input
+              type="text"
+              value={customLabel}
+              onChange={(e) => setCustomLabel(e.target.value)}
+              onBlur={() => setBookingsLabel(customLabel)}
+              placeholder="Custom label…"
+              className="flex-1 border border-[#dadce0] rounded-lg px-3 py-2 text-[13px] text-[#202124] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
+            />
+          </div>
+        </Section>
+
+        {/* Feature Toggles */}
+        <Section title="Feature Visibility" description="Show or hide sections in the sidebar.">
+          <div className="space-y-1">
+            <ToggleRow
+              label="AI Suggest Reply"
+              description="Show AI reply suggestions in conversations."
+              checked={toggles.aiSuggestReply}
+              onChange={(v) => setToggle("aiSuggestReply", v)}
+            />
+            <ToggleRow
+              label="Email Notifications"
+              description="Receive email summaries for escalations."
+              checked={toggles.emailNotifications}
+              onChange={(v) => setToggle("emailNotifications", v)}
+            />
+          </div>
+        </Section>
+
+      </div>
+    </DashboardShell>
+  );
+}

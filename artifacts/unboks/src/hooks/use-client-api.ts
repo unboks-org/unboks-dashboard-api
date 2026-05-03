@@ -11,6 +11,9 @@ import {
   fetchAvailability,
   fetchConfig,
   fetchStatus,
+  fetchScheduleSlots,
+  saveScheduleSlots,
+  type ScheduleSlot,
 } from "@/lib/api";
 
 // ------ Conversations ------
@@ -91,6 +94,26 @@ export function useConfig() {
     staleTime: 120_000,
     retry: 1,
   });
+}
+
+// ------ Schedule ------
+
+export function useScheduleSlots() {
+  return useQuery({
+    queryKey: ["schedule-slots"],
+    queryFn: fetchScheduleSlots,
+    staleTime: 60_000,
+    retry: 1,
+  });
+}
+
+export function useScheduleSlotMutations() {
+  const qc = useQueryClient();
+  const save = useMutation({
+    mutationFn: (slots: ScheduleSlot[]) => saveScheduleSlots(slots),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["schedule-slots"] }),
+  });
+  return { save, isSaving: save.isPending };
 }
 
 // ------ Status / Analytics ------
