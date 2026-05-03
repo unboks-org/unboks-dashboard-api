@@ -1,0 +1,242 @@
+TASK: Add Source of Truth (SOT) section to Settings and preload it with Unboks core data.
+
+CONTEXT:
+Unboks dashboard must contain a Source of Truth (SOT).
+This is where all AI knowledge comes from.
+This content must be visible, editable, and structured.
+
+ABSOLUTE RULES:
+- Do NOT redesign Settings.
+- Do NOT move SOT to main navigation.
+- SOT must live under Settings.
+- Keep UI clean, simple, premium.
+- Content must be structured, not one big text blob.
+
+UI STRUCTURE:
+
+Create a new collapsible section:
+
+Title:
+Source of Truth
+
+Subtitle:
+“This is the information your AI uses to answer customers.”
+
+Inside the section, create structured blocks (cards or sections):
+
+---
+
+SECTION 1: Core Value
+
+Content:
+We save our clients time by letting AI answer routine messages and only passing selected messages to a human.
+
+---
+
+SECTION 2: Clients
+
+Content:
+Our clients receive the same kinds of messages every day across different channels and still answer them manually.
+
+---
+
+SECTION 3: Channels
+
+List:
+WhatsApp
+Email
+Instagram
+Facebook
+Telegram
+Messenger
+
+---
+
+SECTION 4: Core Functionality
+
+List:
+AI automatically replies to messages.
+AI uses client-provided information to answer.
+AI sorts and classifies messages (e.g. question, booking, order).
+AI forwards messages to the right person.
+AI follows up automatically.
+AI learns and improves over time.
+AI supports multiple languages.
+AI runs 24/7.
+All conversations are visible in one unified inbox.
+Humans can step in and reply from the dashboard.
+
+---
+
+SECTION 5: Escalation System
+
+Subsection: Hard escalation
+
+Triggered when:
+Booking is confirmed and paid.
+Customer asks for a human.
+Complaint.
+Refund or payment issue.
+Booking problem.
+Legal issue.
+Customer persists in inappropriate, unethical, or irrelevant behavior.
+
+Behavior:
+AI stops and hands the conversation to a human.
+The human replies directly from the dashboard.
+
+Subsection: Soft escalation
+
+AI asks a human for input internally and uses that input to reply to the customer.
+
+Subsection: No escalation
+
+Unclear question or low confidence.
+AI continues asking and iterating until resolved.
+
+---
+
+SECTION 6: Knowledge Base (SOT)
+
+Subsection: Setup
+
+During intake, Unboks gathers all relevant client information and builds the Source of Truth.
+
+Subsection: Sources
+
+PDFs
+Text and notes
+FAQs
+Images
+Pricing
+Policies
+Website content
+Chat history
+
+Subsection: Updates
+
+Clients can add or update information at any time.
+
+Temporary data:
+Special offers (e.g. Valentine’s Day, Christmas)
+Temporary opening hours
+Seasonal services or promotions
+
+---
+
+SECTION 7: Communication Style
+
+Tone of voice is defined during intake.
+Unboks sets how the AI communicates.
+Clients do not change tone directly.
+Unboks can update tone when needed.
+
+---
+
+SECTION 8: Human Handover
+
+All escalations are handled inside the Unboks dashboard.
+Notifications can be sent externally (e.g. WhatsApp or Telegram).
+
+---
+
+SECTION 9: Daily Use
+
+Check notifications.
+View escalations.
+View messages.
+Check bookings (bookings are treated as escalations).
+
+---
+
+SECTION 10: Structured Data Extraction
+
+Unboks extracts:
+Customer name
+Contact details
+Channel/source
+Date and time
+Number of people
+Service or order type
+Payment status
+Special requests
+Notes
+
+---
+
+SECTION 11: Integrations
+
+WhatsApp
+Email
+Instagram
+Facebook
+Telegram
+Messenger
+
+Note:
+Zernio is used internally but is not visible to the client.
+
+---
+
+SECTION 12: Onboarding
+
+Client contacts Unboks.
+Unboks conducts intake conversation.
+Information is gathered.
+Channels are connected.
+Source of Truth is built.
+Client receives dashboard access.
+
+Client receives 14 days free.
+After 14 days, service becomes paid.
+
+---
+
+SECTION 13: Pricing
+
+Pricing is not fixed.
+Clients must contact Unboks for personalized pricing.
+
+---
+
+SECTION 14: Positioning
+
+Unboks replaces time spent on repetitive messages by letting AI handle them and only sending the important ones to you.
+
+---
+
+SECTION 15: What Unboks is NOT
+
+Not a chatbot builder.
+Not a CRM.
+Not a marketing tool.
+Not a helpdesk or ticketing system.
+Not a social media management tool.
+
+---
+
+FUNCTIONAL REQUIREMENTS:
+
+1. Store this SOT in local state or localStorage initially:
+   key: unboks_sot
+
+2. Structure data as JSON (not plain text).
+
+3. Allow future editing:
+   - simple edit mode (optional now)
+   - or placeholder “Edit” button
+
+4. Keep this section under Settings → not main nav.
+
+5. This data will later be used by AI responses.
+
+---
+
+ACCEPTANCE:
+
+- SOT section exists in Settings
+- Data is structured and readable
+- Not overwhelming visually
+- Easy to extend later
+- No design break
+- App builds clean

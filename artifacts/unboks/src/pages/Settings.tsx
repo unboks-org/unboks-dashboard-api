@@ -7,6 +7,7 @@ import { useEmailSettings } from "@/hooks/use-email-settings";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import { useFeatureToggles } from "@/lib/feature-toggles";
 import { useEnabledChannels, TOGGLEABLE_CHANNELS } from "@/hooks/use-enabled-channels";
+import { loadSot, type SotBlock } from "@/data/sot";
 import { getClientSlug, getApiBase } from "@/lib/tenant";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -65,6 +66,51 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function SotCard({ block }: { block: SotBlock }) {
+  return (
+    <div className="bg-[#f6f8fc] rounded-lg p-4">
+      <p className="text-[13px] font-semibold text-[#202124] mb-2">{block.title}</p>
+      {block.content && (
+        <p className="text-[13px] text-[#5f6368] leading-relaxed">{block.content}</p>
+      )}
+      {block.items && block.items.length > 0 && (
+        <ul className="mt-1 space-y-0.5">
+          {block.items.map((item, i) => (
+            <li key={i} className="text-[13px] text-[#5f6368] flex gap-2">
+              <span className="text-[#9aa0a6] select-none">–</span>
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {block.subsections && block.subsections.length > 0 && (
+        <div className="mt-3 space-y-3">
+          {block.subsections.map((sub, i) => (
+            <div key={i} className="border-t border-[#e8eaed] pt-3">
+              <p className="text-[12px] font-medium text-[#5f6368] uppercase tracking-wide mb-1.5">
+                {sub.title}
+              </p>
+              {sub.content && (
+                <p className="text-[13px] text-[#5f6368] leading-relaxed">{sub.content}</p>
+              )}
+              {sub.items && sub.items.length > 0 && (
+                <ul className="mt-1 space-y-0.5">
+                  {sub.items.map((item, j) => (
+                    <li key={j} className="text-[13px] text-[#5f6368] flex gap-2">
+                      <span className="text-[#9aa0a6] select-none">–</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Settings() {
   const { data: config, isLoading: configLoading } = useConfig();
   const { data: slots } = useScheduleSlots();
@@ -77,6 +123,8 @@ export default function Settings() {
 
   const [customLabel, setCustomLabel] = useState(bookingsLabel);
   const [channelsOpen, setChannelsOpen] = useState(false);
+  const [sotOpen, setSotOpen] = useState(false);
+  const [sotBlocks] = useState<SotBlock[]>(loadSot);
 
   return (
     <DashboardShell activeNav="settings" pageTitle="Settings">
@@ -105,24 +153,32 @@ export default function Settings() {
         </Section>
 
         {/* Source of Truth */}
-        <Section
-          title="Source of Truth"
-          description="The knowledge base Marina uses to answer customer questions accurately."
-        >
-          <div className="bg-[#f6f8fc] rounded-lg p-4 space-y-2">
-            <p className="text-[13px] text-[#202124] font-medium">What belongs here:</p>
-            <ul className="text-[13px] text-[#5f6368] space-y-1 list-disc list-inside">
-              <li>FAQ documents & service descriptions</li>
-              <li>Pricing lists & policies</li>
-              <li>Tone of voice guidelines</li>
-              <li>Escalation rules & conditions</li>
-              <li>Holiday updates & temporary offers</li>
-            </ul>
-            <p className="text-[12px] text-[#9aa0a6] mt-3">
-              TODO: Upload interface pending backend endpoint <code>/training</code>
-            </p>
-          </div>
-        </Section>
+        <div className="border-b border-[#f1f3f4]">
+          <button
+            onClick={() => setSotOpen((o) => !o)}
+            className="w-full flex items-center justify-between px-5 py-6 text-left"
+          >
+            <div>
+              <p className="text-[14px] font-semibold text-[#202124]">Source of Truth</p>
+              <p className="text-[13px] text-[#5f6368] mt-0.5">
+                This is the information your AI uses to answer customers.
+              </p>
+            </div>
+            <ChevronDown
+              className={cn(
+                "w-4 h-4 text-[#5f6368] flex-shrink-0 transition-transform duration-200",
+                sotOpen && "rotate-180"
+              )}
+            />
+          </button>
+          {sotOpen && (
+            <div className="px-5 pb-6 space-y-3">
+              {sotBlocks.map((block) => (
+                <SotCard key={block.id} block={block} />
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Posting Schedule */}
         <Section title="Posting Schedule" description="Manage when Marina is active and posting.">
