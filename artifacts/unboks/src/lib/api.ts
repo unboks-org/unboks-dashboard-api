@@ -68,9 +68,9 @@ export interface ScheduleSlot {
 }
 
 export interface ConfigResponse {
-  clientName: string;
-  connectedPlatforms: string[];
-  features: Record<string, boolean>;
+  clientName?: string;
+  connectedPlatforms?: string[];
+  features?: Record<string, boolean>;
 }
 
 export interface StatusResponse {
