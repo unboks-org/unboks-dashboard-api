@@ -88,24 +88,26 @@ export function Drawer({
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop (mobile only) */}
       <div
         aria-hidden="true"
         onClick={onClose}
         className={cn(
-          "fixed inset-0 bg-black/40 z-40 transition-opacity",
+          "fixed inset-0 bg-black/40 z-40 transition-opacity md:hidden",
           open ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
       />
 
-      {/* Drawer panel */}
+      {/* Drawer panel: fixed overlay on mobile, static sidebar on md+ */}
       <aside
-        role="dialog"
         aria-label="Navigation"
-        aria-hidden={!open}
         className={cn(
-          "fixed top-0 left-0 h-full w-[300px] max-w-[85vw] bg-white z-50 shadow-xl flex flex-col transform transition-transform duration-200 ease-out",
-          open ? "translate-x-0" : "-translate-x-full"
+          "bg-white flex flex-col",
+          // Mobile (default): fixed overlay
+          "fixed top-0 left-0 h-full w-[300px] max-w-[85vw] z-50 shadow-xl transform transition-transform duration-200 ease-out",
+          open ? "translate-x-0" : "-translate-x-full",
+          // Desktop (md+): static sidebar always visible
+          "md:static md:h-auto md:translate-x-0 md:w-72 md:max-w-none md:shadow-none md:border-r md:border-[#f1f3f4] md:flex-shrink-0 md:z-auto"
         )}
       >
         {/* Brand */}

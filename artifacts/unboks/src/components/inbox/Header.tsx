@@ -13,10 +13,12 @@ export function Header({ searchQuery, onSearchChange, onOpenDrawer }: HeaderProp
         <button
           aria-label="Open menu"
           onClick={onOpenDrawer}
-          className="w-10 h-10 rounded-full flex items-center justify-center text-[#5f6368] hover:bg-black/5 transition-colors"
+          className="w-10 h-10 rounded-full flex items-center justify-center text-[#5f6368] hover:bg-black/5 transition-colors md:hidden"
         >
           <Menu className="w-5 h-5" />
         </button>
+        {/* Spacer to keep search aligned when hamburger is hidden */}
+        <div className="hidden md:block w-2" aria-hidden="true" />
         <div className="flex-1 min-w-0 flex items-center gap-2">
           <Search className="w-4 h-4 text-[#5f6368] sm:hidden" />
           <input

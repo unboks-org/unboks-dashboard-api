@@ -80,37 +80,7 @@ export default function Inbox() {
   }, [activeNav, searchQuery]);
 
   return (
-    <div className="flex flex-col h-screen w-full bg-white overflow-hidden font-sans mx-auto max-w-[480px] sm:max-w-[560px] sm:shadow-xl relative">
-      <Header
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onOpenDrawer={() => setDrawerOpen(true)}
-      />
-
-      <div className="px-5 pt-2 pb-2 flex-shrink-0">
-        <h2 className="text-[14px] text-[#5f6368]">{sectionTitle}</h2>
-      </div>
-
-      <main className="flex-1 overflow-y-auto bg-white">
-        {filtered.length > 0 ? (
-          filtered.map((conv) => <MessageRow key={conv.id} conversation={conv} />)
-        ) : (
-          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-            <p className="text-[14px] text-[#5f6368]">No conversations to show.</p>
-          </div>
-        )}
-        <div className="h-24" aria-hidden="true" />
-      </main>
-
-      <Fab />
-
-      <BottomNav
-        active={bottomTab}
-        onChange={setBottomTab}
-        mailBadge={inboxCount}
-        chatBadge={channelCounts.WhatsApp + channelCounts.Messenger}
-      />
-
+    <div className="flex h-screen w-full bg-white overflow-hidden font-sans">
       <Drawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -123,6 +93,40 @@ export default function Inbox() {
         escalationsCount={escalationsCount}
         channelCounts={channelCounts}
       />
+
+      <div className="flex flex-col flex-1 min-w-0 mx-auto max-w-[480px] sm:max-w-[560px] sm:shadow-xl md:max-w-none md:mx-0 md:shadow-none relative">
+        <Header
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onOpenDrawer={() => setDrawerOpen(true)}
+        />
+
+        <div className="px-5 pt-2 pb-2 flex-shrink-0">
+          <h2 className="text-[14px] text-[#5f6368]">{sectionTitle}</h2>
+        </div>
+
+        <main className="flex-1 overflow-y-auto bg-white">
+          {filtered.length > 0 ? (
+            filtered.map((conv) => <MessageRow key={conv.id} conversation={conv} />)
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+              <p className="text-[14px] text-[#5f6368]">No conversations to show.</p>
+            </div>
+          )}
+          <div className="h-24" aria-hidden="true" />
+        </main>
+
+        <Fab />
+
+        <div className="md:hidden">
+          <BottomNav
+            active={bottomTab}
+            onChange={setBottomTab}
+            mailBadge={inboxCount}
+            chatBadge={channelCounts.WhatsApp + channelCounts.Messenger}
+          />
+        </div>
+      </div>
     </div>
   );
 }
