@@ -33,15 +33,15 @@ export default function Login() {
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  // If already authenticated, go straight to inbox
-  if (isAuthenticated) return <Redirect to="/" />;
-
+  // ⚠️ useMutation must be called BEFORE any early return to obey Rules of Hooks
   const mutation = useMutation({
     mutationFn: ({ password, client }: { password: string; client: ValidClient }) =>
       login(password, client),
-    onSuccess: () => navigate("/"),
     onError: (err: unknown) => setLoginError(getLoginError(err)),
   });
+
+  // If already authenticated, go straight to inbox
+  if (isAuthenticated) return <Redirect to="/" />;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();

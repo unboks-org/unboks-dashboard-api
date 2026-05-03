@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { SettingsErrorBoundary } from "@/components/SettingsErrorBoundary";
 import { FeatureTogglesProvider } from "@/lib/feature-toggles";
 import NotFound from "@/pages/not-found";
 import Inbox from "@/pages/Inbox";
@@ -38,7 +39,11 @@ function Router() {
         <ProtectedRoute><Bookings /></ProtectedRoute>
       </Route>
       <Route path="/settings">
-        <ProtectedRoute><Settings /></ProtectedRoute>
+        <ProtectedRoute>
+          <SettingsErrorBoundary>
+            <Settings />
+          </SettingsErrorBoundary>
+        </ProtectedRoute>
       </Route>
       <Route path="/analytics">
         <ProtectedRoute><Analytics /></ProtectedRoute>

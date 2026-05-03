@@ -147,6 +147,26 @@ Default client slug: `unboks`
 
 ---
 
+## Bugfixes
+
+### Settings blank screen — fixed
+
+**Root cause:** `useMutation` in `Login.tsx` was called **after** the `if (isAuthenticated) return <Redirect>` early return. When the user logged in successfully, React re-rendered `Login` with `isAuthenticated = true`, executed only 6 hooks instead of 7, and threw *"Rendered fewer hooks than expected"*. With no error boundary, this crashed the entire React tree to a blank screen.
+
+**Fix:** Moved `useMutation` to **before** the conditional early return in `Login.tsx`, satisfying React's Rules of Hooks.
+
+**Safety net:** Added `SettingsErrorBoundary` (class component) wrapping the Settings route. If Settings ever throws at runtime, it shows a friendly "Settings failed to load / Try again" message instead of a blank screen.
+
+| File | Change |
+|---|---|
+| `src/pages/Login.tsx` | Moved `useMutation` before `if (isAuthenticated)` early return |
+| `src/components/SettingsErrorBoundary.tsx` | New class-based error boundary |
+| `src/App.tsx` | Settings route wrapped in `<SettingsErrorBoundary>` |
+
+**Test result:** TypeScript clean, login flow no longer crashes the app.
+
+---
+
 ## Auth Files
 
 | File | Purpose |
