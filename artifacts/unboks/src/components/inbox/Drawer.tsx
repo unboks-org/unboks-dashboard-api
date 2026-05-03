@@ -11,9 +11,7 @@ import {
   Facebook,
   Video,
   MessageSquare,
-  Pencil,
   Circle,
-  ChevronUp,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -125,21 +123,17 @@ export function Drawer({
           />
         </div>
 
-        {/* Active status */}
-        <button
-          onClick={onClose}
-          className="w-full flex items-center justify-between px-5 py-3 hover:bg-[#f6f8fc] transition-colors"
-        >
-          <div className="flex items-center gap-4">
-            <Circle className="w-3 h-3 text-[#34a853]" fill="currentColor" />
+        {/* Operational heartbeat */}
+        <div className="px-5 py-3 border-b border-[#f1f3f4]">
+          <div className="flex items-center gap-2 mb-1.5">
+            <Circle className="w-2.5 h-2.5 text-[#34a853] flex-shrink-0" fill="currentColor" />
             <span className="text-[14px] text-[#202124] font-medium">Active</span>
           </div>
-          <ChevronUp className="w-4 h-4 text-[#5f6368]" />
-        </button>
-
-        <div className="flex items-center gap-4 px-5 py-3 border-t border-b border-[#f1f3f4] hover:bg-[#f6f8fc] cursor-pointer">
-          <Pencil className="w-4 h-4 text-[#5f6368]" strokeWidth={1.75} />
-          <span className="text-[14px] text-[#202124]">Add a status</span>
+          <ul className="space-y-0.5 pl-[18px]">
+            <li className="text-[12px] text-[#5f6368]">Last activity: 30s ago</li>
+            <li className="text-[12px] text-[#5f6368]">12 conversations handled today</li>
+            <li className="text-[12px] text-[#5f6368]">3 escalations waiting</li>
+          </ul>
         </div>
 
         {/* Nav list */}
