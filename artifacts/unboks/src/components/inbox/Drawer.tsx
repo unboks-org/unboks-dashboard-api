@@ -14,7 +14,6 @@ import {
   Pencil,
   Circle,
   ChevronUp,
-  Package,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -117,11 +116,13 @@ export function Drawer({
         )}
       >
         {/* Brand */}
-        <div className="px-5 py-4 flex items-center gap-3 border-b border-[#f1f3f4]">
-          <div className="w-7 h-7 bg-[#1a73e8] rounded-md flex items-center justify-center">
-            <Package className="w-4 h-4 text-white" />
-          </div>
-          <span className="text-[20px] text-[#202124] font-medium">Unboks</span>
+        <div className="px-5 py-4 flex items-center border-b border-[#f1f3f4]">
+          <img
+            src="/unboks-logo.png"
+            alt="Unboks"
+            className="h-9 w-auto object-contain object-left"
+            draggable={false}
+          />
         </div>
 
         {/* Active status */}
