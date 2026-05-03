@@ -14,6 +14,7 @@ import {
   Circle,
   ChevronUp,
   Package,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Channel } from "@/data/conversations";
@@ -37,6 +38,7 @@ interface DrawerProps {
   onClose: () => void;
   active: NavId;
   onSelect: (id: NavId) => void;
+  onLogout?: () => void;
   inboxCount: number;
   escalationsCount: number;
   channelCounts: Record<Channel, number>;
@@ -54,6 +56,7 @@ export function Drawer({
   onClose,
   active,
   onSelect,
+  onLogout,
   inboxCount,
   escalationsCount,
   channelCounts,
@@ -168,6 +171,18 @@ export function Drawer({
             />
           ))}
         </nav>
+
+        {onLogout && (
+          <div className="border-t border-[#f1f3f4] p-2">
+            <button
+              onClick={onLogout}
+              className="w-full flex items-center gap-5 pl-5 pr-4 h-12 rounded-r-full text-[14px] text-[#202124] hover:bg-[#f6f8fc] transition-colors"
+            >
+              <LogOut className="w-5 h-5 text-[#5f6368]" strokeWidth={1.75} />
+              <span>Sign out</span>
+            </button>
+          </div>
+        )}
       </aside>
     </>
   );

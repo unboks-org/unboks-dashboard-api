@@ -1,0 +1,345 @@
+TASK: Connect the new Unboks Customer Dashboard UI to the existing remote dashboard API functionality.
+
+CONTEXT:
+This is the NEW standalone dashboard project.
+The UI/design is already good and must stay.
+The old project was messy, but its frontend functionality worked.
+The backend is NOT inside the old repo.
+The real backend is remote:
+
+https://api.wetakeyourjob.com/{client}/dashboard/api
+
+This task is NOT a redesign.
+This task is ONLY to connect the new dashboard UI to the existing remote API, auth flow, hooks, data models, and business logic.
+
+ABSOLUTE RULES:
+- DO NOT redesign the dashboard.
+- DO NOT change the current visual style.
+- DO NOT import old dashboard CSS.
+- DO NOT import old layout/sidebar/header components.
+- DO NOT import old page JSX.
+- DO NOT touch the public Unboks.org website.
+- DO NOT create a backend.
+- DO NOT modify the remote API contract.
+- DO NOT create fake functionality unless clearly marked as temporary.
+- DO NOT replace the new UI with old UI.
+- ONLY add the functional layer underneath the new UI.
+
+REMOTE API:
+Base URL pattern:
+https://api.wetakeyourjob.com/{client}/dashboard/api
+
+Supported clients:
+- bluemarlin
+- adamus
+- consultadespertares
+- unboks
+
+Auth:
+POST /login
+Body:
+{ "password": string }
+
+Response:
+{ "token": string }
+
+Token storage:
+localStorage key:
+wtyj_token_{clientSlug}
+
+Client storage:
+localStorage key:
+wtyj_client
+
+All authenticated requests must include:
+Authorization: Bearer {token}
+
+FILES TO CREATE OR IMPORT INTO THIS NEW PROJECT:
+
+Create/adapt these functional files:
+
+src/lib/api.ts
+src/lib/error.ts
+src/lib/channel-map.ts
+src/lib/feature-toggles.tsx
+src/lib/tenant.ts
+src/lib/utils.ts
+
+src/components/auth/useAuthContext.ts
+src/components/auth/AuthProvider.tsx
+src/components/auth/ProtectedRoute.tsx
+
+src/hooks/use-client-api.ts
+src/hooks/use-platform-filter.tsx
+src/hooks/use-read-status.ts
+src/hooks/use-email-settings.ts
+src/hooks/use-bookings-label.ts
+src/hooks/use-go-back.ts
+
+src/components/ui/auth-image.tsx
+
+IMPORTANT:
+These files are functional only.
+Do not bring old visual components unless strictly required by logic.
+
+DEPENDENCIES:
+Ensure these are installed:
+@tanstack/react-query
+react-router-dom
+sonner
+date-fns
+clsx
+tailwind-merge
+
+APP PROVIDERS:
+Wrap the app with:
+
+QueryClientProvider
+BrowserRouter
+AuthProvider
+FeatureTogglesProvider
+PlatformFilterProvider
+
+Also add <Toaster /> from sonner at root level.
+
+AUTH REQUIREMENTS:
+- Login page must use the existing new login UI.
+- Add client selection or default to "unboks" if no selector exists.
+- On login submit:
+  1. call setClient(selectedClientSlug)
+  2. call POST /login
+  3. store token in localStorage["wtyj_token_{clientSlug}"]
+  4. store client in localStorage["wtyj_client"]
+  5. redirect to /dashboard
+
+- Protected dashboard routes must redirect unauthenticated users to /login.
+- Logout must clear token and client keys and redirect to /login.
+- Implement 401 handling:
+  - first 401 inside 60 seconds may be ignored
+  - second 401 clears auth and redirects to /login
+
+WIRE THESE NEW DASHBOARD AREAS:
+
+1. Inbox / Messages
+Use:
+useConversations()
+useConversation(phone)
+useDeleteConversation()
+useSuggestReply()
+usePlatformFilter()
+useReadStatus()
+useHiddenSet()
+matchesPlatformFilter()
+
+Endpoints:
+GET /messages/conversations
+GET /messages/conversations/:phone
+DELETE /messages/conversations/:phone
+POST /messages/suggest-reply
+
+Required behavior:
+- load real conversations
+- filter by platform
+- click conversation opens real message thread
+- mark read/unread locally
+- archive/hide locally if no backend archive exists
+- delete calls backend delete endpoint
+- suggest reply calls backend AI endpoint
+
+2. Escalations
+Use:
+useEscalations()
+useEscalationMutations()
+useEscalationReply()
+useDeleteEscalation()
+useEmailSettings()
+
+Endpoints:
+GET /escalations
+POST /escalations/:id/resolve
+POST /escalations/:id/reply
+DELETE /escalations/:id
+
+Required behavior:
+- load real escalations
+- click escalation opens detail
+- resolve calls backend
+- delete calls backend
+- reply calls backend
+- preserve semi-automated vs full escalation logic
+
+3. Bookings / Orders
+Use:
+useAvailability(days)
+
+Endpoint:
+GET /availability?days=N
+
+Required behavior:
+- load real availability
+- show booked guests
+- show capacity
+- show remaining spots
+- support 7 / 14 / 30 day view if UI has controls
+- clicking a booking/capacity row must show the available details
+
+4. Channels
+Use:
+useConfig()
+PLATFORMS from channel-map.ts
+
+Endpoint:
+GET /config
+
+Required behavior:
+- show real client config/context
+- show connected channel/platform information if available
+
+5. Settings
+Use:
+useScheduleSlots()
+useUpcomingSchedule()
+useScheduleSlotMutations()
+useDryRun()
+useEmailSettings()
+useBookingsLabel()
+useFeatureToggles()
+
+Endpoints:
+GET /schedule/slots
+PUT /schedule/slots
+GET /schedule/upcoming
+GET /settings/dry-run
+POST /settings/dry-run
+
+Required behavior:
+- schedule settings load/save
+- dry-run toggle works
+- email preference works locally
+- bookings/orders label preference works locally
+- feature toggles persist locally
+
+6. Analytics
+Use:
+useConversations()
+useEscalations()
+useStatus()
+
+Endpoints:
+GET /messages/conversations
+GET /escalations
+GET /status
+
+Required behavior:
+- derive charts locally
+- message volume by platform
+- open/resolved escalations
+- 14-day activity trend
+
+7. Optional Social / Content Pipeline
+Only wire this if the new dashboard already has these pages:
+useDrafts()
+useDraftMutations()
+useAvailablePlatforms()
+useScheduleSlots()
+useUpcomingSchedule()
+
+Endpoints:
+All /drafts/*
+GET /platforms/available
+
+Do not add visible social pages unless they already exist in the new dashboard.
+
+8. Optional Source of Truth / Brand Training / Assets
+Only wire this if the new dashboard already has these pages or settings sections:
+useTrainingExamples()
+useTrainingMutations()
+useBrandProfile()
+useBrandProfileMutations()
+usePhotos()
+usePhotoMutations()
+useGoogleDriveStatus()
+useGoogleDriveMutations()
+
+Endpoints:
+All /training/*
+All /photos/*
+All /google/*
+
+Do not make this prominent in the main nav.
+Source of Truth belongs under Settings.
+
+DATA TYPES:
+Implement all required TypeScript interfaces in api.ts:
+Conversation
+ConversationDetail
+CustomerFile
+Escalation
+Draft
+StatusResponse
+Learning
+AvailabilitySlot
+ScheduleSlot
+Photo
+PhotoStats
+TrainingExample
+ConfigResponse
+PlatformKey
+PlatformDef
+
+IMPORTANT API RULE:
+The frontend must call the remote API directly.
+Do not create local mock API routes.
+Do not create local Express backend.
+Do not move backend logic into this project.
+
+IMPORT PATH RULE:
+Use the new project’s existing import alias.
+If no alias exists, use relative imports.
+Do not leave broken @dashboard/* imports.
+
+IMPLEMENTATION METHOD:
+1. Inspect current new dashboard file structure.
+2. Identify current pages/components/buttons.
+3. Add the functional core files.
+4. Add providers at app root.
+5. Connect login first.
+6. Connect Inbox second.
+7. Connect Escalations third.
+8. Connect Bookings fourth.
+9. Connect Channels/Settings/Analytics after that.
+10. Keep the UI visually unchanged.
+
+OUTPUT REQUIRED:
+Create a file:
+
+MIGRATION_STATUS.md
+
+It must include:
+1. Files added
+2. Files changed
+3. Pages connected
+4. Buttons/actions connected
+5. API endpoints now used
+6. Remaining mocked areas
+7. Missing backend endpoints if any
+8. Required test checklist
+
+FINAL ACCEPTANCE CHECK:
+Before finishing, verify:
+- app builds
+- no TypeScript errors
+- login works
+- protected routes work
+- token stored correctly
+- inbox fetches real data
+- escalations fetch real data
+- bookings fetch real availability
+- logout works
+- no old CSS imported
+- no old dashboard layout imported
+- new dashboard design remains unchanged
+
+FINAL RULE:
+The new dashboard project must keep its current design.
+Only the functional logic, API connections, auth, data models, hooks, and backend integrations may be added.

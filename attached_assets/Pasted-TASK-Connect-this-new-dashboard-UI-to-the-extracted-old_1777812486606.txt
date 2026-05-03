@@ -1,0 +1,79 @@
+TASK: Connect this new dashboard UI to the extracted old dashboard functionality.
+
+CONTEXT:
+This is the NEW standalone Unboks Customer Dashboard project.
+The UI/design is already correct and must stay.
+The old project was messy, but its dashboard functionality worked.
+I have provided DASHBOARD_FUNCTIONALITY_EXTRACTION.md from the old project.
+
+ABSOLUTE RULES:
+- DO NOT redesign the dashboard.
+- DO NOT change the visual style.
+- DO NOT replace the new UI with old UI.
+- DO NOT import old CSS or old dashboard layout components.
+- DO NOT touch the public Unboks.org website.
+- DO NOT remove existing new dashboard pages/components.
+- ONLY connect the new UI to the old under-the-hood functionality.
+
+GOAL:
+Make this new dashboard functional using the extracted:
+- auth
+- API logic
+- data models
+- backend routes
+- integrations
+- business logic
+
+IMPLEMENTATION RULES:
+1. Read DASHBOARD_FUNCTIONALITY_EXTRACTION.md fully before making changes.
+2. Identify all new dashboard buttons, pages, tabs, filters, cards, lists, forms, and actions.
+3. Connect each UI action to the correct extracted function/API.
+4. Preserve the new dashboard component structure unless a small adapter is required.
+5. Prefer adapter files/hooks over rewriting UI.
+6. Keep frontend and backend cleanly separated.
+7. Use typed API clients where possible.
+8. Add missing environment variable documentation.
+9. Do not create fake functionality unless the backend does not exist.
+10. If old functionality is missing, leave a clear TODO with exact missing backend endpoint.
+
+REQUIRED FUNCTIONAL CONNECTIONS:
+- Login button must authenticate using old auth logic.
+- Logout must work.
+- Protected dashboard routes must work.
+- Inbox must load real conversations/messages.
+- Channel filters must filter real data.
+- Escalations page must load real escalations.
+- Booking/Orders page must load real bookings/orders.
+- Clicking a row/card must open real details.
+- Archive must call real archive logic if available.
+- Mark as read/unread must call real logic if available.
+- Reply/send must call real reply logic if available.
+- Settings must connect to real settings/source-of-truth logic if available.
+- Analytics must connect to real analytics/status logic if available.
+
+OUTPUT REQUIRED:
+After implementation, create/update:
+
+MIGRATION_STATUS.md
+
+Include:
+1. What was connected successfully
+2. What files were added
+3. What files were changed
+4. What buttons now work
+5. What backend routes are active
+6. What env vars are required
+7. What functionality is still mocked or missing
+8. Exact test checklist
+
+FINAL CHECK:
+Run the app.
+Verify:
+- dashboard loads
+- login works
+- no old design leaked in
+- no public website files touched
+- no broken imports
+- no TypeScript/build errors
+
+Only finish when the new dashboard keeps its new design but has the old dashboard functionality connected under the hood.
