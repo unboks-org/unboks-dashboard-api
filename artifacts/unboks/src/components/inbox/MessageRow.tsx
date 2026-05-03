@@ -1,99 +1,90 @@
+import { useState } from "react";
 import { Conversation } from "@/data/conversations";
 import { cn } from "@/lib/utils";
-import { 
-  Square, 
-  CheckSquare, 
-  Mail, 
-  MessageCircle, 
-  Instagram, 
-  Facebook, 
-  Video, 
-  MessageSquare,
-  AlertCircle,
-  Paperclip
-} from "lucide-react";
+import { Star } from "lucide-react";
 
-// X Logo component
-const XIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-  </svg>
-);
+const AVATAR_COLORS = [
+  "#f9a825", "#1a73e8", "#34a853", "#ea4335",
+  "#7e57c2", "#ec407a", "#26a69a", "#ff7043",
+  "#5c6bc0", "#26c6da", "#9ccc65", "#ab47bc",
+];
 
-const CHANNEL_ICONS = {
-  Email: Mail,
-  WhatsApp: MessageCircle,
-  Instagram: Instagram,
-  Facebook: Facebook,
-  X: XIcon,
-  TikTok: Video,
-  Messenger: MessageSquare,
-  All: Mail // Fallback
-};
+function avatarColor(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+
+function initial(name: string) {
+  return name.trim().charAt(0).toUpperCase() || "?";
+}
 
 interface MessageRowProps {
   conversation: Conversation;
-  isSelected: boolean;
-  onToggleSelect: () => void;
 }
 
-export function MessageRow({ conversation, isSelected, onToggleSelect }: MessageRowProps) {
-  const Icon = CHANNEL_ICONS[conversation.channel] || Mail;
+export function MessageRow({ conversation }: MessageRowProps) {
+  const [starred, setStarred] = useState(false);
+  const color = avatarColor(conversation.sender);
 
   return (
-    <div 
-      className={cn(
-        "group h-11 flex items-center px-3 border-b border-border/40 text-[14px] transition-colors cursor-pointer",
-        isSelected ? "bg-primary/5 hover:bg-primary/10" : "bg-white hover:bg-muted/30",
-        conversation.unread ? "font-semibold text-foreground" : "font-normal text-muted-foreground"
-      )}
-      onClick={onToggleSelect}
-    >
-      <div className="flex items-center gap-3 w-32 sm:w-44 lg:w-48 flex-shrink-0">
-        <button 
-          aria-label={isSelected ? "Deselect conversation" : "Select conversation"}
-          className="text-muted-foreground/50 hover:text-foreground group-hover:text-muted-foreground transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleSelect();
-          }}
-        >
-          {isSelected ? (
-            <CheckSquare className="w-[15px] h-[15px] text-primary" />
-          ) : (
-            <Square className="w-[15px] h-[15px]" />
-          )}
-        </button>
-        
-        <div className="flex items-center gap-2 overflow-hidden">
-          <Icon className="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground/70" />
-          <span className="truncate" title={conversation.sender}>
+    <div className="flex items-start gap-3 px-4 py-3 bg-white hover:bg-[#f6f8fc] active:bg-[#eef1f6] cursor-pointer border-b border-[#f1f3f4]">
+      <div
+        className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[16px] font-medium flex-shrink-0"
+        style={{ backgroundColor: color }}
+        aria-hidden="true"
+      >
+        {initial(conversation.sender)}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline justify-between gap-2">
+          <span
+            className={cn(
+              "truncate text-[15px] text-[#202124]",
+              conversation.unread ? "font-semibold" : "font-normal"
+            )}
+          >
             {conversation.sender}
           </span>
+          <span
+            className={cn(
+              "text-[12px] flex-shrink-0",
+              conversation.unread ? "text-[#202124] font-medium" : "text-[#5f6368]"
+            )}
+          >
+            {conversation.timestamp}
+          </span>
+        </div>
+
+        <div
+          className={cn(
+            "truncate text-[14px] mt-0.5",
+            conversation.unread ? "font-semibold text-[#202124]" : "font-normal text-[#5f6368]"
+          )}
+        >
+          {conversation.subject}
+        </div>
+
+        <div className="truncate text-[13px] text-[#5f6368] mt-0.5">
+          {conversation.preview}
         </div>
       </div>
 
-      <div className="flex-1 flex items-center gap-2 min-w-0 pr-2 sm:pr-4">
-        {conversation.escalated && (
-          <AlertCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0" />
-        )}
-        <span className={cn("truncate sm:max-w-[200px] sm:flex-shrink-0", !conversation.unread && "text-foreground")}>
-          {conversation.subject}
-        </span>
-        <span className="hidden sm:inline text-muted-foreground/60 flex-shrink-0 font-normal">—</span>
-        <span className="hidden sm:inline truncate text-muted-foreground font-normal">
-          {conversation.preview}
-        </span>
-      </div>
-
-      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 text-[12px] font-normal">
-        {conversation.hasAttachment && (
-          <Paperclip className="w-3.5 h-3.5 text-muted-foreground/70" />
-        )}
-        <span className="w-12 sm:w-16 text-right whitespace-nowrap">
-          {conversation.timestamp}
-        </span>
-      </div>
+      <button
+        aria-label={starred ? "Unstar" : "Star"}
+        onClick={(e) => {
+          e.stopPropagation();
+          setStarred((s) => !s);
+        }}
+        className="flex-shrink-0 w-8 h-8 -mr-1 flex items-center justify-center text-[#5f6368] hover:text-[#202124] transition-colors"
+      >
+        <Star
+          className={cn("w-5 h-5", starred && "text-[#f9a825]")}
+          fill={starred ? "currentColor" : "none"}
+          strokeWidth={1.5}
+        />
+      </button>
     </div>
   );
 }
