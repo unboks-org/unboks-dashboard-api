@@ -20,13 +20,13 @@ export function Sidebar() {
   const [location] = useLocation();
 
   return (
-    <aside className="w-64 h-full bg-white border-r border-border flex flex-col flex-shrink-0">
-      <div className="h-14 flex items-center px-4 border-b border-border/50">
+    <aside className="w-14 md:w-64 h-full bg-white border-r border-border flex flex-col flex-shrink-0 transition-[width]">
+      <div className="h-14 flex items-center justify-center md:justify-start md:px-4 border-b border-border/50">
         <div className="flex items-center gap-2 font-semibold text-[15px] tracking-tight text-foreground">
           <div className="w-5 h-5 bg-primary text-primary-foreground rounded-sm flex items-center justify-center">
             <Package className="w-3.5 h-3.5" />
           </div>
-          Unboks
+          <span className="hidden md:inline">Unboks</span>
         </div>
       </div>
       
@@ -35,14 +35,18 @@ export function Sidebar() {
           const isActive = location === item.href;
           return (
             <Link key={item.label} href={item.href}>
-              <div className={cn(
-                "flex items-center gap-3 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer",
-                isActive 
-                  ? "bg-primary/10 text-primary" 
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              )}>
+              <div
+                title={item.label}
+                aria-label={item.label}
+                className={cn(
+                  "flex items-center justify-center md:justify-start gap-3 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer",
+                  isActive 
+                    ? "bg-primary/10 text-primary" 
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                )}
+              >
                 <item.icon className="w-4 h-4" />
-                {item.label}
+                <span className="hidden md:inline">{item.label}</span>
               </div>
             </Link>
           );
@@ -51,9 +55,13 @@ export function Sidebar() {
 
       <div className="p-2 border-t border-border/50 mt-auto">
         <Link href="/settings">
-          <div className="flex items-center gap-3 px-2.5 py-1.5 rounded-md text-sm font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors cursor-pointer">
+          <div
+            title="Settings"
+            aria-label="Settings"
+            className="flex items-center justify-center md:justify-start gap-3 px-2.5 py-1.5 rounded-md text-sm font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors cursor-pointer"
+          >
             <Settings className="w-4 h-4" />
-            Settings
+            <span className="hidden md:inline">Settings</span>
           </div>
         </Link>
       </div>

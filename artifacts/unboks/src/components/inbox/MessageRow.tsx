@@ -49,8 +49,9 @@ export function MessageRow({ conversation, isSelected, onToggleSelect }: Message
       )}
       onClick={onToggleSelect}
     >
-      <div className="flex items-center gap-3 w-48 flex-shrink-0">
+      <div className="flex items-center gap-3 w-32 sm:w-44 lg:w-48 flex-shrink-0">
         <button 
+          aria-label={isSelected ? "Deselect conversation" : "Select conversation"}
           className="text-muted-foreground/50 hover:text-foreground group-hover:text-muted-foreground transition-colors"
           onClick={(e) => {
             e.stopPropagation();
@@ -72,24 +73,24 @@ export function MessageRow({ conversation, isSelected, onToggleSelect }: Message
         </div>
       </div>
 
-      <div className="flex-1 flex items-center gap-2 min-w-0 pr-4">
+      <div className="flex-1 flex items-center gap-2 min-w-0 pr-2 sm:pr-4">
         {conversation.escalated && (
           <AlertCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0" />
         )}
-        <span className={cn("truncate max-w-[200px] flex-shrink-0", !conversation.unread && "text-foreground")}>
+        <span className={cn("truncate sm:max-w-[200px] sm:flex-shrink-0", !conversation.unread && "text-foreground")}>
           {conversation.subject}
         </span>
-        <span className="text-muted-foreground/60 flex-shrink-0 font-normal">—</span>
-        <span className="truncate text-muted-foreground font-normal">
+        <span className="hidden sm:inline text-muted-foreground/60 flex-shrink-0 font-normal">—</span>
+        <span className="hidden sm:inline truncate text-muted-foreground font-normal">
           {conversation.preview}
         </span>
       </div>
 
-      <div className="flex items-center gap-3 flex-shrink-0 text-[12px] font-normal">
+      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 text-[12px] font-normal">
         {conversation.hasAttachment && (
           <Paperclip className="w-3.5 h-3.5 text-muted-foreground/70" />
         )}
-        <span className="w-16 text-right whitespace-nowrap">
+        <span className="w-12 sm:w-16 text-right whitespace-nowrap">
           {conversation.timestamp}
         </span>
       </div>
