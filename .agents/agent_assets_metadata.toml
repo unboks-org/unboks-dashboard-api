@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "FGhZC2dij4EtU6-VgFIWM"
+uri = "file://unboks-dashboard.zip"
+type = "unspecified"
+title = "Unboks Dashboard — Full Source Code"
