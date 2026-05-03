@@ -2,19 +2,8 @@ import { useState, useMemo } from "react";
 import { Header } from "@/components/inbox/Header";
 import { Drawer, NavId } from "@/components/inbox/Drawer";
 import { MessageRow } from "@/components/inbox/MessageRow";
-import { Fab } from "@/components/inbox/Fab";
 import { BottomNav } from "@/components/inbox/BottomNav";
 import { conversations, Channel } from "@/data/conversations";
-
-const CHANNEL_LIST: Channel[] = [
-  "WhatsApp",
-  "Email",
-  "Instagram",
-  "Facebook",
-  "X",
-  "TikTok",
-  "Messenger",
-];
 
 const NAV_LABELS: Record<string, string> = {
   inbox: "Inbox",
@@ -115,8 +104,6 @@ export default function Inbox() {
           )}
           <div className="h-24" aria-hidden="true" />
         </main>
-
-        <Fab />
 
         <div className="md:hidden">
           <BottomNav
