@@ -86,8 +86,15 @@ export default function Settings() {
             {configLoading && <p className="text-[12px] text-[#1a73e8] mt-2">Loading config…</p>}
             {config && (
               <>
-                <InfoRow label="Client name" value={config.clientName} />
-                <InfoRow label="Platforms" value={config.connectedPlatforms.join(", ") || "—"} />
+                <InfoRow label="Client name" value={config.clientName ?? "—"} />
+                <InfoRow
+                  label="Platforms"
+                  value={
+                    Array.isArray(config.connectedPlatforms) && config.connectedPlatforms.length > 0
+                      ? config.connectedPlatforms.join(", ")
+                      : "No platforms connected yet"
+                  }
+                />
               </>
             )}
           </div>
