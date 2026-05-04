@@ -1,0 +1,94 @@
+AUDIT ONLY. DO NOT CHANGE CODE.
+
+Problem:
+Zernio webhook URL is set to:
+
+https://api.unboks.org/api/unboks/webhooks/zernio
+
+api.unboks.org health check works.
+
+But when I send a WhatsApp message, nothing appears in Zernio delivery logs. There is no 200, 403, 404, or 500. Nothing.
+
+This means the webhook is probably not being triggered at all.
+
+I need to identify why Zernio is not creating a webhook event.
+
+Check and report:
+
+1. Zernio connected account
+- Which Zernio account is connected to WhatsApp?
+- In previous logs the account showed as bluemarlin-dms.
+- Is the current WhatsApp number connected under bluemarlin-dms, unboks, or another account?
+- What exact WhatsApp number/account is connected?
+- Is the account active/connected?
+
+2. Webhook account mapping
+- The webhook URL currently uses client slug unboks.
+- If the Zernio account is bluemarlin-dms, should the webhook URL use /api/bluemarlin/webhooks/zernio instead?
+- Does Zernio send all accounts to one webhook, or does each account need its own webhook/client slug?
+- Confirm the correct client slug for this connected WhatsApp account.
+
+3. Event subscription
+Confirm that the webhook is subscribed to:
+- message.received
+- message.sent
+- message.delivered
+- account.connected
+- account.disconnected
+
+If message.received is not enabled or not attached to this account, incoming messages will not trigger logs.
+
+4. Message direction
+Confirm whether Zernio creates message.received events only for inbound customer messages.
+Check whether messages sent from the account itself create message.sent events instead.
+Make sure the test is from an external WhatsApp number to the connected business number.
+
+5. Logs filters
+Check Zernio logs with:
+- Webhooks
+- All platforms
+- All statuses
+- Last 7 days
+- no search filter
+
+Confirm whether there are no new logs at all after sending the WhatsApp test.
+
+6. Platform status
+Check whether WhatsApp is actually connected in Zernio.
+Report:
+- platform name
+- status
+- connected account name
+- last sync/activity
+- whether inbound messages are visible anywhere in Zernio before webhook delivery
+
+7. Backend sanity check
+Do a manual signed test POST to:
+https://api.unboks.org/api/unboks/webhooks/zernio
+
+Confirm:
+- signed request returns 200
+- unsigned request returns 403
+
+This proves Unboks webhook works. But if Zernio logs are empty, the problem is before backend.
+
+8. Final diagnosis
+Choose one:
+
+A. Wrong WhatsApp number tested.
+B. WhatsApp is not connected in Zernio.
+C. Zernio account is connected, but not linked to this webhook.
+D. Webhook is attached to the wrong account.
+E. Wrong client slug, unboks vs bluemarlin.
+F. message.received is not subscribed or not firing.
+G. Logs filters are hiding deliveries.
+H. Zernio is not receiving the inbound message.
+I. Backend is fine, problem is entirely inside Zernio/Meta connection.
+
+Final output:
+- exact WhatsApp account connected
+- exact client slug to use
+- whether webhook should be /unboks or /bluemarlin
+- whether message.received fires
+- whether Zernio sees the inbound message at all
+- recommended fix
