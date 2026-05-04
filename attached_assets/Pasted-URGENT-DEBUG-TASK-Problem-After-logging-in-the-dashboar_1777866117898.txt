@@ -1,0 +1,131 @@
+URGENT DEBUG TASK.
+
+Problem:
+After logging in, the dashboard briefly appears for a split second, then the page turns completely white. When refreshing, I again see the page for a split second, then it becomes white again.
+
+This looks like a frontend runtime crash, routing loop, auth-state issue, or failed render after login.
+
+Do not redesign anything.
+Do not change styling.
+Do not rebuild UI.
+Only debug and fix the white screen.
+
+Scope:
+- Customer dashboard login flow
+- /login
+- /dashboard
+- AuthProvider
+- ProtectedRoute
+- App.tsx routing
+- dashboard layout render
+- browser console/runtime errors
+
+Do not touch:
+- public website design
+- admin design
+- Blue Marlin demo
+- backend API behavior unless the frontend is calling the wrong endpoint
+
+Required investigation:
+
+1. Check browser console errors
+Find the exact runtime error causing the white screen.
+Report the error before fixing it.
+
+2. Check Vite/browser overlay
+If there is a React error, import error, undefined variable, missing component, route error, or hook error, identify exact file and line.
+
+3. Check auth flow
+Inspect:
+- src/dashboard/components/auth/AuthProvider.tsx
+- src/dashboard/components/auth/ProtectedRoute.tsx
+- src/dashboard/pages/Login.tsx
+- src/App.tsx
+
+Look for:
+- redirect loop
+- missing token
+- wrong localStorage key
+- workspace/client mismatch
+- login success redirects to wrong route
+- /dashboard/login redirect conflict
+- /login not handled correctly
+- protected route rendering before auth state is ready
+
+4. Check recent dashboard route changes
+Inspect App.tsx and confirm:
+- /login renders Login page
+- /dashboard/login redirects to /login
+- /dashboard renders customer dashboard
+- /admin is separate
+- catch-all route is not redirecting logged-in users incorrectly
+- unknown routes do not cause loop
+
+5. Check dashboard render crash
+Inspect recent changed files:
+- src/dashboard/components/layout/AppLayout.tsx
+- src/dashboard/pages/Messages.tsx
+- src/dashboard/components/PlatformFilterBar.tsx
+- src/dashboard/pages/Channels.tsx
+- src/dashboard/pages/Settings.tsx
+- src/dashboard/lib/theme.ts
+- src/index.css
+
+Look for:
+- undefined variables
+- missing imports
+- removed components still referenced
+- icons not imported
+- data property undefined
+- map over undefined
+- query param parsing issue
+- broken view/escalations logic
+- component returning invalid JSX
+- TypeScript compile errors ignored by runtime
+
+6. Check network calls
+Open Network tab and inspect failed calls after login.
+Report:
+- URL called
+- status code
+- whether failure causes crash
+- whether frontend handles failure safely
+
+7. Add a temporary error boundary if needed
+If the dashboard crashes without useful output, add a small React ErrorBoundary around the dashboard shell so the real error is visible instead of a white screen.
+
+The error boundary should show:
+- “Dashboard crashed”
+- error message
+- component stack if available
+
+Do not leave ugly debug UI in production unless necessary. Use it only to identify the crash, then fix root cause.
+
+8. Fix the root cause
+After identifying the error, fix the smallest possible issue.
+
+Do not do a design pass.
+Do not refactor unrelated code.
+Do not change behavior unless required to stop the crash.
+
+Acceptance criteria:
+1. Login works.
+2. After login, /dashboard stays visible and does not turn white.
+3. Refreshing /dashboard keeps the dashboard visible.
+4. No white screen.
+5. No console runtime errors.
+6. No redirect loop.
+7. /login still works.
+8. /dashboard/login redirects correctly if that route exists.
+9. /admin still works if created.
+10. / and /demo/bluemarlin still work.
+11. Network errors are handled without crashing the UI.
+
+Final response:
+Report:
+- exact error found
+- exact file/line causing it
+- root cause
+- files changed
+- how it was fixed
+- confirmation that login and refresh now work

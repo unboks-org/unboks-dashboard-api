@@ -1,3 +1,4 @@
+import { Component, type ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
@@ -12,6 +13,42 @@ import Login from "@/pages/Login";
 import Bookings from "@/pages/Bookings";
 import Settings from "@/pages/Settings";
 import Analytics from "@/pages/Analytics";
+
+// Top-level error boundary — prevents white screen on any render crash
+class AppErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  render() {
+    const { error } = this.state;
+    if (error) {
+      return (
+        <div style={{ padding: 32, fontFamily: "sans-serif" }}>
+          <h2 style={{ color: "#d93025", marginBottom: 8 }}>Something went wrong</h2>
+          <pre style={{ background: "#f6f8fc", padding: 16, borderRadius: 8, fontSize: 13, overflowX: "auto", whiteSpace: "pre-wrap" }}>
+            {(error as Error).message}
+            {"\n\n"}
+            {(error as Error).stack}
+          </pre>
+          <button
+            onClick={() => {
+              this.setState({ error: null });
+              window.location.href = "/";
+            }}
+            style={{ marginTop: 16, padding: "8px 16px", background: "#1a73e8", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 14 }}
+          >
+            Reload app
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -58,18 +95,20 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <FeatureTogglesProvider>
-        <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <AuthProvider>
-              <Router />
-            </AuthProvider>
-          </WouterRouter>
-          <Toaster richColors position="top-right" />
-        </TooltipProvider>
-      </FeatureTogglesProvider>
-    </QueryClientProvider>
+    <AppErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <FeatureTogglesProvider>
+          <TooltipProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <AuthProvider>
+                <Router />
+              </AuthProvider>
+            </WouterRouter>
+            <Toaster richColors position="top-right" />
+          </TooltipProvider>
+        </FeatureTogglesProvider>
+      </QueryClientProvider>
+    </AppErrorBoundary>
   );
 }
 

@@ -166,10 +166,13 @@ async function apiFetch<T>(
 
 export async function apiLogin(password: string): Promise<LoginResponse> {
   // Login must NOT send an Authorization header
-  return apiFetch<LoginResponse>("/login", {
+  const result = await apiFetch<LoginResponse>("/login", {
     method: "POST",
     body: JSON.stringify({ password }),
   }, true);
+  // Reset the 401 grace-period counter so a fresh session starts clean
+  _first401At = null;
+  return result;
 }
 
 // ---------------------------------------------------------------------------
