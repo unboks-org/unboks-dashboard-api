@@ -1,0 +1,109 @@
+URGENT BUG FIX.
+
+Problem:
+Production dashboard crashes after login with:
+
+undefined is not an object (evaluating 'e.toLowerCase')
+
+Stack:
+Ld@https://dashboard.unboks.org/assets/index-CwpWwJyN.js:9:203890
+
+This means the frontend is calling .toLowerCase() on an undefined value.
+
+Do not redesign anything.
+Do not change styling.
+Do not refactor unrelated code.
+Find and fix every unsafe .toLowerCase() call in the customer dashboard code.
+
+Scope:
+Only customer dashboard crash fix.
+
+Inspect these files first:
+- src/dashboard/pages/Messages.tsx
+- src/dashboard/components/PlatformFilterBar.tsx
+- src/dashboard/components/layout/AppLayout.tsx
+- src/dashboard/lib/channel-map.ts
+- src/dashboard/lib/api.ts
+- src/dashboard/pages/Channels.tsx
+- src/dashboard/pages/Settings.tsx
+
+Required investigation:
+1. Search the codebase for:
+   .toLowerCase(
+   toLowerCase()
+
+2. Identify every place where the value might be undefined or null.
+
+3. The crash happens after login on /dashboard, so prioritize .toLowerCase calls used while rendering:
+   - messages
+   - conversations
+   - channel/platform filters
+   - sender/customer names
+   - search
+   - status labels
+   - route/view params
+   - workspace/client ID
+   - channel maps
+
+4. Add defensive guards.
+Do not write:
+   value.toLowerCase()
+
+Unless value is guaranteed to be a string.
+
+Use safe patterns:
+   const normalized = String(value ?? "").toLowerCase()
+
+or:
+   if (typeof value !== "string") return false;
+
+or:
+   const channel = normalizeChannel(rawChannel)
+
+5. If the value is a platform/channel, create or use a helper:
+   function normalizeString(value: unknown): string {
+     return typeof value === "string" ? value.toLowerCase() : "";
+   }
+
+6. Do not hide real data problems silently if the field is required.
+If a message/conversation is missing a required channel or label:
+   - fallback to "unknown"
+   - do not crash
+   - optionally console.warn in development only
+
+Likely crash areas:
+- filtering messages by selected platform
+- mapping channel names
+- checking active filter
+- search filtering
+- labels/status lowercasing
+- sender/name lowercasing
+- platform icon lookup
+
+Specific fix expectations:
+- A missing platform/channel should not crash the dashboard.
+- A missing sender/name should not crash search.
+- A missing status should not crash filtering.
+- Unknown channel should render as “Unknown” or fallback icon.
+- Dashboard should still load even with imperfect API data.
+
+Acceptance criteria:
+1. /login works.
+2. After login, /dashboard does not turn white.
+3. Refreshing /dashboard does not turn white.
+4. No runtime error:
+   undefined is not an object (evaluating 'e.toLowerCase')
+5. Search still works.
+6. Platform/channel filters still work.
+7. Missing/unknown channel data renders safely.
+8. No unrelated UI redesign.
+9. No backend changes.
+10. Public website, /admin, and /demo/bluemarlin are untouched.
+
+Final response:
+Report:
+- every .toLowerCase call found in dashboard files
+- which one caused the crash
+- exact file and line fixed
+- what fallback was added
+- confirmation that /dashboard no longer crashes after login and refresh

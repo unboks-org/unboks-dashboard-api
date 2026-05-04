@@ -12,12 +12,12 @@ import {
 function mapApi(c: ApiConversation): Conversation {
   const parts = c.lastMessage?.split("\n") ?? [];
   return {
-    id: c.phone,
+    id: c.phone || "unknown",
     channel: platformToChannel(c.platform),
-    sender: c.name || c.phone,
+    sender: c.name || c.phone || "Unknown",
     subject: parts[0]?.slice(0, 80) || "New message",
     preview: parts.slice(1).join(" ").trim() || c.lastMessage || "",
-    timestamp: c.timestamp,
+    timestamp: c.timestamp || "",
     unread: c.unread ?? false,
     escalated: c.escalated ?? false,
     hasAttachment: c.hasAttachment ?? false,

@@ -159,12 +159,12 @@ export default function Bookings() {
   // Derive orders: prefer escalations; fallback to conversation keywords
   const mappedConversations: Conversation[] = conversations
     ? conversations.map((c) => ({
-        id: c.phone,
+        id: c.phone || "unknown",
         channel: platformToChannel(c.platform),
-        sender: c.name || c.phone,
+        sender: c.name || c.phone || "Unknown",
         subject: (c.lastMessage?.split("\n")[0] ?? "").slice(0, 80) || "New message",
         preview: c.lastMessage?.split("\n").slice(1).join(" ").trim() || c.lastMessage || "",
-        timestamp: c.timestamp,
+        timestamp: c.timestamp || "",
         unread: c.unread ?? false,
         escalated: c.escalated ?? false,
         hasAttachment: c.hasAttachment ?? false,

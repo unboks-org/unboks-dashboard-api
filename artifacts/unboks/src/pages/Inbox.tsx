@@ -15,12 +15,12 @@ function mapApiConversation(c: ApiConversation): Conversation {
   const subject = parts[0]?.slice(0, 80) || "New message";
   const preview = parts.slice(1).join(" ").trim() || c.lastMessage || "";
   return {
-    id: c.phone,
+    id: c.phone || "unknown",
     channel: platformToChannel(c.platform),
-    sender: c.name || c.phone,
+    sender: c.name || c.phone || "Unknown",
     subject,
     preview,
-    timestamp: c.timestamp,
+    timestamp: c.timestamp || "",
     unread: c.unread ?? false,
     escalated: c.escalated ?? false,
     hasAttachment: c.hasAttachment ?? false,
@@ -78,9 +78,9 @@ export default function Inbox() {
       const q = searchQuery.toLowerCase();
       list = list.filter(
         (c) =>
-          c.sender.toLowerCase().includes(q) ||
-          c.subject.toLowerCase().includes(q) ||
-          c.preview.toLowerCase().includes(q),
+          (c.sender ?? "").toLowerCase().includes(q) ||
+          (c.subject ?? "").toLowerCase().includes(q) ||
+          (c.preview ?? "").toLowerCase().includes(q),
       );
     }
     return list;

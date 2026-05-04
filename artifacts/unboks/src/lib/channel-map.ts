@@ -31,7 +31,8 @@ const PLATFORM_TO_CHANNEL: Record<string, Channel> = Object.fromEntries(
   PLATFORMS.map((p) => [p.key, p.channel]),
 );
 
-export function platformToChannel(platform: string): Channel {
+export function platformToChannel(platform: string | null | undefined): Channel {
+  if (typeof platform !== "string" || !platform) return "Email";
   return PLATFORM_TO_CHANNEL[platform.toLowerCase()] ?? "Email";
 }
 
