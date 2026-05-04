@@ -1,0 +1,69 @@
+AUDIT AND FIX PRODUCTION DEPLOY STARTUP ONLY.
+
+Problem:
+Publishing gets stuck at:
+"Waiting for service to be ready"
+
+Build succeeds:
+- api-server build passes
+- unboks frontend build passes
+
+But Autoscale service never becomes ready.
+
+Logs end at:
+upsertCloudRunService completed
+Waiting for service to be ready
+
+Do not redesign.
+Do not change UI.
+Do not change dashboard behavior.
+Do not touch database schema unless required.
+Do not change domains.
+
+Find why the production deployment does not become ready.
+
+Check:
+1. Production run/start command
+2. artifact.toml
+3. .replit
+4. package.json scripts
+5. artifacts/api-server/package.json
+6. artifacts/unboks/package.json
+7. Whether production starts API server, frontend static server, or both
+8. Whether PORT is provided correctly in production
+9. Whether BASE_PATH is provided correctly in production
+10. Whether API server binds to process.env.PORT and 0.0.0.0
+11. Whether the deployed service exposes the correct port
+12. Whether frontend static files are served correctly
+13. Whether /api/healthz is reachable in production
+
+Important findings already known:
+- Local API works with: PORT=8080 pnpm --filter @workspace/api-server run dev
+- Local frontend works with: PORT=3000 BASE_PATH=/ pnpm --filter @workspace/unboks run dev
+- Build works with: PORT=3000 BASE_PATH=/ pnpm --filter @workspace/unboks run build
+- Publishing build succeeds
+- Publish hangs only during service readiness
+
+Fix production startup so Replit Autoscale can become ready.
+
+Expected final production behavior:
+- App starts one production server process
+- It serves dashboard frontend
+- It serves /api/* backend routes
+- GET /api/healthz returns {"status":"ok"}
+- /login serves dashboard frontend
+- Deployment becomes ready
+
+Acceptance:
+1. Publish completes successfully
+2. Deployment status becomes live
+3. https://unboks-dashboard-api.replit.app/login loads
+4. https://unboks-dashboard-api.replit.app/api/healthz returns {"status":"ok"}
+5. No ReplShield/private deployment issue is addressed separately later; focus now only on service readiness
+
+Final response:
+- root cause
+- files changed
+- exact production start command
+- exact health route tested
+- confirm publish should complete
