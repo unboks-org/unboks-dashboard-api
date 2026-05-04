@@ -1,0 +1,165 @@
+MIGRATION AUDIT ONLY. DO NOT CHANGE CODE.
+
+This Replit project is the Unboks dashboard/API project. I am moving it from my private Replit account to a new company Replit workspace.
+
+I need a complete migration report so I can recreate this exact project in the new workspace without breaking the dashboard, API, database, or Zernio webhook.
+
+Current intended domains:
+- Dashboard: https://dashboard.unboks.org
+- API: https://api.unboks.org
+- Zernio webhook: https://api.unboks.org/api/unboks/webhooks/zernio
+
+Do not edit code.
+Do not deploy.
+Do not change secrets.
+Do not change DNS.
+Audit only.
+
+Report the following:
+
+1. Project identity
+- Project name
+- What this Replit contains
+- Is this only the dashboard/API, or does it also contain the public website?
+- Important folders and what each does
+
+2. Workflows and services
+List all workflows/services:
+- frontend/web workflow
+- API server workflow
+- any background worker
+- start command
+- build command
+- ports used
+- which workflow serves the dashboard
+- which workflow serves the API
+
+3. Routes and domains
+Report current routes:
+- dashboard routes
+- API routes
+- health check route
+- webhook route
+- login route
+
+Report current custom domains:
+- dashboard.unboks.org
+- api.unboks.org
+
+For each domain:
+- what it points to
+- whether it is active
+- what DNS records were required
+- whether SSL is active
+
+4. Secrets and environment variables
+List required secrets by NAME ONLY. Do not reveal values.
+
+Include all required secrets for:
+- database
+- login/auth
+- JWT/session
+- Zernio webhook signing
+- production API base URL
+- per-client passwords
+
+For each secret, say:
+- required or optional
+- used by frontend or backend
+- what happens if missing
+
+5. Database
+Report:
+- database type
+- whether it is Replit Postgres or external
+- database connection variable name
+- tables/schema
+- whether migrations run automatically
+- whether data currently exists
+- how to export/backup current data
+- how to restore/import it in the new workspace
+- whether new workspace will create an empty DB if not migrated
+
+6. API backend
+Report:
+- API server entry point
+- all implemented endpoints
+- auth method
+- tenant/client slug handling
+- conversation endpoint
+- message detail endpoint if exists
+- webhook endpoint
+- supported Zernio events
+- whether ignored events return safely
+- how to test health
+- how to test login
+- how to test webhook with signed request
+
+7. Frontend
+Report:
+- frontend entry point
+- dashboard app entry point
+- API base URL logic
+- production value expected for VITE_API_BASE_URL
+- whether frontend uses relative /api in dev
+- whether api.wetakeyourjob.com is still referenced anywhere
+- whether temporary replit URLs are referenced anywhere
+
+8. Client tenants
+Current tenants:
+- unboks
+- bluemarlin
+- adamus
+- consultadespertares
+
+Report:
+- which tenants are supported in code
+- which password secret each tenant needs
+- which tenants currently have secrets set
+- which tenants currently work
+- what happens if a tenant password is missing
+
+9. Zernio webhook
+Report:
+- final webhook URL
+- required signing secret env var
+- signature header expected
+- HMAC algorithm
+- whether it uses raw body
+- how to test signed request
+- what Zernio needs to be updated to after migration
+- whether webhook URL will change in the new workspace
+
+10. Migration risks
+List all risks:
+- missing secrets
+- empty database
+- domains still pointing to old Replit
+- Zernio still pointing to old Replit/API
+- production frontend built with wrong API URL
+- tenant passwords missing
+- old remote backend data not migrated
+- webhook signing mismatch
+
+11. Exact migration checklist for new Replit workspace
+Give me step-by-step instructions:
+- how to export/import project
+- install dependencies
+- add secrets
+- provision database
+- migrate data
+- run migrations
+- run workflows
+- verify local health
+- add custom domains
+- update DNS
+- publish
+- update Zernio
+- test dashboard login
+- test API health
+- test webhook
+- test WhatsApp end-to-end
+
+Final output:
+A clear migration report and checklist.
+No code changes.
