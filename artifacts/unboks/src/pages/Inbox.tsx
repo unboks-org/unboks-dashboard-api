@@ -2,8 +2,7 @@ import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { MessageRow } from "@/components/inbox/MessageRow";
-import { conversations as MOCK_CONVERSATIONS, Channel } from "@/data/conversations";
-import type { Conversation } from "@/data/conversations";
+import type { Channel, Conversation } from "@/data/conversations";
 import { useConversations, useConversation } from "@/hooks/use-client-api";
 import { mapApiConversation } from "@/lib/conversation-mapper";
 import type { NavId } from "@/components/inbox/Drawer";
@@ -156,7 +155,7 @@ export default function Inbox() {
   const { data: apiConversations, isLoading, isError } = useConversations();
 
   const allConversations: Conversation[] = useMemo(() => {
-    if (isError || !apiConversations) return MOCK_CONVERSATIONS;
+    if (isError || !apiConversations) return [];
     return apiConversations.map(mapApiConversation);
   }, [apiConversations, isError]);
 
