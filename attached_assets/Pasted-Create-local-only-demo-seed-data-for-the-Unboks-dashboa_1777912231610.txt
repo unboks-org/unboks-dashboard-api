@@ -1,0 +1,69 @@
+Create local-only demo seed data for the Unboks dashboard so the UI is no longer empty.
+
+Rules:
+- Do not touch production deployment settings.
+- Do not change the public website.
+- Do not redesign the dashboard.
+- Do not remove existing API routes.
+- Keep this demo data clearly marked as demo/local seed data.
+- The goal is to populate the current dashboard screens for visual testing.
+
+Required demo data:
+1. Inbox:
+   - Add 8 demo conversations.
+   - Mix channels: WhatsApp, Email, Instagram, Facebook, Messenger.
+   - Include realistic customer names.
+   - Include last message preview, timestamp, unread/read state, and status.
+   - Clicking a conversation must show the message thread/details if that feature already exists.
+
+2. Escalations:
+   - Add 3 demo escalations.
+   - Include:
+     - customer name
+     - channel
+     - reason for escalation
+     - short conversation summary
+     - urgency level
+     - soft escalation vs hard escalation
+     - timestamp
+   - Escalations must appear in the Escalations screen.
+
+3. Bookings:
+   - Add 3 demo bookings for today.
+   - Include:
+     - customer name
+     - service/trip name
+     - date/time
+     - number of guests
+     - booking status
+     - contact channel
+     - notes
+   - Clicking a booking must show booking details if that feature already exists.
+
+4. Analytics:
+   - Add simple demo metrics:
+     - conversations handled today
+     - escalations waiting
+     - bookings today
+     - average response time
+     - channel breakdown
+
+Implementation:
+- First inspect the existing API routes, data source, mocks, schema, and UI expectations.
+- Reuse the existing structure. Do not invent a second data system unless absolutely necessary.
+- Prefer a small seed/demo module that can be turned off later.
+- If the app already has mock data files, extend them.
+- If the API currently returns empty arrays, modify the local/dev API responses to return demo data.
+- Production safety: demo data must only activate in development/local mode unless there is already an accepted demo mode pattern.
+
+Acceptance checks:
+- Start API on port 8080.
+- Start dashboard on port 5173.
+- Login works.
+- Inbox shows demo conversations.
+- Escalations shows 3 demo escalations.
+- Bookings shows 3 demo bookings.
+- Analytics shows demo metrics.
+- No build errors.
+- No TypeScript errors.
+- Report exactly which files changed and why.
