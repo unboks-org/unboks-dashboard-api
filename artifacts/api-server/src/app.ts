@@ -27,7 +27,12 @@ app.use(
 );
 
 const ALLOWED_ORIGINS = process.env.NODE_ENV === "production"
-  ? ["https://dashboard.unboks.org", "https://unboks.org", "https://api.unboks.org"]
+  ? [
+      "https://dashboard.unboks.org",
+      "https://unboks.org",
+      "https://api.unboks.org",
+      "https://unboks-dashboard-api.replit.app",
+    ]
   : true; // allow all in development
 
 app.use(cors({ origin: ALLOWED_ORIGINS }));
