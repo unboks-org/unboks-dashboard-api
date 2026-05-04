@@ -1,0 +1,71 @@
+CORS is still broken after republish.
+
+I reran the exact preflight test:
+
+curl -i -X OPTIONS https://api.unboks.org/api/unboks/dashboard/api/login \
+  -H "Origin: https://unboks-dashboard-api.replit.app" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: content-type"
+
+Actual response still does NOT include:
+access-control-allow-origin: https://unboks-dashboard-api.replit.app
+
+Do not report success until this exact curl output includes Access-Control-Allow-Origin.
+
+Fix requirements:
+1. Find where CORS middleware is registered in the Express app.
+2. It must be registered BEFORE all routes.
+3. It must not be bypassed by OPTIONS handlers.
+4. If there is custom OPTIONS handling, remove it or make it return the same CORS headers.
+5. Allowed origins must include exactly:
+   - https://unboks-dashboard-api.replit.app
+   - https://api.unboks.org
+   - http://localhost:5173
+   - http://localhost:8080
+6. Allowed headers must include:
+   - Content-Type
+   - Authorization
+7. The OPTIONS response and normal POST response must both include Access-Control-Allow-Origin.
+
+Suggested Express setup:
+
+const allowedOrigins = new Set([
+  "https://unboks-dashboard-api.replit.app",
+  "https://api.unboks.org",
+  "http://localhost:5173",
+  "http://localhost:8080",
+]);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked origin: ${origin}`));
+  },
+  methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: false,
+}));
+
+app.options("*", cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked origin: ${origin}`));
+  },
+  methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: false,
+}));
+
+After fixing, run and show me the output of:
+
+curl -i -X OPTIONS https://api.unboks.org/api/unboks/dashboard/api/login \
+  -H "Origin: https://unboks-dashboard-api.replit.app" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: content-type"
+
+Required output must contain:
+access-control-allow-origin: https://unboks-dashboard-api.replit.app

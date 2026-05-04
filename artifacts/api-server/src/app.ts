@@ -26,16 +26,28 @@ app.use(
   }),
 );
 
-const ALLOWED_ORIGINS = process.env.NODE_ENV === "production"
-  ? [
-      "https://dashboard.unboks.org",
-      "https://unboks.org",
-      "https://api.unboks.org",
-      "https://unboks-dashboard-api.replit.app",
-    ]
-  : true; // allow all in development
+const allowedOrigins = new Set([
+  "https://unboks-dashboard-api.replit.app",
+  "https://api.unboks.org",
+  "https://dashboard.unboks.org",
+  "https://unboks.org",
+  "http://localhost:5173",
+  "http://localhost:8080",
+]);
 
-app.use(cors({ origin: ALLOWED_ORIGINS }));
+const corsOptions: cors.CorsOptions = {
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked origin: ${origin}`));
+  },
+  methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: false,
+};
+
+app.use(cors(corsOptions));
 
 // Capture raw body buffer BEFORE JSON parsing — required for webhook signature verification.
 app.use(
