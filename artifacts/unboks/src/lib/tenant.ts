@@ -26,6 +26,10 @@ export function clearAuth(): void {
   localStorage.removeItem("wtyj_client");
 }
 
+// In production set VITE_API_BASE_URL=https://api.unboks.org
+// In development leave it unset — relative /api/... is used automatically
+const API_HOST: string = import.meta.env.VITE_API_BASE_URL ?? "";
+
 export function getApiBase(slug?: string): string {
-  return `/api/${slug ?? getClientSlug()}/dashboard/api`;
+  return `${API_HOST}/api/${slug ?? getClientSlug()}/dashboard/api`;
 }

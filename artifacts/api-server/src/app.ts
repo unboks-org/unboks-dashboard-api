@@ -26,7 +26,11 @@ app.use(
   }),
 );
 
-app.use(cors());
+const ALLOWED_ORIGINS = process.env.NODE_ENV === "production"
+  ? ["https://dashboard.unboks.org", "https://unboks.org", "https://api.unboks.org"]
+  : true; // allow all in development
+
+app.use(cors({ origin: ALLOWED_ORIGINS }));
 
 // Capture raw body buffer BEFORE JSON parsing — required for webhook signature verification.
 app.use(

@@ -1,0 +1,155 @@
+I want the Unboks API to run on my own domain, not on api.wetakeyourjob.com and not on a temporary Replit URL.
+
+Target architecture:
+
+Public website:
+https://unboks.org
+
+Customer dashboard:
+https://dashboard.unboks.org
+
+Backend API:
+https://api.unboks.org
+
+Zernio webhook:
+https://api.unboks.org/unboks/webhooks/zernio
+
+Goal:
+Move all production API and webhook usage to the Unboks domain.
+
+Do not redesign UI.
+Do not change dashboard layout.
+Do not break login.
+Do not break the Zernio webhook.
+Do not break client routing.
+
+Audit and implement the safest domain setup.
+
+Tasks:
+
+1. Confirm current API architecture
+Report:
+- where the frontend currently sends API calls
+- whether it uses relative /api or an absolute URL
+- whether api.wetakeyourjob.com is still referenced anywhere
+- whether the temporary Replit URL is referenced anywhere
+- whether Zernio currently points to the temporary Replit URL or old api.wetakeyourjob.com URL
+
+2. Set final production API domain
+The final API domain must be:
+
+https://api.unboks.org
+
+All frontend production API calls should go to either:
+- https://api.unboks.org/{client}/dashboard/api
+or
+- /api/{client}/dashboard/api only if the frontend and backend are served from the same domain.
+
+But because I want a dedicated API domain, prefer:
+
+https://api.unboks.org/{client}/dashboard/api
+
+3. Set final webhook URL
+The final Zernio webhook URL must be:
+
+https://api.unboks.org/unboks/webhooks/zernio
+
+Do not use:
+- api.wetakeyourjob.com
+- *.replit.dev
+- temporary Replit deployment URLs
+
+4. Check backend route compatibility
+Confirm the backend supports:
+
+POST /unboks/webhooks/zernio
+GET /unboks/dashboard/api/messages/conversations
+POST /unboks/dashboard/api/auth/login
+
+or confirm the exact current routes.
+
+If current backend routes are under /api, then the domain routing must preserve the correct path.
+
+Examples:
+If backend route is:
+POST /api/:client/webhooks/zernio
+
+Then production webhook becomes:
+https://api.unboks.org/api/unboks/webhooks/zernio
+
+If backend route is:
+POST /:client/webhooks/zernio
+
+Then production webhook becomes:
+https://api.unboks.org/unboks/webhooks/zernio
+
+Do not guess. Inspect the backend route definitions and report the exact correct URL.
+
+5. DNS instructions
+Tell me exactly what DNS records I need to create for api.unboks.org.
+
+Report:
+- record type
+- host/name
+- value/target
+- whether it should be CNAME or A record
+- whether proxy/CDN should be enabled or disabled if relevant
+- whether SSL will be automatic
+
+6. Replit deployment
+Confirm:
+- whether this Replit app can serve api.unboks.org directly
+- whether api.unboks.org should point to the same Replit deployment as dashboard.unboks.org
+- whether a separate Replit deployment is needed for API
+- whether the production secrets are available in the deployment:
+  - ZERNIO_SIGNING_SECRET
+  - UNBOKS_PASSWORD
+  - BLUEMARLIN_PASSWORD if needed
+  - ADAMUS_PASSWORD if needed
+  - CONSULTADESPERTARES_PASSWORD if needed
+  - DATABASE_URL
+
+7. CORS
+If frontend runs on dashboard.unboks.org and API runs on api.unboks.org, configure CORS safely.
+
+Allow:
+- https://dashboard.unboks.org
+- https://unboks.org if needed
+
+Do not allow wildcard CORS in production unless there is a clear reason.
+
+8. Frontend API base
+Update the frontend API base so production calls the correct Unboks API domain.
+
+Use an environment variable if possible:
+
+VITE_API_BASE_URL=https://api.unboks.org
+
+Fallback can be /api for local development only.
+
+Rules:
+- development may use /api
+- production must use https://api.unboks.org
+- no api.wetakeyourjob.com references
+- no temporary Replit URL references
+
+9. Zernio update checklist
+After deployment and DNS are working, I will update Zernio webhook endpoint to the final URL.
+
+Before I do that, verify:
+- GET health endpoint works on api.unboks.org
+- login works through api.unboks.org
+- conversations endpoint works through api.unboks.org
+- signed webhook test returns 200 through api.unboks.org
+- wrong signature returns 403 through api.unboks.org
+
+10. Final output
+Report:
+- exact final API base URL
+- exact final Zernio webhook URL
+- exact DNS records I need
+- exact Replit domain/deployment settings needed
+- files changed
+- env vars added or required
+- whether api.wetakeyourjob.com is still used anywhere
+- whether temporary Replit URL is still used anywhere

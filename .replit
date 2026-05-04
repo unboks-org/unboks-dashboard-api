@@ -41,3 +41,8 @@ externalPort = 3000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.production]
+VITE_API_BASE_URL = "https://api.unboks.org"
