@@ -27,5 +27,5 @@ export function clearAuth(): void {
 }
 
 export function getApiBase(slug?: string): string {
-  return `https://api.wetakeyourjob.com/${slug ?? getClientSlug()}/dashboard/api`;
+  return `/api/${slug ?? getClientSlug()}/dashboard/api`;
 }

@@ -1,0 +1,63 @@
+URGENT BACKEND FIX.
+
+Zernio webhook deliveries are failing with HTTP 403.
+
+Webhook endpoint:
+https://api.wetakeyourjob.com/unboks/webhooks/zernio
+
+Zernio delivery log shows:
+Status: 403
+Error: Webhook endpoint returned 403
+Response body: Forbidden
+
+This means the webhook route exists, but the backend is rejecting the request, most likely because signature verification fails.
+
+Do not change frontend.
+Do not change dashboard UI.
+Fix backend webhook authentication first.
+
+Required checks:
+
+1. Find the backend route:
+POST /{clientSlug}/webhooks/zernio
+
+2. Find the Zernio signature verification code.
+
+3. Identify:
+- which header the backend expects for the signature
+- which algorithm it uses
+- which environment variable contains the signing secret
+- whether it verifies against the raw request body or parsed JSON
+
+4. Compare backend signing secret with the Zernio UI signing secret.
+
+Important:
+Do not print the secret in logs.
+Only confirm whether it matches.
+
+5. If the backend secret is wrong:
+- update the backend environment variable to match the Zernio webhook signing secret
+- restart the backend service
+- send a new test WhatsApp/Zernio message
+- confirm Zernio delivery returns 200
+
+6. If the secret matches but 403 continues:
+- confirm the backend is verifying the raw request body, not re-stringified JSON
+- confirm the backend uses the exact header Zernio sends
+- log the received signature header name only, not the secret
+- log whether signature verification passed or failed
+- check Zernio documentation for the exact HMAC algorithm and payload format
+
+7. After webhook returns 200:
+- confirm message.received events are processed
+- confirm a conversation is written for client_slug = unboks
+- confirm platform/channel is stored as whatsapp
+- confirm lastMessage is populated
+- confirm GET /unboks/dashboard/api/messages/conversations returns the WhatsApp conversation
+
+Acceptance criteria:
+1. Zernio delivery log changes from 403 to 200.
+2. Backend logs show message.received event accepted.
+3. Database stores the WhatsApp message.
+4. Conversations endpoint returns the WhatsApp conversation.
+5. Dashboard shows the WhatsApp message under WhatsApp.
