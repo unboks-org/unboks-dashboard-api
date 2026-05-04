@@ -1,0 +1,157 @@
+AUDIT ONLY. DO NOT CHANGE CODE YET.
+
+Important new information:
+Zernio already has an active webhook configured:
+
+Endpoint:
+https://api.wetakeyourjob.com/unboks/webhooks/zernio
+
+Subscribed events:
+message.edited
+message.received
+message.sent
+message.deleted
+message.read
+message.failed
+message.delivered
+account.connected
+account.disconnected
+account.ads.initial_sync_completed
+comment.received
+
+Problem:
+WhatsApp messages still do not appear in the Unboks dashboard.
+
+Goal:
+Audit whether the Zernio webhook endpoint exists, receives events, validates signatures, stores messages, and exposes them to the dashboard conversations API.
+
+Do not redesign.
+Do not change frontend.
+Do not change production behavior.
+Audit only first.
+
+Check these exact items:
+
+1. Does the backend route exist?
+Search backend/server code for:
+- /webhooks/zernio
+- zernio
+- message.received
+- message.sent
+- webhook
+- signing secret
+- account.connected
+
+Report:
+- exact file path
+- route method
+- route URL
+- whether it matches /unboks/webhooks/zernio
+- whether client slug “unboks” is parsed from the URL
+
+2. Does the route verify the signing secret?
+Zernio shows a Signing Secret.
+
+Check:
+- what header Zernio uses for signatures
+- whether backend verifies it
+- whether the backend has the matching secret in env
+- whether failed signature causes 401/403
+- whether logs show signature failures
+
+Do not print secret values. Only report variable names.
+
+3. Check Zernio delivery logs
+Use the Zernio UI delivery logs if accessible.
+
+Report for recent message.received events:
+- timestamp
+- event type
+- delivery status
+- HTTP response code
+- response body
+- retry status
+- whether deliveries are succeeding or failing
+
+4. Check backend logs
+For recent Zernio deliveries, check api.wetakeyourjob.com logs.
+
+Report:
+- did the request hit the server?
+- route matched or 404?
+- status code returned
+- any error stack
+- any signature verification error
+- any database write error
+- any ignored event type
+
+5. Check payload handling
+For event type message.received, verify that the backend extracts:
+- client slug
+- platform/channel, should become whatsapp if WhatsApp
+- external conversation ID
+- sender/contact ID
+- sender name if available
+- sender phone/email if available
+- message text
+- timestamp
+- raw payload
+
+Report exact mapping code.
+
+6. Check database write
+After a message.received event, verify whether backend writes:
+- conversation record
+- message record
+- platform/channel
+- lastMessage
+- timestamp
+- unread state
+
+Report:
+- table/collection name
+- fields written
+- whether client_slug = unboks
+- whether platform = whatsapp or another raw Zernio value
+
+7. Check dashboard conversations endpoint
+Check:
+
+GET /unboks/dashboard/api/messages/conversations
+
+Confirm whether it reads from the same table/collection where Zernio webhook writes.
+
+Report:
+- does it include Zernio/WhatsApp records?
+- does it filter platform = email only?
+- does it exclude whatsapp?
+- does it return name, phone, lastMessage correctly?
+
+8. Determine exact break point
+Choose one:
+
+A. Zernio is not delivering events.
+B. Zernio delivers but backend route does not exist or returns 404.
+C. Backend route exists but signature verification fails.
+D. Backend receives event but ignores message.received.
+E. Backend receives event but fails to write to database.
+F. Backend writes to database, but dashboard endpoint does not read those records.
+G. Backend writes records under wrong client slug.
+H. Backend writes records with wrong platform/channel mapping.
+I. Dashboard endpoint returns them, but frontend still filters them.
+
+9. Recommended fix plan
+Do not implement yet.
+
+Give exact steps to fix based on the break point.
+
+Final output:
+- Is Zernio delivering to the webhook, yes/no?
+- What HTTP status does Zernio receive?
+- Does the backend route exist?
+- Does signature verification pass?
+- Are message.received events stored?
+- Where are they stored?
+- Does /dashboard/api/messages/conversations return them?
+- Exact break point.
+- Recommended fix.
