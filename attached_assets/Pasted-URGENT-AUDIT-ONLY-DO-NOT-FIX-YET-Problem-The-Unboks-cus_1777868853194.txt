@@ -1,0 +1,258 @@
+URGENT AUDIT ONLY. DO NOT FIX YET.
+
+Problem:
+The Unboks customer dashboard appears visually, but I need to know if it is properly connected to real data.
+
+Current visible behavior:
+- Sidebar shows Email count = 2.
+- Inbox shows 2 rows.
+- The rows display only IDs like “69efec187aca039489690dc95” and “69f7cea6e99a2574e014abec”.
+- Rows only say “New message”.
+- I cannot click the rows to open conversation details.
+- We have been testing WhatsApp messages, but no WhatsApp conversations appear in the dashboard.
+- I need to know whether the dashboard is properly connected or just showing partial/broken data.
+
+This is an audit only.
+Do not redesign.
+Do not change UI.
+Do not change backend.
+Do not change API behavior.
+Do not fix anything yet.
+
+Goal:
+Find out exactly where the data connection breaks:
+- backend API
+- frontend API client
+- data mapping
+- channel filtering
+- row rendering
+- click handler / selected conversation detail
+- WhatsApp ingestion / channel naming
+
+==================================================
+1. Confirm active route and data source
+==================================================
+
+Inspect:
+- src/App.tsx
+- src/dashboard/pages/Messages.tsx
+- src/dashboard/lib/api.ts
+- src/dashboard/hooks/use-bluemarlin.ts or renamed equivalent
+- any conversation/message hooks
+
+Report:
+- What route renders this inbox?
+- Which component renders the visible rows?
+- Which hook/API call fetches the inbox data?
+- What endpoint is called?
+- What client/workspace is being used?
+- What localStorage key determines the current client/workspace?
+
+==================================================
+2. Inspect network/API response
+==================================================
+
+Find the actual API response used to render the inbox.
+
+Report:
+- Endpoint URL
+- HTTP status
+- Raw response shape
+- Number of conversations returned
+- Whether WhatsApp conversations are present in the response
+- Whether email conversations are present in the response
+- Whether rows contain:
+  - id
+  - customer name
+  - sender name
+  - sender phone/email
+  - channel/platform
+  - latest message text
+  - timestamp
+  - unread/read status
+  - escalation status
+  - thread/conversation id
+
+Important:
+If the backend returns only IDs and no message preview/name/channel, say that clearly.
+If the backend returns proper data but the frontend discards it, say that clearly.
+
+==================================================
+3. Why are IDs displayed as names?
+==================================================
+
+The inbox rows show values like:
+69efec187aca039489690dc95
+
+Audit why.
+
+Search the row rendering code in Messages.tsx.
+
+Report:
+- Which field is being displayed as the row title?
+- Is it using conversation.id as fallback?
+- Is sender/customer name missing?
+- Is the frontend mapping the wrong field?
+- Is backend not providing display name?
+- What exact fallback logic causes the ID to be shown?
+
+Quote the relevant code.
+
+==================================================
+4. Why is message preview only “New message”?
+==================================================
+
+Audit why the preview is generic.
+
+Report:
+- Which field should contain latest message preview?
+- Is the frontend using a fallback string?
+- Is the backend missing latest_message / preview / body / text?
+- Is the frontend failing to map it?
+- What exact code displays “New message”?
+
+Quote the relevant code.
+
+==================================================
+5. Why are WhatsApp test messages missing?
+==================================================
+
+We have tested WhatsApp, but the dashboard does not show WhatsApp conversations.
+
+Audit:
+- Are WhatsApp conversations returned by the API?
+- Are they filtered out in the frontend?
+- Is the channel value “whatsapp”, “WhatsApp”, “whatsapp_business”, “meta_whatsapp”, or something else?
+- Does the frontend expect a different channel key?
+- Is WhatsApp hidden by the selected filter?
+- Is there a read/archive/hidden localStorage key hiding them?
+- Is there any “hidden conversations” logic filtering them out?
+- Is the dashboard currently showing only email conversations?
+
+Inspect:
+- channel-map
+- PlatformFilterBar
+- conversation filtering in Messages.tsx
+- hidden/archive state
+- unread/read status hooks
+
+Report the exact reason.
+
+==================================================
+6. Why can’t rows be clicked?
+==================================================
+
+Audit click behavior.
+
+Report:
+- Are conversation rows supposed to be clickable?
+- Is there an onClick handler?
+- Was it removed during Gmail-style redesign?
+- Does clicking set selectedConversation?
+- Does clicking route to a detail view?
+- Is there a detail pane component?
+- Is the detail pane still rendered?
+- Is the row missing the ID needed to open details?
+- Are pointer events disabled?
+- Is a checkbox/control swallowing clicks?
+
+Quote the relevant code.
+
+==================================================
+7. Confirm whether the dashboard is connected or mocked
+==================================================
+
+Tell me clearly:
+
+A. Is the dashboard connected to live backend data?
+B. Is it using mock/seed/demo data?
+C. Is it connected but the data mapping is broken?
+D. Is it connected only for email but not WhatsApp?
+E. Is WhatsApp ingestion not connected at all?
+
+Be precise. Do not guess.
+
+==================================================
+8. Check channel counts
+==================================================
+
+Sidebar shows Email count = 2.
+
+Audit:
+- Where does the count come from?
+- Is it from real API data?
+- Is it calculated from current conversations?
+- Is WhatsApp count zero because no data exists?
+- Is count logic inconsistent with row data?
+
+Report exact file/code.
+
+==================================================
+9. Check conversation detail endpoint
+==================================================
+
+If rows are meant to open a conversation, identify:
+- endpoint for reading one conversation
+- function/hook used
+- expected conversation ID
+- whether current row ID is valid
+- whether detail endpoint works if called manually
+
+Do not change code, just report.
+
+==================================================
+10. Blunt diagnosis
+==================================================
+
+Give me a blunt diagnosis:
+
+- Is the dashboard properly connected?
+- Is the inbox only partially connected?
+- Is the frontend rendering bad fallbacks?
+- Is WhatsApp not connected?
+- Is the click/detail pane broken?
+- What are the top 5 issues?
+
+For each issue include:
+- file
+- component/function
+- exact code or field
+- what needs to change later
+
+==================================================
+11. Recommended fix plan, do not implement
+==================================================
+
+Give a surgical fix plan.
+
+The plan should cover:
+- proper data mapping for display name
+- proper message preview
+- proper channel detection
+- restoring click-to-open conversation
+- showing WhatsApp messages
+- graceful fallback for missing fields
+- whether backend changes are needed
+
+Do not implement yet.
+
+==================================================
+FINAL OUTPUT REQUIRED
+==================================================
+
+Give clear headings.
+
+Include:
+1. Is the dashboard connected to live data, yes/no/partial?
+2. Which API endpoint returns the inbox data?
+3. Raw response shape summary.
+4. Why IDs are shown.
+5. Why preview says “New message”.
+6. Why WhatsApp messages are missing.
+7. Why rows cannot be clicked.
+8. Whether backend or frontend needs fixing.
+9. Exact files responsible.
+10. Recommended fix plan.
+
+DO NOT CHANGE CODE.
+AUDIT ONLY.
