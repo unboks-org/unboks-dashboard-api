@@ -21,14 +21,23 @@ function initial(name: string) {
 
 interface MessageRowProps {
   conversation: Conversation;
+  isSelected?: boolean;
+  onSelect?: (conv: Conversation) => void;
 }
 
-export function MessageRow({ conversation }: MessageRowProps) {
+export function MessageRow({ conversation, isSelected = false, onSelect }: MessageRowProps) {
   const [starred, setStarred] = useState(false);
   const color = avatarColor(conversation.sender);
 
   return (
-    <div className="flex items-start gap-3 px-4 py-3 bg-white hover:bg-[#f6f8fc] active:bg-[#eef1f6] cursor-pointer border-b border-[#f1f3f4]">
+    <div
+      onClick={() => onSelect?.(conversation)}
+      className={cn(
+        "flex items-start gap-3 px-4 py-3 border-b border-[#f1f3f4] transition-colors",
+        onSelect ? "cursor-pointer" : "cursor-default",
+        isSelected ? "bg-[#e8f0fe]" : "bg-white hover:bg-[#f6f8fc] active:bg-[#eef1f6]",
+      )}
+    >
       <div
         className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[16px] font-medium flex-shrink-0"
         style={{ backgroundColor: color }}

@@ -70,7 +70,8 @@ export function useEnabledChannels() {
 
   const isChannelEnabled = useCallback(
     (channel: Channel) => {
-      if (channel === "All" || channel === "Messenger") return true;
+      // "All", "Messenger", and "Unknown" always pass through
+      if (channel === "All" || channel === "Messenger" || channel === "Unknown") return true;
       return enabledChannels.includes(channel as ToggledChannel);
     },
     [enabledChannels]

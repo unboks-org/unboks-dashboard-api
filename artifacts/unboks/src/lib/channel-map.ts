@@ -27,13 +27,58 @@ export const PLATFORMS: PlatformDef[] = [
   { key: "messenger", label: "Messenger", channel: "Messenger" },
 ];
 
-const PLATFORM_TO_CHANNEL: Record<string, Channel> = Object.fromEntries(
-  PLATFORMS.map((p) => [p.key, p.channel]),
-);
+// Comprehensive platform alias map — covers all known API variants
+const PLATFORM_TO_CHANNEL: Record<string, Channel> = {
+  // WhatsApp variants
+  whatsapp: "WhatsApp",
+  whatsapp_business: "WhatsApp",
+  "whatsapp-business": "WhatsApp",
+  wa: "WhatsApp",
+  wab: "WhatsApp",
+  waba: "WhatsApp",
+  meta_whatsapp: "WhatsApp",
+  "meta-whatsapp": "WhatsApp",
+  whatsapp_business_api: "WhatsApp",
+  // Email variants
+  email: "Email",
+  mail: "Email",
+  smtp: "Email",
+  gmail: "Email",
+  outlook: "Email",
+  imap: "Email",
+  // Instagram variants
+  instagram: "Instagram",
+  ig: "Instagram",
+  instagram_dm: "Instagram",
+  "instagram-direct": "Instagram",
+  // Facebook variants
+  facebook: "Facebook",
+  fb: "Facebook",
+  messenger_facebook: "Facebook",
+  facebook_messenger: "Facebook",
+  // Messenger variants
+  messenger: "Messenger",
+  meta_messenger: "Messenger",
+  // X / Twitter variants
+  x: "X",
+  twitter: "X",
+  x_twitter: "X",
+  // TikTok variants
+  tiktok: "TikTok",
+  tik_tok: "TikTok",
+};
 
 export function platformToChannel(platform: string | null | undefined): Channel {
   if (typeof platform !== "string" || !platform) return "Email";
-  return PLATFORM_TO_CHANNEL[platform.toLowerCase()] ?? "Email";
+  const lower = platform.toLowerCase();
+  const mapped = PLATFORM_TO_CHANNEL[lower];
+  if (!mapped) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(`[Unboks] Unknown platform value: "${platform}" — showing as Unknown`);
+    }
+    return "Unknown";
+  }
+  return mapped;
 }
 
 export function channelToPlatform(channel: Channel): PlatformKey {

@@ -1,0 +1,301 @@
+URGENT FIX TASK.
+
+The audit is complete. Now implement the fixes.
+
+Problem:
+The customer dashboard inbox is connected to the API, but the data mapping and inbox behavior are broken.
+
+Current issues:
+1. Inbox rows show MongoDB ObjectIDs instead of customer names.
+2. Inbox rows show “New message” instead of real message preview.
+3. WhatsApp test messages are missing or possibly misclassified.
+4. Rows look clickable but do not open anything.
+5. There is no selected conversation state or conversation detail pane.
+
+Do not redesign the whole UI.
+Do not touch the public website.
+Do not touch /admin.
+Do not touch /demo/bluemarlin.
+Do not change backend unless absolutely necessary.
+First fix frontend mapping and inbox behavior.
+
+Relevant files from audit:
+- src/components/inbox/MessageRow.tsx
+- src/components/inbox/Inbox.tsx
+- src/components/dashboard/DashboardShell.tsx
+- src/components/dashboard/Analytics.tsx
+- src/components/bookings/Bookings.tsx
+- src/lib/channel-map.ts
+- src/lib/api.ts or equivalent API client
+- hook: useConversations()
+- endpoint: GET https://api.wetakeyourjob.com/{client}/dashboard/api/messages/conversations
+
+==================================================
+1. Fix display name mapping
+==================================================
+
+Current bad mapping:
+sender: c.name || c.phone || "Unknown"
+
+Problem:
+c.phone may contain a MongoDB ObjectID, so the UI displays internal IDs.
+
+Implement safe display name logic.
+
+Create helper:
+isMongoObjectId(value)
+
+A value is likely a Mongo ObjectID if:
+- string
+- 24 characters
+- hex only
+
+Display name priority should be:
+
+1. c.name, if valid non-empty string and not ObjectID
+2. c.customerName, if valid
+3. c.senderName, if valid
+4. c.contactName, if valid
+5. c.profileName, if valid
+6. c.email, if valid
+7. c.phone, only if it looks like a real phone number and not ObjectID
+8. c.from, if valid and not ObjectID
+9. “Unknown contact”
+
+Do not display MongoDB ObjectIDs to the user.
+
+Apply this consistently anywhere conversations are mapped:
+- Inbox
+- DashboardShell
+- Analytics
+- Bookings
+- any other conversation list
+
+Acceptance:
+No row title should show a raw ID like 69efec187aca03948969dc95.
+
+==================================================
+2. Fix message preview mapping
+==================================================
+
+Current problem:
+Rows show “New message” because c.lastMessage is null/undefined.
+
+Create safe preview logic.
+
+Preview priority:
+1. c.lastMessage, if valid string
+2. c.latestMessage, if valid string
+3. c.last_message, if valid string
+4. c.preview, if valid string
+5. c.snippet, if valid string
+6. c.body, if valid string
+7. c.text, if valid string
+8. c.messages[last].text/body/content, if messages array exists
+9. “No preview available”
+
+Subject/title logic:
+If there is a subject field, use it.
+Otherwise use the first part of the preview.
+Do not default to “New message” unless the backend explicitly marks it as new and there is no preview.
+
+Acceptance:
+Rows should show useful preview text when the API provides message content.
+If the API provides no content, show “No preview available,” not “New message.”
+
+==================================================
+3. Fix channel/platform detection
+==================================================
+
+Problem:
+WhatsApp messages may be missing or misclassified as Email because platform values may not match exactly.
+
+Update channel normalization.
+
+Create robust normalizeChannel/platformToChannel logic.
+
+Map these to WhatsApp:
+- whatsapp
+- WhatsApp
+- whatsapp_business
+- whatsapp-business
+- wa
+- wab
+- waba
+- meta_whatsapp
+- meta-whatsapp
+- whatsapp_business_api
+
+Map these to Email:
+- email
+- mail
+- smtp
+- gmail
+- outlook
+- imap
+
+Map these to Instagram:
+- instagram
+- ig
+- instagram_dm
+- instagram-direct
+
+Map these to Facebook:
+- facebook
+- fb
+- messenger_facebook
+- facebook_messenger
+
+Map these to Messenger:
+- messenger
+- meta_messenger
+
+Map these to X:
+- x
+- twitter
+- x_twitter
+
+Map these to TikTok:
+- tiktok
+- tik_tok
+
+Do not silently default unknown channels to Email.
+If channel is unknown, return:
+- channel: "Unknown"
+- rawPlatform: original value
+
+In development, console.warn unknown platform values.
+
+Acceptance:
+Unknown platform values must not become Email automatically.
+WhatsApp variants must appear under WhatsApp.
+
+==================================================
+4. Add debug visibility for raw channel during development
+==================================================
+
+In development only, add console logging or a small hidden/debug-safe log for unknown platforms.
+
+Do not show raw debug data in production UI.
+
+Log:
+- conversation id
+- raw platform/channel
+- normalized channel
+
+Acceptance:
+We can identify whether WhatsApp data is returned with unexpected platform keys.
+
+==================================================
+5. Implement row click behavior
+==================================================
+
+Problem:
+Rows have cursor-pointer but no click handler.
+Implement basic click-to-open.
+
+In Inbox.tsx:
+- add selectedConversation state
+- pass onClick or onSelect into MessageRow
+- clicking a row selects the conversation
+- selected row gets selected styling
+
+Then render a conversation detail pane.
+
+If a detail endpoint exists:
+- call it using selected conversation id
+- show actual messages
+
+If no detail endpoint exists yet:
+- show a basic detail pane using existing conversation data:
+  - customer/sender name
+  - channel
+  - latest preview
+  - timestamp
+  - escalation status if present
+  - “Full conversation loading is not available yet” only if necessary, but avoid ugly debug language
+
+Do not make rows look clickable unless they actually select/open.
+
+Acceptance:
+Clicking a row opens a detail panel or conversation detail area.
+The user can see which row is selected.
+The UI does not crash if detail data is missing.
+
+==================================================
+6. Inspect conversation detail API
+==================================================
+
+Before implementing the detail pane, inspect the API client for any function like:
+- getConversation
+- fetchConversation
+- getConversationMessages
+- fetchMessages
+- readConversation
+- /messages/conversations/:id
+- /messages/conversations/{id}/messages
+
+If available, use it.
+
+If not available, implement only frontend selected summary pane and report that backend detail endpoint is missing.
+
+Do not invent backend behavior.
+
+==================================================
+7. Fix channel counts
+==================================================
+
+Sidebar shows Email count = 2.
+
+After channel normalization:
+- counts should use normalized channel
+- WhatsApp count should include WhatsApp variants
+- Email should only include real Email
+- Unknown should not be counted as Email
+
+Acceptance:
+If the backend returns WhatsApp variants, WhatsApp count increases and Email does not incorrectly absorb them.
+
+==================================================
+8. Preserve no-crash behavior
+==================================================
+
+Keep all defensive guards:
+- no .toLowerCase on undefined
+- no map over undefined
+- no ObjectID display
+- safe fallbacks for missing fields
+- dashboard must not white screen
+
+==================================================
+9. Final test checklist
+==================================================
+
+Test:
+1. Login.
+2. /dashboard loads.
+3. Refresh /dashboard.
+4. No white screen.
+5. No raw MongoDB ObjectIDs are visible as names.
+6. Rows show best available sender/contact name.
+7. Rows show best available message preview.
+8. WhatsApp variants map to WhatsApp.
+9. Unknown channels do not become Email.
+10. Clicking a row opens/selects conversation detail.
+11. Sidebar counts use normalized channels.
+12. No public website/admin/demo changes.
+
+==================================================
+FINAL RESPONSE REQUIRED
+==================================================
+
+Report:
+1. Files changed.
+2. Display name mapping logic added.
+3. Preview mapping logic added.
+4. Channel normalization changes.
+5. Whether WhatsApp data is present in the API response.
+6. Whether WhatsApp was misclassified before.
+7. Row click behavior implemented.
+8. Whether a detail endpoint exists.
+9. Remaining backend issues, if any.

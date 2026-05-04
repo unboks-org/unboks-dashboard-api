@@ -2,12 +2,11 @@ import { useState } from "react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { useEscalations, useEscalationMutations, useConversations } from "@/hooks/use-client-api";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
-import { platformToChannel } from "@/lib/channel-map";
+import { mapApiConversation } from "@/lib/conversation-mapper";
 import { cn } from "@/lib/utils";
 import { X, CheckCircle, MessageCircle, Clock, User, AlertCircle } from "lucide-react";
 import type { Escalation } from "@/lib/api";
 import { conversations as MOCK } from "@/data/conversations";
-import type { Conversation } from "@/data/conversations";
 
 function avatarColor(name: string) {
   const colors = ["#f9a825","#1a73e8","#34a853","#ea4335","#7e57c2","#ec407a","#26a69a"];
@@ -53,20 +52,15 @@ function DetailPanel({ order, onClose, onResolve, resolving }: {
   const color = avatarColor(order.customerName);
   return (
     <div className="fixed inset-0 z-30 flex md:relative md:inset-auto md:w-[420px] md:border-l md:border-[#f1f3f4]">
-      {/* Mobile backdrop */}
       <div className="absolute inset-0 bg-black/40 md:hidden" onClick={onClose} aria-hidden="true" />
-
       <div className="relative bg-white w-full max-w-[420px] ml-auto h-full flex flex-col shadow-xl md:shadow-none overflow-y-auto">
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#f1f3f4] flex-shrink-0">
           <h3 className="text-[15px] font-medium text-[#202124]">Order Detail</h3>
           <button onClick={onClose} aria-label="Close" className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368]">
             <X className="w-4 h-4" />
           </button>
         </div>
-
         <div className="flex-1 px-5 py-5 space-y-5">
-          {/* Customer */}
           <section>
             <p className="text-[11px] uppercase tracking-wider text-[#5f6368] mb-3">Customer</p>
             <div className="flex items-center gap-3">
@@ -79,16 +73,12 @@ function DetailPanel({ order, onClose, onResolve, resolving }: {
               </div>
             </div>
           </section>
-
-          {/* Order info */}
           <section className="space-y-2">
             <p className="text-[11px] uppercase tracking-wider text-[#5f6368]">Order / Service</p>
             <div className="bg-[#f6f8fc] rounded-lg p-3">
               <p className="text-[13px] text-[#202124]">{order.service}</p>
             </div>
           </section>
-
-          {/* Meta */}
           <section className="space-y-2">
             <p className="text-[11px] uppercase tracking-wider text-[#5f6368]">Details</p>
             <div className="space-y-1.5">
@@ -98,16 +88,12 @@ function DetailPanel({ order, onClose, onResolve, resolving }: {
               <Row icon={AlertCircle} label="Status" value={order.resolved ? "Resolved" : "Pending handoff"} />
             </div>
           </section>
-
-          {/* AI Summary */}
           <section>
             <p className="text-[11px] uppercase tracking-wider text-[#5f6368] mb-2">AI Summary</p>
             <div className="bg-[#e8f0fe] rounded-lg p-3">
               <p className="text-[13px] text-[#3c4043] leading-relaxed">{order.summary}</p>
             </div>
           </section>
-
-          {/* Next action */}
           <section>
             <p className="text-[11px] uppercase tracking-wider text-[#5f6368] mb-2">Next Action</p>
             <p className="text-[13px] text-[#202124]">
@@ -117,8 +103,6 @@ function DetailPanel({ order, onClose, onResolve, resolving }: {
             </p>
           </section>
         </div>
-
-        {/* Actions */}
         <div className="px-5 py-4 border-t border-[#f1f3f4] flex gap-3 flex-shrink-0">
           <button
             onClick={onResolve}
@@ -156,26 +140,14 @@ export default function Bookings() {
   const { resolve } = useEscalationMutations();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Derive orders: prefer escalations; fallback to conversation keywords
-  const mappedConversations: Conversation[] = conversations
-    ? conversations.map((c) => ({
-        id: c.phone || "unknown",
-        channel: platformToChannel(c.platform),
-        sender: c.name || c.phone || "Unknown",
-        subject: (c.lastMessage?.split("\n")[0] ?? "").slice(0, 80) || "New message",
-        preview: c.lastMessage?.split("\n").slice(1).join(" ").trim() || c.lastMessage || "",
-        timestamp: c.timestamp || "",
-        unread: c.unread ?? false,
-        escalated: c.escalated ?? false,
-        hasAttachment: c.hasAttachment ?? false,
-      }))
+  const mappedConversations = conversations
+    ? conversations.map(mapApiConversation)
     : MOCK;
 
   const orders: OrderRow[] = (() => {
     if (escalations && escalations.length > 0) {
       return escalations.map(escalationToOrder);
     }
-    // Fallback: booking-keyword conversations
     return mappedConversations
       .filter((c) => /booking|order|payment|paid|service|sign.?up|purchas/i.test(c.subject + " " + c.preview))
       .map((c) => ({
@@ -203,7 +175,6 @@ export default function Bookings() {
       }
     >
       <div className="flex h-full">
-        {/* List */}
         <div className={cn("flex-1 overflow-y-auto", selected && "hidden md:block")}>
           {orders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center px-6">
@@ -243,8 +214,6 @@ export default function Bookings() {
             ))
           )}
         </div>
-
-        {/* Detail panel */}
         {selected && (
           <DetailPanel
             order={selected}

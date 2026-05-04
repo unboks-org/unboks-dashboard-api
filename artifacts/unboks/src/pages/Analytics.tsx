@@ -2,27 +2,11 @@ import { useMemo } from "react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { useConversations, useEscalations, useStatus } from "@/hooks/use-client-api";
 import { conversations as MOCK } from "@/data/conversations";
-import { platformToChannel } from "@/lib/channel-map";
-import type { ApiConversation } from "@/lib/api";
-import type { Conversation, Channel } from "@/data/conversations";
+import { mapApiConversation } from "@/lib/conversation-mapper";
+import type { Channel } from "@/data/conversations";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
-
-function mapApi(c: ApiConversation): Conversation {
-  const parts = c.lastMessage?.split("\n") ?? [];
-  return {
-    id: c.phone || "unknown",
-    channel: platformToChannel(c.platform),
-    sender: c.name || c.phone || "Unknown",
-    subject: parts[0]?.slice(0, 80) || "New message",
-    preview: parts.slice(1).join(" ").trim() || c.lastMessage || "",
-    timestamp: c.timestamp || "",
-    unread: c.unread ?? false,
-    escalated: c.escalated ?? false,
-    hasAttachment: c.hasAttachment ?? false,
-  };
-}
 
 const CHANNEL_COLORS: Record<string, string> = {
   WhatsApp: "#25d366",
@@ -32,6 +16,7 @@ const CHANNEL_COLORS: Record<string, string> = {
   X: "#202124",
   TikTok: "#010101",
   Messenger: "#0084ff",
+  Unknown: "#9aa0a6",
 };
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
@@ -44,7 +29,6 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
   );
 }
 
-// Parse "9:42 AM" / "Yesterday" / "3 Nov" into a Date relative to today
 function parseRelativeDate(ts: string): Date | null {
   const now = new Date();
   if (/AM|PM/.test(ts)) return now;
@@ -59,9 +43,9 @@ export default function Analytics() {
   const { data: escalations, isLoading: escLoading } = useEscalations();
   const { data: status } = useStatus();
 
-  const conversations: Conversation[] = useMemo(() => {
+  const conversations = useMemo(() => {
     if (convError || !apiConversations) return MOCK;
-    return apiConversations.map(mapApi);
+    return apiConversations.map(mapApiConversation);
   }, [apiConversations, convError]);
 
   const channelData = useMemo(() => {
@@ -80,26 +64,19 @@ export default function Analytics() {
     [escalations],
   );
 
-  // 14-day activity trend
   const trendData = useMemo(() => {
     const now = new Date();
     const days: { label: string; count: number; date: Date }[] = Array.from({ length: 14 }, (_, i) => {
       const d = new Date(now);
       d.setDate(d.getDate() - (13 - i));
-      return {
-        label: d.toLocaleDateString("en", { weekday: "short" }),
-        count: 0,
-        date: d,
-      };
+      return { label: d.toLocaleDateString("en", { weekday: "short" }), count: 0, date: d };
     });
-
     conversations.forEach((c) => {
       const date = parseRelativeDate(c.timestamp);
       if (!date) return;
       const dayIdx = days.findIndex((d) => d.date.toDateString() === date.toDateString());
       if (dayIdx >= 0) days[dayIdx].count++;
     });
-
     return days.map((d) => ({ label: d.label, count: d.count }));
   }, [conversations]);
 
@@ -114,28 +91,13 @@ export default function Analytics() {
       }
     >
       <div className="px-4 py-5 max-w-4xl space-y-8">
-
-        {/* Stat cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard label="Conversations" value={conversations.length} sub="total" />
-          <StatCard
-            label="Open escalations"
-            value={status?.openEscalations ?? openEscalations}
-            sub="pending review"
-          />
-          <StatCard
-            label="Resolved"
-            value={resolvedEscalations}
-            sub="escalations closed"
-          />
-          <StatCard
-            label="Orders detected"
-            value="—"
-            sub="TODO: paid-order endpoint"
-          />
+          <StatCard label="Open escalations" value={status?.openEscalations ?? openEscalations} sub="pending review" />
+          <StatCard label="Resolved" value={resolvedEscalations} sub="escalations closed" />
+          <StatCard label="Orders detected" value="—" sub="TODO: paid-order endpoint" />
         </div>
 
-        {/* Channel breakdown */}
         <div>
           <h3 className="text-[13px] font-medium text-[#5f6368] uppercase tracking-wider mb-3">Messages by channel</h3>
           {channelData.length > 0 ? (
@@ -143,10 +105,7 @@ export default function Analytics() {
               <BarChart data={channelData.map(([ch, count]) => ({ channel: ch, count }))} barCategoryGap="30%">
                 <XAxis dataKey="channel" tick={{ fontSize: 12, fill: "#5f6368" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 12, fill: "#5f6368" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{ border: "1px solid #e8eaed", borderRadius: 8, fontSize: 13 }}
-                  cursor={{ fill: "#f6f8fc" }}
-                />
+                <Tooltip contentStyle={{ border: "1px solid #e8eaed", borderRadius: 8, fontSize: 13 }} cursor={{ fill: "#f6f8fc" }} />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                   {channelData.map(([ch]) => (
                     <Cell key={ch} fill={CHANNEL_COLORS[ch] ?? "#1a73e8"} />
@@ -159,23 +118,18 @@ export default function Analytics() {
           )}
         </div>
 
-        {/* 14-day activity trend */}
         <div>
           <h3 className="text-[13px] font-medium text-[#5f6368] uppercase tracking-wider mb-3">14-day activity</h3>
           <ResponsiveContainer width="100%" height={160}>
             <BarChart data={trendData} barCategoryGap="20%">
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#9aa0a6" }} axisLine={false} tickLine={false} />
               <YAxis hide allowDecimals={false} />
-              <Tooltip
-                contentStyle={{ border: "1px solid #e8eaed", borderRadius: 8, fontSize: 13 }}
-                cursor={{ fill: "#f6f8fc" }}
-              />
+              <Tooltip contentStyle={{ border: "1px solid #e8eaed", borderRadius: 8, fontSize: 13 }} cursor={{ fill: "#f6f8fc" }} />
               <Bar dataKey="count" fill="#1a73e8" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Status info */}
         {status && (
           <div className="bg-[#f6f8fc] rounded-xl p-4">
             <p className="text-[12px] font-medium text-[#5f6368] uppercase tracking-wider mb-2">System Status</p>
@@ -186,7 +140,6 @@ export default function Analytics() {
             </div>
           </div>
         )}
-
       </div>
     </DashboardShell>
   );

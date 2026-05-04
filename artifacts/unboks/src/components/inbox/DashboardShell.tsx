@@ -3,29 +3,11 @@ import { useLocation } from "wouter";
 import { Header } from "@/components/inbox/Header";
 import { Drawer, NavId } from "@/components/inbox/Drawer";
 import { BottomNav } from "@/components/inbox/BottomNav";
-import { conversations as MOCK } from "@/data/conversations";
 import type { Channel, Conversation } from "@/data/conversations";
 import { useConversations, useEscalations } from "@/hooks/use-client-api";
-import { platformToChannel } from "@/lib/channel-map";
-import type { ApiConversation } from "@/lib/api";
+import { mapApiConversation } from "@/lib/conversation-mapper";
+import { conversations as MOCK } from "@/data/conversations";
 import { useAuth } from "@/components/auth/useAuth";
-
-function mapApiConversation(c: ApiConversation): Conversation {
-  const parts = c.lastMessage?.split("\n") ?? [];
-  const subject = parts[0]?.slice(0, 80) || "New message";
-  const preview = parts.slice(1).join(" ").trim() || c.lastMessage || "";
-  return {
-    id: c.phone || "unknown",
-    channel: platformToChannel(c.platform),
-    sender: c.name || c.phone || "Unknown",
-    subject,
-    preview,
-    timestamp: c.timestamp || "",
-    unread: c.unread ?? false,
-    escalated: c.escalated ?? false,
-    hasAttachment: c.hasAttachment ?? false,
-  };
-}
 
 const PAGE_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
@@ -70,7 +52,7 @@ export function DashboardShell({
     const counts: Record<Channel, number> = {
       All: allConversations.length,
       WhatsApp: 0, Email: 0, Instagram: 0, Facebook: 0,
-      X: 0, TikTok: 0, Messenger: 0,
+      X: 0, TikTok: 0, Messenger: 0, Unknown: 0,
     };
     allConversations.forEach((c) => { counts[c.channel] = (counts[c.channel] || 0) + 1; });
     return counts;

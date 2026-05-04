@@ -27,6 +27,28 @@ export interface ApiConversation {
   platform: string;
   hasAttachment?: boolean;
   escalated?: boolean;
+  // Alternative field names that different API shapes may return
+  _id?: string;
+  customerName?: string;
+  senderName?: string;
+  contactName?: string;
+  profileName?: string;
+  email?: string;
+  from?: string;
+  latestMessage?: string;
+  last_message?: string;
+  preview?: string;
+  snippet?: string;
+  body?: string;
+  text?: string;
+  messages?: Array<{
+    id?: string;
+    role?: string;
+    content?: string;
+    text?: string;
+    body?: string;
+    timestamp?: string;
+  }>;
 }
 
 export interface ApiMessage {

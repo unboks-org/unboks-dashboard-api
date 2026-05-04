@@ -1,4 +1,4 @@
-export type Channel = "All" | "Email" | "WhatsApp" | "Instagram" | "Facebook" | "X" | "TikTok" | "Messenger";
+export type Channel = "All" | "Email" | "WhatsApp" | "Instagram" | "Facebook" | "X" | "TikTok" | "Messenger" | "Unknown";
 
 export interface Conversation {
   id: string;
