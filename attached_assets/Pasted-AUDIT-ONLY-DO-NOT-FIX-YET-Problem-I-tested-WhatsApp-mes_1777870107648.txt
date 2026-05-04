@@ -1,0 +1,93 @@
+AUDIT ONLY. DO NOT FIX YET.
+
+Problem:
+I tested WhatsApp messages, but the customer dashboard shows no WhatsApp conversations. The dashboard currently shows 2 Email conversations only.
+
+I need to know exactly why WhatsApp messages are not appearing.
+
+Do not redesign.
+Do not change code.
+Do not change backend.
+Audit only.
+
+Check the full WhatsApp message path:
+
+1. Frontend dashboard
+- Which endpoint does /dashboard use to fetch conversations?
+- Does the API response include any WhatsApp conversations?
+- What platform/channel values are returned?
+- Are WhatsApp conversations filtered out or misclassified?
+
+2. Backend/API
+Inspect the conversations endpoint:
+GET /{client}/dashboard/api/messages/conversations
+
+Report:
+- Does this endpoint query WhatsApp messages?
+- Does it query all channels or only email?
+- What database/table/collection does it read from?
+- Does it include Zernio/Meta messages?
+- Does it filter by platform/channel?
+
+3. Zernio/Meta ingestion
+Find where WhatsApp webhook/events enter the system.
+
+Report:
+- Is there a WhatsApp webhook route?
+- Is there a Zernio webhook route?
+- Is incoming WhatsApp data saved anywhere?
+- Is it transformed into a conversation record?
+- Is it linked to the same client/workspace used by the dashboard?
+- Are there logs showing incoming WhatsApp events?
+
+4. Client/workspace check
+Current dashboard client is based on localStorage["wtyj_client"], defaulting to "unboks".
+
+Confirm:
+- Which client/workspace is currently selected?
+- Are WhatsApp messages being stored under this same client?
+- Could WhatsApp messages be under "bluemarlin", "adamus", or another workspace?
+- Is the dashboard looking at the wrong client?
+
+5. WhatsApp account check
+Report:
+- Which WhatsApp number/account is connected, if any?
+- Is it connected through Meta, WhatsApp Business API, or Zernio?
+- Is the tested number the same number connected to the backend?
+- Are incoming WhatsApp test messages visible in Zernio or Meta logs?
+
+6. Channel mapping check
+Search channel normalization code.
+
+Report:
+- Which raw platform values map to WhatsApp?
+- What happens to unknown platform values?
+- Are unknown WhatsApp values mapped to Email by mistake?
+
+7. Blunt diagnosis
+Tell me exactly which is true:
+
+A. WhatsApp is not connected at all.
+B. WhatsApp is connected to Zernio/Meta but not reaching Unboks backend.
+C. WhatsApp reaches backend but is not saved as conversations.
+D. WhatsApp is saved but under the wrong client/workspace.
+E. WhatsApp is saved but frontend filters/misclassifies it.
+F. WhatsApp is working, but I tested the wrong number/account.
+
+8. Evidence
+For the diagnosis, include:
+- exact file paths
+- endpoint names
+- database/query logic
+- logs if available
+- raw sample response shape if available
+
+9. Recommended fix plan
+Do not implement.
+Give the exact next steps to make WhatsApp messages appear in the dashboard.
+
+Final output:
+- Is WhatsApp connected, yes/no/unknown?
+- Where does the pipeline break?
+- Is this frontend or backend?
+- What must be fixed next?
