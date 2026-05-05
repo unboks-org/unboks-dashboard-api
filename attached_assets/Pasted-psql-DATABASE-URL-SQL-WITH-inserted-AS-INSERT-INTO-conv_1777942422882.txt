@@ -1,0 +1,55 @@
+psql "$DATABASE_URL" <<'SQL'
+WITH inserted AS (
+  INSERT INTO conversations
+    (client_slug, external_id, platform, contact_id, contact_name, last_message, last_message_at, unread, escalated, escalation_resolved)
+  VALUES
+    ('unboks','test-wa-roberto','whatsapp','+34600111222','Roberto García','Hi, I keep getting the same question about appointment prices. Can the AI answer this automatically?', NOW() - INTERVAL '8 minutes', true, false, false),
+    ('unboks','test-email-ana','email','ana@consultadespertares.es','Ana López','A client wants to reschedule tomorrow’s consultation to next week. Can you help check availability?', NOW() - INTERVAL '27 minutes', true, true, false),
+    ('unboks','test-ig-marc','instagram','@marcwellness','Marc Vermeer','Do you reply to Instagram DMs as well, or only WhatsApp and email?', NOW() - INTERVAL '1 hour', false, false, false),
+    ('unboks','test-fb-lucia','facebook','lucia.fb','Lucía Torres','The AI is not sure whether to offer the discount. It needs human approval before replying.', NOW() - INTERVAL '2 hours', true, true, false),
+    ('unboks','test-msg-david','messenger','david.msg','David Smith','I want to book the starter package for my restaurant. What is the next step?', NOW() - INTERVAL '3 hours', false, false, false),
+    ('unboks','test-wa-sophie','whatsapp','+59996880001','Sophie Martina','Can you confirm my onboarding call for today at 15:00?', NOW() - INTERVAL '4 hours', true, false, false),
+    ('unboks','test-email-nina','email','nina@boutique.example','Nina de Vries','We received a complaint and the customer is angry. Please escalate this to a human.', NOW() - INTERVAL '5 hours', true, true, false),
+    ('unboks','test-wa-carlos','whatsapp','+59996880002','Carlos Mendes','Can the system handle bookings, opening hours, and price questions for our tour company?', NOW() - INTERVAL '6 hours', false, false, false)
+  RETURNING id, external_id
+),
+msg AS (
+  INSERT INTO messages (conversation_id, external_id, role, content, created_at)
+  SELECT id, external_id || '-m1', 'user',
+    CASE external_id
+      WHEN 'test-wa-roberto' THEN 'We get the same price questions every day.'
+      WHEN 'test-email-ana' THEN 'A client wants to reschedule tomorrow’s consultation.'
+      WHEN 'test-ig-marc' THEN 'I saw your website. Can you also answer Instagram DMs?'
+      WHEN 'test-fb-lucia' THEN 'Can I still use the Valentine discount this week?'
+      WHEN 'test-msg-david' THEN 'I want to book the starter package for my restaurant.'
+      WHEN 'test-wa-sophie' THEN 'Can you confirm my onboarding call for today?'
+      WHEN 'test-email-nina' THEN 'The customer is angry and wants a human.'
+      WHEN 'test-wa-carlos' THEN 'Can this handle bookings and price questions?'
+    END,
+    NOW() - INTERVAL '15 minutes'
+  FROM inserted
+),
+msg2 AS (
+  INSERT INTO messages (conversation_id, external_id, role, content, created_at)
+  SELECT id, external_id || '-m2', 'assistant',
+    CASE external_id
+      WHEN 'test-wa-roberto' THEN 'Yes. If those answers are added to Your Info, I can answer them automatically and escalate only when needed.'
+      WHEN 'test-email-ana' THEN 'I can help prepare the response, but I am escalating this because it involves calendar availability.'
+      WHEN 'test-ig-marc' THEN 'Yes. UNBOKS can support Instagram, WhatsApp, email, Facebook, Messenger, and more.'
+      WHEN 'test-fb-lucia' THEN 'I need approval before offering a discount that is not listed in Your Info.'
+      WHEN 'test-msg-david' THEN 'Great. I can collect your details and ask the team to start onboarding.'
+      WHEN 'test-wa-sophie' THEN 'Your onboarding call is planned for today at 15:00. I will notify the team.'
+      WHEN 'test-email-nina' THEN 'I am escalating this to a human because the customer is upset.'
+      WHEN 'test-wa-carlos' THEN 'Yes. The system can answer bookings, opening hours, pricing, and common service questions when they are added to Your Info.'
+    END,
+    NOW() - INTERVAL '10 minutes'
+  FROM inserted
+),
+msg3 AS (
+  INSERT INTO messages (conversation_id, external_id, role, content, created_at)
+  SELECT id, external_id || '-m3', 'user', last_message, last_message_at
+  FROM conversations
+  WHERE external_id LIKE 'test-%'
+)
+SELECT 'inserted clean UNBOKS test data' AS result;
+SQL
