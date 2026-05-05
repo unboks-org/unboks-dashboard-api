@@ -39,6 +39,8 @@ export async function runMigrations(): Promise<void> {
       ADD COLUMN IF NOT EXISTS human_guidance           TEXT,
       ADD COLUMN IF NOT EXISTS human_responder          TEXT,
       ADD COLUMN IF NOT EXISTS human_responded_at       TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS human_takeover_at        TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS ai_muted                 BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS learn_from_resolution    BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS ai_may_use_automatically BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS learning_status          TEXT    NOT NULL DEFAULT 'none';

@@ -19,9 +19,7 @@ import {
   AlertCircle,
   AlertTriangle,
   Sparkles,
-  Reply as ReplyIcon,
-  Copy as CopyIcon,
-  ExternalLink,
+  VolumeX,
 } from "lucide-react";
 import type { ApiMessage, ConversationDetail } from "@/lib/api";
 
@@ -88,100 +86,6 @@ function AiRewriteButton({ disabled }: { disabled: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
-// Hard escalation reply helpers — open external channel, no outbound API.
-// ---------------------------------------------------------------------------
-
-function buildReplyDeepLink(
-  channel: Channel,
-  contact: string | null | undefined,
-  draft: string,
-): string | null {
-  const safeDraft = draft ? encodeURIComponent(draft) : "";
-  if (!contact) return null;
-  const trimmed = contact.trim();
-  if (!trimmed) return null;
-  if (channel === "Email") {
-    if (!/.+@.+\..+/.test(trimmed)) return null;
-    const subject = encodeURIComponent("Re: your message");
-    return `mailto:${encodeURIComponent(trimmed)}?subject=${subject}${safeDraft ? `&body=${safeDraft}` : ""}`;
-  }
-  if (channel === "WhatsApp") {
-    const digits = trimmed.replace(/[^\d]/g, "");
-    if (!digits) return null;
-    return `https://wa.me/${digits}${safeDraft ? `?text=${safeDraft}` : ""}`;
-  }
-  return null;
-}
-
-function ReplyExternalPanel({
-  channel,
-  contact,
-  draft,
-}: {
-  channel: Channel;
-  contact: string | null | undefined;
-  draft: string;
-}) {
-  const link = buildReplyDeepLink(channel, contact, draft);
-  const [copied, setCopied] = useState<"none" | "draft" | "contact">("none");
-
-  const onCopy = async (kind: "draft" | "contact", text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(kind);
-      setTimeout(() => setCopied("none"), 1500);
-    } catch {
-      // ignore
-    }
-  };
-
-  return (
-    <div className="space-y-2 rounded-md bg-[#f8f9fa] border border-[#e8eaed] p-3">
-      <p className="text-[13px] font-medium text-[#202124]">Reply in the connected channel.</p>
-      <div className="flex items-center gap-2 text-[12px] text-[#5f6368]">
-        <span className="font-medium">Customer:</span>
-        <span className="truncate">{contact || "Unknown"}</span>
-        {contact && (
-          <button
-            type="button"
-            onClick={() => onCopy("contact", contact)}
-            className="ml-auto inline-flex items-center gap-1 text-[#1a73e8] hover:underline"
-          >
-            <CopyIcon className="w-3 h-3" />
-            {copied === "contact" ? "Copied" : "Copy"}
-          </button>
-        )}
-      </div>
-      {link ? (
-        <a
-          href={link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#1a73e8] hover:underline"
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-          Open {channel}
-        </a>
-      ) : (
-        <p className="text-[12px] text-[#5f6368]">
-          No direct link available — copy the customer contact and reply in {channel}.
-        </p>
-      )}
-      {draft && (
-        <button
-          type="button"
-          onClick={() => onCopy("draft", draft)}
-          className="inline-flex items-center gap-1 text-[12px] text-[#1a73e8] hover:underline"
-        >
-          <CopyIcon className="w-3 h-3" />
-          {copied === "draft" ? "Draft copied" : "Copy draft"}
-        </button>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Escalation banner + action panels
 // ---------------------------------------------------------------------------
 
@@ -221,7 +125,7 @@ function EscalationBanner({ detail }: { detail: ConversationDetail }) {
       <AlertCircle className="w-4 h-4 text-[#5f6368] flex-shrink-0 mt-0.5" />
       <div className="min-w-0">
         <p className="text-[13px] font-semibold text-[#202124]">Escalation</p>
-        <p className="text-[12px] text-[#5f6368]">Choose how you want to handle this.</p>
+        <p className="text-[12px] text-[#5f6368]">This conversation needs attention.</p>
       </div>
     </div>
   );
@@ -325,29 +229,17 @@ function SoftActionPanel({
 
 function HardActionPanel({
   conversationDbId,
-  channel,
-  contact,
+  aiMuted,
   onDone,
 }: {
   conversationDbId: string;
-  channel: Channel;
-  contact: string | null | undefined;
+  aiMuted: boolean;
   onDone: () => void;
 }) {
   const [draft, setDraft] = useState("");
   const [saveAsLearning, setSaveAsLearning] = useState(false);
-  const [showFallback, setShowFallback] = useState(false);
-  const { resolve, setMode } = useEscalationMutations();
+  const { resolve, takeover, handback } = useEscalationMutations();
   const empty = draft.trim().length === 0;
-  const link = buildReplyDeepLink(channel, contact, draft);
-
-  const onReplyClick = () => {
-    if (link) {
-      window.open(link, "_blank", "noopener,noreferrer");
-    } else {
-      setShowFallback(true);
-    }
-  };
 
   const onMarkResolved = () => {
     resolve.mutate(
@@ -364,20 +256,19 @@ function HardActionPanel({
 
   return (
     <div className="border-t border-[#e8eaed] bg-white px-4 py-3 space-y-2.5 flex-shrink-0">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onReplyClick}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-white bg-[#c5221f] rounded-md hover:bg-[#a50e0e]"
-        >
-          <ReplyIcon className="w-3.5 h-3.5" />
-          Reply
-        </button>
-        <span className="text-[11px] text-[#5f6368]">Opens {channel} — replies are sent there, not from the dashboard.</span>
+      {/* Placeholder reply action — Phase 1: records state only, does NOT send. */}
+      <div className="rounded-md bg-[#fce8e6] border border-[#f6c6c2] p-3 space-y-1.5">
+        <p className="text-[13px] font-semibold text-[#c5221f]">Reply</p>
+        <p className="text-[12px] text-[#7a1c1a]">
+          Direct channel reply will be connected by Jr. For now, this records the human takeover state.
+        </p>
       </div>
 
-      {showFallback && (
-        <ReplyExternalPanel channel={channel} contact={contact} draft={draft.trim()} />
+      {aiMuted && (
+        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#f1f3f4] text-[11px] text-[#5f6368]">
+          <VolumeX className="w-3 h-3" />
+          AI is muted on this conversation.
+        </div>
       )}
 
       <p className="text-[11px] text-[#5f6368] pt-1">Resolution note (optional — for your records, not sent to the customer).</p>
@@ -385,7 +276,7 @@ function HardActionPanel({
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Type a resolution note or draft reply"
+          placeholder="Add a resolution note"
           rows={3}
           className="w-full text-[13px] text-[#202124] border border-[#dadce0] rounded-md px-3 py-2 pr-10 outline-none focus:border-[#1a73e8] resize-none"
         />
@@ -409,6 +300,14 @@ function HardActionPanel({
       <div className="flex items-center gap-2 pt-1 flex-wrap">
         <button
           type="button"
+          onClick={() => takeover.mutate({ id: conversationDbId })}
+          disabled={takeover.isPending || aiMuted}
+          className="px-3 py-1.5 text-[13px] font-medium text-white bg-[#c5221f] rounded-md hover:bg-[#a50e0e] disabled:bg-[#dadce0] disabled:cursor-not-allowed"
+        >
+          {takeover.isPending ? "Saving…" : "Take over conversation"}
+        </button>
+        <button
+          type="button"
           onClick={onMarkResolved}
           disabled={resolve.isPending}
           className="px-3 py-1.5 text-[13px] font-medium text-[#202124] bg-white border border-[#dadce0] rounded-md hover:bg-[#f6f8fc]"
@@ -417,8 +316,8 @@ function HardActionPanel({
         </button>
         <button
           type="button"
-          onClick={() => setMode.mutate({ id: conversationDbId, mode: "soft" }, { onSuccess: onDone })}
-          disabled={setMode.isPending}
+          onClick={() => handback.mutate({ id: conversationDbId }, { onSuccess: onDone })}
+          disabled={handback.isPending}
           className="ml-auto text-[12px] text-[#1a73e8] hover:underline"
         >
           Hand back to AI
@@ -559,8 +458,7 @@ function ConversationDetailPane({ conversation, onClose }: ConversationDetailPan
       {showBanner && dbId && mode === "hard" && (
         <HardActionPanel
           conversationDbId={dbId}
-          channel={conversation.channel}
-          contact={detail?.contactId ?? conversation.id}
+          aiMuted={detail?.aiMuted ?? false}
           onDone={onClose}
         />
       )}

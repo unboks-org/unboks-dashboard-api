@@ -59,10 +59,11 @@ router.get("/:client/dashboard/api/messages/conversations", requireAuth, async (
       escalation_mode: string | null;
       escalation_summary: string | null;
       learning_status: string;
+      ai_muted: boolean;
     }>(
       `SELECT external_id, contact_name, contact_id, last_message, last_message_at,
               unread, platform, escalated,
-              escalation_mode, escalation_summary, learning_status
+              escalation_mode, escalation_summary, learning_status, ai_muted
          FROM conversations
         WHERE client_slug = $1
         ORDER BY COALESCE(last_message_at, created_at) DESC`,
@@ -77,9 +78,10 @@ router.get("/:client/dashboard/api/messages/conversations", requireAuth, async (
       unread: row.unread,
       platform: row.platform,
       escalated: row.escalated,
-      escalationMode: row.escalation_mode,
+      escalationMode: normalizeMode(row.escalation_mode),
       escalationSummary: row.escalation_summary,
       learningStatus: row.learning_status,
+      aiMuted: row.ai_muted,
       hasAttachment: false,
     }));
 
@@ -113,12 +115,15 @@ router.get("/:client/dashboard/api/messages/conversations/:id", requireAuth, asy
       human_guidance: string | null;
       human_responder: string | null;
       human_responded_at: Date | null;
+      human_takeover_at: Date | null;
+      ai_muted: boolean;
       learning_status: string;
     }>(
       `SELECT id, external_id, contact_name, contact_id, platform,
               escalated, escalation_resolved,
               escalation_mode, escalation_reason, escalation_summary,
               human_guidance, human_responder, human_responded_at,
+              human_takeover_at, ai_muted,
               learning_status
          FROM conversations
         WHERE client_slug = $1 AND external_id = $2
@@ -153,12 +158,14 @@ router.get("/:client/dashboard/api/messages/conversations/:id", requireAuth, asy
       platform: conv.platform,
       escalated: conv.escalated,
       escalationResolved: conv.escalation_resolved,
-      escalationMode: conv.escalation_mode,
+      escalationMode: normalizeMode(conv.escalation_mode),
       escalationReason: conv.escalation_reason,
       escalationSummary: conv.escalation_summary,
       humanGuidance: conv.human_guidance,
       humanResponder: conv.human_responder,
       humanRespondedAt: conv.human_responded_at?.toISOString() ?? null,
+      humanTakeoverAt: conv.human_takeover_at?.toISOString() ?? null,
+      aiMuted: conv.ai_muted,
       learningStatus: conv.learning_status,
       messages: msgResult.rows.map((m: any) => ({
         id: m.id,
@@ -223,13 +230,19 @@ router.get("/:client/dashboard/api/escalations", requireAuth, async (req, res) =
       escalation_reason: string | null;
       escalation_summary: string | null;
       learning_status: string;
+      ai_muted: boolean;
     }>(
       `SELECT id, external_id, contact_name, contact_id, last_message,
               platform, created_at, escalation_resolved,
-              escalation_mode, escalation_reason, escalation_summary, learning_status
+              escalation_mode, escalation_reason, escalation_summary, learning_status,
+              ai_muted
          FROM conversations
         WHERE client_slug = $1 AND escalated = true
-          AND ($2::text IS NULL OR escalation_mode = $2::text)
+          AND (
+            $2::text IS NULL
+            OR ($2::text = 'soft' AND escalation_mode IN ('soft','ai_help'))
+            OR ($2::text = 'hard' AND escalation_mode IN ('hard','human_takeover'))
+          )
         ORDER BY created_at DESC`,
       [client, filterMode],
     );
@@ -242,10 +255,11 @@ router.get("/:client/dashboard/api/escalations", requireAuth, async (req, res) =
       createdAt: row.created_at.toISOString(),
       resolved: row.escalation_resolved,
       phone: row.external_id,
-      mode: row.escalation_mode,
+      mode: normalizeMode(row.escalation_mode),
       reason: row.escalation_reason,
       summary: row.escalation_summary,
       learningStatus: row.learning_status,
+      aiMuted: row.ai_muted,
     }));
 
     res.json(escalations);
@@ -365,6 +379,8 @@ router.post("/:client/dashboard/api/escalations/:id/takeover", requireAuth, asyn
       `UPDATE conversations
           SET escalation_mode       = 'hard',
               escalation_created_at = COALESCE(escalation_created_at, NOW()),
+              human_takeover_at     = COALESCE(human_takeover_at, NOW()),
+              ai_muted              = true,
               human_responder       = $3,
               human_responded_at    = NOW(),
               human_guidance        = COALESCE($4, human_guidance),
@@ -401,6 +417,15 @@ router.post("/:client/dashboard/api/escalations/:id/mode", requireAuth, async (r
       `UPDATE conversations
           SET escalation_mode       = $3,
               escalation_created_at = COALESCE(escalation_created_at, NOW()),
+              human_takeover_at     = CASE
+                WHEN $3 = 'hard' THEN COALESCE(human_takeover_at, NOW())
+                ELSE human_takeover_at
+              END,
+              ai_muted              = CASE
+                WHEN $3 = 'hard' THEN true
+                WHEN $3 = 'soft' THEN false
+                ELSE ai_muted
+              END,
               updated_at            = NOW()
         WHERE client_slug = $1 AND id = $2`,
       [client, id, mode],
@@ -412,6 +437,33 @@ router.post("/:client/dashboard/api/escalations/:id/mode", requireAuth, async (r
     res.json({ ok: true, mode });
   } catch (err) {
     req.log.error({ err, client, id }, "Failed to set mode");
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/:client/dashboard/api/escalations/:id/handback
+// Hand a hard escalation back to AI: set mode='soft', unmute AI. Does NOT resolve.
+// ---------------------------------------------------------------------------
+
+router.post("/:client/dashboard/api/escalations/:id/handback", requireAuth, async (req, res) => {
+  const { client, id } = req.params;
+  try {
+    const r = await pool.query(
+      `UPDATE conversations
+          SET escalation_mode = 'soft',
+              ai_muted        = false,
+              updated_at      = NOW()
+        WHERE client_slug = $1 AND id = $2`,
+      [client, id],
+    );
+    if (r.rowCount === 0) {
+      res.status(404).json({ error: "Escalation not found" });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err, client, id }, "Failed to hand back");
     res.status(500).json({ error: "Database error" });
   }
 });

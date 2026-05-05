@@ -111,6 +111,12 @@ router.post("/:client/webhooks/zernio", async (req, res) => {
   // If a mode was explicitly supplied (without any boolean flag), treat it as escalation.
   const escalateFinal = shouldEscalate || escalationMode !== null;
 
+  // ai_muted only when escalation is *explicitly* hard or handoff_required.
+  // Default-soft from requires_human MUST NOT mute the AI.
+  const aiMutedFlag =
+    m === "hard" || m === "human_takeover" ||
+    data["handoff_required"] === true || data["handoffRequired"] === true;
+
   const trimmedOrNull = (v: unknown): string | null => {
     if (typeof v !== "string") return null;
     const t = v.trim();
@@ -138,10 +144,13 @@ router.post("/:client/webhooks/zernio", async (req, res) => {
          (client_slug, external_id, platform, contact_id, contact_name,
           last_message, last_message_at, unread, escalated,
           escalation_mode, escalation_reason, escalation_summary, escalation_created_at,
+          ai_muted, human_takeover_at,
           updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
                $10, $11, $12,
                CASE WHEN $9 THEN NOW() ELSE NULL END,
+               $13,
+               CASE WHEN $13 THEN NOW() ELSE NULL END,
                NOW())
        ON CONFLICT ON CONSTRAINT conversations_client_external_unique DO UPDATE
          SET last_message     = EXCLUDED.last_message,
@@ -161,6 +170,12 @@ router.post("/:client/webhooks/zernio", async (req, res) => {
                conversations.escalation_created_at,
                CASE WHEN $9 THEN NOW() ELSE NULL END
              ),
+             -- ai_muted is monotonic: once true, stays true (operator must use /handback to unmute).
+             ai_muted              = CASE WHEN $13 THEN true ELSE conversations.ai_muted END,
+             human_takeover_at     = COALESCE(
+               conversations.human_takeover_at,
+               CASE WHEN $13 THEN NOW() ELSE NULL END
+             ),
              updated_at            = NOW()
        RETURNING id`,
       [
@@ -176,6 +191,7 @@ router.post("/:client/webhooks/zernio", async (req, res) => {
         escalationMode,
         escalationReason,
         escalationSummary,
+        aiMutedFlag,
       ],
     );
     conversationId = upsertResult.rows[0]?.id ?? null;

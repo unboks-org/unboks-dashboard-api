@@ -11,6 +11,7 @@ import {
   submitGuidance,
   takeoverEscalation,
   setEscalationMode,
+  handbackEscalation,
   fetchLearningEntries,
   approveLearning,
   saveLearning,
@@ -104,8 +105,12 @@ export function useEscalationMutations() {
       setEscalationMode(id, mode),
     onSuccess: invalidate,
   });
+  const handback = useMutation({
+    mutationFn: ({ id }: { id: string }) => handbackEscalation(id),
+    onSuccess: invalidate,
+  });
 
-  return { resolve, remove, reply, guidance, takeover, setMode };
+  return { resolve, remove, reply, guidance, takeover, setMode, handback };
 }
 
 // ------ Learning entries ------

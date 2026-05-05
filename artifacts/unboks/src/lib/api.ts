@@ -33,6 +33,7 @@ export interface ApiConversation {
   escalationMode?: EscalationMode;
   escalationSummary?: string | null;
   learningStatus?: LearningStatus;
+  aiMuted?: boolean;
   // Alternative field names that different API shapes may return
   _id?: string;
   customerName?: string;
@@ -78,6 +79,8 @@ export interface ConversationDetail {
   humanGuidance?: string | null;
   humanResponder?: string | null;
   humanRespondedAt?: string | null;
+  humanTakeoverAt?: string | null;
+  aiMuted?: boolean;
   learningStatus?: LearningStatus;
 }
 
@@ -93,6 +96,7 @@ export interface Escalation {
   reason?: string | null;
   summary?: string | null;
   learningStatus?: LearningStatus;
+  aiMuted?: boolean;
 }
 
 export interface GuidancePayload {
@@ -325,6 +329,10 @@ export async function setEscalationMode(
     method: "POST",
     body: JSON.stringify({ mode }),
   });
+}
+
+export async function handbackEscalation(id: string): Promise<void> {
+  return apiFetch<void>(`/escalations/${id}/handback`, { method: "POST" });
 }
 
 // ---------------------------------------------------------------------------
