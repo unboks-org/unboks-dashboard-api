@@ -217,7 +217,7 @@ export default function Bookings() {
           <DetailPanel
             order={selected}
             onClose={() => setSelectedId(null)}
-            onResolve={() => resolve.mutate(selected.id, { onSuccess: () => setSelectedId(null) })}
+            onResolve={() => resolve.mutate({ id: selected.id }, { onSuccess: () => setSelectedId(null) })}
             resolving={resolve.isPending}
           />
         )}

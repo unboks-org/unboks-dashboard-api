@@ -86,6 +86,43 @@ router.post("/:client/webhooks/zernio", async (req, res) => {
     event["requires_human"] === true ||
     event["requiresHuman"] === true;
 
+  // --- Normalize escalation mode (soft / hard / null) ---
+  const rawMode =
+    data["escalation_mode"] ?? data["escalationMode"] ??
+    data["escalation_type"] ?? data["escalationType"] ??
+    data["handoff_type"]    ?? data["handoffType"] ??
+    event["escalation_mode"] ?? event["escalationMode"];
+
+  let escalationMode: "soft" | "hard" | null = null;
+  const m = String(rawMode ?? "").toLowerCase();
+  if (m === "soft" || m === "ai_help") escalationMode = "soft";
+  else if (m === "hard" || m === "human_takeover") escalationMode = "hard";
+
+  // Defaulting when only boolean flags are present:
+  if (escalationMode === null && shouldEscalate) {
+    if (data["handoff_required"] === true || data["handoffRequired"] === true) {
+      escalationMode = "hard";
+    } else {
+      // requires_human / escalated / escalation → soft (per v1 spec)
+      escalationMode = "soft";
+    }
+  }
+
+  // If a mode was explicitly supplied (without any boolean flag), treat it as escalation.
+  const escalateFinal = shouldEscalate || escalationMode !== null;
+
+  const trimmedOrNull = (v: unknown): string | null => {
+    if (typeof v !== "string") return null;
+    const t = v.trim();
+    return t.length > 0 ? t : null;
+  };
+  const escalationReason = trimmedOrNull(
+    data["escalation_reason"] ?? data["escalationReason"],
+  );
+  const escalationSummary = trimmedOrNull(
+    data["escalation_summary"] ?? data["escalationSummary"],
+  );
+
   let messageTimestamp = new Date();
   const rawTs = data["timestamp"] ?? data["created_at"] ?? data["createdAt"];
   if (rawTs) {
@@ -99,15 +136,32 @@ router.post("/:client/webhooks/zernio", async (req, res) => {
     const upsertResult = await pool.query<{ id: string }>(
       `INSERT INTO conversations
          (client_slug, external_id, platform, contact_id, contact_name,
-          last_message, last_message_at, unread, escalated, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+          last_message, last_message_at, unread, escalated,
+          escalation_mode, escalation_reason, escalation_summary, escalation_created_at,
+          updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
+               $10, $11, $12,
+               CASE WHEN $9 THEN NOW() ELSE NULL END,
+               NOW())
        ON CONFLICT ON CONSTRAINT conversations_client_external_unique DO UPDATE
          SET last_message     = EXCLUDED.last_message,
              last_message_at  = EXCLUDED.last_message_at,
              contact_name     = COALESCE(EXCLUDED.contact_name, conversations.contact_name),
              unread           = CASE WHEN $8 THEN true ELSE conversations.unread END,
              escalated        = CASE WHEN $9 THEN true ELSE conversations.escalated END,
-             updated_at       = NOW()
+             -- Monotonic mode: hard wins; soft only sets when prior mode is not hard.
+             escalation_mode  = CASE
+               WHEN $10::text = 'hard' THEN 'hard'
+               WHEN $10::text = 'soft' AND conversations.escalation_mode IS DISTINCT FROM 'hard' THEN 'soft'
+               ELSE conversations.escalation_mode
+             END,
+             escalation_reason     = COALESCE($11, conversations.escalation_reason),
+             escalation_summary    = COALESCE($12, conversations.escalation_summary),
+             escalation_created_at = COALESCE(
+               conversations.escalation_created_at,
+               CASE WHEN $9 THEN NOW() ELSE NULL END
+             ),
+             updated_at            = NOW()
        RETURNING id`,
       [
         client,
@@ -118,7 +172,10 @@ router.post("/:client/webhooks/zernio", async (req, res) => {
         messageText || null,
         messageTimestamp,
         direction === "inbound",
-        shouldEscalate,
+        escalateFinal,
+        escalationMode,
+        escalationReason,
+        escalationSummary,
       ],
     );
     conversationId = upsertResult.rows[0]?.id ?? null;

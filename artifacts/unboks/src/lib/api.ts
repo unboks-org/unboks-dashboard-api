@@ -18,6 +18,9 @@ export type ValidClient = (typeof VALID_CLIENTS)[number];
 // Types
 // ---------------------------------------------------------------------------
 
+export type EscalationMode = "soft" | "hard" | null;
+export type LearningStatus = "none" | "suggested" | "approved" | "saved";
+
 export interface ApiConversation {
   phone: string;
   name: string;
@@ -27,6 +30,9 @@ export interface ApiConversation {
   platform: string;
   hasAttachment?: boolean;
   escalated?: boolean;
+  escalationMode?: EscalationMode;
+  escalationSummary?: string | null;
+  learningStatus?: LearningStatus;
   // Alternative field names that different API shapes may return
   _id?: string;
   customerName?: string;
@@ -61,8 +67,18 @@ export interface ApiMessage {
 export interface ConversationDetail {
   phone: string;
   name: string;
+  contactId?: string | null;
   platform: string;
   messages: ApiMessage[];
+  escalated?: boolean;
+  escalationResolved?: boolean;
+  escalationMode?: EscalationMode;
+  escalationReason?: string | null;
+  escalationSummary?: string | null;
+  humanGuidance?: string | null;
+  humanResponder?: string | null;
+  humanRespondedAt?: string | null;
+  learningStatus?: LearningStatus;
 }
 
 export interface Escalation {
@@ -73,6 +89,38 @@ export interface Escalation {
   createdAt: string;
   resolved: boolean;
   phone?: string;
+  mode?: EscalationMode;
+  reason?: string | null;
+  summary?: string | null;
+  learningStatus?: LearningStatus;
+}
+
+export interface GuidancePayload {
+  guidance: string;
+  saveToYourInfo?: boolean;
+  autoUseNextTime?: boolean;
+  category?: string;
+}
+
+export interface ResolvePayload {
+  resolutionNote?: string;
+  saveAsLearning?: boolean;
+  autoUseNextTime?: boolean;
+  category?: string;
+}
+
+export interface LearningEntry {
+  id: string;
+  conversationId: string | null;
+  sourceQuestion: string;
+  aiUncertainty: string | null;
+  humanAnswer: string;
+  category: string | null;
+  aiMayUseAutomatically: boolean;
+  status: LearningStatus;
+  createdBy: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
 }
 
 export interface AvailabilitySlot {
@@ -226,12 +274,19 @@ export async function suggestReply(phone: string): Promise<{ suggestion: string 
 // Escalations
 // ---------------------------------------------------------------------------
 
-export async function fetchEscalations(): Promise<Escalation[]> {
-  return apiFetch<Escalation[]>("/escalations");
+export async function fetchEscalations(mode?: "soft" | "hard" | "all"): Promise<Escalation[]> {
+  const qs = mode && mode !== "all" ? `?mode=${mode}` : "";
+  return apiFetch<Escalation[]>(`/escalations${qs}`);
 }
 
-export async function resolveEscalation(id: string): Promise<void> {
-  return apiFetch<void>(`/escalations/${id}/resolve`, { method: "POST" });
+export async function resolveEscalation(
+  id: string,
+  payload?: ResolvePayload,
+): Promise<{ ok: boolean; learningEntryId?: string | null }> {
+  return apiFetch(`/escalations/${id}/resolve`, {
+    method: "POST",
+    body: JSON.stringify(payload ?? {}),
+  });
 }
 
 export async function replyEscalation(id: string, message: string): Promise<void> {
@@ -243,6 +298,54 @@ export async function replyEscalation(id: string, message: string): Promise<void
 
 export async function deleteEscalation(id: string): Promise<void> {
   return apiFetch<void>(`/escalations/${id}`, { method: "DELETE" });
+}
+
+export async function submitGuidance(
+  id: string,
+  payload: GuidancePayload,
+): Promise<{ ok: boolean; learningEntryId?: string | null }> {
+  return apiFetch(`/escalations/${id}/guidance`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function takeoverEscalation(id: string, note?: string): Promise<void> {
+  return apiFetch<void>(`/escalations/${id}/takeover`, {
+    method: "POST",
+    body: JSON.stringify({ note }),
+  });
+}
+
+export async function setEscalationMode(
+  id: string,
+  mode: "soft" | "hard",
+): Promise<void> {
+  return apiFetch<void>(`/escalations/${id}/mode`, {
+    method: "POST",
+    body: JSON.stringify({ mode }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Learning entries
+// ---------------------------------------------------------------------------
+
+export async function fetchLearningEntries(status?: string): Promise<LearningEntry[]> {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+  return apiFetch<LearningEntry[]>(`/learning${qs}`);
+}
+
+export async function approveLearning(id: string): Promise<void> {
+  return apiFetch<void>(`/learning/${id}/approve`, { method: "POST" });
+}
+
+export async function saveLearning(id: string): Promise<void> {
+  return apiFetch<void>(`/learning/${id}/save`, { method: "POST" });
+}
+
+export async function deleteLearning(id: string): Promise<void> {
+  return apiFetch<void>(`/learning/${id}`, { method: "DELETE" });
 }
 
 // ---------------------------------------------------------------------------

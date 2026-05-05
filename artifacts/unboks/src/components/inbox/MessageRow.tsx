@@ -56,14 +56,34 @@ export function MessageRow({ conversation, isSelected = false, onSelect }: Messa
           >
             {conversation.sender}
           </span>
-          <span
-            className={cn(
-              "text-[12px] flex-shrink-0",
-              conversation.unread ? "text-[#202124] font-medium" : "text-[#5f6368]"
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {conversation.escalated && (
+              <span
+                className={cn(
+                  "text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap",
+                  conversation.escalationMode === "soft"
+                    ? "bg-[#fef7e0] text-[#a06800]"
+                    : conversation.escalationMode === "hard"
+                    ? "bg-[#fce8e6] text-[#c5221f]"
+                    : "bg-[#f1f3f4] text-[#5f6368]",
+                )}
+              >
+                {conversation.escalationMode === "soft"
+                  ? "AI needs help"
+                  : conversation.escalationMode === "hard"
+                  ? "Human takeover"
+                  : "Escalation"}
+              </span>
             )}
-          >
-            {conversation.timestamp}
-          </span>
+            <span
+              className={cn(
+                "text-[12px]",
+                conversation.unread ? "text-[#202124] font-medium" : "text-[#5f6368]"
+              )}
+            >
+              {conversation.timestamp}
+            </span>
+          </div>
         </div>
 
         <div

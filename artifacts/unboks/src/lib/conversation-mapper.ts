@@ -90,5 +90,8 @@ export function mapApiConversation(c: ApiConversation): Conversation {
     unread: c.unread ?? false,
     escalated: c.escalated ?? false,
     hasAttachment: c.hasAttachment ?? false,
+    escalationMode: (c.escalationMode ?? null) as Conversation["escalationMode"],
+    escalationSummary: c.escalationSummary ?? null,
+    learningStatus: (c.learningStatus ?? "none") as Conversation["learningStatus"],
   };
 }

@@ -1,5 +1,8 @@
 export type Channel = "All" | "Email" | "WhatsApp" | "Instagram" | "Facebook" | "X" | "TikTok" | "Messenger" | "Unknown";
 
+export type EscalationMode = "soft" | "hard" | null;
+export type LearningStatus = "none" | "suggested" | "approved" | "saved";
+
 export interface Conversation {
   id: string;
   channel: Channel;
@@ -10,6 +13,9 @@ export interface Conversation {
   unread: boolean;
   escalated: boolean;
   hasAttachment: boolean;
+  escalationMode?: EscalationMode;
+  escalationSummary?: string | null;
+  learningStatus?: LearningStatus;
 }
 
 export const conversations: Conversation[] = [

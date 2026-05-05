@@ -29,6 +29,43 @@ export async function runMigrations(): Promise<void> {
       content         TEXT        NOT NULL,
       created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    -- Soft/Hard escalation v1: additive columns on conversations.
+    ALTER TABLE conversations
+      ADD COLUMN IF NOT EXISTS escalation_mode          TEXT,
+      ADD COLUMN IF NOT EXISTS escalation_reason        TEXT,
+      ADD COLUMN IF NOT EXISTS escalation_summary       TEXT,
+      ADD COLUMN IF NOT EXISTS escalation_created_at    TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS human_guidance           TEXT,
+      ADD COLUMN IF NOT EXISTS human_responder          TEXT,
+      ADD COLUMN IF NOT EXISTS human_responded_at       TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS learn_from_resolution    BOOLEAN NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS ai_may_use_automatically BOOLEAN NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS learning_status          TEXT    NOT NULL DEFAULT 'none';
+
+    CREATE TABLE IF NOT EXISTS learning_entries (
+      id                       UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+      client_slug              TEXT        NOT NULL,
+      conversation_id          UUID        REFERENCES conversations(id) ON DELETE SET NULL,
+      source_question          TEXT        NOT NULL,
+      ai_uncertainty           TEXT,
+      human_answer             TEXT        NOT NULL,
+      category                 TEXT,
+      expires_at               TIMESTAMPTZ,
+      ai_may_use_automatically BOOLEAN     NOT NULL DEFAULT false,
+      status                   TEXT        NOT NULL DEFAULT 'suggested',
+      created_by               TEXT,
+      created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS learning_entries_client_status_idx
+      ON learning_entries (client_slug, status);
+
+    -- Idempotency: at most one learning entry per (client, conversation).
+    CREATE UNIQUE INDEX IF NOT EXISTS learning_entries_client_conv_unique
+      ON learning_entries (client_slug, conversation_id)
+      WHERE conversation_id IS NOT NULL;
   `);
   logger.info("Database migrations complete");
 }
