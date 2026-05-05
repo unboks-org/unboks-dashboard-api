@@ -126,7 +126,7 @@ export function Drawer({
           <img
             src="/unboks-logo.png"
             alt="Unboks"
-            className="h-9 w-auto object-contain object-left"
+            className="h-11 w-auto object-contain object-left"
             draggable={false}
           />
         </div>
