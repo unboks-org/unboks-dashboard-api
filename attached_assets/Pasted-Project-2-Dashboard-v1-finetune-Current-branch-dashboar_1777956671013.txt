@@ -1,0 +1,339 @@
+Project 2 — Dashboard v1 finetune.
+
+Current branch:
+dashboard-v1-finetune
+
+Task:
+Plan full soft vs hard escalation support for the customer dashboard, including:
+- UI
+- data/API support
+- webhook fields
+- reply flow
+- notification/bell flow
+- AI learning from human answers
+- AI rewrite/polish button for customer replies
+
+Important:
+Do not edit files yet.
+Do not create files.
+Do not delete files.
+Do not commit.
+Do not publish.
+Do not touch Project 1.
+Do not touch Project 3.
+Do not change DNS, secrets, domains, auth, CORS, or deployment config.
+Do not add dependencies.
+Plan only.
+
+Context:
+UNBOKS Project 2 is the customer-facing dashboard.
+
+UNBOKS helps businesses handle repetitive customer messages across WhatsApp, email, Instagram, Facebook, Messenger, and other channels.
+
+The desired customer experience:
+The customer is busy, maybe literally lying on the beach, receiving many messages.
+The AI answers normal/repetitive messages automatically.
+Only when the AI truly needs human help, the customer gets an escalation notification/bell.
+The customer clicks the notification, lands in the dashboard, reads a short summary and the message trail, takes one clear action, and goes back to enjoying life.
+
+Product principle:
+“AI handles most messages. You only get pinged when you’re truly needed.”
+
+Current state:
+- Basic escalations exist.
+- Current DB only has:
+  conversations.escalated boolean
+  conversations.escalation_resolved boolean
+- Webhook can mark a conversation as escalated when Jr/AI sends requires_human=true or similar.
+- But soft vs hard escalation is not properly built yet.
+- The AI/Jr integration will later connect actual AI behavior, outgoing replies, delivery, and learning.
+
+Core definitions:
+1. Soft escalation:
+   - AI asks the operator/customer team for help.
+   - Human replies with guidance.
+   - AI uses that guidance to answer the end customer.
+   - AI remains involved.
+   - The human answer should be saved as a learning/training signal.
+   - The system should be able to learn from the human answer so next time the AI can answer similar questions by itself.
+   - UI should make it clear this is “AI needs help”.
+
+2. Hard escalation:
+   - AI hands the conversation over to a human.
+   - AI should stop replying to the end customer.
+   - Human takes over directly.
+   - Human reply goes directly to the end customer through the correct channel.
+   - The handover reason and human resolution should still be saved for future learning if useful.
+   - UI should make it clear this is “human takeover required”.
+
+Soft vs hard rule:
+- Soft = reply/guidance goes to AI.
+- Hard = reply goes to the customer.
+
+Learning requirement:
+Escalations should generate reusable learning material.
+When a human answers or resolves an escalation, we should capture:
+- original customer question/problem
+- AI uncertainty or escalation reason
+- human answer/guidance
+- whether the answer should be saved into “Your Info”
+- whether the AI may use this answer automatically next time
+- optional category/tag
+- optional expiry date if the answer is temporary
+- who answered it
+- timestamp
+
+This does not need to fully train the AI inside Project 2 yet.
+But the UI/data model/API should be designed so Jr can later connect:
+- human answer → AI reply
+- human answer → learning entry
+- learning entry → future AI behavior
+- optional approval before saving to Your Info
+
+Hard escalation reply behavior:
+Hard escalation means the AI has handed the conversation to a human.
+The customer's operator must be able to reply directly to the end customer.
+
+Every hard escalation must have a clear reply icon/button.
+
+Reply behavior by channel:
+1. Email:
+   - Reply button should open the configured email client or configured email inbox.
+   - This should be configurable in Settings.
+   - Example: Gmail / Google Workspace inbox for hello@unboks.org.
+   - The message trail/thread must remain clear so the operator can reply in context.
+
+2. WhatsApp:
+   - Reply button should open the WhatsApp conversation or configured WhatsApp Business interface if available.
+   - If direct deep-linking is available, use it.
+   - If not, show a safe fallback with the customer phone/handle and copied draft/context.
+
+3. Instagram/Facebook/Messenger:
+   - Reply button should open the relevant platform inbox/conversation if supported.
+   - If direct deep-linking is not available yet, show clear instructions/fallback.
+
+4. Unknown/unsupported channel:
+   - Reply button should open a fallback panel with:
+     - customer contact
+     - message context
+     - copyable suggested reply/context
+     - clear instruction: “Reply in the connected channel.”
+
+Soft escalation behavior:
+- Soft escalation means AI is asking for help.
+- The action should NOT go directly to the end customer.
+- The action should be “Send guidance to AI”.
+- Human guidance should be saved so the AI can answer now and learn for next time.
+
+AI rewrite/polish button requirement:
+When the customer/operator writes a reply in the dashboard text field, there must be a small AI icon/button inside or next to the text field.
+
+Purpose:
+The customer may write a rough/direct message.
+Clicking the AI icon rewrites it into a more professional, clear, customer-friendly reply.
+
+This is especially important for hard escalations:
+- Hard escalation = human replies directly to the end customer.
+- The operator writes the reply.
+- Before sending, they can click the AI rewrite icon.
+- AI rewrites the message professionally.
+- Operator reviews the rewritten message.
+- Operator sends only after approving.
+
+AI rewrite UI behavior:
+- Text area has an AI icon button.
+- Tooltip/label: “Make professional” or “Improve with AI”.
+- Clicking it must not auto-send.
+- It should rewrite the draft in the text field or show a before/after preview.
+- Operator must remain in control.
+- Include undo/revert option if possible.
+- If the draft is empty, the button should be disabled or show “Write a reply first.”
+
+Suggested rewrite states:
+- Button tooltip: “Make professional”
+- Loading state: “Improving…”
+- Error state: “Could not rewrite. Try again.”
+- Success state: rewritten draft appears, not sent.
+
+Soft escalation + AI rewrite:
+- Soft escalation uses guidance to AI, not direct customer reply.
+- The same AI icon can improve the guidance text if helpful.
+- It must be clear the text is guidance for AI, not a customer message.
+
+Hard escalation + AI rewrite:
+- Primary action: “Reply”
+- Text field: direct customer reply
+- AI icon: “Make professional”
+- Send action must stay separate from rewrite action.
+
+Future AI rewrite endpoint:
+Plan for a future endpoint:
+POST /api/:client/dashboard/api/ai/rewrite
+
+Body:
+{
+  "text": "rough operator draft",
+  "tone": "professional",
+  "context": {
+    "conversationId": "...",
+    "channel": "email|whatsapp|instagram|facebook|messenger",
+    "escalationMode": "hard|soft"
+  }
+}
+
+Response:
+{
+  "rewrittenText": "polished professional reply"
+}
+
+For now, if implementation is not ready, UI can include a disabled/stubbed AI icon with clear planned behavior.
+
+Notification/bell requirement:
+Plan for a bell/notification flow:
+- Notification badge/count for open escalations.
+- Clicking notification should take user to the escalation queue or directly to the escalation.
+- Notification should show enough context:
+  - customer name
+  - channel
+  - soft/hard type
+  - one-line reason
+- Actual push/email notification can be deferred.
+- UI/data model should support it.
+
+Preferred v1 data design:
+- Add escalation_mode field:
+  "soft" | "hard" | null
+- Add escalation_reason field if needed
+- Add escalation_summary field if needed
+- Add human_guidance / resolution_notes field if needed
+- Add learn_from_resolution boolean if needed
+- Add learning_status if needed:
+  "none" | "suggested" | "approved" | "saved"
+- If mode is missing, default display should be “Escalation” or “Needs attention”.
+
+Webhook should accept:
+- data.escalation_mode
+- data.escalationMode
+- data.escalation_type
+- data.escalationType
+- data.handoff_type
+- data.handoffType
+- event.escalation_mode
+- event.escalationMode
+
+Accepted values:
+- "soft"
+- "hard"
+- "ai_help"
+- "human_takeover"
+
+Normalize:
+- "soft" or "ai_help" → soft
+- "hard" or "human_takeover" → hard
+
+Defaulting:
+- If requires_human=true but no mode is provided, default to soft.
+- If handoff_required=true but no mode is provided, default to hard.
+
+UI requirements:
+Escalations page/list should show:
+- customer name
+- channel
+- last message / issue
+- escalation type badge:
+  Soft — AI needs help
+  Hard — Human takeover
+- status:
+  Open
+  Resolved
+- learning indicator if applicable:
+  Learning suggested
+  Saved to Your Info
+  Not saved
+- clear reply/action icon:
+  Soft: Guide AI
+  Hard: Reply
+
+Conversation/detail UI should show:
+- visible escalation badge
+- short explanation:
+  Soft: “AI is waiting for your guidance before it replies.”
+  Hard: “AI has handed this conversation to you. Reply directly to the customer.”
+- message trail/context
+- customer/channel info
+- clear next action
+
+Actions:
+For soft escalation:
+- Primary button: “Guide AI”
+- Human can type guidance.
+- Optional checkbox: “Save this answer to Your Info for next time”
+- Optional checkbox: “Let AI use this answer automatically next time”
+- Optional AI icon: “Make professional” for the guidance text.
+
+For hard escalation:
+- Primary button: “Reply”
+- Human can type a direct reply / resolution note.
+- AI icon: “Make professional” for the draft reply.
+- Optional checkbox: “Save resolution as learning”
+- After reply, customer can mark as handled/resolved.
+
+Settings requirement:
+Plan for customer-configurable reply destinations:
+- Email reply client/inbox
+- WhatsApp Business reply destination
+- Instagram/Facebook/Messenger inbox destination
+- fallback copy-to-clipboard behavior
+- customer-safe labels only
+- never expose internal vendor names unnecessarily
+
+Customer-facing language must be simple.
+Do not use technical terms like:
+- handoff pipeline
+- vector database
+- retrieval
+- fine-tuning
+- embeddings
+
+Use:
+- Soft escalation
+- Hard escalation
+- AI needs help
+- Human takeover
+- Your Info
+- Learn for next time
+- Make professional
+
+Planning requirements:
+Inspect only the relevant existing files:
+- artifacts/api-server/src/routes/webhook.ts
+- artifacts/api-server/src/routes/conversations.ts
+- lib/db/src/index.ts or schema/migration files if relevant
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/pages/Bookings.tsx only if escalation/order UI is affected
+- artifacts/unboks/src/components/inbox/DashboardShell.tsx
+- artifacts/unboks/src/components/inbox/Drawer.tsx
+- artifacts/unboks/src/lib/api.ts
+- artifacts/unboks/src/hooks/use-client-api.ts
+- artifacts/unboks/src/lib/conversation-mapper.ts
+- artifacts/unboks/src/components/inbox/MessageRow.tsx
+
+Do not inspect the whole repo again.
+
+Output only:
+1. Recommended data model change
+2. Recommended API/webhook change
+3. Recommended frontend/UI changes
+4. Notification/bell flow plan
+5. Hard escalation direct-reply flow plan
+6. AI rewrite/polish button plan
+7. How AI learning from escalations should work
+8. Exact files likely to edit
+9. Whether DB migration is needed
+10. Backward compatibility plan
+11. Test checklist
+12. Risks
+13. Questions for Calvin before implementation
+
+Do not implement yet.
+Plan only.

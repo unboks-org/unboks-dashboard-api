@@ -1,0 +1,200 @@
+Good plan. Before implementation, here are my recommended answers to the key questions.
+
+My answers / decisions
+
+1. requires_human=true defaults to SOFT.
+Yes. Hard must be explicit with handoff_required=true or escalation_mode="hard".
+2. human_responder can be client_slug for v1.
+Yes. Proper user accounts can come later.
+3. Takeover should NOT auto-resolve.
+Correct. Hard takeover means “human started handling it”, not “finished”.
+4. Sending soft guidance should NOT auto-resolve.
+Correct. It stays open until the operator explicitly marks resolved.
+5. Save to Your Info needs approval logic.
+Yes. Default should be suggested. Only auto-use if explicitly checked.
+6. Existing escalated=true rows stay legacy/null mode.
+Yes. Show grey “Escalation” badge.
+7. Your Info page is future work.
+For now only store learning_entries and expose API. Do not build full Your Info page yet.
+8. Jr is responsible for using the flag to stop AI replies.
+Project 2 stores the state. Jr/AI consumes it.
+9. Hard reply flow for v1 should open external channel/client, not send inside dashboard.
+For now, dashboard should guide/open the correct channel. No outbound API yet.
+10. Expiry date can be deferred.
+Do not add expiry UI in v1. Keep DB column if easy, but hide UI for now.
+11. Manual operator mode change should lock mode against webhook downgrades.
+But for v1, do not add operator_locked_mode unless needed. Existing monotonic rule is acceptable:
+soft can become hard by webhook; hard cannot become soft by webhook.
+
+One important correction
+
+Do not make the UI pretend it can send customer replies from the dashboard yet.
+
+For hard escalation v1:
+
+Primary action = Reply
+Behavior = open configured external channel / show fallback
+Not = send message from dashboard
+
+For soft escalation v1:
+
+Primary action = Guide AI
+Behavior = save guidance to DB
+Jr later makes AI use it
+
+Next prompt — implementation
+
+Paste this into Replit:
+
+Approved to implement Project 2 soft vs hard escalation v1 on branch dashboard-v1-finetune.
+Implement the plan with these final decisions:
+Core defaults:
+1. requires_human=true defaults to SOFT.
+2. Hard escalation must be explicit through:
+   - handoff_required=true
+   - handoffRequired=true
+   - escalation_mode="hard"
+   - escalationMode="hard"
+   - escalation_type="hard"
+   - escalationType="hard"
+   - handoff_type="hard"
+   - handoffType="hard"
+   - or "human_takeover"
+3. human_responder / created_by can be client_slug for v1.
+4. Clicking “Take over conversation” must NOT auto-resolve the escalation.
+5. Sending soft guidance must NOT auto-resolve the escalation.
+6. Save to Your Info creates/suggests a learning entry.
+7. Let AI use automatically should mark the learning entry approved.
+8. Existing escalated=true rows with no mode remain legacy/null and show grey “Escalation”.
+9. Do not build a full Your Info page yet.
+10. Jr/AI layer is responsible for consuming hard takeover state and stopping AI replies.
+11. For hard escalation v1, dashboard does NOT send outbound replies itself.
+12. Hard escalation Reply action should open configured external channel or show fallback instructions.
+13. Do not add expiry-date UI in v1.
+14. Do not add operator_locked_mode in v1.
+Hard escalation v1 UI:
+- Badge: “Human takeover”
+- Explanation: “AI has handed this conversation to you. Reply directly to the customer.”
+- Primary action: “Reply”
+- Reply behavior:
+  - Email: open configured email client/inbox if available; fallback to mailto or copied customer email/context.
+  - WhatsApp: open WhatsApp link if phone is available; fallback to contact/context copy panel.
+  - Instagram/Facebook/Messenger/Unknown: show fallback panel with customer contact, message context, and instruction to reply in the connected channel.
+- Include text area for resolution note, not customer sending.
+- Include optional checkbox: “Save resolution as learning”.
+- Include AI rewrite icon only in the resolution/draft area if a draft exists, but it must not auto-send.
+- Sending to the customer through dashboard is out of scope.
+Soft escalation v1 UI:
+- Badge: “AI needs help”
+- Explanation: “AI is waiting for your guidance before it replies.”
+- Primary action: “Guide AI”
+- Text area: guidance for AI.
+- Checkboxes:
+  - “Save this answer to Your Info for next time”
+  - “Let AI use this answer automatically next time”
+- AI rewrite icon may improve guidance text, but must be clearly guidance for AI, not a customer reply.
+- Saving guidance stores it in DB. Jr will connect the actual AI behavior later.
+AI rewrite/polish:
+- Add planned UI affordance if feasible:
+  - small AI icon/button near textarea
+  - label/tooltip: “Make professional”
+  - disabled if textarea is empty
+  - must not auto-send
+- If no rewrite backend exists yet, stub it safely:
+  - no fake rewrite pretending AI worked
+  - either disabled with tooltip “AI rewrite coming soon” or basic local no-op with clear message
+- Do not add a real AI endpoint unless simple and stub-only.
+- Do not call external AI APIs.
+Data/model:
+Use additive migration only in artifacts/api-server/src/lib/migrate.ts.
+Add to conversations:
+- escalation_mode TEXT NULL
+- escalation_reason TEXT NULL
+- escalation_summary TEXT NULL
+- escalation_created_at TIMESTAMPTZ NULL
+- human_guidance TEXT NULL
+- human_responder TEXT NULL
+- human_responded_at TIMESTAMPTZ NULL
+- learn_from_resolution BOOLEAN NOT NULL DEFAULT false
+- ai_may_use_automatically BOOLEAN NOT NULL DEFAULT false
+- learning_status TEXT NOT NULL DEFAULT 'none'
+Add learning_entries table:
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- client_slug TEXT NOT NULL
+- conversation_id UUID REFERENCES conversations(id) ON DELETE SET NULL
+- source_question TEXT NOT NULL
+- ai_uncertainty TEXT
+- human_answer TEXT NOT NULL
+- category TEXT
+- expires_at TIMESTAMPTZ
+- ai_may_use_automatically BOOLEAN NOT NULL DEFAULT false
+- status TEXT NOT NULL DEFAULT 'suggested'
+- created_by TEXT
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+- updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+Backend:
+Update artifacts/api-server/src/routes/webhook.ts:
+- parse escalation_mode fields
+- normalize soft/hard/ai_help/human_takeover
+- default requires_human to soft
+- default handoff_required to hard
+- write escalation_mode/reason/summary/created_at only when escalation is raised
+- do not clear escalations
+- do not modify escalation_resolved from webhook
+- hard can upgrade soft
+- soft cannot downgrade hard from webhook
+Update artifacts/api-server/src/routes/conversations.ts:
+- include mode/reason/summary/learning fields in conversation and escalation responses
+- add mode filter for escalations
+- add guidance route
+- add takeover route
+- add set mode route
+- extend resolve route to optionally create learning entry
+- add basic learning list/approve/save/delete routes if simple
+- all routes requireAuth and are scoped to client_slug
+Frontend:
+Update only relevant files:
+- artifacts/unboks/src/lib/api.ts
+- artifacts/unboks/src/hooks/use-client-api.ts
+- artifacts/unboks/src/lib/conversation-mapper.ts
+- artifacts/unboks/src/data/conversations.ts
+- artifacts/unboks/src/components/inbox/MessageRow.tsx
+- artifacts/unboks/src/pages/Inbox.tsx
+- optionally artifacts/unboks/src/components/inbox/Drawer.tsx only if needed
+Do not touch:
+- Project 1
+- Project 3
+- DNS/domains/secrets
+- auth/CORS/deployment config
+- package.json
+- Bookings.tsx unless absolutely necessary
+- demo-seed.ts
+- external API integrations
+Testing:
+1. Build/typecheck clean.
+2. Migration idempotent.
+3. Signed local webhook with requires_human=true and no mode creates soft escalation.
+4. Signed local webhook with handoff_required=true and no mode creates hard escalation.
+5. Signed local webhook with escalation_mode="soft" creates soft.
+6. Signed local webhook with escalation_mode="hard" creates hard.
+7. Normal webhook without escalation fields appears only in inbox.
+8. Escalations endpoint returns mode fields.
+9. UI shows correct badges:
+   - Soft: AI needs help
+   - Hard: Human takeover
+   - Legacy/null: Escalation
+10. Soft detail panel shows Guide AI flow.
+11. Hard detail panel shows Reply / external-channel flow.
+12. Guidance save works and does not auto-resolve.
+13. Takeover works and does not auto-resolve.
+14. Resolve still works with old no-body call.
+15. Clean test rows after testing.
+After implementation:
+- Report exact files changed.
+- Report migration changes.
+- Report test results.
+- Report any known limitations.
+- Do not commit.
+- Do not publish.
+
+After Replit finishes, paste the implementation report here before committing.
