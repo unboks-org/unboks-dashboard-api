@@ -6,7 +6,6 @@ import { mapApiConversation } from "@/lib/conversation-mapper";
 import { cn } from "@/lib/utils";
 import { X, CheckCircle, MessageCircle, Clock, User, AlertCircle } from "lucide-react";
 import type { Escalation } from "@/lib/api";
-import { conversations as MOCK } from "@/data/conversations";
 
 function avatarColor(name: string) {
   const colors = ["#f9a825","#1a73e8","#34a853","#ea4335","#7e57c2","#ec407a","#26a69a"];
@@ -142,7 +141,7 @@ export default function Bookings() {
 
   const mappedConversations = conversations
     ? conversations.map(mapApiConversation)
-    : MOCK;
+    : [];
 
   const orders: OrderRow[] = (() => {
     if (escalations && escalations.length > 0) {
