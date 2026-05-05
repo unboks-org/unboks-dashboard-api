@@ -74,6 +74,18 @@ router.post("/:client/webhooks/zernio", async (req, res) => {
   const role = direction === "outbound" ? "assistant" : "user";
   const messageExternalId = String(data["id"] ?? data["message_id"] ?? "") || null;
 
+  // Detect AI/Jr handoff or escalation flags from any of the supported field names.
+  const shouldEscalate =
+    data["escalated"] === true ||
+    data["requires_human"] === true ||
+    data["requiresHuman"] === true ||
+    data["handoff_required"] === true ||
+    data["handoffRequired"] === true ||
+    data["escalation"] === true ||
+    event["escalated"] === true ||
+    event["requires_human"] === true ||
+    event["requiresHuman"] === true;
+
   let messageTimestamp = new Date();
   const rawTs = data["timestamp"] ?? data["created_at"] ?? data["createdAt"];
   if (rawTs) {
@@ -87,13 +99,14 @@ router.post("/:client/webhooks/zernio", async (req, res) => {
     const upsertResult = await pool.query<{ id: string }>(
       `INSERT INTO conversations
          (client_slug, external_id, platform, contact_id, contact_name,
-          last_message, last_message_at, unread, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+          last_message, last_message_at, unread, escalated, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
        ON CONFLICT ON CONSTRAINT conversations_client_external_unique DO UPDATE
          SET last_message     = EXCLUDED.last_message,
              last_message_at  = EXCLUDED.last_message_at,
              contact_name     = COALESCE(EXCLUDED.contact_name, conversations.contact_name),
              unread           = CASE WHEN $8 THEN true ELSE conversations.unread END,
+             escalated        = CASE WHEN $9 THEN true ELSE conversations.escalated END,
              updated_at       = NOW()
        RETURNING id`,
       [
@@ -105,6 +118,7 @@ router.post("/:client/webhooks/zernio", async (req, res) => {
         messageText || null,
         messageTimestamp,
         direction === "inbound",
+        shouldEscalate,
       ],
     );
     conversationId = upsertResult.rows[0]?.id ?? null;
