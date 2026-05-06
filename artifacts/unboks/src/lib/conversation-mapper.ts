@@ -67,6 +67,32 @@ export function isMongoObjectId(value: unknown): boolean {
   return typeof value === "string" && /^[0-9a-f]{24}$/i.test(value);
 }
 
+/**
+ * Parse a backend timestamp (ISO string incl. Python microsecond format
+ * `2026-05-06T03:41:31.995398+00:00`, epoch number, or Date) to milliseconds
+ * since epoch. Invalid / missing returns 0 so those rows sort to the bottom
+ * when sorting descending. Pre-formatted display strings like `"9:42 AM"` or
+ * `"Yesterday"` also return 0 (they carry no real time).
+ */
+export function parseTimestampMs(value: unknown): number {
+  if (value === null || value === undefined) return 0;
+  if (value instanceof Date) {
+    const t = value.getTime();
+    return Number.isNaN(t) ? 0 : t;
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+  if (typeof value !== "string") return 0;
+  const s = value.trim();
+  if (!s) return 0;
+  // Only attempt Date parsing on ISO-shaped strings — bare display strings
+  // like "9:42 AM", "Yesterday", "Monday", "3 Nov" must NOT pollute sorting.
+  if (!/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(s)) return 0;
+  const t = new Date(s).getTime();
+  return Number.isNaN(t) ? 0 : t;
+}
+
 function validStr(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const t = value.trim();
@@ -237,13 +263,18 @@ export function mapApiConversation(c: ApiConversation): Conversation {
     preview = sp.preview;
   }
 
+  // Prefer last_message_at; fall back to legacy timestamp. Display string
+  // is formatted (relative); raw ms is preserved for sorting.
+  const tsRaw = c.last_message_at ?? c.timestamp;
+
   return {
     id: c.phone || c._id || "unknown",
     channel: inferChannel(c, prefix),
     sender: safeDisplayName(c, prefix?.sender ?? null),
     subject,
     preview,
-    timestamp: formatConversationTimestamp(c.last_message_at || c.timestamp),
+    timestamp: formatConversationTimestamp(tsRaw),
+    timestampMs: parseTimestampMs(tsRaw),
     unread: c.unread ?? false,
     escalated: c.escalated ?? false,
     hasAttachment: c.hasAttachment ?? false,

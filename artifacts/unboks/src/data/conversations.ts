@@ -10,6 +10,12 @@ export interface Conversation {
   subject: string;
   preview: string;
   timestamp: string;
+  /**
+   * Raw last-message epoch (ms) used for newest-first sorting. 0 means
+   * unknown/invalid — those rows sort to the bottom. Display formatting
+   * still uses `timestamp`.
+   */
+  timestampMs?: number;
   unread: boolean;
   escalated: boolean;
   hasAttachment: boolean;

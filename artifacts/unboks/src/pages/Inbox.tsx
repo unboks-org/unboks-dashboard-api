@@ -545,7 +545,10 @@ export default function Inbox() {
           (c.preview ?? "").toLowerCase().includes(q),
       );
     }
-    return list;
+    // Newest first by raw last_message_at (ms). Spread into a fresh array so
+    // we never mutate the React Query cached array. Invalid/missing
+    // timestamps (timestampMs === 0) naturally land at the bottom.
+    return [...list].sort((a, b) => (b.timestampMs ?? 0) - (a.timestampMs ?? 0));
   }, [allConversations, activeNav, searchQuery, isChannelEnabled, escalationFilter]);
 
   const subtitle: React.ReactNode = (() => {
