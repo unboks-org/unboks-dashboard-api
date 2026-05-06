@@ -1,7 +1,57 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, RotateCcw, Loader2, ArrowRight, Pencil, X } from "lucide-react";
+import { toast } from "sonner";
+import { Check, RotateCcw, Loader2, ArrowRight, Pencil, X, Copy } from "lucide-react";
 import type { Task, TaskUser } from "@/lib/tasks-api";
 import { cn } from "@/lib/utils";
+
+/** Convert HTML to plain text while preserving paragraph/line breaks.
+ *  Used as a fallback when a task only carries `bodyHtml`. */
+function htmlToPlainText(html: string): string {
+  if (!html) return "";
+  if (typeof document === "undefined") {
+    // SSR-safe stripping: drop tags, decode a few common entities.
+    return html
+      .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+      .replace(/<\/(p|div|li|h[1-6])\s*>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+  const tmp = document.createElement("div");
+  tmp.innerHTML = html
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\/(p|div|li|h[1-6])\s*>/gi, "\n");
+  return (tmp.textContent ?? "").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // fall through to legacy path
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
 
 /** Render plain text safely with line breaks and auto-linked URLs. */
 function renderBody(text: string) {
@@ -102,7 +152,39 @@ export function TaskCard({
   const [editing, setEditing] = useState(false);
   const [draftText, setDraftText] = useState(task.bodyText || "");
   const [draftAssignee, setDraftAssignee] = useState<TaskUser>(task.assignedTo);
+  const [copied, setCopied] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const copyTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleCopy = async () => {
+    const text = (task.bodyText && task.bodyText.trim().length > 0
+      ? task.bodyText
+      : htmlToPlainText(task.bodyHtml || "")
+    ).replace(/\r\n/g, "\n");
+    if (!text) {
+      toast.error("Nothing to copy.");
+      return;
+    }
+    const ok = await copyTextToClipboard(text);
+    if (!ok) {
+      toast.error("Could not copy");
+      return;
+    }
+    setCopied(true);
+    if (copyTimerRef.current !== null) window.clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = window.setTimeout(() => {
+      setCopied(false);
+      copyTimerRef.current = null;
+    }, 1500);
+  };
 
   // Reset draft whenever the underlying task changes (e.g. after save) or
   // edit mode is toggled.
@@ -282,6 +364,26 @@ export function TaskCard({
           </>
         ) : (
           <>
+            <button
+              type="button"
+              onClick={handleCopy}
+              title="Copy task text"
+              aria-label="Copy task text"
+              aria-live="polite"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors",
+                copied
+                  ? "border-[#a6d8b9] bg-[#e6f4ea] text-[#137333]"
+                  : "border-[#d9dee7] bg-white text-[#1f2937] hover:bg-[#eef1f6]",
+              )}
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+              {copied ? "Copied" : "Copy text"}
+            </button>
             <button
               type="button"
               onClick={() => canEdit && setEditing(true)}
