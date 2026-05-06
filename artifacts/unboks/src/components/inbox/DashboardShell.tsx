@@ -4,7 +4,7 @@ import { Header } from "@/components/inbox/Header";
 import { Drawer, NavId } from "@/components/inbox/Drawer";
 import type { Channel, Conversation } from "@/data/conversations";
 import { useConversations, useEscalations } from "@/hooks/use-client-api";
-import { mapApiConversation } from "@/lib/conversation-mapper";
+import { mapApiConversation, normalizeEscalation } from "@/lib/conversation-mapper";
 import { useAuth } from "@/components/auth/useAuth";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
@@ -85,10 +85,18 @@ export function DashboardShell({
     () => (hasConvData ? allConversations.filter((c) => c.unread).length : 0),
     [allConversations, hasConvData],
   );
-  const escalationsCount = useMemo(
-    () => (hasEscData ? (apiEscalations?.filter((e) => !e.resolved).length ?? 0) : 0),
-    [apiEscalations, hasEscData],
-  );
+  // Use the same normalizer as the Escalations list so the sidebar count and
+  // the rendered list can never disagree (snake_case vs camelCase, missing
+  // mode, etc. are all handled identically here and in Inbox).
+  const escalationsCount = useMemo(() => {
+    if (!hasEscData || !apiEscalations) return 0;
+    let n = 0;
+    for (const raw of apiEscalations as unknown[]) {
+      const e = normalizeEscalation(raw);
+      if (e && !e.resolved) n += 1;
+    }
+    return n;
+  }, [apiEscalations, hasEscData]);
 
   const handleNavSelect = useCallback(
     (id: NavId) => {

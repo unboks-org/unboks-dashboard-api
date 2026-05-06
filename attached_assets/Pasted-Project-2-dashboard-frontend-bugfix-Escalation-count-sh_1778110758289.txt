@@ -1,0 +1,80 @@
+Project 2 dashboard frontend bugfix — Escalation count shows but escalation list is empty.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python API assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch backend.
+- Do not commit.
+- Do not publish until reviewed.
+
+Bug:
+Sidebar shows Escalations count = 1.
+But when clicking Escalations, the page says:
+“No conversations to show.”
+
+This is wrong.
+If the sidebar says 1 escalation, the Escalations page must show that escalation.
+
+Likely causes:
+- Sidebar count uses /status.
+- Escalations page uses /escalations or filtered conversations.
+- Python backend returns snake_case fields but frontend expects camelCase.
+- Escalation mode is missing/null and the frontend filters it out.
+- Old channel filter remains active and hides escalation.
+- Resolved/unresolved field is mapped incorrectly.
+- The All tab excludes legacy/null escalation modes.
+
+Required behavior:
+1. Clicking Escalations must clear any active channel filter.
+2. Escalations All tab must show every unresolved/open escalation.
+3. Missing/null escalation mode must still show in All.
+4. AI needs help tab shows only soft escalations.
+5. Human takeover tab shows only hard escalations.
+6. If sidebar count is 1, the list should show 1 item.
+7. Do not hide escalations because channel visibility is off.
+8. Do not show fake/mock escalation data.
+9. If /escalations API fails, show a clear error, not “No conversations to show.”
+10. Do not change backend/API.
+
+Investigation:
+- Check how sidebar escalation count is calculated.
+- Check how Escalations page gets its list.
+- Check whether /status and /escalations use different response shapes.
+- Check live API response shapes for:
+  GET /api/unboks/dashboard/api/status
+  GET /api/unboks/dashboard/api/escalations
+- Normalize these possible fields:
+  mode
+  escalation_mode
+  escalationMode
+  escalated
+  escalation_resolved
+  escalationResolved
+  status
+  resolved
+- Make All include legacy/null mode rows.
+- Make filters robust.
+
+Preferred fix:
+- Normalize escalation rows in one place.
+- Derive the visible Escalations list from normalized unresolved escalations.
+- If /escalations endpoint is unavailable or empty but conversations contain escalated=true rows, use the normalized conversations as fallback.
+- Keep fallback honest. Do not use mock/demo data.
+- Make sidebar count and Escalations list use compatible normalized logic.
+
+Acceptance:
+- Sidebar Escalations 1 and Escalations page shows 1 row.
+- All tab shows null/legacy escalation modes.
+- AI needs help only soft.
+- Human takeover only hard.
+- Clicking Escalations clears channel filters.
+- Escalation row opens the conversation/detail.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

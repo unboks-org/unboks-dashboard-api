@@ -300,6 +300,130 @@ function inferChannel(c: ApiConversation, prefix: ParsedPrefix | null): Channel 
   return "Unknown";
 }
 
+// ---------------------------------------------------------------------------
+// Escalation normalization
+// ---------------------------------------------------------------------------
+//
+// The Python backend returns escalation rows in several historical shapes
+// (snake_case `escalation_mode`/`escalation_resolved`, camelCase `mode`/
+// `resolved`, legacy rows with no `mode` at all, optional `phone` vs.
+// `external_id`). Both the sidebar count and the Escalations list MUST
+// derive their data from this single normalizer so they never disagree.
+//
+// Resolved is **defaulted to false** when no explicit field is present —
+// matches the sidebar's prior `!e.resolved` semantics so legacy/null rows
+// keep showing up in "All".
+
+export interface NormalizedEscalation {
+  id: string;
+  phone: string | null;
+  mode: "soft" | "hard" | null;
+  resolved: boolean;
+  customerName: string;
+  platform: string;
+  summary: string | null;
+  createdAt: string | null;
+}
+
+function pickStr(o: Record<string, unknown>, ...keys: string[]): string | null {
+  for (const k of keys) {
+    const v = o[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return null;
+}
+
+function pickBool(o: Record<string, unknown>, ...keys: string[]): boolean | null {
+  for (const k of keys) {
+    const v = o[k];
+    if (typeof v === "boolean") return v;
+    if (v === "true") return true;
+    if (v === "false") return false;
+  }
+  return null;
+}
+
+export function normalizeEscalation(raw: unknown): NormalizedEscalation | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const id = pickStr(o, "id", "_id", "escalation_id", "escalationId");
+  if (!id) return null;
+  const modeRaw = pickStr(o, "mode", "escalation_mode", "escalationMode");
+  const mode: "soft" | "hard" | null =
+    modeRaw === "soft" ? "soft" : modeRaw === "hard" ? "hard" : null;
+  // Resolved: prefer explicit; else infer from `status`; else default false
+  // so legacy rows with no resolved field still appear in "All".
+  const resolvedExplicit = pickBool(
+    o,
+    "resolved",
+    "escalation_resolved",
+    "escalationResolved",
+  );
+  let resolved = resolvedExplicit ?? false;
+  if (resolvedExplicit == null) {
+    const status = pickStr(o, "status");
+    if (status && /^(resolved|closed|done)$/i.test(status)) resolved = true;
+  }
+  return {
+    id,
+    phone: pickStr(
+      o,
+      "phone",
+      "external_id",
+      "externalId",
+      "wa_id",
+      "waId",
+      "conversation_id",
+      "conversationId",
+    ),
+    mode,
+    resolved,
+    customerName:
+      pickStr(o, "customerName", "customer_name", "name", "sender", "from") ??
+      "Unknown contact",
+    platform: pickStr(o, "platform", "channel") ?? "",
+    summary: pickStr(o, "summary", "issue", "reason"),
+    createdAt: pickStr(o, "createdAt", "created_at", "timestamp", "last_message_at"),
+  };
+}
+
+/**
+ * Build a Conversation-shaped row from a normalized escalation, optionally
+ * enriching with the matching live conversation (looked up by phone) so the
+ * row in the Escalations list looks identical to its Inbox counterpart.
+ */
+export function escalationToConversationRow(
+  n: NormalizedEscalation,
+  enrich?: Conversation | null,
+): Conversation {
+  const id = n.phone || `esc:${n.id}`;
+  const channel: Channel = enrich?.channel ?? platformToChannel(n.platform);
+  const sender = enrich?.sender ?? n.customerName;
+  const subject = enrich?.subject ?? (n.summary || "Escalation");
+  const preview = enrich?.preview ?? (n.summary ?? "");
+  const tsMs = enrich?.timestampMs ?? parseTimestampMs(n.createdAt);
+  const timestamp =
+    enrich?.timestamp ??
+    (tsMs > 0
+      ? formatConversationTimestamp(new Date(tsMs).toISOString())
+      : formatConversationTimestamp(n.createdAt));
+  return {
+    id,
+    channel,
+    sender,
+    subject,
+    preview,
+    timestamp,
+    timestampMs: tsMs,
+    unread: enrich?.unread ?? false,
+    escalated: true,
+    hasAttachment: enrich?.hasAttachment ?? false,
+    escalationMode: n.mode,
+    escalationSummary: n.summary,
+    learningStatus: enrich?.learningStatus ?? "none",
+  };
+}
+
 /** Canonical conversation mapper — use this in every page/component */
 export function mapApiConversation(c: ApiConversation): Conversation {
   const rawText = rawLastMessageText(c);

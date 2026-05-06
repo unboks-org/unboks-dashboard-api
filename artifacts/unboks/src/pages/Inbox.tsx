@@ -9,7 +9,11 @@ import {
   useEscalations,
   useEscalationMutations,
 } from "@/hooks/use-client-api";
-import { mapApiConversation } from "@/lib/conversation-mapper";
+import {
+  mapApiConversation,
+  normalizeEscalation,
+  escalationToConversationRow,
+} from "@/lib/conversation-mapper";
 import { CHANNEL_BADGE_COLORS } from "@/lib/channel-map";
 import type { NavId } from "@/components/inbox/Drawer";
 import { useEnabledChannels } from "@/hooks/use-enabled-channels";
@@ -378,9 +382,18 @@ function ConversationDetailPane({ conversation, onClose }: ConversationDetailPan
       : { status: null, message: error instanceof Error ? error.message : "Unknown error" }
     : null;
   // Escalation routes use the conversation DB id. Look it up from the
-  // escalations list (cached query) by matching the phone (external_id).
+  // escalations list (cached query) via the same normalizer as the list and
+  // the sidebar count, so snake_case shapes (`external_id`, etc.) resolve to
+  // the same `dbId` as `conversation.id` (which is the normalized phone).
   const { data: escalations } = useEscalations("all");
-  const dbId = escalations?.find((e) => e.phone === conversation.id)?.id ?? null;
+  const dbId = useMemo(() => {
+    if (!escalations) return null;
+    for (const raw of escalations as unknown[]) {
+      const n = normalizeEscalation(raw);
+      if (n && !n.resolved && n.phone && n.phone === conversation.id) return n.id;
+    }
+    return null;
+  }, [escalations, conversation.id]);
 
   const showBanner = detail?.escalated && !detail?.escalationResolved;
   const mode = detail?.escalationMode ?? null;
@@ -504,11 +517,38 @@ export default function Inbox() {
   const { isChannelEnabled } = useEnabledChannels();
 
   const { data: apiConversations, isLoading, isError } = useConversations();
+  // Escalations list is the source of truth for the Escalations tab AND for
+  // the sidebar count. Same normalizer as DashboardShell, so they always
+  // agree. (React Query dedups by key, so this is a free read.)
+  const {
+    data: rawEscalations,
+    isLoading: escIsLoading,
+    isError: escIsError,
+    error: escError,
+  } = useEscalations("all");
 
   const allConversations: Conversation[] = useMemo(() => {
     if (isError || !apiConversations) return [];
     return apiConversations.map(mapApiConversation);
   }, [apiConversations, isError]);
+
+  // Convert the live /escalations response into Conversation-shaped rows the
+  // existing MessageRow + ConversationDetailPane already know how to render.
+  // When a matching live conversation exists (by phone), enrich the row so it
+  // looks identical to its Inbox counterpart. Resolved rows are dropped here
+  // so the count and the list always match.
+  const escalationRows: Conversation[] = useMemo(() => {
+    if (!rawEscalations) return [];
+    const convoById = new Map(allConversations.map((c) => [c.id, c]));
+    const out: Conversation[] = [];
+    for (const raw of rawEscalations as unknown[]) {
+      const n = normalizeEscalation(raw);
+      if (!n || n.resolved) continue;
+      const enrich = n.phone ? convoById.get(n.phone) ?? null : null;
+      out.push(escalationToConversationRow(n, enrich));
+    }
+    return out;
+  }, [rawEscalations, allConversations]);
 
   // Stable handler. Always updates local filter state for inbox-context ids,
   // even when the route is already "/" (channel ↔ channel switches, or
@@ -559,14 +599,21 @@ export default function Inbox() {
   }, [activeNav, activeChannel]);
 
   const filtered = useMemo(() => {
-    let list = allConversations.filter((c) => isChannelEnabled(c.channel));
+    let list: Conversation[];
     if (activeNav === "escalations") {
-      list = list.filter((c) => c.escalated);
+      // Escalations come from /escalations, NOT from /messages/conversations.
+      // Don't apply per-channel visibility here — an escalation must always
+      // be reachable, even if its channel toggle happens to be off.
+      // "All" tab includes legacy/null modes by design.
+      list = escalationRows;
       if (escalationFilter === "soft") list = list.filter((c) => c.escalationMode === "soft");
       else if (escalationFilter === "hard") list = list.filter((c) => c.escalationMode === "hard");
-    } else if (activeNav.startsWith("channel:")) {
-      const ch = activeNav.split(":")[1] as Channel;
-      list = list.filter((c) => c.channel === ch);
+    } else {
+      list = allConversations.filter((c) => isChannelEnabled(c.channel));
+      if (activeNav.startsWith("channel:")) {
+        const ch = activeNav.split(":")[1] as Channel;
+        list = list.filter((c) => c.channel === ch);
+      }
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -581,14 +628,16 @@ export default function Inbox() {
     // we never mutate the React Query cached array. Invalid/missing
     // timestamps (timestampMs === 0) naturally land at the bottom.
     return [...list].sort((a, b) => (b.timestampMs ?? 0) - (a.timestampMs ?? 0));
-  }, [allConversations, activeNav, searchQuery, isChannelEnabled, escalationFilter]);
+  }, [allConversations, escalationRows, activeNav, searchQuery, isChannelEnabled, escalationFilter]);
 
   const subtitle: React.ReactNode = (() => {
-    if (isLoading) return "Loading…";
-    if (isError) return "Couldn't load";
     if (activeNav === "escalations") {
+      if (escIsLoading) return "Loading…";
+      if (escIsError) return "Couldn't load escalations";
       return "Conversations that need your attention";
     }
+    if (isLoading) return "Loading…";
+    if (isError) return "Couldn't load";
     if (activeChannel) {
       const n = filtered.length;
       return `${n} ${n === 1 ? "conversation" : "conversations"}`;
@@ -647,7 +696,7 @@ export default function Inbox() {
               ))}
             </div>
           ) : null}
-          {isLoading && filtered.length === 0 ? (
+          {(activeNav === "escalations" ? escIsLoading : isLoading) && filtered.length === 0 ? (
             <div className="divide-y divide-[#f1f3f4]" aria-busy="true" aria-label="Loading conversations">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="flex items-center gap-3 px-4 py-4">
@@ -672,7 +721,17 @@ export default function Inbox() {
           ) : (
             <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
               <p className="text-[14px] text-[#5f6368]">
-                {isError ? "Couldn't load conversations." : "No conversations to show."}
+                {activeNav === "escalations"
+                  ? escIsError
+                    ? `Couldn't load escalations${
+                        escError instanceof Error && escError.message
+                          ? `: ${escError.message}`
+                          : "."
+                      }`
+                    : "No escalations to show."
+                  : isError
+                    ? "Couldn't load conversations."
+                    : "No conversations to show."}
               </p>
             </div>
           )}
