@@ -10,6 +10,7 @@ import {
   useEscalationMutations,
 } from "@/hooks/use-client-api";
 import { mapApiConversation } from "@/lib/conversation-mapper";
+import { CHANNEL_BADGE_COLORS } from "@/lib/channel-map";
 import type { NavId } from "@/components/inbox/Drawer";
 import { useEnabledChannels } from "@/hooks/use-enabled-channels";
 import { cn } from "@/lib/utils";
@@ -32,17 +33,6 @@ const PAGE_ROUTES: Partial<Record<NavId, string>> = {
 const NAV_LABELS: Record<string, string> = {
   inbox: "Inbox",
   escalations: "Escalations",
-};
-
-const CHANNEL_BADGE_COLORS: Record<string, string> = {
-  WhatsApp: "#25d366",
-  Email: "#1a73e8",
-  Instagram: "#c13584",
-  Facebook: "#1877f2",
-  X: "#202124",
-  TikTok: "#010101",
-  Messenger: "#0084ff",
-  Unknown: "#9aa0a6",
 };
 
 // ---------------------------------------------------------------------------

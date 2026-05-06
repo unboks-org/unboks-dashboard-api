@@ -64,11 +64,11 @@ export function DashboardShell({
 
   const handleNavSelect = (id: NavId) => {
     const route = PAGE_ROUTES[id];
-    if (route) {
-      navigate(route);
-    } else {
-      onNavSelect?.(id);
-    }
+    if (route) navigate(route);
+    // Always notify the page too. On a same-route click (e.g. clicking Inbox
+    // while already on /) navigate() is a no-op, so we rely on this callback
+    // to reset the page's local filter/search state.
+    onNavSelect?.(id);
     setDrawerOpen(false);
   };
 

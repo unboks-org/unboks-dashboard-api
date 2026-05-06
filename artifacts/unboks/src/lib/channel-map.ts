@@ -85,3 +85,16 @@ export function channelToPlatform(channel: Channel): PlatformKey {
   const found = PLATFORMS.find((p) => p.channel === channel);
   return found?.key ?? "email";
 }
+
+/** Shared brand colors for channel badges (rows, headers, drawer). */
+export const CHANNEL_BADGE_COLORS: Record<Channel, string> = {
+  All: "#5f6368",
+  WhatsApp: "#25d366",
+  Email: "#1a73e8",
+  Instagram: "#c13584",
+  Facebook: "#1877f2",
+  X: "#202124",
+  TikTok: "#010101",
+  Messenger: "#0084ff",
+  Unknown: "#9aa0a6",
+};

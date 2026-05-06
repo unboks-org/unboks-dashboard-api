@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Conversation } from "@/data/conversations";
 import { cn } from "@/lib/utils";
+import { CHANNEL_BADGE_COLORS } from "@/lib/channel-map";
 import { Star } from "lucide-react";
 
 const AVATAR_COLORS = [
@@ -95,8 +96,21 @@ export function MessageRow({ conversation, isSelected = false, onSelect }: Messa
           {conversation.subject}
         </div>
 
-        <div className="truncate text-[13px] text-[#5f6368] mt-0.5">
-          {conversation.preview}
+        <div className="flex items-center gap-2 mt-0.5 min-w-0">
+          <span
+            className="inline-flex items-center gap-1 text-[11px] text-[#5f6368] flex-shrink-0"
+            aria-label={`Channel: ${conversation.channel}`}
+          >
+            <span
+              aria-hidden="true"
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ backgroundColor: CHANNEL_BADGE_COLORS[conversation.channel] ?? "#9aa0a6" }}
+            />
+            {conversation.channel}
+          </span>
+          <span className="truncate text-[13px] text-[#5f6368]">
+            {conversation.preview}
+          </span>
         </div>
       </div>
 

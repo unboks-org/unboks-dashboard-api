@@ -1,5 +1,5 @@
 import type { ApiConversation } from "@/lib/api";
-import type { Conversation } from "@/data/conversations";
+import type { Channel, Conversation } from "@/data/conversations";
 import { platformToChannel } from "@/lib/channel-map";
 
 /** True if value looks like a MongoDB ObjectID — 24-char hex string */
@@ -77,12 +77,35 @@ export function safePreview(c: ApiConversation): { subject: string; preview: str
   return { subject: "No preview available", preview: "" };
 }
 
+/**
+ * Channel inference.
+ *
+ * 1. If the backend gave us an explicit platform string we trust it (via
+ *    `platformToChannel`, which already knows aliases like `wa`,
+ *    `whatsapp_business`, `meta_whatsapp`, …).
+ * 2. If platform is missing we DO NOT fall back to Email. Instead we look at
+ *    the conversation key — WhatsApp conversations on this backend are keyed
+ *    by an E.164-shaped phone number, which is a strong positive signal.
+ * 3. Anything else stays "Unknown" so it shows in Inbox/All but never gets
+ *    miscategorised under a specific channel.
+ */
+function inferChannel(c: ApiConversation): Channel {
+  const fromPlatform = platformToChannel(c.platform);
+  if (fromPlatform !== "Unknown") return fromPlatform;
+  const phone = typeof c.phone === "string" ? c.phone.trim() : "";
+  if (phone && !isMongoObjectId(phone)) {
+    const digits = phone.replace(/[\s().-]/g, "");
+    if (/^\+?\d{7,}$/.test(digits)) return "WhatsApp";
+  }
+  return "Unknown";
+}
+
 /** Canonical conversation mapper — use this in every page/component */
 export function mapApiConversation(c: ApiConversation): Conversation {
   const { subject, preview } = safePreview(c);
   return {
     id: c.phone || c._id || "unknown",
-    channel: platformToChannel(c.platform),
+    channel: inferChannel(c),
     sender: safeDisplayName(c),
     subject,
     preview,
