@@ -144,22 +144,22 @@ export function TaskCard({
   return (
     <article
       className={cn(
-        "group rounded-2xl border bg-white transition-colors",
-        isDone ? "border-[#eef0f2] bg-[#fafbfc]" : "border-[#e8eaed] hover:border-[#dadce0]",
+        "group rounded-2xl border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors",
+        isDone ? "border-[#dfe3ea] bg-[#f8fafc]" : "border-[#d9dee7] hover:border-[#cfd6e3]",
       )}
     >
       <div className="px-4 py-4 sm:px-5">
-        <header className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-[#5f6368]">
+        <header className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-[#6b7280]">
           <Avatar name={task.createdBy} dim={isDone} />
-          <span className={cn("font-medium", isDone ? "text-[#5f6368]" : "text-[#3c4043]")}>
+          <span className={cn("font-medium", isDone ? "text-[#4b5563]" : "text-[#1f2937]")}>
             {task.createdBy}
           </span>
           <ArrowRight className="h-3 w-3 text-[#9aa0a6]" />
           <Avatar name={task.assignedTo} dim={isDone} />
-          <span className={cn("font-medium", isDone ? "text-[#5f6368]" : "text-[#3c4043]")}>
+          <span className={cn("font-medium", isDone ? "text-[#4b5563]" : "text-[#1f2937]")}>
             {task.assignedTo}
           </span>
-          <span className="text-[#dadce0]" aria-hidden>
+          <span className="text-[#cbd5e1]" aria-hidden>
             ·
           </span>
           <span>{formatTaskDate(task.createdAt)}</span>
@@ -168,8 +168,9 @@ export function TaskCard({
             {task.syncStatus === "pending" && (
               <span
                 title="Saved locally — will sync when backend is connected."
-                className="inline-flex items-center gap-1 rounded-full bg-[#fef7e0] px-2 py-0.5 text-[11px] font-medium text-[#8a6d00]"
+                className="inline-flex items-center gap-1 rounded-full border border-[#f5cf6c] bg-[#fff4d1] px-2 py-0.5 text-[11px] font-medium text-[#6b4f00]"
               >
+                <span className="h-1.5 w-1.5 rounded-full bg-[#d97706]" aria-hidden />
                 Pending sync
               </span>
             )}
@@ -226,7 +227,7 @@ export function TaskCard({
           <div
             className={cn(
               "whitespace-pre-wrap break-words text-[14px] leading-relaxed",
-              isDone ? "text-[#5f6368] line-through decoration-[#dadce0]" : "text-[#202124]",
+              isDone ? "text-[#6b7280] line-through decoration-[#cbd5e1]" : "text-[#1f2937]",
             )}
           >
             {body || <span className="text-[#9aa0a6]">(no description)</span>}
@@ -258,7 +259,7 @@ export function TaskCard({
         )}
       </div>
 
-      <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-[#f1f3f4] bg-[#fafbfc] px-4 py-2.5 sm:px-5">
+      <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-[#e2e8f0] bg-[#f8fafc] px-4 py-2.5 sm:px-5">
         {editing ? (
           <>
             <button
@@ -294,7 +295,7 @@ export function TaskCard({
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors",
                 canEdit
-                  ? "border-[#dadce0] bg-white text-[#3c4043] hover:bg-[#f1f3f4]"
+                  ? "border-[#d9dee7] bg-white text-[#1f2937] hover:bg-[#eef1f6]"
                   : "border-transparent bg-transparent text-[#9aa0a6] cursor-not-allowed",
               )}
             >
@@ -306,7 +307,7 @@ export function TaskCard({
                 type="button"
                 onClick={() => onReopen(task)}
                 disabled={busy}
-                className="inline-flex items-center gap-2 rounded-full border border-[#dadce0] bg-white px-3 py-1.5 text-[12px] font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4] disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-full border border-[#d9dee7] bg-white px-3 py-1.5 text-[12px] font-medium text-[#1f2937] transition-colors hover:bg-[#eef1f6] disabled:opacity-60"
               >
                 {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
                 Reopen

@@ -127,14 +127,14 @@ export function TaskComposer({ submitting, backendUnavailable, onSubmit }: TaskC
   return (
     <section
       className={cn(
-        "rounded-2xl border bg-white transition-colors",
-        focused ? "border-[#c6dafc]" : "border-[#e8eaed]",
+        "rounded-2xl border bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition-colors",
+        focused ? "border-[#a8c7fa]" : "border-[#cfd6e3]",
       )}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f1f3f4] px-4 py-3 sm:px-5">
-        <div className="flex items-center gap-2 text-[13px] text-[#5f6368]">
-          <span>To</span>
-          <div className="inline-flex rounded-full border border-[#e8eaed] p-0.5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e2e8f0] px-4 py-3 sm:px-5">
+        <div className="flex items-center gap-2 text-[13px] text-[#4b5563]">
+          <span className="font-medium">To</span>
+          <div className="inline-flex rounded-full border border-[#d9dee7] p-0.5">
             {(["Jr", "Calvin"] as TaskUser[]).map((u) => (
               <button
                 key={u}
@@ -144,7 +144,7 @@ export function TaskComposer({ submitting, backendUnavailable, onSubmit }: TaskC
                   "rounded-full px-3 py-1 text-[12px] font-medium transition-colors",
                   assignedTo === u
                     ? "bg-[#1a73e8] text-white"
-                    : "text-[#3c4043] hover:bg-[#f1f3f4]",
+                    : "text-[#1f2937] hover:bg-[#eef1f6]",
                 )}
               >
                 {u}
@@ -152,7 +152,7 @@ export function TaskComposer({ submitting, backendUnavailable, onSubmit }: TaskC
             ))}
           </div>
         </div>
-        <span className="text-[12px] text-[#9aa0a6]">
+        <span className="text-[12px] text-[#6b7280]">
           Up to {MAX_IMAGES_PER_TASK} images · 10 MB each
         </span>
       </div>
@@ -166,7 +166,7 @@ export function TaskComposer({ submitting, backendUnavailable, onSubmit }: TaskC
           onBlur={() => setFocused(false)}
           placeholder="Write a task…"
           rows={4}
-          className="w-full resize-y border-0 bg-transparent p-0 text-[14px] leading-relaxed text-[#202124] placeholder:text-[#9aa0a6] focus:outline-none focus:ring-0"
+          className="w-full resize-y border-0 bg-transparent p-0 text-[14px] leading-relaxed text-[#1f2937] placeholder:text-[#9aa0a6] focus:outline-none focus:ring-0"
         />
 
         {images.length > 0 && (
@@ -195,17 +195,17 @@ export function TaskComposer({ submitting, backendUnavailable, onSubmit }: TaskC
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#f1f3f4] bg-[#fafbfc] px-4 py-3 sm:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 sm:px-5">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-2 rounded-full border border-[#dadce0] bg-white px-3 py-1.5 text-[12px] text-[#3c4043] transition-colors hover:bg-[#f1f3f4]"
+            className="inline-flex items-center gap-2 rounded-full border border-[#d9dee7] bg-white px-3 py-1.5 text-[12px] text-[#1f2937] transition-colors hover:bg-[#eef1f6]"
           >
             <ImageIcon className="h-3.5 w-3.5" />
             Attach
           </button>
-          <span className="hidden items-center gap-1.5 text-[12px] text-[#9aa0a6] sm:inline-flex">
+          <span className="hidden items-center gap-1.5 text-[12px] text-[#6b7280] sm:inline-flex">
             <Paperclip className="h-3 w-3" />
             Paste screenshots or attach images
           </span>
@@ -221,7 +221,7 @@ export function TaskComposer({ submitting, backendUnavailable, onSubmit }: TaskC
 
         <div className="flex items-center gap-3">
           {backendUnavailable && (
-            <span className="hidden text-[12px] text-[#5f6368] sm:inline">
+            <span className="hidden text-[12px] text-[#4b5563] sm:inline">
               Will save locally
             </span>
           )}

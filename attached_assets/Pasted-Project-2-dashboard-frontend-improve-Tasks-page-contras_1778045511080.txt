@@ -1,0 +1,90 @@
+Project 2 dashboard frontend — improve Tasks page contrast and visual separation.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python API assumptions.
+- Work only on the Tasks page and task components.
+- Do not touch Settings.
+- Do not touch Inbox.
+- Do not touch DashboardShell unless absolutely required.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish until reviewed.
+
+Issue:
+The Tasks page redesign is too low-contrast.
+Everything is pale white/grey, making it hard to distinguish:
+- task composer
+- sync status box
+- filter tabs
+- loading state
+- task cards
+- task footer/actions
+
+Task:
+Improve visual contrast and hierarchy on the Tasks page only.
+
+Goal:
+Keep the premium SaaS style, but make sections clearly distinguishable and easier to scan.
+
+Required changes:
+1. Increase contrast between page background and cards.
+2. Give task cards stronger but still tasteful borders.
+3. Make composer visually distinct from task cards.
+4. Make the sync/pending status bar clearer.
+5. Make filter tabs more readable and visually anchored.
+6. Make the loading state less dominant or visually softer.
+7. Make task card footer/action area clearly separated.
+8. Make “Pending sync” badge visible but elegant.
+9. Text contrast should be stronger, especially grey helper text.
+10. Do not make it dark mode.
+11. Do not use loud colors everywhere.
+12. Keep it clean and premium.
+
+Suggested visual style:
+- Page background: slightly darker soft grey, e.g. #f6f8fb or #f7f8fa
+- Cards: pure white
+- Card border: #d9dee7 or #dfe3ea
+- Active task card border: slightly stronger #cfd6e3
+- Composer border: #cfd6e3
+- Footer/action area: #f8fafc with top border #e2e8f0
+- Loading box: lighter, smaller, not huge dashed box if possible
+- Text:
+  - main text: #1f2937 / #202124
+  - secondary: #4b5563 instead of very pale grey
+  - helper: #6b7280
+- Pending sync badge: soft amber background with darker amber text
+- Open/Done/All tabs: stronger active state, clearer inactive text
+
+Specific components to inspect:
+- artifacts/unboks/src/pages/Tasks.tsx
+- artifacts/unboks/src/components/tasks/TaskComposer.tsx
+- artifacts/unboks/src/components/tasks/TaskCard.tsx
+
+Do not touch:
+- Settings.tsx
+- Inbox.tsx
+- artifacts/api-server
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Composer is clearly distinguishable.
+- Status/sync bar is clearly distinguishable.
+- Filter tabs are easy to read.
+- Task cards stand out from the page background.
+- Task footer/action area is visually separated.
+- Pending sync badge is clear.
+- Page still looks premium, not heavy or cheap.
+- Mobile remains clean.
+- No horizontal overflow.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

@@ -355,24 +355,24 @@ export default function Tasks() {
         : "No open tasks.";
 
   return (
-    <div className="min-h-screen bg-[#f8f9fb]">
-      <header className="sticky top-0 z-10 border-b border-[#e8eaed] bg-white/95 backdrop-blur">
+    <div className="min-h-screen bg-[#f6f8fb]">
+      <header className="sticky top-0 z-10 border-b border-[#dfe3ea] bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-[18px] font-semibold tracking-tight text-[#202124] sm:text-[20px]">
+              <h1 className="text-[18px] font-semibold tracking-tight text-[#1f2937] sm:text-[20px]">
                 Tasks
               </h1>
               <StatusPill status={status} />
             </div>
-            <p className="mt-0.5 text-[12px] text-[#5f6368] sm:text-[13px]">
+            <p className="mt-0.5 text-[12px] text-[#4b5563] sm:text-[13px]">
               Shared task board for Calvin and Jr.
             </p>
           </div>
           <button
             type="button"
             onClick={logout}
-            className="rounded-full border border-[#e8eaed] bg-white px-3 py-1.5 text-[12px] font-medium text-[#5f6368] transition-colors hover:bg-[#f1f3f4]"
+            className="rounded-full border border-[#d9dee7] bg-white px-3 py-1.5 text-[12px] font-medium text-[#4b5563] transition-colors hover:bg-[#eef1f6]"
           >
             Sign out
           </button>
@@ -387,22 +387,27 @@ export default function Tasks() {
         />
 
         {backendUnavailable && (
-          <div className="rounded-xl border border-[#fde293] bg-[#fef7e0] px-4 py-3 text-[12px] text-[#7c5a00] sm:text-[13px]">
+          <div className="rounded-xl border border-[#f5cf6c] bg-[#fff4d1] px-4 py-3 text-[12px] text-[#6b4f00] sm:text-[13px]">
             Shared tasks aren't connected yet. You can still create local pending
             tasks — they'll sync when the backend is ready.
           </div>
         )}
         {otherError && (
-          <div className="rounded-xl border border-[#e8eaed] bg-white px-4 py-3 text-[12px] text-[#5f6368] sm:text-[13px]">
+          <div className="rounded-xl border border-[#d9dee7] bg-white px-4 py-3 text-[12px] text-[#4b5563] sm:text-[13px]">
             Couldn't load shared tasks right now. Your local tasks are still safe.
           </div>
         )}
 
         {showSyncButton && (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#e8eaed] bg-white px-4 py-3 text-[12px] text-[#3c4043] sm:text-[13px]">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#cfd6e3] bg-white px-4 py-3 text-[12px] text-[#1f2937] shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:text-[13px]">
             <span>
-              {pendingCount} task{pendingCount === 1 ? "" : "s"} saved locally
-              {failedCount > 0 ? ` · ${failedCount} failed last time` : ""}.
+              <span className="font-medium">
+                {pendingCount} task{pendingCount === 1 ? "" : "s"} saved locally
+              </span>
+              {failedCount > 0 ? (
+                <span className="text-[#a50e0e]"> · {failedCount} failed last time</span>
+              ) : null}
+              .
             </span>
             <button
               type="button"
@@ -419,7 +424,7 @@ export default function Tasks() {
         <div
           role="group"
           aria-label="Filter tasks"
-          className="inline-flex rounded-full border border-[#e8eaed] bg-white p-0.5"
+          className="inline-flex rounded-full border border-[#cfd6e3] bg-white p-1 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
         >
           {FILTERS.map((f) => {
             const isActive = filter === f.id;
@@ -434,15 +439,15 @@ export default function Tasks() {
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors sm:text-[13px]",
                   isActive
-                    ? "bg-[#1a73e8] text-white"
-                    : "text-[#5f6368] hover:text-[#202124]",
+                    ? "bg-[#1a73e8] text-white shadow-sm"
+                    : "text-[#4b5563] hover:bg-[#eef1f6] hover:text-[#1f2937]",
                 )}
               >
                 {f.label}
                 <span
                   className={cn(
                     "rounded-full px-1.5 text-[10px] font-semibold",
-                    isActive ? "bg-white/25 text-white" : "bg-[#f1f3f4] text-[#5f6368]",
+                    isActive ? "bg-white/25 text-white" : "bg-[#eef1f6] text-[#4b5563]",
                   )}
                 >
                   {count}
@@ -453,13 +458,14 @@ export default function Tasks() {
         </div>
 
         {isLoading && !backendTasks && !backendUnavailable && (
-          <div className="rounded-xl border border-dashed border-[#e8eaed] bg-white px-4 py-8 text-center text-[13px] text-[#5f6368]">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#d9dee7] bg-white px-3 py-1.5 text-[12px] text-[#4b5563]">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
             Loading tasks…
           </div>
         )}
 
         {!isLoading && visibleTasks.length === 0 && (
-          <div className="rounded-xl border border-dashed border-[#e8eaed] bg-white px-4 py-10 text-center text-[13px] text-[#5f6368]">
+          <div className="rounded-xl border border-dashed border-[#cfd6e3] bg-white px-4 py-8 text-center text-[13px] text-[#6b7280]">
             {emptyCopy}
           </div>
         )}
