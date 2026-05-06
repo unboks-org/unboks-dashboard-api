@@ -13,7 +13,6 @@ import {
   Facebook,
   Video,
   MessageSquare,
-  Circle,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -93,7 +92,7 @@ export function Drawer({
     return isChannelEnabled(ch as Parameters<typeof isChannelEnabled>[0]);
   });
 
-  const FOOTER: NavItem[] = [
+  const WORKSPACE: NavItem[] = [
     { id: "bookings", icon: Calendar, label: bookingsLabel },
     { id: "analytics", icon: BarChart2, label: "Analytics" },
     { id: "settings", icon: SettingsIcon, label: "Settings" },
@@ -107,7 +106,7 @@ export function Drawer({
         onClick={onClose}
         className={cn(
           "fixed inset-0 bg-black/40 z-40 transition-opacity md:hidden",
-          open ? "opacity-100" : "opacity-0 pointer-events-none"
+          open ? "opacity-100" : "opacity-0 pointer-events-none",
         )}
       />
 
@@ -115,75 +114,100 @@ export function Drawer({
       <aside
         aria-label="Navigation"
         className={cn(
-          "bg-white flex flex-col",
+          "flex flex-col bg-[#f8fafc]",
           // Mobile (default): fixed overlay
-          "fixed top-0 left-0 h-full w-[300px] max-w-[85vw] z-50 shadow-xl transform transition-transform duration-200 ease-out",
+          "fixed top-0 left-0 h-full w-[296px] max-w-[85vw] z-50 shadow-xl transform transition-transform duration-200 ease-out",
           open ? "translate-x-0" : "-translate-x-full",
           // Desktop (md+): static sidebar always visible
-          "md:static md:h-auto md:translate-x-0 md:w-72 md:max-w-none md:shadow-none md:border-r md:border-[#f1f3f4] md:flex-shrink-0 md:z-auto"
+          "md:static md:h-auto md:translate-x-0 md:w-[260px] md:max-w-none md:shadow-none md:border-r md:border-[#e5e7eb] md:flex-shrink-0 md:z-auto",
         )}
       >
         {/* Brand */}
-        <div className="px-5 py-4 flex items-center border-b border-[#f1f3f4]">
+        <div className="flex items-center px-4 pt-4 pb-3">
           <img
             src="/unboks-logo.png"
             alt="Unboks"
-            className="h-11 w-auto object-contain object-left"
+            className="h-9 w-auto object-contain object-left"
             draggable={false}
           />
         </div>
 
-        {/* Operational heartbeat */}
-        <div className="px-5 py-3 border-b border-[#f1f3f4]">
-          <div className="flex items-center gap-2 mb-1.5">
-            <Circle className="w-2.5 h-2.5 text-[#34a853] flex-shrink-0" fill="currentColor" />
-            <span className="text-[14px] text-[#202124] font-medium">Active</span>
+        {/* Operational status pill */}
+        <div className="px-4 pb-3">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#d6e9dc] bg-[#ecf6ee] px-2.5 py-1 text-[12px] font-medium text-[#137333]">
+            <span className="relative grid h-1.5 w-1.5 place-items-center">
+              <span className="absolute inline-block h-1.5 w-1.5 rounded-full bg-[#34a853] opacity-60 animate-ping" />
+              <span className="relative inline-block h-1.5 w-1.5 rounded-full bg-[#34a853]" />
+            </span>
+            Active
+            <span className="text-[#137333]/60" aria-hidden>·</span>
+            <span className="font-normal text-[#1f6b35]">Connected to Unboks</span>
           </div>
-          <p className="text-[12px] text-[#5f6368] pl-[18px]">Connected to Unboks</p>
         </div>
 
         {/* Nav list */}
-        <nav className="flex-1 overflow-y-auto py-2">
-          {PRIMARY.map((item) => (
-            <NavRow
-              key={item.id}
-              item={item}
-              active={active === item.id}
-              onSelect={onSelect}
-            />
-          ))}
+        <nav
+          className={cn(
+            "flex-1 overflow-y-auto px-2 pt-1 pb-3",
+            // Subtle, non-harsh scrollbar
+            "[scrollbar-width:thin] [scrollbar-color:#d9dee7_transparent]",
+            "[&::-webkit-scrollbar]:w-1.5",
+            "[&::-webkit-scrollbar-track]:bg-transparent",
+            "[&::-webkit-scrollbar-thumb]:rounded-full",
+            "[&::-webkit-scrollbar-thumb]:bg-[#e5e7eb]",
+            "hover:[&::-webkit-scrollbar-thumb]:bg-[#d9dee7]",
+          )}
+        >
+          <NavGroup>
+            {PRIMARY.map((item) => (
+              <NavRow
+                key={item.id}
+                item={item}
+                active={active === item.id}
+                onSelect={onSelect}
+              />
+            ))}
+          </NavGroup>
 
           <SectionHeader label="Channels" />
+          <NavGroup>
+            {CHANNELS.map((item) => (
+              <NavRow
+                key={item.id}
+                item={item}
+                active={active === item.id}
+                onSelect={onSelect}
+              />
+            ))}
+            {CHANNELS.length === 0 && (
+              <div className="px-3 py-2 text-[12px] text-[#6b7280]">
+                No channels enabled yet.
+              </div>
+            )}
+          </NavGroup>
 
-          {CHANNELS.map((item) => (
-            <NavRow
-              key={item.id}
-              item={item}
-              active={active === item.id}
-              onSelect={onSelect}
-            />
-          ))}
-
-          <div className="h-px bg-[#f1f3f4] my-2" />
-
-          {FOOTER.map((item) => (
-            <NavRow
-              key={item.id}
-              item={item}
-              active={active === item.id}
-              onSelect={onSelect}
-            />
-          ))}
+          <SectionHeader label="Workspace" />
+          <NavGroup>
+            {WORKSPACE.map((item) => (
+              <NavRow
+                key={item.id}
+                item={item}
+                active={active === item.id}
+                onSelect={onSelect}
+              />
+            ))}
+          </NavGroup>
         </nav>
 
+        {/* Footer / sign out */}
         {onLogout && (
-          <div className="border-t border-[#f1f3f4] p-2">
+          <div className="border-t border-[#e5e7eb] bg-white px-2 py-2">
             <button
               onClick={onLogout}
-              className="w-full flex items-center gap-5 pl-5 pr-4 h-12 rounded-r-full text-[14px] text-[#202124] hover:bg-[#f6f8fc] transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-[10px] text-[13.5px] text-[#1f2937] hover:bg-[#eef1f6] transition-colors"
             >
-              <LogOut className="w-5 h-5 text-[#5f6368]" strokeWidth={1.75} />
-              <span>Sign out</span>
+              <LogOut className="w-4 h-4 text-[#6b7280]" strokeWidth={1.75} />
+              <span className="font-medium">Sign out</span>
             </button>
           </div>
         )}
@@ -192,9 +216,13 @@ export function Drawer({
   );
 }
 
+function NavGroup({ children }: { children: React.ReactNode }) {
+  return <div className="space-y-0.5">{children}</div>;
+}
+
 function SectionHeader({ label }: { label: string }) {
   return (
-    <div className="px-5 pt-4 pb-2 text-[12px] font-medium uppercase tracking-wider text-[#5f6368]">
+    <div className="px-3 pt-4 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#6b7280]">
       {label}
     </div>
   );
@@ -210,26 +238,30 @@ function NavRow({
   onSelect: (id: NavId) => void;
 }) {
   const Icon = item.icon;
+  const showCount = item.count !== undefined && item.count > 0;
   return (
     <button
       onClick={() => onSelect(item.id)}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "w-full flex items-center gap-5 pl-5 pr-4 h-12 rounded-r-full text-[14px] transition-colors",
+        "w-full flex items-center gap-3 pl-3 pr-2 h-9 rounded-[10px] text-[13.5px] transition-colors",
         active
           ? "bg-[#e8f0fe] text-[#1a73e8] font-semibold"
-          : "text-[#202124] hover:bg-[#f6f8fc]"
+          : "text-[#1f2937] hover:bg-[#eef1f6]",
       )}
     >
       <Icon
-        className={cn("w-5 h-5", active ? "text-[#1a73e8]" : "text-[#5f6368]")}
+        className={cn("w-4 h-4 flex-shrink-0", active ? "text-[#1a73e8]" : "text-[#6b7280]")}
         strokeWidth={1.75}
       />
-      <span className="flex-1 text-left">{item.label}</span>
-      {item.count !== undefined && item.count > 0 && (
+      <span className="flex-1 text-left truncate">{item.label}</span>
+      {showCount && (
         <span
           className={cn(
-            "text-[12px]",
-            active ? "text-[#1a73e8] font-semibold" : "text-[#5f6368]"
+            "min-w-[22px] h-[20px] px-1.5 inline-flex items-center justify-center rounded-full text-[11px] font-semibold leading-none",
+            active
+              ? "bg-[#dbeafe] text-[#1a73e8]"
+              : "bg-[#eef2f7] text-[#4b5563]",
           )}
         >
           {item.count}
