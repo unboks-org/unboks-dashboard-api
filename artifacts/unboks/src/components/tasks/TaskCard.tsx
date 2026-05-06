@@ -77,6 +77,24 @@ export function TaskCard({ task, busy, onMarkDone, onReopen, onOpenImage }: Task
         <span className="font-medium text-[#3c4043]">{task.assignedTo}</span>
         <span aria-hidden>·</span>
         <span>{formatTaskDate(task.createdAt)}</span>
+        {task.syncStatus === "pending" && (
+          <span
+            title="Saved locally — will sync when backend is connected."
+            className="inline-flex items-center gap-1 rounded-full bg-[#fef7e0] px-2 py-0.5 text-[11px] font-medium text-[#8a6d00]"
+          >
+            Pending sync
+          </span>
+        )}
+        {task.syncStatus === "syncing" && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-[#e8f0fe] px-2 py-0.5 text-[11px] font-medium text-[#1a73e8]">
+            <Loader2 className="h-3 w-3 animate-spin" /> Syncing…
+          </span>
+        )}
+        {task.syncStatus === "failed" && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-[#fce8e6] px-2 py-0.5 text-[11px] font-medium text-[#a50e0e]">
+            Sync failed
+          </span>
+        )}
         {isDone && (
           <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-[#e6f4ea] px-2 py-0.5 text-[11px] font-medium text-[#137333]">
             <Check className="h-3 w-3" /> Done

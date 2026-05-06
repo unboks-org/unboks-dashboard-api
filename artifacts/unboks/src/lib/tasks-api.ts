@@ -47,6 +47,10 @@ export interface Task {
   updatedAt: string;
   completedAt?: string;
   completedBy?: TaskUser;
+  /** Set when this Task is a local-only entry not yet synced to the backend. */
+  localId?: string;
+  /** Sync state for local-only tasks. Absent for backend tasks. */
+  syncStatus?: "pending" | "syncing" | "failed";
 }
 
 export interface CreateTaskPayload {
@@ -130,6 +134,20 @@ export async function updateTaskStatus(id: string, status: TaskStatus): Promise<
     method: "PATCH",
     body: JSON.stringify({ status }),
   });
+}
+
+/** True when the backend `/api/unboks/tasks` route is not reachable yet
+ *  (network failure, 404, or 501). Used to switch the UI into local-only mode. */
+export function isBackendUnavailable(err: unknown): boolean {
+  if (!(err instanceof ApiError)) return false;
+  return err.status === 0 || err.status === 404 || err.status === 501;
+}
+
+/** Convert a stored data: URL back into a File for re-upload during sync. */
+export async function dataUrlToFile(dataUrl: string, fileName: string): Promise<File> {
+  const res = await fetch(dataUrl);
+  const blob = await res.blob();
+  return new File([blob], fileName, { type: blob.type });
 }
 
 /** Validate a File against type & size limits. Returns null if OK. */
