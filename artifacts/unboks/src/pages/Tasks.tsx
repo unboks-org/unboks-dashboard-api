@@ -13,7 +13,6 @@ import {
   dataUrlToFile,
   isAuthError,
   isBackendUnavailable,
-  isStatusValueRejected,
   isUploadUnsupported,
   listTasks,
   updateTaskStatus,
@@ -26,6 +25,7 @@ import {
   fileToDataUrl,
   useLocalPendingTasks,
 } from "@/hooks/use-local-pending-tasks";
+import { useParkedTasks } from "@/hooks/use-parked-tasks";
 import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 
@@ -140,6 +140,10 @@ export default function Tasks() {
     markSyncStatus,
     setServerId,
   } = useLocalPendingTasks();
+
+  // Per-user "parked" overlay for backend/shared tasks. Parking is a
+  // personal action — Calvin parking a task should not affect Jr's view.
+  const { parkedIds, addParked, removeParked } = useParkedTasks();
 
   const { data: backendTasks, isLoading, isError, error } = useQuery({
     queryKey: ["tasks"],
@@ -278,10 +282,8 @@ export default function Tasks() {
 
   const setStatus = useCallback(
     async (task: Task, status: TaskStatus) => {
-      // Local-only tasks: persist immediately. `parked` is fully supported in
-      // localStorage — it does NOT clear pending sync state, so the task will
-      // still be synced (as parked or as open, depending on backend support)
-      // once the backend is available.
+      // Local-pending tasks: parked / open / done all live on the local
+      // record. The backend is not involved at all here.
       if (task.localId) {
         setBusyId(task.id);
         try {
@@ -291,23 +293,45 @@ export default function Tasks() {
         }
         return;
       }
+
+      // ------------------------------------------------------------------
+      // Backend/shared tasks. Parking is a PER-USER local overlay — we
+      // never send `status: "parked"` to the API. Only `open` and `done`
+      // round-trip to the backend.
+      // ------------------------------------------------------------------
+
+      // Park: store override locally and we're done. Instant, no error.
+      if (status === "parked") {
+        addParked(task.id);
+        return;
+      }
+
+      // Move-to-open from a locally-parked backend task: just remove the
+      // overlay. The backend already considers the task open, so we don't
+      // need (and should not send) a PATCH.
+      if (status === "open" && parkedIds.has(task.id) && task.status !== "done") {
+        removeParked(task.id);
+        return;
+      }
+
+      // Real backend status change (mark done, or reopen from done).
+      // Marking done also clears any lingering parked overlay so the task
+      // doesn't pop back into Parked if it's later reopened.
+      if (status === "done" || status === "open") {
+        if (parkedIds.has(task.id)) removeParked(task.id);
+      }
+
       setBusyId(task.id);
       try {
         await updateMutation.mutateAsync({ id: task.id, status });
       } catch (err) {
-        // Targeted message when the Python backend doesn't yet recognize a
-        // `parked` value. Don't pretend the change succeeded.
-        if (status === "parked" && isStatusValueRejected(err)) {
-          toast.error("Parking shared tasks will be available when sync supports it.");
-        } else {
-          const msg = err instanceof ApiError ? err.message : "Failed to update task.";
-          toast.error(msg);
-        }
+        const msg = err instanceof ApiError ? err.message : "Failed to update task.";
+        toast.error(msg);
       } finally {
         setBusyId(null);
       }
     },
-    [setLocalStatus, updateMutation],
+    [addParked, parkedIds, removeParked, setLocalStatus, updateMutation],
   );
 
   const syncPendingTasks = useCallback(async () => {
@@ -323,9 +347,9 @@ export default function Tasks() {
       if (authStopped) break;
       markSyncStatus(local.localId, "syncing");
       try {
-        // If a previous sync already created the server task (e.g. status
-        // mirror failed afterwards), skip re-creating it. Otherwise we'd
-        // duplicate the same task on every retry.
+        // If a previous sync already created the server task (e.g. the
+        // "done" mirror PATCH failed afterwards), skip re-creating it.
+        // Otherwise we'd duplicate the same task on every retry.
         let serverTaskId = local.serverId;
         if (!serverTaskId) {
           let attachmentIds: string[] = [];
@@ -344,42 +368,28 @@ export default function Tasks() {
           });
           serverTaskId = created.id;
           // Persist the server id immediately so any subsequent failure in
-          // this iteration still leaves a recoverable retry-only-mirror
-          // state for the next sync attempt.
+          // this iteration still leaves a recoverable retry-only state.
           setServerId(local.localId, serverTaskId);
         }
-        // Mirror non-default lifecycle status (parked / done) onto the
-        // server task. The backend default is "open", so we only need to
-        // PATCH when the local status diverges.
-        if (local.status !== "open") {
+
+        if (local.status === "parked") {
+          // Parked is a per-user local overlay — do NOT send to backend.
+          // Carry the parked state forward by attaching the overlay to the
+          // newly-created server id, so the user keeps seeing the task as
+          // parked after sync.
+          addParked(serverTaskId);
+        } else if (local.status === "done") {
+          // Done IS a real backend status — mirror it. Best-effort: if the
+          // mirror fails we still treat the sync as successful (the task
+          // is on the server as "open" and the user can mark done again).
           try {
-            await updateTaskStatus(serverTaskId, local.status);
+            await updateTaskStatus(serverTaskId, "done");
           } catch (mirrorErr) {
-            // Auth failures must reach the outer catch so the whole sync
-            // loop stops and resets to "pending" (otherwise every remaining
-            // task would also 401).
             if (isAuthError(mirrorErr)) throw mirrorErr;
-
-            // For "parked" we never silently downgrade to open. Keep the
-            // local task with its parked state intact and mark sync failed
-            // with an honest message. Because serverId is now persisted,
-            // the next retry will be mirror-only — no duplicate create.
-            if (local.status === "parked") {
-              const msg = isStatusValueRejected(mirrorErr)
-                ? "Parking shared tasks will be available when sync supports it."
-                : mirrorErr instanceof ApiError
-                  ? mirrorErr.message
-                  : "Couldn't park shared task — try again.";
-              markSyncStatus(local.localId, "failed", msg);
-              failCount += 1;
-              continue;
-            }
-
-            // For "done" mirror failures we accept best-effort: the task is
-            // already on the server as "open" and the user can mark it done
-            // again from the UI without data loss.
+            // Non-auth errors are intentionally swallowed — see comment above.
           }
         }
+
         removeLocal(local.localId);
         okCount += 1;
       } catch (err) {
@@ -403,12 +413,18 @@ export default function Tasks() {
     }
     if (okCount > 0) toast.success(`Synced ${okCount} task${okCount === 1 ? "" : "s"}.`);
     if (failCount > 0) toast.error(`${failCount} task${failCount === 1 ? "" : "s"} failed to sync — try again.`);
-  }, [localTasks, markSyncStatus, queryClient, removeLocal, setServerId]);
+  }, [addParked, localTasks, markSyncStatus, queryClient, removeLocal, setServerId]);
 
-  const allTasks = useMemo<Task[]>(
-    () => [...(backendTasks ?? []), ...localTasks.map(localToTask)],
-    [backendTasks, localTasks],
-  );
+  const allTasks = useMemo<Task[]>(() => {
+    // Apply the per-user "parked" overlay to backend tasks. We only
+    // override `open` → `parked`; if the backend says the task is `done`,
+    // that wins (a parked task that gets completed should appear in Done,
+    // not Parked).
+    const backend = (backendTasks ?? []).map((t) =>
+      t.status === "open" && parkedIds.has(t.id) ? { ...t, status: "parked" as const } : t,
+    );
+    return [...backend, ...localTasks.map(localToTask)];
+  }, [backendTasks, localTasks, parkedIds]);
 
   const counts = useMemo(
     () => ({

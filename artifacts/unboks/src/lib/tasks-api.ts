@@ -25,14 +25,21 @@ import { getToken } from "@/lib/tenant";
 export type TaskUser = "Calvin" | "Jr";
 /** Task lifecycle:
  *   open    — needs action
- *   parked  — set aside, not urgent (also called "snoozed" in some apps)
+ *   parked  — set aside, not urgent (per-user, local only — see below)
  *   done    — completed
  *
- * NOTE: the Python backend may not yet accept `parked` as a PATCH value.
- * In that case `updateTaskStatus(id, "parked")` will fail with 400/422 and
- * the UI surfaces a clear "Parking shared tasks will be available when sync
- * supports it." message — see `isStatusValueRejected`. Local-only pending
- * tasks always support `parked` via localStorage.
+ * IMPORTANT — `parked` is a PER-USER local state, NOT a backend status.
+ *
+ * Parking is a personal action for the current user/browser. The Python
+ * backend stores only `open` / `done`. The `parked` value here is used in
+ * two places:
+ *   1. Local-pending tasks (`use-local-pending-tasks`) carry it directly
+ *      in their stored record.
+ *   2. Backend/shared tasks get a `parked` overlay applied by the UI from
+ *      the per-user localStorage set in `use-parked-tasks`.
+ *
+ * The client therefore NEVER sends `status: "parked"` to the backend —
+ * `updateTaskStatus` is only ever called with `open` or `done`.
  */
 export type TaskStatus = "open" | "parked" | "done";
 export type TaskImageMime = "image/png" | "image/jpeg" | "image/webp";

@@ -1,0 +1,148 @@
+Project 2 dashboard frontend — make Parked tasks local/personal only.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python API assumptions.
+- Work only on Tasks page/task components/local task state.
+- Do not touch Settings.
+- Do not touch Inbox.
+- Do not touch DashboardShell.
+- Do not commit.
+- Do not publish until reviewed.
+
+Product decision:
+Parking a task is a personal/local action for the current user.
+It is not a shared/backend status yet.
+
+Meaning:
+- If Calvin parks a task, it disappears from Calvin’s Open list.
+- It appears in Calvin’s Parked tab.
+- It should not disappear from Jr’s own view unless Jr also parks it.
+- Parked state is local to the current browser/user until backend supports per-user task states.
+- Do not send parked status to backend yet.
+- Do not show red sync errors when parking.
+
+Current issue:
+Clicking Park shows:
+“Parking shared tasks will be available when sync supports it.”
+
+This is bad UX.
+Parking should work locally now.
+
+Required behavior:
+1. Clicking Park saves a local parked state for that task.
+2. Parked task disappears from Open.
+3. Parked task appears in Parked.
+4. Parked task appears in All with a Parked badge.
+5. Parked state persists after refresh.
+6. Move to open removes the local parked state.
+7. Mark done should still work.
+8. Done should override parked where appropriate:
+   - if task is marked done, it appears in Done
+   - if reopened, local parked state can remain or clear; prefer clear to Open
+9. Do not call backend PATCH with status="parked" for shared/backend tasks.
+10. Do not show red error for Park.
+11. If a task is local pending, parking can update the local pending task directly.
+12. If a task is shared/backend, parking should store only a local hidden/parked override.
+13. Jr should not be affected by Calvin parking a task, because it is local/personal.
+14. Calvin should not see parked tasks in Open.
+15. Parked tasks should be clearly labelled “Parked”.
+
+Storage:
+Use localStorage for local parked overrides.
+
+Suggested localStorage key:
+unboks_parked_task_ids
+
+If task ids are not stable, use the best stable key available:
+- backend id if available
+- localId if local pending
+- avoid using task text alone if possible
+
+Recommended model:
+localParkedTaskIds: string[]
+
+Filtering logic:
+- Open tab:
+  show tasks with status open AND not locally parked
+- Parked tab:
+  show tasks whose id is in localParkedTaskIds OR status === "parked" for local pending tasks
+- Done tab:
+  show done tasks
+- All tab:
+  show all tasks, with parked badge if locally parked
+
+Card actions:
+For open task:
+- Copy text
+- Edit
+- Park
+- Mark done
+
+For locally parked task:
+- Copy text
+- Edit
+- Move to open
+- Mark done
+
+For done task:
+- Copy text
+- Edit if supported
+- Reopen
+
+Copy:
+Park button:
+“Park”
+
+Parked badge:
+“Parked”
+
+Move back:
+“Move to open”
+
+Small helper text if needed:
+“Parked locally”
+
+Do not use:
+“Parking shared tasks will be available when sync supports it.”
+Remove that error entirely for normal parking.
+
+Likely files:
+- artifacts/unboks/src/pages/Tasks.tsx
+- artifacts/unboks/src/components/tasks/TaskCard.tsx
+- artifacts/unboks/src/hooks/use-local-pending-tasks.ts
+Possibly add:
+- artifacts/unboks/src/hooks/use-parked-tasks.ts
+
+Do not touch:
+- artifacts/api-server
+- backend
+- Settings.tsx
+- Inbox.tsx
+- DashboardShell
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Clicking Park never shows the red unsupported-sync error.
+- Park works immediately.
+- Parked task disappears from Open.
+- Parked task appears in Parked.
+- Parked task appears in All with Parked badge.
+- Refresh preserves parked state.
+- Move to open restores task to Open.
+- Parked state is local/personal and does not require backend.
+- Backend/shared tasks are not patched with status="parked".
+- Mark done still works.
+- Reopen still works.
+- Copy text still works.
+- Edit still works.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.
