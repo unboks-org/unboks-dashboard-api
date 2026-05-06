@@ -331,10 +331,10 @@ export default function Settings() {
   const currentCategory = CATEGORIES.find((c) => c.id === active) ?? CATEGORIES[0];
 
   return (
-    <DashboardShell activeNav="settings" pageTitle="Settings">
+    <DashboardShell activeNav="settings" pageTitle="">
       <div className="min-h-full bg-[#f8f9fb]">
-        <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
-          <header className="mb-6 sm:mb-8">
+        <div className="mx-auto w-full max-w-[1180px] px-4 py-6 sm:px-6 sm:py-8">
+          <header className="mb-5 sm:mb-6">
             <h1 className="text-[22px] font-semibold tracking-tight text-[#202124] sm:text-[28px]">
               Settings
             </h1>
@@ -343,68 +343,47 @@ export default function Settings() {
             </p>
           </header>
 
-          <div className="lg:grid lg:grid-cols-[220px_1fr] lg:gap-10">
-            {/* Mobile / tablet category pills */}
-            <nav aria-label="Settings categories" className="mb-5 lg:hidden">
-              <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map((cat) => {
-                  const Icon = cat.icon;
-                  const isActive = cat.id === active;
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setActive(cat.id)}
+          {/* Top tab bar — horizontally scrollable on mobile, full-width on desktop */}
+          <nav
+            aria-label="Settings categories"
+            className="mb-6 border-b border-[#e8eaed]"
+          >
+            <div
+              role="tablist"
+              className="-mb-px flex gap-1 overflow-x-auto sm:gap-2"
+              style={{ scrollbarWidth: "none" }}
+            >
+              {CATEGORIES.map((cat) => {
+                const Icon = cat.icon;
+                const isActive = cat.id === active;
+                return (
+                  <button
+                    key={cat.id}
+                    role="tab"
+                    type="button"
+                    aria-selected={isActive}
+                    onClick={() => setActive(cat.id)}
+                    className={cn(
+                      "inline-flex flex-shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] transition-colors sm:px-4",
+                      isActive
+                        ? "border-[#1a73e8] text-[#1a73e8] font-medium"
+                        : "border-transparent text-[#5f6368] hover:text-[#202124] hover:border-[#dadce0]",
+                    )}
+                  >
+                    <Icon
                       className={cn(
-                        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[13px] transition-colors",
-                        isActive
-                          ? "border-[#1a73e8] bg-[#e8f0fe] text-[#1a73e8]"
-                          : "border-[#e5e7eb] bg-white text-[#3c4043] hover:bg-[#f6f8fc]",
+                        "h-3.5 w-3.5",
+                        isActive ? "text-[#1a73e8]" : "text-[#9aa0a6]",
                       )}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                      {cat.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </nav>
+                    />
+                    {cat.label}
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
 
-            {/* Desktop sidebar */}
-            <aside className="hidden lg:block">
-              <nav aria-label="Settings categories" className="sticky top-6">
-                <ul className="space-y-1">
-                  {CATEGORIES.map((cat) => {
-                    const Icon = cat.icon;
-                    const isActive = cat.id === active;
-                    return (
-                      <li key={cat.id}>
-                        <button
-                          type="button"
-                          onClick={() => setActive(cat.id)}
-                          className={cn(
-                            "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[13px] transition-colors",
-                            isActive
-                              ? "bg-[#e8f0fe] font-medium text-[#1a73e8]"
-                              : "text-[#3c4043] hover:bg-white",
-                          )}
-                        >
-                          <Icon
-                            className={cn(
-                              "h-4 w-4 flex-shrink-0",
-                              isActive ? "text-[#1a73e8]" : "text-[#5f6368]",
-                            )}
-                          />
-                          <span className="truncate">{cat.label}</span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </nav>
-            </aside>
-
-            {/* Right content panel */}
+          <div>
             <main className="min-w-0">
               <CategoryHeader
                 title={currentCategory.label}

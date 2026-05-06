@@ -101,10 +101,12 @@ export function DashboardShell({
           onOpenDrawer={() => setDrawerOpen(true)}
         />
 
-        <div className="px-5 pt-2 pb-2 flex-shrink-0 flex items-center gap-2">
-          <h2 className="text-[14px] text-[#5f6368]">{pageTitle}</h2>
-          {titleSuffix}
-        </div>
+        {(pageTitle || titleSuffix) && (
+          <div className="px-5 pt-2 pb-2 flex-shrink-0 flex items-center gap-2">
+            {pageTitle && <h2 className="text-[14px] text-[#5f6368]">{pageTitle}</h2>}
+            {titleSuffix}
+          </div>
+        )}
 
         <main className="flex-1 overflow-y-auto bg-white">
           {children}
