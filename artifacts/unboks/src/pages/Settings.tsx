@@ -2,13 +2,11 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { Switch } from "@/components/ui/switch";
-import { useConfig } from "@/hooks/use-client-api";
 import { useEmailSettings } from "@/hooks/use-email-settings";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import { useEscalationNotificationPrefs, type NotifyChannelKey } from "@/hooks/use-escalation-notification-preferences";
 import { useEnabledChannels, TOGGLEABLE_CHANNELS } from "@/hooks/use-enabled-channels";
 import { loadSot, type SotBlock } from "@/data/sot";
-import { getClientSlug, getApiBase } from "@/lib/tenant";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -43,15 +41,6 @@ function ToggleRow({ label, description, checked, onChange, disabled }: {
         disabled={disabled}
         className="flex-shrink-0 data-[state=checked]:bg-[#1a73e8] data-[state=unchecked]:bg-[#dadce0]"
       />
-    </div>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline gap-4 py-1.5 min-w-0">
-      <span className="text-[13px] text-[#5f6368] w-36 flex-shrink-0">{label}</span>
-      <span className="text-[13px] text-[#202124] font-mono bg-[#f6f8fc] px-2 py-0.5 rounded min-w-0 flex-1 break-all">{value}</span>
     </div>
   );
 }
@@ -102,7 +91,6 @@ function SotCard({ block }: { block: SotBlock }) {
 }
 
 export default function Settings() {
-  const { data: config, isLoading: configLoading } = useConfig();
   const { emailClient, setEmailClient } = useEmailSettings();
   const { label: bookingsLabel, setLabel: setBookingsLabel } = useBookingsLabel();
   const { prefs: notifyPrefs, save: saveNotifyPrefs } = useEscalationNotificationPrefs();
@@ -119,28 +107,6 @@ export default function Settings() {
   return (
     <DashboardShell activeNav="settings" pageTitle="Settings">
       <div className="max-w-2xl min-w-0 overflow-x-hidden">
-
-        {/* Client / System Info */}
-        <Section title="Client & System" description="Current configuration for this workspace.">
-          <div className="space-y-0.5">
-            <InfoRow label="Client slug" value={getClientSlug()} />
-            <InfoRow label="API endpoint" value={getApiBase()} />
-            {configLoading && <p className="text-[12px] text-[#1a73e8] mt-2">Loading config…</p>}
-            {config && (
-              <>
-                <InfoRow label="Client name" value={config.clientName ?? "—"} />
-                <InfoRow
-                  label="Platforms"
-                  value={
-                    Array.isArray(config.connectedPlatforms) && config.connectedPlatforms.length > 0
-                      ? config.connectedPlatforms.join(", ")
-                      : "No platforms connected yet"
-                  }
-                />
-              </>
-            )}
-          </div>
-        </Section>
 
         {/* Your Info (formerly "Source of Truth") */}
         <div className="border-b border-[#f1f3f4]">
