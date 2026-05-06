@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
-import { DashboardShell } from "@/components/inbox/DashboardShell";
+import { DashboardShell, PENDING_NAV_KEY } from "@/components/inbox/DashboardShell";
 import { MessageRow } from "@/components/inbox/MessageRow";
 import type { Channel, Conversation } from "@/data/conversations";
 import {
@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import type { ApiMessage, ConversationDetail } from "@/lib/api";
 
-const PAGE_ROUTES: Partial<Record<NavId, string>> = {
+const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
   settings: "/settings",
   analytics: "/analytics",
@@ -478,13 +478,43 @@ export default function Inbox() {
     return apiConversations.map(mapApiConversation);
   }, [apiConversations, isError]);
 
-  const handleNavSelect = (id: NavId) => {
-    const route = PAGE_ROUTES[id];
-    if (route) { navigate(route); return; }
-    setActiveNavState(id);
-    setSearchQueryState("");
-    setSelectedConv(null);
-  };
+  // Stable handler. Always updates local filter state for inbox-context ids,
+  // even when the route is already "/" (channel ↔ channel switches, or
+  // re-clicking the same channel). Functional setters avoid any reliance on
+  // a stale closure value.
+  const handleNavSelect = useCallback((id: NavId) => {
+    const externalRoute = EXTERNAL_ROUTES[id];
+    if (externalRoute) {
+      navigate(externalRoute);
+      return;
+    }
+    // Inbox / Escalations / channel:* — always reset local state.
+    setActiveNavState(() => id);
+    setSearchQueryState(() => "");
+    setSelectedConv(() => null);
+  }, [navigate]);
+
+  // Consume any cross-route nav intent parked by DashboardShell when the user
+  // clicked a channel/escalations item from Bookings/Analytics/Settings.
+  useEffect(() => {
+    let pending: string | null = null;
+    try {
+      pending = sessionStorage.getItem(PENDING_NAV_KEY);
+      if (pending) sessionStorage.removeItem(PENDING_NAV_KEY);
+    } catch {
+      pending = null;
+    }
+    if (!pending) return;
+    if (
+      pending === "inbox" ||
+      pending === "escalations" ||
+      pending.startsWith("channel:")
+    ) {
+      setActiveNavState(() => pending as NavId);
+      setSearchQueryState(() => "");
+      setSelectedConv(() => null);
+    }
+  }, []);
 
   const activeChannel: Channel | null = useMemo(() => {
     if (activeNav.startsWith("channel:")) return activeNav.split(":")[1] as Channel;

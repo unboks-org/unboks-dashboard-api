@@ -1,4 +1,4 @@
-import { useState, useMemo, ReactNode } from "react";
+import { useState, useMemo, useCallback, ReactNode } from "react";
 import { useLocation } from "wouter";
 import { Header } from "@/components/inbox/Header";
 import { Drawer, NavId } from "@/components/inbox/Drawer";
@@ -7,12 +7,24 @@ import { useConversations, useEscalations } from "@/hooks/use-client-api";
 import { mapApiConversation } from "@/lib/conversation-mapper";
 import { useAuth } from "@/components/auth/useAuth";
 
-const PAGE_ROUTES: Partial<Record<NavId, string>> = {
+const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
   settings: "/settings",
   analytics: "/analytics",
-  inbox: "/",
 };
+
+/** Inbox-context nav ids — they all live on "/" and are filtered locally. */
+function isInboxContext(id: NavId): boolean {
+  return id === "inbox" || id === "escalations" || id.startsWith("channel:");
+}
+
+/**
+ * Cross-route nav intent. When the user clicks an inbox-context item from a
+ * non-Inbox page (Bookings/Analytics/Settings), we navigate to "/" but the
+ * Inbox page is not mounted yet, so calling onNavSelect is a no-op. We park
+ * the intent in sessionStorage and Inbox consumes it on mount.
+ */
+export const PENDING_NAV_KEY = "unboks:pending-nav";
 
 interface DashboardShellProps {
   activeNav: NavId;
@@ -40,7 +52,7 @@ export function DashboardShell({
   titleSuffix,
   children,
 }: DashboardShellProps) {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const { logout } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -78,15 +90,45 @@ export function DashboardShell({
     [apiEscalations, hasEscData],
   );
 
-  const handleNavSelect = (id: NavId) => {
-    const route = PAGE_ROUTES[id];
-    if (route) navigate(route);
-    // Always notify the page too. On a same-route click (e.g. clicking Inbox
-    // while already on /) navigate() is a no-op, so we rely on this callback
-    // to reset the page's local filter/search state.
-    onNavSelect?.(id);
-    setDrawerOpen(false);
-  };
+  const handleNavSelect = useCallback(
+    (id: NavId) => {
+      // Always close the mobile drawer first — independent of routing.
+      setDrawerOpen(false);
+
+      // External routes: navigate away. The Inbox page is unmounted so we
+      // don't need to call onNavSelect for filter state.
+      const externalRoute = EXTERNAL_ROUTES[id];
+      if (externalRoute) {
+        if (location !== externalRoute) navigate(externalRoute);
+        onNavSelect?.(id);
+        return;
+      }
+
+      // Inbox-context (inbox / escalations / channel:*): all live on "/".
+      // Make sure we land on "/" first so the Inbox page is mounted, THEN
+      // unconditionally notify the page so it always updates its local
+      // filter state — even when re-clicking the same channel or switching
+      // back and forth between channels (no route change in that case).
+      if (isInboxContext(id)) {
+        if (location !== "/") {
+          // Park the intent so Inbox can apply it on mount (since
+          // onNavSelect on the current page may not be wired).
+          try {
+            sessionStorage.setItem(PENDING_NAV_KEY, id);
+          } catch {
+            // sessionStorage unavailable — fall back to onNavSelect only.
+          }
+          navigate("/");
+        }
+        onNavSelect?.(id);
+        return;
+      }
+
+      // Fallback (shouldn't happen): just notify.
+      onNavSelect?.(id);
+    },
+    [location, navigate, onNavSelect],
+  );
 
   return (
     <div className="flex h-screen w-full bg-white overflow-hidden font-sans">
