@@ -13,6 +13,7 @@ import {
   dataUrlToFile,
   isAuthError,
   isBackendUnavailable,
+  isStatusValueRejected,
   isUploadUnsupported,
   listTasks,
   updateTaskStatus,
@@ -28,13 +29,17 @@ import {
 import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 
-type Filter = "open" | "done" | "all";
+type Filter = "open" | "parked" | "done" | "all";
 
 const FILTERS: { id: Filter; label: string }[] = [
   { id: "open", label: "Open" },
+  { id: "parked", label: "Parked" },
   { id: "done", label: "Done" },
   { id: "all", label: "All" },
 ];
+
+/** Status sort priority for the All view — open first, parked middle, done last. */
+const STATUS_ORDER: Record<TaskStatus, number> = { open: 0, parked: 1, done: 2 };
 
 /** Adapt a localStorage pending task into the shared Task shape used by the UI. */
 function localToTask(local: LocalPendingTask): Task {
@@ -133,6 +138,7 @@ export default function Tasks() {
     setLocalStatus,
     removeLocal,
     markSyncStatus,
+    setServerId,
   } = useLocalPendingTasks();
 
   const { data: backendTasks, isLoading, isError, error } = useQuery({
@@ -272,6 +278,10 @@ export default function Tasks() {
 
   const setStatus = useCallback(
     async (task: Task, status: TaskStatus) => {
+      // Local-only tasks: persist immediately. `parked` is fully supported in
+      // localStorage — it does NOT clear pending sync state, so the task will
+      // still be synced (as parked or as open, depending on backend support)
+      // once the backend is available.
       if (task.localId) {
         setBusyId(task.id);
         try {
@@ -285,8 +295,14 @@ export default function Tasks() {
       try {
         await updateMutation.mutateAsync({ id: task.id, status });
       } catch (err) {
-        const msg = err instanceof ApiError ? err.message : "Failed to update task.";
-        toast.error(msg);
+        // Targeted message when the Python backend doesn't yet recognize a
+        // `parked` value. Don't pretend the change succeeded.
+        if (status === "parked" && isStatusValueRejected(err)) {
+          toast.error("Parking shared tasks will be available when sync supports it.");
+        } else {
+          const msg = err instanceof ApiError ? err.message : "Failed to update task.";
+          toast.error(msg);
+        }
       } finally {
         setBusyId(null);
       }
@@ -307,25 +323,61 @@ export default function Tasks() {
       if (authStopped) break;
       markSyncStatus(local.localId, "syncing");
       try {
-        let attachmentIds: string[] = [];
-        if (local.attachments.length > 0) {
-          const files = await Promise.all(
-            local.attachments.map((a) => dataUrlToFile(a.dataUrl, a.fileName)),
-          );
-          const uploaded = await uploadTaskAttachments(files);
-          attachmentIds = uploaded.map((a) => a.id);
+        // If a previous sync already created the server task (e.g. status
+        // mirror failed afterwards), skip re-creating it. Otherwise we'd
+        // duplicate the same task on every retry.
+        let serverTaskId = local.serverId;
+        if (!serverTaskId) {
+          let attachmentIds: string[] = [];
+          if (local.attachments.length > 0) {
+            const files = await Promise.all(
+              local.attachments.map((a) => dataUrlToFile(a.dataUrl, a.fileName)),
+            );
+            const uploaded = await uploadTaskAttachments(files);
+            attachmentIds = uploaded.map((a) => a.id);
+          }
+          const created = await createTask({
+            assignedTo: local.assignedTo,
+            bodyText: local.bodyText,
+            bodyHtml: local.bodyHtml,
+            attachmentIds,
+          });
+          serverTaskId = created.id;
+          // Persist the server id immediately so any subsequent failure in
+          // this iteration still leaves a recoverable retry-only-mirror
+          // state for the next sync attempt.
+          setServerId(local.localId, serverTaskId);
         }
-        const created = await createTask({
-          assignedTo: local.assignedTo,
-          bodyText: local.bodyText,
-          bodyHtml: local.bodyHtml,
-          attachmentIds,
-        });
-        if (local.status === "done") {
+        // Mirror non-default lifecycle status (parked / done) onto the
+        // server task. The backend default is "open", so we only need to
+        // PATCH when the local status diverges.
+        if (local.status !== "open") {
           try {
-            await updateTaskStatus(created.id, "done");
-          } catch {
-            // Mirror best-effort; the task itself is already on the server.
+            await updateTaskStatus(serverTaskId, local.status);
+          } catch (mirrorErr) {
+            // Auth failures must reach the outer catch so the whole sync
+            // loop stops and resets to "pending" (otherwise every remaining
+            // task would also 401).
+            if (isAuthError(mirrorErr)) throw mirrorErr;
+
+            // For "parked" we never silently downgrade to open. Keep the
+            // local task with its parked state intact and mark sync failed
+            // with an honest message. Because serverId is now persisted,
+            // the next retry will be mirror-only — no duplicate create.
+            if (local.status === "parked") {
+              const msg = isStatusValueRejected(mirrorErr)
+                ? "Parking shared tasks will be available when sync supports it."
+                : mirrorErr instanceof ApiError
+                  ? mirrorErr.message
+                  : "Couldn't park shared task — try again.";
+              markSyncStatus(local.localId, "failed", msg);
+              failCount += 1;
+              continue;
+            }
+
+            // For "done" mirror failures we accept best-effort: the task is
+            // already on the server as "open" and the user can mark it done
+            // again from the UI without data loss.
           }
         }
         removeLocal(local.localId);
@@ -351,7 +403,7 @@ export default function Tasks() {
     }
     if (okCount > 0) toast.success(`Synced ${okCount} task${okCount === 1 ? "" : "s"}.`);
     if (failCount > 0) toast.error(`${failCount} task${failCount === 1 ? "" : "s"} failed to sync — try again.`);
-  }, [localTasks, markSyncStatus, queryClient, removeLocal]);
+  }, [localTasks, markSyncStatus, queryClient, removeLocal, setServerId]);
 
   const allTasks = useMemo<Task[]>(
     () => [...(backendTasks ?? []), ...localTasks.map(localToTask)],
@@ -361,6 +413,7 @@ export default function Tasks() {
   const counts = useMemo(
     () => ({
       open: allTasks.filter((t) => t.status === "open").length,
+      parked: allTasks.filter((t) => t.status === "parked").length,
       done: allTasks.filter((t) => t.status === "done").length,
       all: allTasks.length,
     }),
@@ -371,7 +424,9 @@ export default function Tasks() {
     const filtered =
       filter === "all" ? allTasks : allTasks.filter((t) => t.status === filter);
     return [...filtered].sort((a, b) => {
-      if (a.status !== b.status) return a.status === "open" ? -1 : 1;
+      if (a.status !== b.status) {
+        return (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99);
+      }
       const ta = new Date(a.createdAt).getTime() || 0;
       const tb = new Date(b.createdAt).getTime() || 0;
       return tb - ta;
@@ -403,9 +458,11 @@ export default function Tasks() {
   const emptyCopy =
     filter === "done"
       ? "No completed tasks yet."
-      : filter === "all"
-        ? "No tasks yet."
-        : "No open tasks.";
+      : filter === "parked"
+        ? "No parked tasks."
+        : filter === "all"
+          ? "No tasks yet."
+          : "No open tasks.";
 
   return (
     <div className="min-h-screen bg-[#f6f8fb]">
@@ -532,6 +589,8 @@ export default function Tasks() {
               canEdit={Boolean(t.localId)}
               onMarkDone={(task) => setStatus(task, "done")}
               onReopen={(task) => setStatus(task, "open")}
+              onPark={(task) => setStatus(task, "parked")}
+              onUnpark={(task) => setStatus(task, "open")}
               onOpenImage={(url) => setLightboxUrl(url)}
               onEdit={(task, patch) => {
                 if (!task.localId) return;

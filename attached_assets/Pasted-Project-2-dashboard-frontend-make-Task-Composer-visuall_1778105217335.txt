@@ -1,0 +1,84 @@
+Project 2 dashboard frontend — make Task Composer visually prominent.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python API assumptions.
+- Work only on Tasks page/task components.
+- Do not touch Settings.
+- Do not touch Inbox.
+- Do not touch DashboardShell.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish until reviewed.
+
+Issue:
+The task composer box looks too similar to saved task cards.
+This composer is the primary creation area — it creates all other task cards — so it needs to stand out more clearly.
+
+Task:
+Redesign the Task Composer box so it is visually distinguished from task cards.
+
+Required behavior:
+1. Composer should look like the main input/creation area.
+2. Make the border thicker or stronger than normal task cards.
+3. Use a subtle accent treatment so users immediately understand “create task here”.
+4. Do not make it loud or cheap.
+5. Keep premium SaaS style.
+6. Keep all existing composer functionality:
+   - To selector
+   - textarea
+   - attach button
+   - paste screenshot support
+   - add task button
+   - image limits text
+7. Do not change task card design except if needed to create contrast.
+8. Mobile must remain clean.
+
+Suggested visual direction:
+- Border: 2px solid #cfd6e3 or soft blue-tinted border
+- Background: white or very subtle blue/grey gradient
+- Header/footer areas slightly more defined
+- Add a small label/title if useful:
+  “New task”
+  or
+  “Create a task”
+- Keep the textarea clean and large enough.
+- Add task button remains primary.
+- Attach area remains clear.
+
+Preferred:
+- Add a small top label inside/above the composer:
+  “New task”
+- Composer border slightly blue/stronger.
+- Task cards keep normal lighter border so the composer is visibly different.
+
+Likely file:
+- artifacts/unboks/src/components/tasks/TaskComposer.tsx
+Possibly:
+- artifacts/unboks/src/pages/Tasks.tsx if wrapper styles are there.
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Inbox.tsx
+- DashboardShell
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Composer is clearly distinguishable from saved task cards.
+- Border is stronger/thicker.
+- It is obvious this is where new tasks are created.
+- Existing task creation still works.
+- Attachment/paste support still works.
+- Mobile layout still works.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

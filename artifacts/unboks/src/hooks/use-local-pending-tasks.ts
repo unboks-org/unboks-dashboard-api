@@ -32,6 +32,10 @@ export interface LocalPendingTask {
   completedBy?: TaskUser;
   syncStatus: "pending" | "syncing" | "failed";
   syncError?: string;
+  /** Set after a successful POST /tasks during sync. On subsequent sync
+   *  retries (e.g. when the parked-status mirror fails), we use this to
+   *  skip re-creating the task and avoid duplicate server entries. */
+  serverId?: string;
 }
 
 function readFromStorage(): LocalPendingTask[] {
@@ -176,7 +180,27 @@ export function useLocalPendingTasks() {
     [],
   );
 
-  return { tasks, addLocal, updateLocal, setLocalStatus, removeLocal, markSyncStatus };
+  /** Record the server-side task id after a successful create, so retries
+   *  of a partially-synced task skip re-creating it. */
+  const setServerId = useCallback((localId: string, serverId: string) => {
+    setTasks((current) => {
+      const list = current.map((t) =>
+        t.localId === localId ? { ...t, serverId } : t,
+      );
+      persist(list);
+      return list;
+    });
+  }, []);
+
+  return {
+    tasks,
+    addLocal,
+    updateLocal,
+    setLocalStatus,
+    removeLocal,
+    markSyncStatus,
+    setServerId,
+  };
 }
 
 /** Read a File as data URL. Used to persist pasted/picked images for offline. */
