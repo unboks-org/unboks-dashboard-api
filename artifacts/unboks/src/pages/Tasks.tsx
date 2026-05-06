@@ -24,6 +24,7 @@ import {
   useLocalPendingTasks,
 } from "@/hooks/use-local-pending-tasks";
 import { ApiError } from "@/lib/error";
+import { cn } from "@/lib/utils";
 
 type Filter = "open" | "done" | "all";
 
@@ -59,6 +60,61 @@ function localToTask(local: LocalPendingTask): Task {
   };
 }
 
+type SyncStatus = "loading" | "online" | "local" | "error";
+
+function StatusPill({ status }: { status: SyncStatus }) {
+  const map: Record<SyncStatus, { dot: string; text: string; bg: string; fg: string; label: string }> = {
+    loading: {
+      dot: "bg-[#9aa0a6]",
+      text: "Connecting",
+      bg: "bg-[#f1f3f4]",
+      fg: "text-[#5f6368]",
+      label: "Connecting",
+    },
+    online: {
+      dot: "bg-[#137333]",
+      text: "Synced",
+      bg: "bg-[#e6f4ea]",
+      fg: "text-[#137333]",
+      label: "Synced",
+    },
+    local: {
+      dot: "bg-[#f29900]",
+      text: "Local only",
+      bg: "bg-[#fef7e0]",
+      fg: "text-[#8a6d00]",
+      label: "Local only",
+    },
+    error: {
+      dot: "bg-[#a50e0e]",
+      text: "Offline",
+      bg: "bg-[#fce8e6]",
+      fg: "text-[#a50e0e]",
+      label: "Offline",
+    },
+  };
+  const s = map[status];
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium",
+        s.bg,
+        s.fg,
+      )}
+      aria-label={`Backend status: ${s.label}`}
+    >
+      <span
+        className={cn(
+          "h-1.5 w-1.5 rounded-full",
+          s.dot,
+          status === "loading" && "animate-pulse",
+        )}
+      />
+      {s.text}
+    </span>
+  );
+}
+
 export default function Tasks() {
   const queryClient = useQueryClient();
   const { logout } = useAuth();
@@ -81,7 +137,6 @@ export default function Tasks() {
     queryFn: listTasks,
     refetchInterval: 30_000,
     retry: (failureCount, err) => {
-      // Don't keep retrying when the backend route simply isn't there yet.
       if (isBackendUnavailable(err)) return false;
       return failureCount < 2;
     },
@@ -96,7 +151,6 @@ export default function Tasks() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks"] }),
   });
 
-  /** Build LocalAttachment[] from picked files, skipping anything too large. */
   const buildLocalAttachments = useCallback(async (files: File[]): Promise<LocalAttachment[]> => {
     const out: LocalAttachment[] = [];
     let skipped = 0;
@@ -145,7 +199,6 @@ export default function Tasks() {
     async ({ assignedTo, text, files }: { assignedTo: TaskUser; text: string; files: File[] }) => {
       setSubmitting(true);
       try {
-        // Skip the backend round-trip entirely if we already know it's unavailable.
         if (backendUnavailable) {
           await saveLocally(assignedTo, text, files);
           return;
@@ -178,7 +231,6 @@ export default function Tasks() {
 
   const setStatus = useCallback(
     async (task: Task, status: TaskStatus) => {
-      // Local pending tasks: update in localStorage only.
       if (task.localId) {
         setBusyId(task.id);
         try {
@@ -201,7 +253,6 @@ export default function Tasks() {
     [setLocalStatus, updateMutation],
   );
 
-  /** Push every pending local task to the backend. Keeps the local copy on failure. */
   const syncPendingTasks = useCallback(async () => {
     const queue = localTasks.filter(
       (t) => t.syncStatus === "pending" || t.syncStatus === "failed",
@@ -248,16 +299,30 @@ export default function Tasks() {
     if (failCount > 0) toast.error(`${failCount} task${failCount === 1 ? "" : "s"} failed to sync — try again.`);
   }, [localTasks, markSyncStatus, queryClient, removeLocal]);
 
+  const allTasks = useMemo<Task[]>(
+    () => [...(backendTasks ?? []), ...localTasks.map(localToTask)],
+    [backendTasks, localTasks],
+  );
+
+  const counts = useMemo(
+    () => ({
+      open: allTasks.filter((t) => t.status === "open").length,
+      done: allTasks.filter((t) => t.status === "done").length,
+      all: allTasks.length,
+    }),
+    [allTasks],
+  );
+
   const visibleTasks = useMemo(() => {
-    const merged: Task[] = [...(backendTasks ?? []), ...localTasks.map(localToTask)];
-    const filtered = filter === "all" ? merged : merged.filter((t) => t.status === filter);
+    const filtered =
+      filter === "all" ? allTasks : allTasks.filter((t) => t.status === filter);
     return [...filtered].sort((a, b) => {
       if (a.status !== b.status) return a.status === "open" ? -1 : 1;
       const ta = new Date(a.createdAt).getTime() || 0;
       const tb = new Date(b.createdAt).getTime() || 0;
       return tb - ta;
     });
-  }, [backendTasks, localTasks, filter]);
+  }, [allTasks, filter]);
 
   const pendingCount = localTasks.length;
   const failedCount = localTasks.filter((t) => t.syncStatus === "failed").length;
@@ -273,91 +338,127 @@ export default function Tasks() {
     return () => window.removeEventListener("keydown", onKey);
   }, [lightboxUrl]);
 
-  const noticeBanner = backendUnavailable ? (
-    <div className="rounded-lg border border-[#fde293] bg-[#fef7e0] px-4 py-3 text-[13px] text-[#8a6d00]">
-      Tasks backend isn’t connected yet. You can add tasks now — they’ll be saved
-      in this browser and synced when the backend is ready. Jr will see them
-      after sync.
-    </div>
-  ) : otherError ? (
-    <div className="rounded-lg border border-[#fad2cf] bg-[#fce8e6] px-4 py-3 text-[13px] text-[#a50e0e]">
-      Couldn’t load tasks: {error instanceof ApiError ? error.message : "Unknown error"}
-    </div>
-  ) : null;
+  const status: SyncStatus = isLoading
+    ? "loading"
+    : backendUnavailable
+      ? "local"
+      : otherError
+        ? "error"
+        : "online";
 
-  const syncBanner = showSyncButton ? (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#e8eaed] bg-[#f6f8fc] px-4 py-3 text-[13px] text-[#3c4043]">
-      <span>
-        {pendingCount} task{pendingCount === 1 ? "" : "s"} saved locally
-        {failedCount > 0 ? ` · ${failedCount} failed last time` : ""}.
-      </span>
-      <button
-        type="button"
-        onClick={syncPendingTasks}
-        disabled={syncing}
-        className="inline-flex items-center gap-2 rounded-full bg-[#1a73e8] px-3 py-1.5 text-[13px] font-medium text-white hover:bg-[#1664c1] disabled:opacity-60"
-      >
-        {syncing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-        Sync pending tasks
-      </button>
-    </div>
-  ) : null;
-
-  const emptyCopy = filter === "done" ? "No completed tasks yet." : "No open tasks.";
+  const emptyCopy =
+    filter === "done"
+      ? "No completed tasks yet."
+      : filter === "all"
+        ? "No tasks yet."
+        : "No open tasks.";
 
   return (
-    <div className="min-h-screen bg-white">
-      <header className="sticky top-0 z-10 border-b border-[#e8eaed] bg-white px-5 py-4">
-        <div className="mx-auto flex max-w-2xl items-center justify-between">
-          <div>
-            <h1 className="text-[20px] font-medium text-[#202124]">Tasks</h1>
-            <p className="text-[13px] text-[#5f6368]">
+    <div className="min-h-screen bg-[#f8f9fb]">
+      <header className="sticky top-0 z-10 border-b border-[#e8eaed] bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-[18px] font-semibold tracking-tight text-[#202124] sm:text-[20px]">
+                Tasks
+              </h1>
+              <StatusPill status={status} />
+            </div>
+            <p className="mt-0.5 text-[12px] text-[#5f6368] sm:text-[13px]">
               Shared task board for Calvin and Jr.
             </p>
           </div>
           <button
             type="button"
             onClick={logout}
-            className="rounded-full border border-[#e8eaed] px-3 py-1.5 text-[13px] text-[#5f6368] hover:bg-[#f1f3f4]"
+            className="rounded-full border border-[#e8eaed] bg-white px-3 py-1.5 text-[12px] font-medium text-[#5f6368] transition-colors hover:bg-[#f1f3f4]"
           >
             Sign out
           </button>
         </div>
       </header>
 
-      <main className="mx-auto max-w-2xl px-5 py-5 space-y-5">
-        <TaskComposer submitting={submitting} onSubmit={handleSubmit} />
+      <main className="mx-auto max-w-3xl space-y-4 px-4 py-5 sm:px-6 sm:py-6">
+        <TaskComposer
+          submitting={submitting}
+          backendUnavailable={backendUnavailable}
+          onSubmit={handleSubmit}
+        />
 
-        <div className="flex items-center gap-1 border-b border-[#e8eaed]">
+        {backendUnavailable && (
+          <div className="rounded-xl border border-[#fde293] bg-[#fef7e0] px-4 py-3 text-[12px] text-[#7c5a00] sm:text-[13px]">
+            Shared tasks aren't connected yet. You can still create local pending
+            tasks — they'll sync when the backend is ready.
+          </div>
+        )}
+        {otherError && (
+          <div className="rounded-xl border border-[#e8eaed] bg-white px-4 py-3 text-[12px] text-[#5f6368] sm:text-[13px]">
+            Couldn't load shared tasks right now. Your local tasks are still safe.
+          </div>
+        )}
+
+        {showSyncButton && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#e8eaed] bg-white px-4 py-3 text-[12px] text-[#3c4043] sm:text-[13px]">
+            <span>
+              {pendingCount} task{pendingCount === 1 ? "" : "s"} saved locally
+              {failedCount > 0 ? ` · ${failedCount} failed last time` : ""}.
+            </span>
+            <button
+              type="button"
+              onClick={syncPendingTasks}
+              disabled={syncing}
+              className="inline-flex items-center gap-2 rounded-full bg-[#1a73e8] px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[#1664c1] disabled:opacity-60"
+            >
+              {syncing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Sync pending
+            </button>
+          </div>
+        )}
+
+        <div
+          role="group"
+          aria-label="Filter tasks"
+          className="inline-flex rounded-full border border-[#e8eaed] bg-white p-0.5"
+        >
           {FILTERS.map((f) => {
             const isActive = filter === f.id;
+            const count = counts[f.id];
             return (
               <button
                 key={f.id}
+                aria-pressed={isActive}
+                aria-label={`Show ${f.label.toLowerCase()} tasks (${count})`}
                 type="button"
                 onClick={() => setFilter(f.id)}
-                className={
-                  "px-3 py-2 text-[13px] -mb-px border-b-2 transition-colors " +
-                  (isActive
-                    ? "border-[#1a73e8] text-[#1a73e8] font-medium"
-                    : "border-transparent text-[#5f6368] hover:text-[#3c4043]")
-                }
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors sm:text-[13px]",
+                  isActive
+                    ? "bg-[#1a73e8] text-white"
+                    : "text-[#5f6368] hover:text-[#202124]",
+                )}
               >
                 {f.label}
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 text-[10px] font-semibold",
+                    isActive ? "bg-white/25 text-white" : "bg-[#f1f3f4] text-[#5f6368]",
+                  )}
+                >
+                  {count}
+                </span>
               </button>
             );
           })}
         </div>
 
-        {noticeBanner}
-        {syncBanner}
-
         {isLoading && !backendTasks && !backendUnavailable && (
-          <div className="text-[13px] text-[#5f6368]">Loading…</div>
+          <div className="rounded-xl border border-dashed border-[#e8eaed] bg-white px-4 py-8 text-center text-[13px] text-[#5f6368]">
+            Loading tasks…
+          </div>
         )}
 
-        {!isLoading && visibleTasks.length === 0 && !otherError && (
-          <div className="rounded-xl border border-dashed border-[#e8eaed] bg-[#f6f8fc] px-4 py-8 text-center text-[13px] text-[#5f6368]">
+        {!isLoading && visibleTasks.length === 0 && (
+          <div className="rounded-xl border border-dashed border-[#e8eaed] bg-white px-4 py-10 text-center text-[13px] text-[#5f6368]">
             {emptyCopy}
           </div>
         )}
