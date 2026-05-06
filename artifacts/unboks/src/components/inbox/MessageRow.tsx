@@ -23,12 +23,18 @@ function initial(name: string) {
 interface MessageRowProps {
   conversation: Conversation;
   isSelected?: boolean;
+  /** Hide the channel badge — used when the active filter already implies the channel. */
+  hideChannel?: boolean;
   onSelect?: (conv: Conversation) => void;
 }
 
-export function MessageRow({ conversation, isSelected = false, onSelect }: MessageRowProps) {
+export function MessageRow({ conversation, isSelected = false, hideChannel = false, onSelect }: MessageRowProps) {
   const [starred, setStarred] = useState(false);
   const color = avatarColor(conversation.sender);
+
+  // Prefer the latest preview; fall back to subject if preview is missing so
+  // the row never collapses to nothing.
+  const snippet = conversation.preview?.trim() || conversation.subject?.trim() || "";
 
   return (
     <div
@@ -48,86 +54,87 @@ export function MessageRow({ conversation, isSelected = false, onSelect }: Messa
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-baseline justify-between gap-2">
-          <span
-            className={cn(
-              "truncate text-[15px] text-[#202124]",
-              conversation.unread ? "font-semibold" : "font-normal"
-            )}
-          >
-            {conversation.sender}
-          </span>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
+        {/* Line 1: sender (+ optional escalation badge) on the left, time + star on the right */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span
+              className={cn(
+                "truncate text-[14px]",
+                conversation.unread ? "font-semibold text-[#202124]" : "font-normal text-[#3c4043]",
+              )}
+            >
+              {conversation.sender}
+            </span>
             {conversation.escalated && (
               <span
                 className={cn(
-                  "text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap",
+                  "text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0",
                   conversation.escalationMode === "soft"
                     ? "bg-[#fef7e0] text-[#a06800]"
                     : conversation.escalationMode === "hard"
-                    ? "bg-[#fce8e6] text-[#c5221f]"
-                    : "bg-[#f1f3f4] text-[#5f6368]",
+                      ? "bg-[#fce8e6] text-[#c5221f]"
+                      : "bg-[#f1f3f4] text-[#5f6368]",
                 )}
               >
                 {conversation.escalationMode === "soft"
                   ? "AI needs help"
                   : conversation.escalationMode === "hard"
-                  ? "Human takeover"
-                  : "Escalation"}
+                    ? "Human takeover"
+                    : "Escalation"}
               </span>
             )}
+          </div>
+          <div className="flex items-center gap-1 flex-shrink-0">
             <span
               className={cn(
                 "text-[12px]",
-                conversation.unread ? "text-[#202124] font-medium" : "text-[#5f6368]"
+                conversation.unread ? "text-[#202124] font-medium" : "text-[#5f6368]",
               )}
             >
               {conversation.timestamp}
             </span>
+            <button
+              aria-label={starred ? "Unstar" : "Star"}
+              onClick={(e) => {
+                e.stopPropagation();
+                setStarred((s) => !s);
+              }}
+              className="-mr-1 grid h-7 w-7 place-items-center text-[#9aa0a6] transition-colors hover:text-[#202124]"
+            >
+              <Star
+                className={cn("w-4 h-4", starred && "text-[#f9a825]")}
+                fill={starred ? "currentColor" : "none"}
+                strokeWidth={1.5}
+              />
+            </button>
           </div>
         </div>
 
-        <div
-          className={cn(
-            "truncate text-[14px] mt-0.5",
-            conversation.unread ? "font-semibold text-[#202124]" : "font-normal text-[#5f6368]"
-          )}
-        >
-          {conversation.subject}
-        </div>
-
-        <div className="flex items-center gap-2 mt-0.5 min-w-0">
-          <span
-            className="inline-flex items-center gap-1 text-[11px] text-[#5f6368] flex-shrink-0"
-            aria-label={`Channel: ${conversation.channel}`}
+        {/* Line 2: message preview on the left, optional channel pill on the right */}
+        <div className="mt-0.5 flex items-center justify-between gap-3 min-w-0">
+          <p
+            className={cn(
+              "truncate text-[13px]",
+              conversation.unread ? "text-[#3c4043]" : "text-[#5f6368]",
+            )}
           >
+            {snippet || <span className="italic text-[#9aa0a6]">No preview</span>}
+          </p>
+          {!hideChannel && (
             <span
-              aria-hidden="true"
-              className="w-1.5 h-1.5 rounded-full"
-              style={{ backgroundColor: CHANNEL_BADGE_COLORS[conversation.channel] ?? "#9aa0a6" }}
-            />
-            {conversation.channel}
-          </span>
-          <span className="truncate text-[13px] text-[#5f6368]">
-            {conversation.preview}
-          </span>
+              className="inline-flex items-center gap-1 flex-shrink-0 rounded-full border border-[#e8eaed] bg-white px-1.5 py-0.5 text-[10px] font-medium text-[#5f6368]"
+              aria-label={`Channel: ${conversation.channel}`}
+            >
+              <span
+                aria-hidden="true"
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: CHANNEL_BADGE_COLORS[conversation.channel] ?? "#9aa0a6" }}
+              />
+              {conversation.channel}
+            </span>
+          )}
         </div>
       </div>
-
-      <button
-        aria-label={starred ? "Unstar" : "Star"}
-        onClick={(e) => {
-          e.stopPropagation();
-          setStarred((s) => !s);
-        }}
-        className="flex-shrink-0 w-8 h-8 -mr-1 flex items-center justify-center text-[#5f6368] hover:text-[#202124] transition-colors"
-      >
-        <Star
-          className={cn("w-5 h-5", starred && "text-[#f9a825]")}
-          fill={starred ? "currentColor" : "none"}
-          strokeWidth={1.5}
-        />
-      </button>
     </div>
   );
 }
