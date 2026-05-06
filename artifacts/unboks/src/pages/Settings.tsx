@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { Switch } from "@/components/ui/switch";
-import { useConfig, useScheduleSlots, useScheduleSlotMutations } from "@/hooks/use-client-api";
+import { useConfig } from "@/hooks/use-client-api";
 import { useEmailSettings } from "@/hooks/use-email-settings";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import { useEscalationNotificationPrefs, type NotifyChannelKey } from "@/hooks/use-escalation-notification-preferences";
@@ -103,8 +103,6 @@ function SotCard({ block }: { block: SotBlock }) {
 
 export default function Settings() {
   const { data: config, isLoading: configLoading } = useConfig();
-  const { data: slots } = useScheduleSlots();
-  const { save: saveSlots, isSaving: slotsSaving } = useScheduleSlotMutations();
   const { emailClient, setEmailClient } = useEmailSettings();
   const { label: bookingsLabel, setLabel: setBookingsLabel } = useBookingsLabel();
   const { prefs: notifyPrefs, save: saveNotifyPrefs } = useEscalationNotificationPrefs();
@@ -171,37 +169,6 @@ export default function Settings() {
             </div>
           )}
         </div>
-
-        {/* Posting Schedule */}
-        <Section title="Posting Schedule" description="Manage when Marina is active and posting.">
-          {slots && slots.length > 0 ? (
-            <div className="space-y-2">
-              {slots.map((slot, i) => (
-                <div key={i} className="flex items-center justify-between py-2 border-b border-[#f1f3f4] last:border-0">
-                  <span className="text-[14px] text-[#202124] w-24">{slot.day}</span>
-                  <span className="text-[13px] text-[#5f6368]">{slot.startTime} – {slot.endTime}</span>
-                  <span className={cn(
-                    "text-[11px] px-2 py-0.5 rounded-full",
-                    slot.enabled ? "bg-[#e6f4ea] text-[#137333]" : "bg-[#f6f8fc] text-[#5f6368]",
-                  )}>
-                    {slot.enabled ? "Active" : "Off"}
-                  </span>
-                </div>
-              ))}
-              <button
-                onClick={() => { saveSlots.mutate(slots); toast.success("Schedule saved"); }}
-                disabled={slotsSaving}
-                className="mt-3 text-[13px] text-[#1a73e8] hover:underline disabled:opacity-50"
-              >
-                {slotsSaving ? "Saving…" : "Save schedule"}
-              </button>
-            </div>
-          ) : (
-            <p className="text-[13px] text-[#9aa0a6]">
-              Schedule not available — API connection required.
-            </p>
-          )}
-        </Section>
 
         {/* Email Reply Preference */}
         <Section title="Email Reply Preference" description="Choose how email replies are opened.">
