@@ -1,11 +1,8 @@
 import { useState } from "react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
-import { useEscalations, useEscalationMutations, useConversations } from "@/hooks/use-client-api";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
-import { mapApiConversation } from "@/lib/conversation-mapper";
 import { cn } from "@/lib/utils";
 import { X, CheckCircle, MessageCircle, Clock, User, AlertCircle } from "lucide-react";
-import type { Escalation } from "@/lib/api";
 
 function avatarColor(name: string) {
   const colors = ["#f9a825","#1a73e8","#34a853","#ea4335","#7e57c2","#ec407a","#26a69a"];
@@ -27,19 +24,6 @@ interface OrderRow {
   date: string;
   resolved: boolean;
   summary: string;
-}
-
-function escalationToOrder(e: Escalation): OrderRow {
-  return {
-    id: e.id,
-    customerName: e.customerName,
-    contact: e.phone ?? "—",
-    service: e.issue,
-    channel: e.platform,
-    date: e.createdAt,
-    resolved: e.resolved,
-    summary: e.issue,
-  };
 }
 
 function DetailPanel({ order, onClose, onResolve, resolving }: {
@@ -134,32 +118,15 @@ function Row({ icon: Icon, label, value }: { icon: React.ComponentType<{ classNa
 
 export default function Bookings() {
   const { label } = useBookingsLabel();
-  const { data: escalations, isLoading, isError } = useEscalations();
-  const { data: conversations } = useConversations();
-  const { resolve } = useEscalationMutations();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const mappedConversations = conversations
-    ? conversations.map(mapApiConversation)
-    : [];
-
-  const orders: OrderRow[] = (() => {
-    if (escalations && escalations.length > 0) {
-      return escalations.map(escalationToOrder);
-    }
-    return mappedConversations
-      .filter((c) => /booking|order|payment|paid|service|sign.?up|purchas/i.test(c.subject + " " + c.preview))
-      .map((c) => ({
-        id: c.id,
-        customerName: c.sender,
-        contact: c.channel,
-        service: c.subject,
-        channel: c.channel,
-        date: c.timestamp,
-        resolved: false,
-        summary: c.preview,
-      }));
-  })();
+  // Bookings/Orders are intentionally NOT inferred from conversation/escalation
+  // text. They will only appear here when the Python backend exposes a real
+  // bookings/orders endpoint (or escalations gain an explicit booking/order
+  // marker). No keyword/regex matching — that produced false positives where
+  // ordinary WhatsApp chats containing words like "booking", "paid", "service"
+  // were misclassified as bookings.
+  const orders: OrderRow[] = [];
 
   const selected = orders.find((o) => o.id === selectedId) ?? null;
 
@@ -167,20 +134,16 @@ export default function Bookings() {
     <DashboardShell
       activeNav="bookings"
       pageTitle={label}
-      pageSubtitle={
-        isLoading
-          ? "Loading…"
-          : isError
-            ? "Couldn't load"
-            : "Customer bookings and orders"
-      }
+      pageSubtitle="Customer bookings and orders"
     >
       <div className="flex h-full">
         <div className={cn("flex-1 overflow-y-auto", selected && "hidden md:block")}>
           {orders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center px-6">
-              <p className="text-[14px] text-[#5f6368]">No order handoffs to show.</p>
-              <p className="text-[12px] text-[#9aa0a6] mt-1">Paid orders escalated by Marina will appear here.</p>
+              <p className="text-[14px] text-[#5f6368]">No bookings yet.</p>
+              <p className="text-[12px] text-[#9aa0a6] mt-1 max-w-[360px]">
+                Bookings will appear here when they are created or escalated by your connected setup.
+              </p>
             </div>
           ) : (
             orders.map((order) => (
@@ -219,8 +182,8 @@ export default function Bookings() {
           <DetailPanel
             order={selected}
             onClose={() => setSelectedId(null)}
-            onResolve={() => resolve.mutate({ id: selected.id }, { onSuccess: () => setSelectedId(null) })}
-            resolving={resolve.isPending}
+            onResolve={() => setSelectedId(null)}
+            resolving={false}
           />
         )}
       </div>

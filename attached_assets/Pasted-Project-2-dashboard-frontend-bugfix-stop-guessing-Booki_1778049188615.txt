@@ -1,0 +1,70 @@
+Project 2 dashboard frontend bugfix — stop guessing Bookings from normal conversations.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python API assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish until reviewed.
+
+Bug:
+The Bookings page is showing normal WhatsApp conversations that are not bookings.
+
+Example:
+A normal Unboks explanation conversation appears in Bookings because the text contains words like:
+- bookings
+- paid
+- service
+- customers
+
+This is wrong.
+
+Diagnosis:
+The frontend is probably using keyword/regex guessing to populate Bookings from conversations or escalations.
+That creates false positives.
+
+Required behavior:
+1. Bookings page must not infer bookings from ordinary conversation text.
+2. Do not use regex/keyword matching like booking/order/payment/paid/service/sign-up/purchase to create booking rows.
+3. Bookings should only show real booking/order data if the Python backend provides a real bookings/orders endpoint or an explicit booking flag/type.
+4. If no real booking/order backend data exists yet, show a clean empty state.
+5. Empty state copy:
+   “No bookings yet.”
+   “Bookings will appear here when they are created or escalated by your connected setup.”
+6. Do not show normal WhatsApp conversations in Bookings.
+7. Do not show generic escalations in Bookings unless backend explicitly marks them as booking/order.
+8. Do not break Inbox.
+9. Do not break Escalations.
+10. Do not change backend/API.
+
+Likely file:
+- artifacts/unboks/src/pages/Bookings.tsx
+
+Investigation:
+- Inspect Bookings.tsx.
+- Find any fallback logic that maps conversations into bookings using regex/keywords.
+- Remove that fallback.
+- If the page currently uses useEscalations() as the primary source, only include items with explicit booking/order fields if available.
+- If explicit booking/order fields do not exist, do not show them.
+- Use [] while no real booking data exists.
+
+Important:
+This is a frontend-only cleanup.
+Do not ask the backend to classify normal conversations as bookings.
+Do not invent bookings.
+
+Acceptance:
+- The current normal WhatsApp conversations no longer appear in Bookings.
+- Bookings page shows empty state if there is no real booking/order data.
+- Inbox still shows the conversations.
+- Escalations still shows escalations.
+- No keyword-based false positives.
+- No backend changes.
+- No artifacts/api-server changes.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.
