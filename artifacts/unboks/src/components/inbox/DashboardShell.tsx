@@ -2,7 +2,6 @@ import { useState, useMemo, ReactNode } from "react";
 import { useLocation } from "wouter";
 import { Header } from "@/components/inbox/Header";
 import { Drawer, NavId } from "@/components/inbox/Drawer";
-import { BottomNav } from "@/components/inbox/BottomNav";
 import type { Channel, Conversation } from "@/data/conversations";
 import { useConversations, useEscalations } from "@/hooks/use-client-api";
 import { mapApiConversation } from "@/lib/conversation-mapper";
@@ -38,7 +37,6 @@ export function DashboardShell({
   const [, navigate] = useLocation();
   const { logout } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [bottomTab, setBottomTab] = useState("mail");
 
   const { data: apiConversations, isError } = useConversations();
   const { data: apiEscalations } = useEscalations();
@@ -101,17 +99,7 @@ export function DashboardShell({
 
         <main className="flex-1 overflow-y-auto bg-white">
           {children}
-          <div className="h-24" aria-hidden="true" />
         </main>
-
-        <div className="md:hidden">
-          <BottomNav
-            active={bottomTab}
-            onChange={setBottomTab}
-            mailBadge={inboxCount}
-            chatBadge={channelCounts.WhatsApp + channelCounts.Messenger}
-          />
-        </div>
       </div>
     </div>
   );
