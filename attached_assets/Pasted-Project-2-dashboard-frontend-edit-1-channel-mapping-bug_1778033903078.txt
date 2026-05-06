@@ -1,0 +1,84 @@
+Project 2 dashboard frontend edit #1 — channel mapping bug.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, or Python API assumptions.
+- Work only in artifacts/unboks frontend unless absolutely necessary.
+- Do not touch Project 1 or Project 3.
+
+Issue:
+In the dashboard sidebar/drawer under Channels, a WhatsApp conversation/count appears under Email.
+This is wrong.
+
+We do NOT want to hide Email.
+We want correct channel grouping:
+- WhatsApp conversations must appear/count under WhatsApp.
+- Email conversations must appear/count under Email.
+- Instagram conversations under Instagram, etc.
+
+Task:
+Investigate and fix the frontend channel mapping/counting/filtering logic.
+
+Likely problem:
+The Python backend may return a platform/channel field with values like:
+- "whatsapp"
+- "WhatsApp"
+- "whatsapp_business"
+- "email"
+- "gmail"
+- "instagram"
+- "facebook"
+- "messenger"
+
+The frontend may be mapping unknown values incorrectly or falling back to Email.
+
+Required behavior:
+1. Normalize backend platform/channel values defensively.
+2. Map:
+   - whatsapp, whats_app, whatsapp_business, whatsapp business, wa → WhatsApp
+   - email, gmail, google_mail, google workspace mail → Email
+   - instagram, ig → Instagram
+   - facebook, fb → Facebook
+   - messenger, facebook_messenger → Messenger
+   - x, twitter → X
+   - tiktok, tik_tok → TikTok
+   - telegram → Telegram if supported
+   - unknown/missing → Unknown, NOT Email
+3. Counts in the Channels list must be based on the normalized channel.
+4. Clicking WhatsApp must filter to WhatsApp conversations only.
+5. Clicking Email must filter to Email conversations only.
+6. Do not use Email as a fallback for unknown channel.
+7. Do not hide valid configured channels.
+8. Do not change the visual design except if needed to correct labels/counts.
+
+Files likely involved:
+- artifacts/unboks/src/lib/channel-map.ts
+- artifacts/unboks/src/lib/conversation-mapper.ts
+- artifacts/unboks/src/components/inbox/Drawer.tsx
+- artifacts/unboks/src/hooks/use-enabled-channels.ts
+- artifacts/unboks/src/hooks/use-platform-filter.tsx
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/lib/api.ts
+
+Investigation:
+- Inspect backend API response shape in frontend client/types.
+- Inspect mapApiConversation.
+- Inspect platformToChannel or equivalent.
+- Inspect how Drawer calculates per-channel counts.
+- Check if null/unknown platform defaults to Email.
+- Fix so Unknown remains Unknown or is hidden, but never counted as Email.
+
+Acceptance:
+- WhatsApp count appears on WhatsApp row.
+- Email count appears only for real email conversations.
+- A WhatsApp conversation does not appear under Email.
+- Clicking WhatsApp shows WhatsApp conversations.
+- Clicking Email shows Email conversations.
+- Unknown/missing platform does not become Email.
+- Desktop and mobile sidebar behave the same.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

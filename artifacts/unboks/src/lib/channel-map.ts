@@ -69,9 +69,9 @@ const PLATFORM_TO_CHANNEL: Record<string, Channel> = {
 };
 
 export function platformToChannel(platform: string | null | undefined): Channel {
-  if (typeof platform !== "string" || !platform) return "Email";
-  const lower = platform.toLowerCase();
-  const mapped = PLATFORM_TO_CHANNEL[lower];
+  if (typeof platform !== "string" || !platform.trim()) return "Unknown";
+  const normalized = platform.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const mapped = PLATFORM_TO_CHANNEL[normalized];
   if (!mapped) {
     if (process.env.NODE_ENV !== "production") {
       console.warn(`[Unboks] Unknown platform value: "${platform}" — showing as Unknown`);

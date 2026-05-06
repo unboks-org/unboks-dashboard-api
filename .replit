@@ -49,7 +49,7 @@ externalPort = 3000
 
 [nix]
 channel = "stable-25_05"
-packages = ["q-text-as-data"]
+packages = ["q-text-as-data", "yakut", "dig"]
 
 [userenv]
 
