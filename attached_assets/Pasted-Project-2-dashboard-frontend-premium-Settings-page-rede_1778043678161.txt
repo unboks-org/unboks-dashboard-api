@@ -1,0 +1,251 @@
+Project 2 dashboard frontend — premium Settings page redesign using Refero/Repro references.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, or Python API assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish until reviewed.
+
+Task:
+Redesign the Settings page so it feels organized, premium, clean, and customer-ready.
+
+Current problem:
+The Settings page is messy.
+It has many sections stacked vertically with no clear categories.
+It does not feel like a billion-dollar SaaS settings page.
+It feels like random controls were added one after another.
+
+Use Refero/Repro:
+Use real SaaS/settings references before redesigning.
+Reference patterns from:
+- Linear settings
+- Stripe dashboard settings
+- Notion workspace settings
+- Intercom settings
+- Slack workspace preferences
+- Vercel project settings
+
+Do not just say “research-informed”.
+Actually use the connected Refero/Repro tool if available.
+If Refero/Repro is not connected, stop and report that clearly before redesigning.
+
+Design goal:
+A calm, premium, customer-facing Settings experience.
+
+Principles:
+- Clear categories
+- No clutter
+- No technical/debug content
+- Customer-friendly wording
+- Mobile-first
+- Desktop polished
+- White/soft grey layout
+- Subtle borders
+- Clear section titles
+- Good spacing
+- No over-designed cards
+- No random toggles floating in space
+- No dense developer-looking rows
+
+Settings should feel like:
+“Here is where I manage my AI assistant and business information.”
+
+Not:
+“Here is a pile of technical controls.”
+
+Required page structure:
+
+Desktop layout:
+- Page title: Settings
+- Short subtitle: Manage your workspace, AI information, channels, and alerts.
+- Use a two-column layout if screen width allows:
+  Left side: category navigation / section list
+  Right side: selected settings content
+- If two-column is too much for current app, use grouped cards with clear category headers.
+- Keep it simple. Do not create a complex router if unnecessary.
+
+Mobile layout:
+- Single column.
+- Collapsible or stacked category cards.
+- No horizontal scrolling.
+- No fixed bottom nav.
+- Comfortable touch targets.
+- Clean spacing.
+
+Recommended categories:
+
+1. Workspace
+Purpose: Business identity and account basics.
+Contains:
+- Business name
+- Contact email
+- Phone number
+- Website
+- Logo upload / preview
+Customer copy:
+“Manage the basic details shown in your Unboks workspace.”
+
+2. Your Info
+Purpose: Information the AI uses to answer customers.
+Contains:
+- Existing Your Info / knowledge cards
+- Your Info Updates
+- Temporary notes, offers, holidays, opening hours, seasonal info
+Customer copy:
+“Add information your AI should know when replying to customers.”
+
+3. Channels
+Purpose: Show/hide channels in the dashboard.
+Contains:
+- WhatsApp
+- Instagram
+- Facebook
+- Messenger
+- Email
+- X
+- TikTok
+Customer copy:
+“Choose which channels appear in your dashboard.”
+
+Important:
+This is about dashboard visibility, not connecting channels.
+Do not imply channel integration setup unless backend supports it.
+
+4. Escalation Alerts
+Purpose: Where urgent human-needed escalations should be sent.
+Contains:
+- Email mandatory/default
+- Optional WhatsApp
+- Optional Messenger
+- Optional Telegram
+- Destination inputs for optional channels
+Customer copy:
+“Choose where urgent escalation alerts should be sent.”
+
+5. Labels & Preferences
+Purpose: Small UI preferences.
+Contains:
+- Orders/Bookings label setting
+- Email reply preference if still needed
+Customer copy:
+“Customize how your dashboard looks and opens replies.”
+
+Remove/keep rules:
+- Do not show Client & System.
+- Do not show API endpoint.
+- Do not show Client slug.
+- Do not show Posting Schedule.
+- Do not show Marina wording.
+- Do not show Dry Run Mode.
+- Do not show Feature Visibility.
+- Do not show AI Suggest Reply toggle.
+- Do not show technical/internal debug data.
+- Do not mention Zernio.
+- Do not mention backend.
+- Do not mention Source of Truth.
+- Use “Your Info”.
+
+Important UX requirements:
+1. Everything should be grouped into categories.
+2. Each category must have:
+   - title
+   - short explanation
+   - clean controls
+3. Save buttons should be close to the section they save.
+4. Saved confirmations should be subtle and consistent.
+5. Toggles should look aligned and premium.
+6. Inputs should be full-width on mobile.
+7. Cards should have consistent padding and borders.
+8. The page should not feel long and random.
+9. Avoid huge walls of text.
+10. Use simple customer language.
+
+Visual style:
+- White background
+- Soft grey section backgrounds where needed
+- Subtle borders: #e5e7eb / #f1f3f4
+- Rounded corners: 12–16px
+- Text:
+  - titles clear and dark
+  - descriptions softer grey
+- Blue accent consistent with current Unboks dashboard
+- No loud colors except success/error states
+- No heavy shadows
+- No glassmorphism unless already used elsewhere
+- Clean SaaS look
+
+Interaction:
+- On desktop, category tabs/sidebar can switch sections without route change.
+- On mobile, category cards can be stacked or accordion-style.
+- Keep state simple.
+- Do not break existing localStorage functionality:
+  - account settings
+  - logo preview
+  - Your Info updates
+  - channel toggles
+  - escalation notification preferences
+  - bookings/orders label
+  - email reply preference
+
+Files likely involved:
+- artifacts/unboks/src/pages/Settings.tsx
+Possibly:
+- artifacts/unboks/src/hooks/use-account-settings.ts
+- artifacts/unboks/src/hooks/use-your-info-updates.ts
+- artifacts/unboks/src/hooks/use-enabled-channels.ts
+- artifacts/unboks/src/hooks/use-escalation-notification-preferences.ts
+- artifacts/unboks/src/hooks/use-bookings-label.ts
+
+Do not touch:
+- artifacts/api-server
+- DNS
+- backend
+- auth
+- deployment config
+- Inbox unless absolutely required
+- DashboardShell unless absolutely required
+
+Implementation instructions:
+1. First inspect Settings.tsx and existing hooks.
+2. Identify all current settings sections.
+3. Reorganize them into the category structure above.
+4. Keep existing functionality intact.
+5. Redesign Settings layout only.
+6. Remove any remaining technical/internal sections if still present.
+7. Make the mobile view excellent.
+8. Run typecheck/build.
+
+Acceptance:
+- Settings looks premium and organized.
+- There are clear categories.
+- Workspace section exists.
+- Your Info section exists.
+- Channels section exists.
+- Escalation Alerts section exists.
+- Labels & Preferences section exists.
+- No Client & System.
+- No API endpoint.
+- No Source of Truth wording.
+- No Posting Schedule.
+- No Dry Run Mode.
+- No Feature Visibility.
+- No AI Suggest Reply toggle.
+- No bottom mobile nav.
+- No horizontal mobile overflow.
+- Account settings still save.
+- Logo upload/preview still works.
+- Your Info Updates still save and show.
+- Channel toggles still work.
+- Messenger is still included.
+- Escalation notification preferences still save.
+- Orders/Bookings label still saves and updates sidebar.
+- Email reply preference still works if present.
+- Build/typecheck clean.
+- Report exact files changed.
+- Report whether Refero/Repro was connected and what references were used.
+- Do not commit.
+- Do not publish.
