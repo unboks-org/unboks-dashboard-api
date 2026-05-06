@@ -8,6 +8,7 @@ import {
   useConversation,
   useEscalations,
   useEscalationMutations,
+  useDeleteConversation,
 } from "@/hooks/use-client-api";
 import {
   mapApiConversation,
@@ -515,6 +516,37 @@ export default function Inbox() {
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
   const [escalationFilter, setEscalationFilter] = useState<"all" | "soft" | "hard">("all");
   const { isChannelEnabled } = useEnabledChannels();
+  const deleteConv = useDeleteConversation();
+
+  // Email-only persistent row actions. Reply opens the conversation detail
+  // (where the existing reply UI lives). Forward has no backend yet — show
+  // calm placeholder copy. Delete confirms first, then calls the existing
+  // DELETE /messages/conversations/:id endpoint.
+  const handleEmailReply = useCallback((conv: Conversation) => {
+    setSelectedConv(conv);
+  }, []);
+  const handleEmailForward = useCallback((_conv: Conversation) => {
+    window.alert("Forward will be connected by the Unboks team.");
+  }, []);
+  const handleEmailDelete = useCallback(
+    (conv: Conversation) => {
+      const subject = conv.subject?.trim() || conv.sender || "this email";
+      const ok = window.confirm(`Delete "${subject}"? This can't be undone.`);
+      if (!ok) return;
+      deleteConv.mutate(conv.id, {
+        onSuccess: () => {
+          setSelectedConv((cur) => (cur?.id === conv.id ? null : cur));
+        },
+        onError: (err) => {
+          const msg = err instanceof Error ? err.message : "Unknown error";
+          window.alert(
+            `Couldn't delete: ${msg}\n\nIf this keeps happening, delete will be connected by the Unboks team.`,
+          );
+        },
+      });
+    },
+    [deleteConv],
+  );
 
   const { data: apiConversations, isLoading, isError } = useConversations();
   // Escalations list is the source of truth for the Escalations tab AND for
@@ -716,6 +748,9 @@ export default function Inbox() {
                 isSelected={selectedConv?.id === conv.id}
                 hideChannel={Boolean(activeChannel)}
                 onSelect={setSelectedConv}
+                onReply={conv.channel === "Email" ? handleEmailReply : undefined}
+                onForward={conv.channel === "Email" ? handleEmailForward : undefined}
+                onDelete={conv.channel === "Email" ? handleEmailDelete : undefined}
               />
             ))
           ) : (

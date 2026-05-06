@@ -1,0 +1,95 @@
+Project 2 dashboard frontend — add persistent email row actions: Reply, Forward, Delete.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python API assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch backend.
+- Do not commit.
+- Do not publish until reviewed.
+
+Issue:
+Email conversations currently only show the star icon on the right.
+For email, users need permanent visible actions:
+- Reply
+- Forward
+- Delete
+
+These icons should be visible without opening the conversation.
+
+Required behavior:
+1. On Email conversation rows, show persistent action icons on the right:
+   - Reply
+   - Forward
+   - Delete
+2. Keep the Star icon if still useful, but do not let it crowd the actions.
+3. Icons must be visible by default, not only on hover.
+4. Icons should be compact and aligned with the timestamp/right side.
+5. Clicking Reply should open the reply flow for that email conversation.
+6. Clicking Forward should open a forward flow or placeholder if backend is not ready.
+7. Clicking Delete should ask for confirmation before deleting.
+8. If backend delete is not supported yet, show calm copy:
+   “Delete will be connected by the Unboks team.”
+   Do not pretend deletion succeeded.
+9. Do not show Reply/Forward/Delete on WhatsApp rows unless already supported.
+10. Do not break row click-to-open behavior.
+11. Icon clicks must stop propagation so they do not accidentally open the row unless intended.
+12. Mobile layout must remain clean.
+
+Preferred UI:
+For Email rows:
+Right side:
+- timestamp
+- Reply icon
+- Forward icon
+- Trash icon
+- optional star
+
+Use tooltips or accessible labels:
+- Reply
+- Forward
+- Delete
+
+Design:
+- Premium, subtle icons.
+- Grey inactive state.
+- Blue/hover state for Reply/Forward.
+- Red/hover state for Delete only on hover or confirmation.
+- No clutter.
+- Keep row height controlled.
+
+Likely files:
+- artifacts/unboks/src/components/inbox/MessageRow.tsx
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/lib/api.ts if action helpers exist or need placeholders
+
+Implementation guidance:
+- Detect email rows using normalized channel === "Email".
+- Add optional callbacks to MessageRow:
+  onReply?
+  onForward?
+  onDelete?
+- In Inbox.tsx, wire handlers:
+  - Reply: open selected conversation/detail and focus reply area if available, or open existing email reply preference flow.
+  - Forward: show placeholder/toast if no backend support.
+  - Delete: confirmation first, then call backend only if supported.
+- If no toast system exists, use existing alert/status pattern.
+- Do not build backend endpoints.
+
+Acceptance:
+- Email rows always show Reply / Forward / Delete icons.
+- WhatsApp rows do not get these email-only icons.
+- Clicking Reply does not accidentally toggle star or break row selection.
+- Clicking Forward does not crash.
+- Clicking Delete asks confirmation or shows safe placeholder.
+- Row click still opens conversation.
+- Star still works if kept.
+- Mobile remains usable.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Conversation } from "@/data/conversations";
 import { cn } from "@/lib/utils";
 import { CHANNEL_BADGE_COLORS } from "@/lib/channel-map";
-import { Star } from "lucide-react";
+import { Star, Reply, Forward, Trash2 } from "lucide-react";
 
 const AVATAR_COLORS = [
   "#f9a825", "#1a73e8", "#34a853", "#ea4335",
@@ -26,9 +26,26 @@ interface MessageRowProps {
   /** Hide the channel badge — used when the active filter already implies the channel. */
   hideChannel?: boolean;
   onSelect?: (conv: Conversation) => void;
+  /**
+   * Email-only persistent row actions. When provided AND the row is an Email
+   * conversation, the Reply / Forward / Delete icon trio is rendered next to
+   * the timestamp. Each handler stops propagation internally so the row click
+   * never fires alongside the action.
+   */
+  onReply?: (conv: Conversation) => void;
+  onForward?: (conv: Conversation) => void;
+  onDelete?: (conv: Conversation) => void;
 }
 
-export function MessageRow({ conversation, isSelected = false, hideChannel = false, onSelect }: MessageRowProps) {
+export function MessageRow({
+  conversation,
+  isSelected = false,
+  hideChannel = false,
+  onSelect,
+  onReply,
+  onForward,
+  onDelete,
+}: MessageRowProps) {
   const [starred, setStarred] = useState(false);
   const color = avatarColor(conversation.sender);
 
@@ -84,23 +101,66 @@ export function MessageRow({ conversation, isSelected = false, hideChannel = fal
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-0.5 flex-shrink-0">
             <span
               className={cn(
-                "text-[12px]",
+                "text-[12px] mr-1",
                 conversation.unread ? "text-[#202124] font-medium" : "text-[#5f6368]",
               )}
             >
               {conversation.timestamp}
             </span>
+            {conversation.channel === "Email" && onReply && (
+              <button
+                type="button"
+                aria-label="Reply"
+                title="Reply"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReply(conversation);
+                }}
+                className="grid h-7 w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#e8f0fe] hover:text-[#1a73e8]"
+              >
+                <Reply className="w-4 h-4" strokeWidth={1.5} />
+              </button>
+            )}
+            {conversation.channel === "Email" && onForward && (
+              <button
+                type="button"
+                aria-label="Forward"
+                title="Forward"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onForward(conversation);
+                }}
+                className="grid h-7 w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#e8f0fe] hover:text-[#1a73e8]"
+              >
+                <Forward className="w-4 h-4" strokeWidth={1.5} />
+              </button>
+            )}
+            {conversation.channel === "Email" && onDelete && (
+              <button
+                type="button"
+                aria-label="Delete"
+                title="Delete"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(conversation);
+                }}
+                className="grid h-7 w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#fce8e6] hover:text-[#c5221f]"
+              >
+                <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+              </button>
+            )}
             <button
               type="button"
               aria-label={starred ? "Unstar" : "Star"}
+              title={starred ? "Unstar" : "Star"}
               onClick={(e) => {
                 e.stopPropagation();
                 setStarred((s) => !s);
               }}
-              className="-mr-1 grid h-7 w-7 place-items-center text-[#9aa0a6] transition-colors hover:text-[#202124]"
+              className="-mr-1 grid h-7 w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:text-[#202124]"
             >
               <Star
                 className={cn("w-4 h-4", starred && "text-[#f9a825]")}
