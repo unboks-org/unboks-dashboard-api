@@ -122,14 +122,23 @@ export function Drawer({
           "md:static md:h-auto md:translate-x-0 md:w-[260px] md:max-w-none md:shadow-none md:border-r md:border-[#e5e7eb] md:flex-shrink-0 md:z-auto",
         )}
       >
-        {/* Brand */}
-        <div className="flex items-center px-4 pt-4 pb-3">
-          <img
-            src="/unboks-logo.png"
-            alt="Unboks"
-            className="h-9 w-auto object-contain object-left"
-            draggable={false}
-          />
+        {/* Brand — premium text wordmark (replaces former pixelated logo).
+             Inter/system stack, semibold, dark #1f2937 — matches the
+             reference SaaS sidebar pattern (Linear / Stripe / Fingerprint).
+             Small blue accent dot is the only graphic. */}
+        <div className="px-4 pt-4 pb-3 select-none">
+          <div className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="h-2 w-2 rounded-full bg-[#1a73e8]"
+            />
+            <span className="text-[18px] font-semibold tracking-tight text-[#1f2937] leading-none">
+              Unboks
+            </span>
+          </div>
+          <p className="mt-1 ml-4 text-[12px] text-[#6b7280] leading-tight">
+            One inbox for every channel
+          </p>
         </div>
 
         {/* Operational status pill */}
