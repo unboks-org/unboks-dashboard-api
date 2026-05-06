@@ -169,7 +169,7 @@ export default function Bookings() {
       pageTitle={label}
       titleSuffix={
         isLoading ? <span className="text-[12px] text-[#1a73e8]">Loading…</span>
-          : isError ? <span className="text-[12px] text-[#d93025]">(preview mode)</span>
+          : isError ? <span className="text-[12px] text-[#5f6368]">Couldn't load</span>
           : null
       }
     >

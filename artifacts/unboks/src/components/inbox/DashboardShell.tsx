@@ -5,7 +5,6 @@ import { Drawer, NavId } from "@/components/inbox/Drawer";
 import type { Channel, Conversation } from "@/data/conversations";
 import { useConversations, useEscalations } from "@/hooks/use-client-api";
 import { mapApiConversation } from "@/lib/conversation-mapper";
-import { conversations as MOCK } from "@/data/conversations";
 import { useAuth } from "@/components/auth/useAuth";
 
 const PAGE_ROUTES: Partial<Record<NavId, string>> = {
@@ -38,28 +37,38 @@ export function DashboardShell({
   const { logout } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const { data: apiConversations, isError } = useConversations();
-  const { data: apiEscalations } = useEscalations();
+  const { data: apiConversations, isLoading: convLoading, isError } = useConversations();
+  const { data: apiEscalations, isLoading: escLoading } = useEscalations();
 
+  // Never fall back to MOCK on the live dashboard — that flashes fake names
+  // and counts on every refresh. Use [] until the API returns real data.
   const allConversations: Conversation[] = useMemo(() => {
-    if (isError || !apiConversations) return MOCK;
+    if (!apiConversations || isError) return [];
     return apiConversations.map(mapApiConversation);
   }, [apiConversations, isError]);
 
+  const hasConvData = !convLoading && !isError && Boolean(apiConversations);
+  const hasEscData = !escLoading && Boolean(apiEscalations);
+
   const channelCounts = useMemo(() => {
     const counts: Record<Channel, number> = {
-      All: allConversations.length,
+      All: hasConvData ? allConversations.length : 0,
       WhatsApp: 0, Email: 0, Instagram: 0, Facebook: 0,
       X: 0, TikTok: 0, Messenger: 0, Unknown: 0,
     };
-    allConversations.forEach((c) => { counts[c.channel] = (counts[c.channel] || 0) + 1; });
+    if (hasConvData) {
+      allConversations.forEach((c) => { counts[c.channel] = (counts[c.channel] || 0) + 1; });
+    }
     return counts;
-  }, [allConversations]);
+  }, [allConversations, hasConvData]);
 
-  const inboxCount = useMemo(() => allConversations.filter((c) => c.unread).length, [allConversations]);
+  const inboxCount = useMemo(
+    () => (hasConvData ? allConversations.filter((c) => c.unread).length : 0),
+    [allConversations, hasConvData],
+  );
   const escalationsCount = useMemo(
-    () => apiEscalations?.filter((e) => !e.resolved).length ?? allConversations.filter((c) => c.escalated).length,
-    [apiEscalations, allConversations],
+    () => (hasEscData ? (apiEscalations?.filter((e) => !e.resolved).length ?? 0) : 0),
+    [apiEscalations, hasEscData],
   );
 
   const handleNavSelect = (id: NavId) => {

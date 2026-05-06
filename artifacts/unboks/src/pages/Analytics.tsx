@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { useConversations, useEscalations, useStatus } from "@/hooks/use-client-api";
-import { conversations as MOCK } from "@/data/conversations";
 import { mapApiConversation } from "@/lib/conversation-mapper";
 import type { Channel } from "@/data/conversations";
 import {
@@ -44,7 +43,7 @@ export default function Analytics() {
   const { data: status } = useStatus();
 
   const conversations = useMemo(() => {
-    if (convError || !apiConversations) return MOCK;
+    if (convError || !apiConversations) return [];
     return apiConversations.map(mapApiConversation);
   }, [apiConversations, convError]);
 
@@ -86,7 +85,7 @@ export default function Analytics() {
       pageTitle="Analytics"
       titleSuffix={
         (convLoading || escLoading) ? <span className="text-[12px] text-[#1a73e8]">Loading…</span>
-          : convError ? <span className="text-[12px] text-[#d93025]">(preview mode)</span>
+          : convError ? <span className="text-[12px] text-[#5f6368]">Couldn't load</span>
           : null
       }
     >

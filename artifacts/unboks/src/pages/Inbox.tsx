@@ -521,8 +521,8 @@ export default function Inbox() {
       onSearchChange={(q) => { setSearchQueryState(q); setSelectedConv(null); }}
       pageTitle={sectionTitle}
       titleSuffix={
-        isLoading ? <span className="text-[12px] text-[#1a73e8]">Loading…</span>
-          : isError ? <span className="text-[12px] text-[#d93025]">(preview mode)</span>
+        isLoading ? <span className="text-[12px] text-[#5f6368]">Loading…</span>
+          : isError ? <span className="text-[12px] text-[#5f6368]">Couldn't load</span>
           : null
       }
     >
@@ -555,7 +555,19 @@ export default function Inbox() {
               ))}
             </div>
           )}
-          {filtered.length > 0 ? (
+          {isLoading && filtered.length === 0 ? (
+            <div className="divide-y divide-[#f1f3f4]" aria-busy="true" aria-label="Loading conversations">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-4">
+                  <div className="h-9 w-9 flex-shrink-0 animate-pulse rounded-full bg-[#f1f3f4]" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-1/3 animate-pulse rounded bg-[#f1f3f4]" />
+                    <div className="h-3 w-3/4 animate-pulse rounded bg-[#f1f3f4]" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filtered.length > 0 ? (
             filtered.map((conv) => (
               <MessageRow
                 key={conv.id}
@@ -566,7 +578,9 @@ export default function Inbox() {
             ))
           ) : (
             <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-              <p className="text-[14px] text-[#5f6368]">No conversations to show.</p>
+              <p className="text-[14px] text-[#5f6368]">
+                {isError ? "Couldn't load conversations." : "No conversations to show."}
+              </p>
             </div>
           )}
         </div>
