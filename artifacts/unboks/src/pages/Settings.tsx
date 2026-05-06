@@ -331,17 +331,13 @@ export default function Settings() {
   const currentCategory = CATEGORIES.find((c) => c.id === active) ?? CATEGORIES[0];
 
   return (
-    <DashboardShell activeNav="settings" pageTitle="">
+    <DashboardShell
+      activeNav="settings"
+      pageTitle="Settings"
+      pageSubtitle="Manage your workspace, AI information, channels, and alerts."
+    >
       <div className="min-h-full bg-[#f8f9fb]">
         <div className="mx-auto w-full max-w-[1180px] px-4 py-6 sm:px-6 sm:py-8">
-          <header className="mb-5 sm:mb-6">
-            <h1 className="text-[22px] font-semibold tracking-tight text-[#202124] sm:text-[28px]">
-              Settings
-            </h1>
-            <p className="mt-1 text-[13px] text-[#5f6368] sm:text-[14px]">
-              Manage your workspace, AI information, channels, and alerts.
-            </p>
-          </header>
 
           {/* Top tab bar — horizontally scrollable on mobile, full-width on desktop */}
           <nav

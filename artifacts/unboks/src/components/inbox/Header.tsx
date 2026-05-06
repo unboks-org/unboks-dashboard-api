@@ -31,24 +31,21 @@ export function Header({
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Title block */}
-        {hasTitleBlock && (
-          <div className="flex-1 min-w-0">
-            {title && (
-              <h1 className="text-[18px] md:text-[19px] font-semibold tracking-tight text-[#1f2937] leading-tight truncate">
-                {title}
-              </h1>
-            )}
-            {subtitle && (
-              <div className="text-[12.5px] text-[#6b7280] leading-tight mt-0.5 truncate">
-                {subtitle}
-              </div>
-            )}
+        {/* Title block — ALWAYS reserves the same vertical space so the
+             header height is identical across every page (no layout jump
+             when switching between Inbox/Channels/Escalations/Bookings/
+             Settings/Analytics). Empty title/subtitle render an invisible
+             non-breaking space placeholder to preserve line height. */}
+        <div className="flex-1 min-w-0">
+          <h1 className="text-[18px] md:text-[19px] font-semibold tracking-tight text-[#1f2937] leading-tight truncate">
+            {title || "\u00A0"}
+          </h1>
+          <div className="text-[12.5px] text-[#6b7280] leading-tight mt-0.5 truncate">
+            {subtitle || "\u00A0"}
           </div>
-        )}
-
-        {/* Spacer when no title (e.g. Settings) so search still aligns right */}
-        {!hasTitleBlock && <div className="flex-1" aria-hidden="true" />}
+        </div>
+        {/* hasTitleBlock retained for future use (e.g. variant headers) */}
+        {!hasTitleBlock && null}
 
         {/* Compact desktop search (right side) */}
         {showSearch && (

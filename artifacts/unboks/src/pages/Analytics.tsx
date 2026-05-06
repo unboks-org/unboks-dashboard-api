@@ -83,10 +83,12 @@ export default function Analytics() {
     <DashboardShell
       activeNav="analytics"
       pageTitle="Analytics"
-      titleSuffix={
-        (convLoading || escLoading) ? <span className="text-[12px] text-[#1a73e8]">Loading…</span>
-          : convError ? <span className="text-[12px] text-[#5f6368]">Couldn't load</span>
-          : null
+      pageSubtitle={
+        (convLoading || escLoading)
+          ? "Loading…"
+          : convError
+            ? "Couldn't load"
+            : "Conversation and escalation insights"
       }
     >
       <div className="px-4 py-5 max-w-4xl space-y-8">

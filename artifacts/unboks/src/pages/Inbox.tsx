@@ -552,8 +552,7 @@ export default function Inbox() {
     if (isLoading) return "Loading…";
     if (isError) return "Couldn't load";
     if (activeNav === "escalations") {
-      const n = filtered.length;
-      return `${n} ${n === 1 ? "escalation" : "escalations"}`;
+      return "Conversations that need your attention";
     }
     if (activeChannel) {
       const n = filtered.length;
