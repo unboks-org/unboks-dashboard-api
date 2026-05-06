@@ -1,0 +1,71 @@
+Project 2 dashboard frontend edit #8 — fix Orders/Bookings label setting.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, or Python API assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish.
+
+Issue:
+In Settings → Orders Label:
+- User can choose Bookings
+- User can choose Orders
+- User can type custom text
+But the sidebar label does not update.
+There is no clear Save button.
+The setting feels non-functional.
+
+Task:
+Fix the Orders Label setting so it behaves like a real customer setting.
+
+Required behavior:
+1. User can choose "Bookings".
+2. User can choose "Orders".
+3. User can type a custom label.
+4. Add a clear Save button for this setting.
+5. After clicking Save, the sidebar label updates immediately.
+6. The saved label persists after page refresh.
+7. The label should update wherever the Bookings/Orders nav item appears.
+8. If the custom text is empty, do not save empty label; show/keep previous valid label or default to Bookings.
+9. Keep the current simple visual style.
+10. Do not require backend support for this v1; localStorage is acceptable for now if that is how useBookingsLabel currently works.
+11. Do not affect unrelated Settings sections.
+
+Likely files:
+- artifacts/unboks/src/pages/Settings.tsx
+- artifacts/unboks/src/hooks/use-bookings-label.ts
+- artifacts/unboks/src/components/inbox/Drawer.tsx
+- artifacts/unboks/src/components/inbox/DashboardShell.tsx if label is passed there
+
+Investigation:
+- Inspect use-bookings-label.ts.
+- Check whether it already stores in localStorage.
+- Check whether Drawer/sidebar reads the same hook/state.
+- Fix state sync so Settings save updates sidebar immediately.
+- If current implementation updates only local state, make it persist and notify same-tab listeners.
+- If needed, dispatch a custom event after save so Drawer refreshes immediately.
+
+Preferred UX:
+- Buttons: Bookings / Orders
+- Custom input
+- Save button aligned with input or below
+- After Save:
+  - show small confirmation text: “Saved”
+  - sidebar updates immediately
+- If no custom value, save selected preset.
+
+Acceptance:
+- Select Bookings + Save → sidebar shows Bookings.
+- Select Orders + Save → sidebar shows Orders.
+- Type custom label + Save → sidebar shows custom label.
+- Refresh page → sidebar still shows saved label.
+- Empty custom value cannot save blank sidebar label.
+- Mobile and desktop drawer/sidebar both update.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

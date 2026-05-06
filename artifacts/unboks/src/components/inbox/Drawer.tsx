@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useEnabledChannels } from "@/hooks/use-enabled-channels";
+import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import {
   Inbox as InboxIcon,
   AlertCircle,
@@ -75,6 +76,7 @@ export function Drawer({
   ];
 
   const { isChannelEnabled } = useEnabledChannels();
+  const { label: bookingsLabel } = useBookingsLabel();
 
   const ALL_CHANNELS: NavItem[] = [
     { id: "channel:WhatsApp", icon: MessageCircle, label: "WhatsApp", count: channelCounts.WhatsApp },
@@ -92,7 +94,7 @@ export function Drawer({
   });
 
   const FOOTER: NavItem[] = [
-    { id: "bookings", icon: Calendar, label: "Bookings" },
+    { id: "bookings", icon: Calendar, label: bookingsLabel },
     { id: "analytics", icon: BarChart2, label: "Analytics" },
     { id: "settings", icon: SettingsIcon, label: "Settings" },
   ];

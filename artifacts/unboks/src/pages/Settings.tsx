@@ -111,6 +111,7 @@ export default function Settings() {
   const { isChannelEnabled, toggleChannel } = useEnabledChannels();
 
   const [customLabel, setCustomLabel] = useState(bookingsLabel);
+  const [labelSaved, setLabelSaved] = useState(false);
   const [channelsOpen, setChannelsOpen] = useState(false);
   const [sotOpen, setSotOpen] = useState(false);
   const [sotBlocks] = useState<SotBlock[]>(loadSot);
@@ -222,15 +223,15 @@ export default function Settings() {
 
         {/* Bookings Label */}
         <Section title="Orders Label" description="Customize what this section is called in the sidebar.">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="flex gap-2">
               {["Bookings", "Orders"].map((opt) => (
                 <button
                   key={opt}
-                  onClick={() => { setCustomLabel(opt); setBookingsLabel(opt); }}
+                  onClick={() => setCustomLabel(opt)}
                   className={cn(
                     "px-4 py-2 rounded-lg text-[13px] font-medium border transition-colors",
-                    customLabel === opt
+                    customLabel.trim() === opt
                       ? "border-[#1a73e8] bg-[#e8f0fe] text-[#1a73e8]"
                       : "border-[#dadce0] text-[#5f6368] hover:bg-[#f6f8fc]",
                   )}
@@ -243,10 +244,29 @@ export default function Settings() {
               type="text"
               value={customLabel}
               onChange={(e) => setCustomLabel(e.target.value)}
-              onBlur={() => setBookingsLabel(customLabel)}
               placeholder="Custom label…"
-              className="flex-1 border border-[#dadce0] rounded-lg px-3 py-2 text-[13px] text-[#202124] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
+              className="flex-1 min-w-0 border border-[#dadce0] rounded-lg px-3 py-2 text-[13px] text-[#202124] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
             />
+            <button
+              onClick={() => {
+                if (customLabel.trim().length === 0) return;
+                setBookingsLabel(customLabel);
+                setLabelSaved(true);
+                window.setTimeout(() => setLabelSaved(false), 1800);
+              }}
+              disabled={customLabel.trim().length === 0 || customLabel.trim() === bookingsLabel}
+              className={cn(
+                "px-4 py-2 rounded-lg text-[13px] font-medium border transition-colors",
+                customLabel.trim().length === 0 || customLabel.trim() === bookingsLabel
+                  ? "border-[#dadce0] text-[#9aa0a6] cursor-not-allowed"
+                  : "border-[#1a73e8] bg-[#1a73e8] text-white hover:bg-[#1765c1]",
+              )}
+            >
+              Save
+            </button>
+            {labelSaved && (
+              <span className="text-[12px] text-[#34a853]">Saved</span>
+            )}
           </div>
         </Section>
 
