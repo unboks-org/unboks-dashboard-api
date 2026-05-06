@@ -1,0 +1,127 @@
+Project 2 dashboard frontend — redesign confusing task assignment header using Refero/Repro.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python API assumptions.
+- Work only on Tasks page/task components.
+- Do not touch Settings.
+- Do not touch Inbox.
+- Do not touch DashboardShell.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish until reviewed.
+
+Task:
+Fix the confusing task card header that currently shows:
+
+Jr → Calvin · Today, 17:55
+
+This is unclear and looks like a chat route/breadcrumb.
+Use Refero/Repro references before redesigning.
+
+Use references from:
+- Linear issue metadata
+- Notion task cards
+- Slack task/message cards
+- Stripe dashboard activity cards
+- Asana/Trello-style assignment labels
+
+If Refero/Repro is not connected, stop and report clearly before editing.
+
+Current issue:
+The task card header shows small avatars and names with an arrow:
+Jr → Calvin
+
+This is confusing for users.
+They need to understand:
+- who created the task
+- who the task is assigned to
+- when it was created
+
+Required new design:
+Replace the confusing arrow format with clear labels.
+
+Preferred layout:
+Top metadata row should read something like:
+
+Assigned to Calvin
+Created by Jr · Today, 17:55
+
+or:
+
+To: Calvin
+From: Jr · Today, 17:55
+
+Use the first option unless layout constraints make the second cleaner.
+
+Required behavior:
+1. Remove the ambiguous “Jr → Calvin” visual.
+2. Show clear human-readable assignment:
+   - “Assigned to Calvin”
+   - “Created by Jr · Today, 17:55”
+3. Keep timestamp.
+4. Keep pending sync badge.
+5. Keep task body unchanged.
+6. Keep Edit / Copy text / Mark done actions unchanged.
+7. Keep mobile layout clean.
+8. Do not change task data model.
+9. Do not change backend/API.
+10. Do not remove assignment info.
+
+Visual requirements:
+- Small metadata row.
+- Clear hierarchy:
+  - assignment should be readable
+  - creator/time should be secondary
+- Use subtle badges/pills if helpful.
+- Avoid overdesign.
+- Premium SaaS style.
+- No confusing arrows.
+- No duplicate avatars if not needed.
+- If avatar initials remain, use only one for assignee or creator, not both in a confusing line.
+
+Suggested card header:
+Left:
+[CA] Assigned to Calvin
+Created by Jr · Today, 17:55
+
+Right:
+Pending sync badge
+
+For task assigned to Jr:
+[JR] Assigned to Jr
+Created by Calvin · Today, 17:55
+
+Likely file:
+- artifacts/unboks/src/components/tasks/TaskCard.tsx
+
+Possibly:
+- artifacts/unboks/src/pages/Tasks.tsx only if metadata formatting lives there.
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Inbox.tsx
+- DashboardShell
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Task card no longer shows “Jr → Calvin”.
+- Task card clearly says who it is assigned to.
+- Task card clearly says who created it.
+- Timestamp remains visible.
+- Pending sync badge remains visible.
+- Task actions still work.
+- Mobile layout still clean.
+- Build/typecheck clean.
+- Report exact files changed.
+- Report whether Refero/Repro was connected and what references were used.
+- Do not commit.
+- Do not publish.

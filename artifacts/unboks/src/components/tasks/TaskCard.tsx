@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Check, RotateCcw, Loader2, ArrowRight, Pencil, X, Copy } from "lucide-react";
+import { Check, RotateCcw, Loader2, Pencil, X, Copy } from "lucide-react";
 import type { Task, TaskUser } from "@/lib/tasks-api";
 import { cn } from "@/lib/utils";
 
@@ -104,7 +104,16 @@ function formatTaskDate(value: string): string {
   return `${d.toLocaleDateString([], { month: "short", day: "numeric" })}, ${time}`;
 }
 
-function Avatar({ name, dim = false }: { name: string; dim?: boolean }) {
+function Avatar({
+  name,
+  dim = false,
+  size = "sm",
+}: {
+  name: string;
+  dim?: boolean;
+  /** "sm" = 5x5 (legacy compact); "md" = 7x7 (header assignee). */
+  size?: "sm" | "md";
+}) {
   const initials = name.slice(0, 2).toUpperCase();
   // Stable hue per name
   const hues: Record<string, string> = {
@@ -116,7 +125,8 @@ function Avatar({ name, dim = false }: { name: string; dim?: boolean }) {
     <span
       title={name}
       className={cn(
-        "inline-grid h-5 w-5 place-items-center rounded-full text-[10px] font-semibold",
+        "inline-grid place-items-center rounded-full font-semibold",
+        size === "md" ? "h-7 w-7 text-[11px]" : "h-5 w-5 text-[10px]",
         cls,
         dim && "opacity-70",
       )}
@@ -231,22 +241,30 @@ export function TaskCard({
       )}
     >
       <div className="px-4 py-4 sm:px-5">
-        <header className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-[#6b7280]">
-          <Avatar name={task.createdBy} dim={isDone} />
-          <span className={cn("font-medium", isDone ? "text-[#4b5563]" : "text-[#1f2937]")}>
-            {task.createdBy}
-          </span>
-          <ArrowRight className="h-3 w-3 text-[#9aa0a6]" />
-          <Avatar name={task.assignedTo} dim={isDone} />
-          <span className={cn("font-medium", isDone ? "text-[#4b5563]" : "text-[#1f2937]")}>
-            {task.assignedTo}
-          </span>
-          <span className="text-[#cbd5e1]" aria-hidden>
-            ·
-          </span>
-          <span>{formatTaskDate(task.createdAt)}</span>
+        <header className="mb-3 flex items-start justify-between gap-3">
+          {/* Left: clear, human-readable assignment metadata.
+              Pattern modeled on Linear / Google Classroom / Notion task
+              cards — single prominent assignee avatar, primary "Assigned to"
+              label, muted secondary "Created by … · <time>" underneath. */}
+          <div className="flex min-w-0 items-start gap-2.5">
+            <Avatar name={task.assignedTo} dim={isDone} size="md" />
+            <div className="min-w-0 leading-tight">
+              <div
+                className={cn(
+                  "truncate text-[13px] font-medium sm:text-[13.5px]",
+                  isDone ? "text-[#4b5563]" : "text-[#1f2937]",
+                )}
+              >
+                Assigned to {task.assignedTo}
+              </div>
+              <div className="mt-0.5 truncate text-[11.5px] text-[#6b7280] sm:text-[12px]">
+                Created by {task.createdBy} · {formatTaskDate(task.createdAt)}
+              </div>
+            </div>
+          </div>
 
-          <div className="ml-auto flex items-center gap-2">
+          {/* Right: status pills (sync / done). */}
+          <div className="flex flex-shrink-0 items-center gap-2 pt-0.5">
             {task.syncStatus === "pending" && (
               <span
                 title="Saved locally — will sync when backend is connected."
