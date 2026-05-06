@@ -5,7 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { useConfig, useScheduleSlots, useScheduleSlotMutations } from "@/hooks/use-client-api";
 import { useEmailSettings } from "@/hooks/use-email-settings";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
-import { useFeatureToggles } from "@/lib/feature-toggles";
+import { useEscalationNotificationPrefs, type NotifyChannelKey } from "@/hooks/use-escalation-notification-preferences";
 import { useEnabledChannels, TOGGLEABLE_CHANNELS } from "@/hooks/use-enabled-channels";
 import { loadSot, type SotBlock } from "@/data/sot";
 import { getClientSlug, getApiBase } from "@/lib/tenant";
@@ -107,7 +107,9 @@ export default function Settings() {
   const { save: saveSlots, isSaving: slotsSaving } = useScheduleSlotMutations();
   const { emailClient, setEmailClient } = useEmailSettings();
   const { label: bookingsLabel, setLabel: setBookingsLabel } = useBookingsLabel();
-  const { toggles, setToggle } = useFeatureToggles();
+  const { prefs: notifyPrefs, save: saveNotifyPrefs } = useEscalationNotificationPrefs();
+  const [notifyDraft, setNotifyDraft] = useState(notifyPrefs);
+  const [notifySaved, setNotifySaved] = useState(false);
   const { isChannelEnabled, toggleChannel } = useEnabledChannels();
 
   const [customLabel, setCustomLabel] = useState(bookingsLabel);
@@ -301,21 +303,79 @@ export default function Settings() {
           )}
         </div>
 
-        {/* Feature Toggles */}
-        <Section title="Feature Visibility" description="Show or hide sections in the sidebar.">
-          <div className="space-y-1">
-            <ToggleRow
-              label="AI Suggest Reply"
-              description="Show AI reply suggestions in conversations."
-              checked={toggles.aiSuggestReply}
-              onChange={(v) => setToggle("aiSuggestReply", v)}
-            />
-            <ToggleRow
-              label="Email Notifications"
-              description="Receive email summaries for escalations."
-              checked={toggles.emailNotifications}
-              onChange={(v) => setToggle("emailNotifications", v)}
-            />
+        {/* Escalation Notifications */}
+        <Section
+          title="Escalation Notifications"
+          description="Choose where urgent escalation alerts should be sent."
+        >
+          <div className="space-y-3">
+            {/* Email — mandatory */}
+            <div className="flex items-center justify-between gap-4 py-2 border-b border-[#f1f3f4]">
+              <div className="min-w-0">
+                <p className="text-[14px] text-[#202124]">Email</p>
+                <p className="text-[12px] text-[#5f6368] mt-0.5 break-all">
+                  Always enabled · Default account email
+                </p>
+              </div>
+              <span className="text-[12px] text-[#5f6368] flex-shrink-0">Default</span>
+            </div>
+
+            {/* Optional channels */}
+            {([
+              { key: "whatsapp", label: "WhatsApp", placeholder: "+599 9 123 4567" },
+              { key: "messenger", label: "Messenger", placeholder: "username or profile link" },
+              { key: "telegram", label: "Telegram", placeholder: "@username or phone number" },
+            ] as { key: NotifyChannelKey; label: string; placeholder: string }[]).map((row) => {
+              const pref = notifyDraft[row.key];
+              return (
+                <div key={row.key} className="space-y-2">
+                  <ToggleRow
+                    label={row.label}
+                    checked={pref.enabled}
+                    onChange={(v) =>
+                      setNotifyDraft({
+                        ...notifyDraft,
+                        [row.key]: { ...pref, enabled: v },
+                      })
+                    }
+                  />
+                  {pref.enabled && (
+                    <input
+                      type="text"
+                      value={pref.destination}
+                      onChange={(e) =>
+                        setNotifyDraft({
+                          ...notifyDraft,
+                          [row.key]: { ...pref, destination: e.target.value },
+                        })
+                      }
+                      placeholder={row.placeholder}
+                      className="w-full min-w-0 border border-[#dadce0] rounded-lg px-3 py-2 text-[13px] text-[#202124] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
+                    />
+                  )}
+                </div>
+              );
+            })}
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => {
+                  saveNotifyPrefs(notifyDraft);
+                  setNotifySaved(true);
+                  window.setTimeout(() => setNotifySaved(false), 1800);
+                }}
+                className="px-4 py-2 rounded-lg text-[13px] font-medium border border-[#1a73e8] bg-[#1a73e8] text-white hover:bg-[#1765c1] transition-colors"
+              >
+                Save
+              </button>
+              {notifySaved && (
+                <span className="text-[12px] text-[#34a853]">Saved</span>
+              )}
+            </div>
+
+            <p className="text-[12px] text-[#5f6368] pt-1">
+              Escalation delivery will use the channels connected by your Unboks setup.
+            </p>
           </div>
         </Section>
 

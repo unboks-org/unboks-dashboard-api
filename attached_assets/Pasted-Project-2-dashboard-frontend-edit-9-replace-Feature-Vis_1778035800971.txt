@@ -1,0 +1,112 @@
+Project 2 dashboard frontend edit #9 — replace Feature Visibility with Escalation Notification Preferences.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, or Python API assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish.
+
+Issue:
+Settings currently has a “Feature Visibility” section with:
+- AI Suggest Reply toggle
+- Email Notifications toggle
+
+This is not right for the customer dashboard:
+1. We do not need customers to hide sidebar sections here.
+2. AI Suggest Reply toggle is unnecessary. The AI icon/action will exist in the UI; if the user wants to use it they can, if not they ignore it.
+3. Email escalation notifications should be mandatory/default, not an optional toggle.
+4. Customers should be able to choose optional direct messenger channels where escalation alerts are sent.
+
+Product requirement:
+Escalation notifications:
+- Email is default/mandatory.
+- Optional direct messenger notification channels:
+  - WhatsApp
+  - Messenger
+  - Telegram
+- For each optional channel, customer can toggle it on and enter where notifications should be sent.
+- Destination can be:
+  - phone number
+  - username
+  - email
+  depending on the channel.
+- Example: The connected WhatsApp Business account may be used for customer messages, but the business owner may want escalation alerts sent to a private WhatsApp number or the boss’s number.
+- This setting is about where escalation alerts go, not which customer channel is connected.
+
+Task:
+Remove the current Feature Visibility section and replace it with a customer-friendly Escalation Notifications section.
+
+Required behavior:
+1. Remove “Feature Visibility” title.
+2. Remove “AI Suggest Reply” toggle.
+3. Remove “Email Notifications” toggle.
+4. Add new section title:
+   Escalation Notifications
+5. Add description:
+   Choose where urgent escalation alerts should be sent.
+6. Show Email as default/mandatory:
+   - Label: Email
+   - Text: Always enabled
+   - No toggle
+   - If the configured email is known, show it. If unknown, show “Default account email”.
+7. Add optional rows:
+   - WhatsApp
+   - Messenger
+   - Telegram
+8. Each optional row should have:
+   - toggle on/off
+   - destination input shown when enabled
+   - placeholder examples:
+     WhatsApp: +599 9 123 4567
+     Messenger: username or profile link
+     Telegram: @username or phone number
+9. Add one Save button for notification preferences.
+10. Save preferences in localStorage for v1.
+11. After Save, show “Saved”.
+12. Refresh page should keep saved choices.
+13. Keep layout clean on mobile.
+14. Do not imply backend delivery is already active unless this is only a preference setup.
+15. Customer-facing copy should be simple.
+
+Suggested note under section:
+“Escalation delivery will use the channels connected by your Unboks setup.”
+
+Important wording:
+- Use “Escalation alerts”, not “email summaries”.
+- Do not use technical words.
+- Do not mention Zernio.
+- Do not mention backend.
+- Do not mention Feature Visibility.
+
+Likely files:
+- artifacts/unboks/src/pages/Settings.tsx
+Possibly add helper hook if clean:
+- artifacts/unboks/src/hooks/use-escalation-notification-preferences.ts
+
+Constraints:
+- No backend changes.
+- No API route changes.
+- No database changes.
+- No new dependencies.
+- Do not touch previous edits except where Settings layout requires it.
+- Do not change channel enable/disable settings section.
+
+Acceptance:
+- Feature Visibility section is gone.
+- AI Suggest Reply toggle is gone.
+- Email Notifications toggle is gone.
+- New Escalation Notifications section appears.
+- Email is shown as mandatory/default.
+- WhatsApp/Messenger/Telegram optional toggles appear.
+- Enabling an optional channel reveals an input.
+- User can enter destination and save.
+- Saved values persist after refresh.
+- Mobile layout is clean.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.
