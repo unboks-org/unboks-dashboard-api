@@ -144,14 +144,14 @@ export default function Settings() {
           </div>
         </Section>
 
-        {/* Source of Truth */}
+        {/* Your Info (formerly "Source of Truth") */}
         <div className="border-b border-[#f1f3f4]">
           <button
             onClick={() => setSotOpen((o) => !o)}
             className="w-full flex items-center justify-between px-5 py-6 text-left"
           >
             <div>
-              <p className="text-[14px] font-semibold text-[#202124]">Source of Truth</p>
+              <p className="text-[14px] font-semibold text-[#202124]">Your Info</p>
               <p className="text-[13px] text-[#5f6368] mt-0.5">
                 This is the information your AI uses to answer customers.
               </p>
