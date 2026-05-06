@@ -68,29 +68,83 @@ export function isMongoObjectId(value: unknown): boolean {
 }
 
 /**
- * Parse a backend timestamp (ISO string incl. Python microsecond format
- * `2026-05-06T03:41:31.995398+00:00`, epoch number, or Date) to milliseconds
- * since epoch. Invalid / missing returns 0 so those rows sort to the bottom
- * when sorting descending. Pre-formatted display strings like `"9:42 AM"` or
- * `"Yesterday"` also return 0 (they carry no real time).
+ * Parse a backend timestamp to milliseconds since epoch for sorting.
+ *
+ * Accepts:
+ *  - `Date`
+ *  - finite numbers (epoch seconds < 1e12 are auto-promoted to ms)
+ *  - ISO 8601 strings, including Python microsecond format
+ *    `2026-05-06T03:41:31.995398+00:00`
+ *  - common datetime-ish strings parseable by `new Date()` and falling in a
+ *    sane year window (1990..2100) to reject noise
+ *
+ * Rejects (returns 0):
+ *  - null / undefined / empty
+ *  - bare display strings like `"9:42 AM"`, `"Yesterday"`, `"Monday"`,
+ *    `"3 Nov"` — they carry no real date, just a label
+ *  - anything `Date` parses to a year outside 1990..2100
+ *
+ * Rows that get 0 sort to the bottom when sorting descending.
  */
 export function parseTimestampMs(value: unknown): number {
   if (value === null || value === undefined) return 0;
+
   if (value instanceof Date) {
     const t = value.getTime();
     return Number.isNaN(t) ? 0 : t;
   }
+
   if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0;
+    if (!Number.isFinite(value) || value <= 0) return 0;
+    // Heuristic: epoch seconds (anything < year 5138 in seconds) → promote
+    // to ms. Anything already in ms is left as-is.
+    return value < 1e12 ? value * 1000 : value;
   }
+
   if (typeof value !== "string") return 0;
   const s = value.trim();
   if (!s) return 0;
-  // Only attempt Date parsing on ISO-shaped strings — bare display strings
-  // like "9:42 AM", "Yesterday", "Monday", "3 Nov" must NOT pollute sorting.
-  if (!/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(s)) return 0;
+
+  // Hard-reject obvious display labels so legacy mock data and pre-formatted
+  // strings don't pollute sorting:
+  //   - pure clock times like "9:42 AM" / "23:04"
+  //   - relative words like "Yesterday", "Today", "Now"
+  //   - weekday names "Monday"…"Sunday"
+  //   - short month-day "3 Nov" / "Nov 3"
+  if (/^\d{1,2}:\d{2}(\s?[ap]m)?$/i.test(s)) return 0;
+  if (/^(yesterday|today|now)$/i.test(s)) return 0;
+  if (/^(sun(day)?|mon(day)?|tue(sday)?|wed(nesday)?|thu(rsday)?|fri(day)?|sat(urday)?)$/i.test(s)) return 0;
+  if (/^\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(s)) return 0;
+  if (/^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d{1,2}$/i.test(s)) return 0;
+
   const t = new Date(s).getTime();
-  return Number.isNaN(t) ? 0 : t;
+  if (Number.isNaN(t)) return 0;
+  // Sanity: reject anything outside 1990..2100 (likely garbage).
+  const year = new Date(t).getUTCFullYear();
+  if (year < 1990 || year > 2100) return 0;
+  return t;
+}
+
+/**
+ * Pull the strongest available "last activity" timestamp from a backend
+ * conversation. Tries (in order):
+ *   1. `last_message_at`               (preferred — explicit field)
+ *   2. last item in `messages[]`       (`.timestamp`)
+ *   3. `timestamp`                     (legacy)
+ *   4. `createdAt`-ish fields if any   (last resort)
+ */
+export function pickConversationTimestampMs(c: ApiConversation): number {
+  const candidates: unknown[] = [c.last_message_at];
+  if (Array.isArray(c.messages) && c.messages.length > 0) {
+    const last = c.messages[c.messages.length - 1];
+    candidates.push(last?.timestamp);
+  }
+  candidates.push(c.timestamp);
+  for (const v of candidates) {
+    const t = parseTimestampMs(v);
+    if (t > 0) return t;
+  }
+  return 0;
 }
 
 function validStr(value: unknown): string | null {
@@ -263,9 +317,18 @@ export function mapApiConversation(c: ApiConversation): Conversation {
     preview = sp.preview;
   }
 
-  // Prefer last_message_at; fall back to legacy timestamp. Display string
-  // is formatted (relative); raw ms is preserved for sorting.
-  const tsRaw = c.last_message_at ?? c.timestamp;
+  // Pull the strongest "last activity" timestamp we can find — checks
+  // `last_message_at`, then the last entry in `messages[]`, then legacy
+  // `timestamp`. Used purely for newest-first sorting; the display string
+  // below remains the existing relative format ("9:42 AM" / "Yesterday" /
+  // "Monday" / "3 May").
+  const timestampMs = pickConversationTimestampMs(c);
+  // Prefer the same source for display formatting too, so the visible time
+  // matches what we sorted by.
+  const tsRaw =
+    timestampMs > 0
+      ? new Date(timestampMs).toISOString()
+      : (c.last_message_at ?? c.timestamp);
 
   return {
     id: c.phone || c._id || "unknown",
@@ -274,7 +337,7 @@ export function mapApiConversation(c: ApiConversation): Conversation {
     subject,
     preview,
     timestamp: formatConversationTimestamp(tsRaw),
-    timestampMs: parseTimestampMs(tsRaw),
+    timestampMs,
     unread: c.unread ?? false,
     escalated: c.escalated ?? false,
     hasAttachment: c.hasAttachment ?? false,
