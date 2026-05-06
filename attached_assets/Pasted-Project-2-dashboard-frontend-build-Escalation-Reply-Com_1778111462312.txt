@@ -1,0 +1,246 @@
+Project 2 dashboard frontend — build Escalation Reply Composer with AI Editor using Refero/Repro.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Do not modify DNS, secrets, deployment, auth, or Python backend assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish until reviewed.
+
+Goal:
+Escalations need a proper reply composer.
+
+There are two escalation types:
+
+1. Soft escalation
+The operator writes guidance/reply to Marina.
+Marina will use that guidance to reply to the customer.
+The operator is NOT replying directly to the customer.
+
+2. Hard escalation
+The operator writes a reply directly to the customer.
+The AI is muted / human takeover.
+The reply is intended to go to the customer.
+
+Both composer types must include an AI Editor inspired by the provided screenshot.
+
+AI Editor actions:
+- Translate
+- Style
+- Fix
+
+Important:
+The AI Editor improves the operator’s draft, but never sends automatically.
+The operator must approve/send manually.
+
+Use Refero/Repro:
+Use real premium AI composer/editor references before designing.
+References should include:
+- Grammarly editor
+- Intercom AI compose/rewrite UI
+- Zendesk AI assist
+- Front email composer
+- Notion AI editor
+- Apple writing tools style
+- Slack message composer
+
+If Refero/Repro is not connected, stop and report clearly before editing.
+
+Required UI behavior:
+
+Escalation detail pane should show a reply composer when an escalation is selected.
+
+Soft escalation composer:
+- Clear label:
+  “Reply to Marina”
+- Helper copy:
+  “Marina will use your guidance to answer the customer.”
+- Textarea placeholder:
+  “Write guidance for Marina…”
+- Primary button:
+  “Send to Marina”
+- Optional secondary:
+  “Mark resolved”
+- This action must NOT pretend it sends to the customer.
+
+Hard escalation composer:
+- Clear label:
+  “Reply to customer”
+- Helper copy:
+  “This reply will be sent directly to the customer.”
+- Textarea placeholder:
+  “Write your reply…”
+- Primary button:
+  “Reply to customer”
+- Optional secondary:
+  “Mark resolved”
+- Show a small status/pill:
+  “Human takeover”
+  or:
+  “AI muted”
+- This action is direct customer reply.
+
+AI Editor:
+Add an AI Editor control inside the composer.
+
+Preferred UX:
+- Small button inside/near composer:
+  “AI Editor”
+  or sparkles icon + “AI Editor”
+- Clicking opens a clean modal/bottom sheet/panel.
+- The panel shows:
+  Title: AI Editor
+  Tabs/actions:
+    Translate
+    Style
+    Fix
+- Original text preview
+- Edited text preview/result area
+- Buttons:
+  “Apply”
+  “Cancel”
+- Optional:
+  “Undo” after applying
+
+Translate:
+- User can choose target language if simple:
+  English
+  Dutch
+  Spanish
+  Papiamento
+  Swedish
+  Portuguese
+- If language picker is too much for v1, show UI placeholder and keep structure ready.
+
+Style:
+- User can choose style:
+  Professional
+  Warmer
+  Shorter
+  Friendlier
+  More direct
+- Keep Marina’s identity: warm, clear, professional, calm, helpful.
+- Do not overdo slang.
+- Do not use em dashes.
+
+Fix:
+- Correct spelling, grammar, clarity.
+- Preserve meaning.
+- Do not make the text colder.
+- Do not use em dashes.
+
+Important copy rule:
+Strictly avoid em dashes in generated or suggested text.
+Use commas, periods, or simple hyphens if needed.
+
+Frontend API behavior:
+Create clean frontend API client functions, but do not build backend.
+
+Suggested endpoints to call when Jr wires backend:
+
+POST /api/{client}/dashboard/api/escalations/{conversationId}/guidance
+For soft escalation.
+Body:
+{
+  "message": "operator guidance text",
+  "mode": "soft",
+  "target": "marina"
+}
+
+POST /api/{client}/dashboard/api/escalations/{conversationId}/reply
+For hard escalation.
+Body:
+{
+  "message": "direct customer reply text",
+  "mode": "hard",
+  "target": "customer"
+}
+
+POST /api/{client}/dashboard/api/ai-editor
+For AI Editor.
+Body:
+{
+  "action": "translate" | "style" | "fix",
+  "text": "draft text",
+  "targetLanguage": "English/Dutch/Spanish/Papiamento/Swedish/Portuguese optional",
+  "style": "professional/warmer/shorter/friendlier/direct optional",
+  "context": {
+    "conversationId": "...",
+    "escalationMode": "soft" | "hard",
+    "channel": "whatsapp/email/instagram/facebook/messenger/etc"
+  }
+}
+
+Expected response:
+{
+  "text": "edited text"
+}
+
+Until backend is connected:
+- Do not crash.
+- If endpoint returns 404/501/503, show calm message:
+  “AI Editor will be connected by the Unboks team.”
+- Keep the original draft unchanged.
+- Send buttons may call existing endpoints if already present.
+- If send endpoint is not connected, show clear placeholder:
+  Soft: “Saved. Marina connection will be completed by the Unboks team.”
+  Hard: “Direct customer reply will be connected by the Unboks team.”
+- Do not pretend a message was sent if backend did not send it.
+
+Design:
+- Premium SaaS style.
+- Composer should look like a real operational tool.
+- Clear distinction between soft and hard escalation.
+- Soft = guidance to Marina.
+- Hard = direct customer reply.
+- AI Editor should feel integrated, not bolted on.
+- Mobile must work well.
+- Use modal/bottom sheet on mobile if needed.
+- No clutter.
+- No giant red warnings.
+- Clear, calm, professional.
+
+Likely files:
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/components/inbox/MessageRow.tsx only if needed
+- artifacts/unboks/src/lib/api.ts
+- artifacts/unboks/src/hooks/use-client-api.ts
+Possibly create:
+- artifacts/unboks/src/components/inbox/EscalationReplyComposer.tsx
+- artifacts/unboks/src/components/inbox/AIEditorPanel.tsx
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Tasks.tsx
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Soft escalation shows “Reply to Marina” composer.
+- Hard escalation shows “Reply to customer” composer.
+- Soft and hard modes are visually and textually clear.
+- AI Editor button appears in both composers.
+- AI Editor opens with Translate / Style / Fix.
+- AI Editor can apply edited text back into composer.
+- AI Editor failure does not erase draft.
+- Send buttons are clearly different:
+  soft = Send to Marina
+  hard = Reply to customer
+- No em dashes in UI copy.
+- Mobile layout works.
+- Build/typecheck clean.
+- Report exact files changed.
+- Report whether Refero/Repro was connected and what references were used.
+- Do not commit.
+- Do not publish.
