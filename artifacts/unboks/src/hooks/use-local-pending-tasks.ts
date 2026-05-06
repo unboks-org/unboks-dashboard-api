@@ -107,6 +107,35 @@ export function useLocalPendingTasks() {
     return next;
   }, []);
 
+  const updateLocal = useCallback(
+    (
+      localId: string,
+      patch: { bodyText?: string; bodyHtml?: string; assignedTo?: TaskUser },
+    ) => {
+      setTasks((current) => {
+        const now = new Date().toISOString();
+        const list = current.map((t) =>
+          t.localId === localId
+            ? {
+                ...t,
+                bodyText: patch.bodyText ?? t.bodyText,
+                bodyHtml: patch.bodyHtml ?? t.bodyHtml,
+                assignedTo: patch.assignedTo ?? t.assignedTo,
+                updatedAt: now,
+                // Edited content needs to be re-uploaded once the backend is
+                // available — drop "failed" back to "pending" so it gets retried.
+                syncStatus: (t.syncStatus === "syncing" ? "syncing" : "pending") as LocalPendingTask["syncStatus"],
+                syncError: undefined,
+              }
+            : t,
+        );
+        persist(list);
+        return list;
+      });
+    },
+    [],
+  );
+
   const setLocalStatus = useCallback((localId: string, status: TaskStatus) => {
     setTasks((current) => {
       const now = new Date().toISOString();
@@ -147,7 +176,7 @@ export function useLocalPendingTasks() {
     [],
   );
 
-  return { tasks, addLocal, setLocalStatus, removeLocal, markSyncStatus };
+  return { tasks, addLocal, updateLocal, setLocalStatus, removeLocal, markSyncStatus };
 }
 
 /** Read a File as data URL. Used to persist pasted/picked images for offline. */

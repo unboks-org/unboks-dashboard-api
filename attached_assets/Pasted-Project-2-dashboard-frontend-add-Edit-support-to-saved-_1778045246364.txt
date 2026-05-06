@@ -1,0 +1,99 @@
+Project 2 dashboard frontend — add Edit support to saved Tasks.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python API assumptions.
+- Work only on the Tasks page and task components.
+- Do not touch Settings.
+- Do not touch Inbox.
+- Do not touch DashboardShell unless absolutely required.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish until reviewed.
+
+Issue:
+After a task is saved, there is no way to edit it.
+Users need to correct or update task text after saving.
+
+Task:
+Add an Edit action to saved task cards.
+
+Required behavior:
+1. Each task card should have an Edit button/icon.
+2. Edit should work for local pending tasks immediately.
+3. When clicked, the task enters edit mode.
+4. Edit mode should allow editing:
+   - task text/body
+   - assigned person if feasible
+   - attachments if already supported and easy
+5. Save button updates the task.
+6. Cancel button exits edit mode without saving changes.
+7. Updated task remains persisted after refresh for local pending tasks.
+8. If backend task editing endpoint does not exist yet, do not pretend shared backend tasks are editable.
+9. For backend/shared tasks, either:
+   - disable Edit with tooltip/copy “Editing shared tasks will be available when the backend supports it.”
+   or
+   - use PATCH /api/unboks/tasks/:id if the existing API client already supports body updates.
+10. Do not break Mark done / Reopen.
+11. Do not break local pending sync logic.
+12. Keep the UI premium and simple.
+
+Preferred UI:
+- Add a small “Edit” button in the task card header or footer.
+- In edit mode:
+  - show textarea with current task text
+  - show To selector if assignment editing is simple
+  - buttons:
+    - Save changes
+    - Cancel
+- Keep card layout clean.
+- Do not open a giant modal unless current task design already uses modals.
+- Mobile must be comfortable.
+
+Local pending task behavior:
+- Editing a local pending task updates the localStorage copy.
+- syncStatus should remain pending.
+- updatedAt should update.
+- If the task is done, allow edit but keep done status unchanged.
+
+Backend/shared task behavior:
+- If editing backend tasks is not supported, show edit disabled or a calm note.
+- Do not silently fail.
+- Do not fake successful backend edits.
+
+Likely files:
+- artifacts/unboks/src/pages/Tasks.tsx
+- artifacts/unboks/src/components/tasks/TaskCard.tsx
+- artifacts/unboks/src/components/tasks/TaskComposer.tsx
+- artifacts/unboks/src/lib/tasks-api.ts
+Possibly:
+- artifacts/unboks/src/hooks/use-local-pending-tasks.ts if it exists
+
+Do not touch:
+- Settings.tsx
+- Inbox.tsx
+- artifacts/api-server
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Saved local pending task has Edit action.
+- Clicking Edit opens editable text.
+- Save changes updates the task card.
+- Cancel keeps original task unchanged.
+- Edited task persists after refresh.
+- Mark done still works.
+- Reopen still works.
+- Pending sync badge remains where appropriate.
+- Backend/shared tasks do not pretend to edit unless backend supports it.
+- Mobile layout works.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

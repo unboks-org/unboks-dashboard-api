@@ -127,6 +127,7 @@ export default function Tasks() {
   const {
     tasks: localTasks,
     addLocal,
+    updateLocal,
     setLocalStatus,
     removeLocal,
     markSyncStatus,
@@ -469,9 +470,15 @@ export default function Tasks() {
               key={t.id}
               task={t}
               busy={busyId === t.id}
+              canEdit={Boolean(t.localId)}
               onMarkDone={(task) => setStatus(task, "done")}
               onReopen={(task) => setStatus(task, "open")}
               onOpenImage={(url) => setLightboxUrl(url)}
+              onEdit={(task, patch) => {
+                if (!task.localId) return;
+                updateLocal(task.localId, patch);
+                toast.success("Task updated.");
+              }}
             />
           ))}
         </div>
