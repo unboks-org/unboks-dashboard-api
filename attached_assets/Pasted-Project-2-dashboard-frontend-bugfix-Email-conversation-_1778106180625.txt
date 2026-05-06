@@ -1,0 +1,72 @@
+Project 2 dashboard frontend bugfix — Email conversation detail does not load.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python API assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch DashboardShell unless absolutely required.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish until reviewed.
+
+Bug:
+Email conversations appear in the inbox list, but when clicking an Email conversation, the detail pane does not load the message history.
+The right side stays blank/loading.
+
+WhatsApp conversations appear to load correctly.
+
+Likely cause:
+The Python backend uses the `phone` field as the conversation identifier.
+For email conversations, the identifier can contain special characters, for example:
+email::subj:workspace-noreply@google.com:boost productivity...
+
+If the frontend builds the detail URL without encodeURIComponent, the request can break or hit the wrong route.
+
+Confirmed API list shape includes:
+{
+  "phone": "email::subj:workspace-noreply@google.com:...",
+  "customer_name": "...",
+  "channel": "email"
+}
+
+Required behavior:
+1. Clicking an Email conversation must load the full message thread.
+2. Clicking WhatsApp conversations must still work.
+3. The frontend must safely encode the conversation identifier when calling:
+   GET /api/{client}/dashboard/api/messages/conversations/{phone}
+4. Use encodeURIComponent on the id/phone/external conversation key before building the URL.
+5. Do not double-encode if the code already encodes somewhere else.
+6. Detail pane should show a calm error state if the API fails, not an empty blank pane.
+7. Preserve email display name, badge, timestamp, and list behavior.
+8. Do not change backend/API.
+9. Do not guess a different id. Use the backend-provided conversation identifier.
+
+Likely files:
+- artifacts/unboks/src/lib/api.ts
+- artifacts/unboks/src/hooks/use-client-api.ts
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/lib/conversation-mapper.ts
+
+Investigation:
+- Inspect ApiConversation type and mapper.
+- Find which field is used as conversation id.
+- Inspect fetchConversationDetail / fetchConversationMessages.
+- Check whether the id is URL-encoded.
+- Check Network tab if needed:
+  - clicking email should call a URL where the email::subj:... value is encoded.
+- Check whether colon, slash, at-sign, spaces, and subject text break the route.
+
+Acceptance:
+- Click Email row → right pane loads message history.
+- Click WhatsApp row → right pane still loads message history.
+- Email conversation id is URL-safe in the request.
+- No blank detail pane.
+- If API returns error, show readable error.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

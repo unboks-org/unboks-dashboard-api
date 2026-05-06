@@ -23,6 +23,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import type { ApiMessage, ConversationDetail } from "@/lib/api";
+import { ApiError } from "@/lib/error";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
@@ -365,9 +366,17 @@ interface ConversationDetailPaneProps {
 }
 
 function ConversationDetailPane({ conversation, onClose }: ConversationDetailPaneProps) {
-  const { data: detail, isLoading, isError } = useConversation(conversation.id);
+  const { data: detail, isLoading, isError, error } = useConversation(conversation.id);
   const badgeColor = CHANNEL_BADGE_COLORS[conversation.channel] ?? "#9aa0a6";
   const messages: ApiMessage[] = detail?.messages ?? [];
+  // Surface the underlying API status/message so an email conversation that
+  // 404s (or whose id breaks server-side routing) doesn't render as a blank
+  // pane. ApiError carries the HTTP status; fall back to its message string.
+  const errorDetail: { status: number | null; message: string } | null = isError
+    ? error instanceof ApiError
+      ? { status: error.status, message: error.message }
+      : { status: null, message: error instanceof Error ? error.message : "Unknown error" }
+    : null;
   // Escalation routes use the conversation DB id. Look it up from the
   // escalations list (cached query) by matching the phone (external_id).
   const { data: escalations } = useEscalations("all");
@@ -423,7 +432,7 @@ function ConversationDetailPane({ conversation, onClose }: ConversationDetailPan
         )}
 
         {!isLoading && messages.length === 0 && (
-          <div className="py-8 text-center space-y-2">
+          <div className="py-8 space-y-3">
             {conversation.subject !== "No preview available" && (
               <div className="bg-[#f1f3f4] rounded-2xl rounded-bl-sm px-4 py-2.5 text-[13px] text-[#202124] text-left max-w-[75%]">
                 <p className="font-medium">{conversation.subject}</p>
@@ -432,11 +441,34 @@ function ConversationDetailPane({ conversation, onClose }: ConversationDetailPan
                 )}
               </div>
             )}
-            {isError && (
-              <p className="text-[12px] text-[#9aa0a6] mt-4">Full conversation history unavailable.</p>
+
+            {/* Calm, prominent error block. Replaces the previous tiny grey
+                line that read as "blank pane" when an Email conversation
+                detail failed to load. Shows status + reason so users know it
+                isn't a hung loader. */}
+            {errorDetail && (
+              <div
+                role="alert"
+                className="mx-auto max-w-[420px] rounded-xl border border-[#fad2cf] bg-[#fce8e6] px-4 py-3 text-left"
+              >
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-[#c5221f] flex-shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold text-[#5f1414]">
+                      Couldn't load conversation
+                    </p>
+                    <p className="mt-1 text-[12px] text-[#5f6368] break-words">
+                      {errorDetail.status
+                        ? `${errorDetail.status} · ${errorDetail.message}`
+                        : errorDetail.message}
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
-            {!isError && conversation.subject === "No preview available" && (
-              <p className="text-[13px] text-[#9aa0a6]">No messages to display.</p>
+
+            {!errorDetail && conversation.subject === "No preview available" && (
+              <p className="text-center text-[13px] text-[#9aa0a6]">No messages to display.</p>
             )}
           </div>
         )}

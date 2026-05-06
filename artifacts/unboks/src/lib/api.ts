@@ -263,14 +263,45 @@ export async function fetchConversations(): Promise<ApiConversation[]> {
   return apiFetch<ApiConversation[]>("/messages/conversations");
 }
 
+/**
+ * Sanitize a conversation identifier before placing it in a URL path.
+ *
+ * The Python backend uses the `phone` field as the conversation key. For
+ * email conversations that key can be a long, subject-derived string like
+ * `email::subj:workspace-noreply@google.com:boost productivity…` which
+ * sometimes carries trailing whitespace or stray CR/LF characters from
+ * upstream parsing. `encodeURIComponent` would faithfully turn `\n` into
+ * `%0A`, which most servers / proxies reject as a control-character path
+ * smuggling attempt — manifesting as a silently empty detail pane.
+ *
+ * Trim and strip CR/LF defensively before encoding. We do NOT touch any
+ * other characters (`:`, `@`, spaces are valid id content and round-trip
+ * cleanly through encodeURIComponent).
+ */
+export function encodeConversationKey(rawKey: string): string {
+  const cleaned = (rawKey ?? "").replace(/[\r\n]+/g, "").trim();
+  return encodeURIComponent(cleaned);
+}
+
 export async function fetchConversation(phone: string): Promise<ConversationDetail> {
-  return apiFetch<ConversationDetail>(`/messages/conversations/${encodeURIComponent(phone)}`);
+  const key = (phone ?? "").replace(/[\r\n]+/g, "").trim();
+  if (!key) {
+    throw new ApiError(400, "Conversation id is missing.");
+  }
+  return apiFetch<ConversationDetail>(
+    `/messages/conversations/${encodeConversationKey(key)}`,
+  );
 }
 
 export async function deleteConversation(phone: string): Promise<void> {
-  return apiFetch<void>(`/messages/conversations/${encodeURIComponent(phone)}`, {
-    method: "DELETE",
-  });
+  const key = (phone ?? "").replace(/[\r\n]+/g, "").trim();
+  if (!key) {
+    throw new ApiError(400, "Conversation id is missing.");
+  }
+  return apiFetch<void>(
+    `/messages/conversations/${encodeConversationKey(key)}`,
+    { method: "DELETE" },
+  );
 }
 
 export async function suggestReply(phone: string): Promise<{ suggestion: string }> {
