@@ -13,6 +13,7 @@ import Login from "@/pages/Login";
 import Bookings from "@/pages/Bookings";
 import Settings from "@/pages/Settings";
 import Analytics from "@/pages/Analytics";
+import Tasks from "@/pages/Tasks";
 
 // Top-level error boundary — prevents white screen on any render crash
 class AppErrorBoundary extends Component<
@@ -84,6 +85,12 @@ function Router() {
       </Route>
       <Route path="/analytics">
         <ProtectedRoute><Analytics /></ProtectedRoute>
+      </Route>
+      <Route path="/tasks">
+        <ProtectedRoute><Tasks /></ProtectedRoute>
+      </Route>
+      <Route path="/Tasks">
+        <Redirect to="/tasks" />
       </Route>
       <Route path="/">
         <ProtectedRoute><Inbox /></ProtectedRoute>
