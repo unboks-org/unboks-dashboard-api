@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, ChangeEvent, ClipboardEvent } from "react";
 import { toast } from "sonner";
-import { Image as ImageIcon, X, Loader2, Paperclip } from "lucide-react";
+import { Image as ImageIcon, X, Loader2, Paperclip, Plus } from "lucide-react";
 import {
   ALLOWED_IMAGE_TYPES,
   MAX_IMAGES_PER_TASK,
@@ -126,13 +126,25 @@ export function TaskComposer({ submitting, backendUnavailable, onSubmit }: TaskC
 
   return (
     <section
+      aria-label="Create a new task"
       className={cn(
-        "rounded-2xl border bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition-colors",
-        focused ? "border-[#a8c7fa]" : "border-[#cfd6e3]",
+        // Prominent creation surface — distinctly different from the lighter,
+        // 1px task cards below. 2px accent-tinted border + subtle blue-tinted
+        // gradient + a slightly stronger shadow signal "primary input area"
+        // without being loud. Deepens on focus to confirm the focus target.
+        "rounded-2xl border-2 bg-gradient-to-b from-white to-[#f4f8ff] shadow-[0_2px_8px_rgba(26,115,232,0.08)] transition-colors",
+        focused ? "border-[#8fb4f5]" : "border-[#c7d6ee]",
       )}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e2e8f0] px-4 py-3 sm:px-5">
-        <div className="flex items-center gap-2 text-[13px] text-[#4b5563]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dde6f5] px-4 py-3 sm:px-5">
+        <div className="flex flex-wrap items-center gap-3 text-[13px] text-[#4b5563]">
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#cfddf5] bg-[#eaf2ff] px-2.5 py-1 text-[11.5px] font-semibold uppercase tracking-[0.04em] text-[#1a56c4]"
+            aria-hidden
+          >
+            <Plus className="h-3 w-3" />
+            New task
+          </span>
           <span className="font-medium">To</span>
           <div className="inline-flex rounded-full border border-[#d9dee7] p-0.5">
             {(["Jr", "Calvin"] as TaskUser[]).map((u) => (
@@ -195,7 +207,7 @@ export function TaskComposer({ submitting, backendUnavailable, onSubmit }: TaskC
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 sm:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-b-[14px] border-t border-[#dde6f5] bg-[#f3f7fd] px-4 py-3 sm:px-5">
         <div className="flex items-center gap-2">
           <button
             type="button"
