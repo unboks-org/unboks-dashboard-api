@@ -2,7 +2,6 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { useConfig, useScheduleSlots, useScheduleSlotMutations } from "@/hooks/use-client-api";
-import { useDryRun } from "@/hooks/use-dry-run";
 import { useEmailSettings } from "@/hooks/use-email-settings";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import { useFeatureToggles } from "@/lib/feature-toggles";
@@ -115,7 +114,6 @@ export default function Settings() {
   const { data: config, isLoading: configLoading } = useConfig();
   const { data: slots } = useScheduleSlots();
   const { save: saveSlots, isSaving: slotsSaving } = useScheduleSlotMutations();
-  const { enabled: dryRun, toggle: toggleDryRun, isSaving: dryRunSaving, isError: dryRunError } = useDryRun();
   const { emailClient, setEmailClient } = useEmailSettings();
   const { label: bookingsLabel, setLabel: setBookingsLabel } = useBookingsLabel();
   const { toggles, setToggle } = useFeatureToggles();
@@ -208,24 +206,6 @@ export default function Settings() {
             <p className="text-[13px] text-[#9aa0a6]">
               Schedule not available — API connection required.
             </p>
-          )}
-        </Section>
-
-        {/* Dry Run */}
-        <Section
-          title="Dry Run Mode"
-          description="When enabled, the system prepares actions but does not publish or send automatically."
-        >
-          {dryRunError ? (
-            <p className="text-[12px] text-[#9aa0a6]">Dry-run status unavailable — API connection required.</p>
-          ) : (
-            <ToggleRow
-              label="Dry Run"
-              description="Enable to review actions before they go live."
-              checked={dryRun}
-              onChange={toggleDryRun}
-              disabled={dryRunSaving}
-            />
           )}
         </Section>
 
