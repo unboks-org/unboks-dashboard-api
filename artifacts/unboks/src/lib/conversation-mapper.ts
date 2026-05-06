@@ -2,6 +2,66 @@ import type { ApiConversation } from "@/lib/api";
 import type { Channel, Conversation } from "@/data/conversations";
 import { platformToChannel } from "@/lib/channel-map";
 
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * Format a backend timestamp for the conversation list.
+ *
+ * Accepts ISO strings (including Python microsecond format
+ * `2026-05-06T03:41:31.995398+00:00`), epoch numbers, and `Date`s.
+ *
+ *  - today          → `9:42 AM`
+ *  - yesterday      → `Yesterday`
+ *  - within 7 days  → weekday name, e.g. `Monday`
+ *  - older          → short date, e.g. `6 May` (or `6 May 2024` if not this year)
+ *
+ * If the value is missing, invalid, or already a pre-formatted display string
+ * (e.g. legacy mock data like `"9:42 AM"` or `"3 Nov"`), the original string
+ * is returned unchanged so we never regress existing UI.
+ */
+export function formatConversationTimestamp(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) {
+    return "";
+  }
+  if (typeof value === "string" && value.trim() === "") return "";
+
+  // Heuristic: only try to parse ISO-ish or numeric inputs. Bare display
+  // strings like "9:42 AM", "Yesterday", "Monday", "3 Nov" should pass
+  // through untouched so legacy mock data keeps rendering.
+  const looksLikeIso =
+    typeof value === "string" && /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(value);
+  if (typeof value === "string" && !looksLikeIso) {
+    return value;
+  }
+
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) {
+    return typeof value === "string" ? value : "";
+  }
+
+  const now = new Date();
+  const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const diffDays = Math.floor((startOfDay(now) - startOfDay(d)) / dayMs);
+
+  if (diffDays === 0) {
+    let h = d.getHours();
+    const m = d.getMinutes();
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return `${h}:${String(m).padStart(2, "0")} ${ampm}`;
+  }
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays > 1 && diffDays < 7) return WEEKDAYS[d.getDay()];
+
+  const day = d.getDate();
+  const mon = MONTHS_SHORT[d.getMonth()];
+  if (d.getFullYear() === now.getFullYear()) return `${day} ${mon}`;
+  return `${day} ${mon} ${d.getFullYear()}`;
+}
+
 /** True if value looks like a MongoDB ObjectID — 24-char hex string */
 export function isMongoObjectId(value: unknown): boolean {
   return typeof value === "string" && /^[0-9a-f]{24}$/i.test(value);
@@ -183,7 +243,7 @@ export function mapApiConversation(c: ApiConversation): Conversation {
     sender: safeDisplayName(c, prefix?.sender ?? null),
     subject,
     preview,
-    timestamp: c.timestamp || c.last_message_at || "",
+    timestamp: formatConversationTimestamp(c.last_message_at || c.timestamp),
     unread: c.unread ?? false,
     escalated: c.escalated ?? false,
     hasAttachment: c.hasAttachment ?? false,

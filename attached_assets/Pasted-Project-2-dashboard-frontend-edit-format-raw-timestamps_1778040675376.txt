@@ -1,0 +1,64 @@
+Project 2 dashboard frontend edit — format raw timestamps in conversation rows.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, or Python API assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish until tested.
+
+Issue:
+Conversation rows currently show raw ISO timestamps like:
+2026-05-06T03:41:31.995398+00:00
+
+This looks bad and is not customer-friendly.
+
+Task:
+Format conversation timestamps in the inbox/message list to a clean human-readable format.
+
+Required behavior:
+1. Do not show raw ISO strings in the UI.
+2. For messages from today, show time only:
+   - 03:41
+   or if existing UI uses 12-hour format:
+   - 3:41 AM
+3. For messages from yesterday, show:
+   - Yesterday
+4. For messages from the last 7 days, show weekday:
+   - Monday
+   - Tuesday
+5. For older messages, show short date:
+   - May 6
+   - 6 May
+Either format is acceptable, but keep it consistent with the existing app style.
+6. If timestamp is missing or invalid, show an empty string or “—”, not raw data.
+7. Use the Python backend field last_message_at when present.
+8. Preserve existing timestamp behavior for any old frontend/mock data if already formatted.
+9. Apply this to the conversation list rows where the timestamp appears on the right.
+10. Do not affect message detail timestamps unless the same raw ISO issue appears there too and the fix is shared safely.
+
+Likely files:
+- artifacts/unboks/src/lib/conversation-mapper.ts
+- artifacts/unboks/src/components/inbox/MessageRow.tsx
+- artifacts/unboks/src/lib/api.ts if type adjustment is needed
+
+Implementation guidance:
+- Prefer formatting in the mapper so MessageRow receives a clean display timestamp.
+- Add a small helper like formatConversationTimestamp(value).
+- It should accept ISO strings and Date-compatible values.
+- It should not throw on invalid input.
+- It should handle Python timestamps with microseconds, e.g. 2026-05-06T03:41:31.995398+00:00.
+- It should compare against the user/browser local date.
+
+Acceptance:
+- Inbox no longer shows raw ISO timestamps.
+- Today’s messages show a clean time.
+- Older messages show Yesterday / weekday / short date as appropriate.
+- No layout change except shorter timestamp text.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.
