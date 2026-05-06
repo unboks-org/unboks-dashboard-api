@@ -143,6 +143,25 @@ export function isBackendUnavailable(err: unknown): boolean {
   return err.status === 0 || err.status === 404 || err.status === 501;
 }
 
+/** True when the upload endpoint exists but cannot accept the request — most
+ *  commonly because the Python backend hasn't shipped image upload support
+ *  yet (returns 422 for the multipart body, 404 for the route, or 501). In
+ *  these cases we fall back to local-pending attachments rather than losing
+ *  the task. Auth failures (401/403) are handled separately by `isAuthError`
+ *  and do NOT trigger the local fallback — the user's session needs fixing. */
+export function isUploadUnsupported(err: unknown): boolean {
+  if (!(err instanceof ApiError)) return false;
+  return err.status === 404 || err.status === 422 || err.status === 501;
+}
+
+/** True when the request was rejected by the API as unauthenticated /
+ *  forbidden. The UI should surface a clear "session expired" message
+ *  instead of dumping the user's draft or silently retrying. */
+export function isAuthError(err: unknown): boolean {
+  if (!(err instanceof ApiError)) return false;
+  return err.status === 401 || err.status === 403;
+}
+
 /** Convert a stored data: URL back into a File for re-upload during sync. */
 export async function dataUrlToFile(dataUrl: string, fileName: string): Promise<File> {
   const res = await fetch(dataUrl);

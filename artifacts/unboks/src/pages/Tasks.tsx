@@ -11,7 +11,9 @@ import {
   TaskUser,
   createTask,
   dataUrlToFile,
+  isAuthError,
   isBackendUnavailable,
+  isUploadUnsupported,
   listTasks,
   updateTaskStatus,
   uploadTaskAttachments,
@@ -200,21 +202,59 @@ export default function Tasks() {
     async ({ assignedTo, text, files }: { assignedTo: TaskUser; text: string; files: File[] }) => {
       setSubmitting(true);
       try {
+        // Backend already known to be down for /tasks → straight to local.
         if (backendUnavailable) {
           await saveLocally(assignedTo, text, files);
           return;
         }
+
+        // --- Step 1: try uploading attachments (if any) -------------------
+        // Image upload is the most fragile part of this flow because the
+        // Python backend hasn't shipped multipart upload support yet. We
+        // isolate it so a 422/404 only triggers the local fallback for
+        // *uploads*; a 422 from createTask later is treated as a real
+        // validation error and surfaced to the user.
+        let attachmentIds: string[] = [];
+        if (files.length > 0) {
+          try {
+            const uploaded = await uploadTaskAttachments(files);
+            attachmentIds = uploaded.map((a) => a.id);
+          } catch (uploadErr) {
+            if (isAuthError(uploadErr)) {
+              toast.error("Session expired. Please sign in again.");
+              // Re-throw so the composer keeps the unsaved draft + previews.
+              throw uploadErr;
+            }
+            if (isUploadUnsupported(uploadErr) || isBackendUnavailable(uploadErr)) {
+              // Uploads aren't supported yet — keep the task locally so the
+              // typed text and image previews aren't lost.
+              await saveLocally(assignedTo, text, files);
+              return;
+            }
+            const msg =
+              uploadErr instanceof ApiError
+                ? `Couldn't upload image: ${uploadErr.message}`
+                : "Couldn't upload image.";
+            toast.error(msg);
+            throw uploadErr;
+          }
+        }
+
+        // --- Step 2: create the task --------------------------------------
         try {
-          const attachments = files.length > 0 ? await uploadTaskAttachments(files) : [];
           await createTask({
             assignedTo,
             bodyText: text,
             bodyHtml: "",
-            attachmentIds: attachments.map((a) => a.id),
+            attachmentIds,
           });
           await queryClient.invalidateQueries({ queryKey: ["tasks"] });
           toast.success("Task added.");
         } catch (err) {
+          if (isAuthError(err)) {
+            toast.error("Session expired. Please sign in again.");
+            throw err;
+          }
           if (isBackendUnavailable(err)) {
             await saveLocally(assignedTo, text, files);
             return;
@@ -262,7 +302,9 @@ export default function Tasks() {
     setSyncing(true);
     let okCount = 0;
     let failCount = 0;
+    let authStopped = false;
     for (const local of queue) {
+      if (authStopped) break;
       markSyncStatus(local.localId, "syncing");
       try {
         let attachmentIds: string[] = [];
@@ -289,6 +331,14 @@ export default function Tasks() {
         removeLocal(local.localId);
         okCount += 1;
       } catch (err) {
+        // Auth failure: stop the whole sync — every subsequent call would
+        // also 401. Reset this task back to "pending" so the user can retry
+        // after re-auth without a permanent "failed" badge.
+        if (isAuthError(err)) {
+          markSyncStatus(local.localId, "pending");
+          authStopped = true;
+          continue;
+        }
         const msg = err instanceof ApiError ? err.message : "Sync failed";
         markSyncStatus(local.localId, "failed", msg);
         failCount += 1;
@@ -296,6 +346,9 @@ export default function Tasks() {
     }
     setSyncing(false);
     await queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    if (authStopped) {
+      toast.error("Session expired. Please sign in again to finish syncing.");
+    }
     if (okCount > 0) toast.success(`Synced ${okCount} task${okCount === 1 ? "" : "s"}.`);
     if (failCount > 0) toast.error(`${failCount} task${failCount === 1 ? "" : "s"} failed to sync — try again.`);
   }, [localTasks, markSyncStatus, queryClient, removeLocal]);
