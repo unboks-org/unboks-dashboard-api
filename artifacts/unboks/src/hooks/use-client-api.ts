@@ -22,8 +22,10 @@ import {
   fetchScheduleSlots,
   saveScheduleSlots,
   type ScheduleSlot,
+  aiEditorEdit,
   type GuidancePayload,
   type ResolvePayload,
+  type AIEditorParams,
 } from "@/lib/api";
 
 // ------ Conversations ------
@@ -183,5 +185,13 @@ export function useStatus() {
     queryFn: fetchStatus,
     staleTime: 60_000,
     retry: 1,
+  });
+}
+
+// ------ AI Editor ------
+
+export function useAIEditor() {
+  return useMutation({
+    mutationFn: (params: AIEditorParams) => aiEditorEdit(params),
   });
 }

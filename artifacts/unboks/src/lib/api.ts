@@ -373,6 +373,57 @@ export async function handbackEscalation(id: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// AI Editor (Translate / Style / Fix)
+// ---------------------------------------------------------------------------
+//
+// Frontend client only. The backend endpoint may not exist yet — callers
+// must catch ApiError and treat status 0 / 404 / 501 / 503 as "not connected"
+// and surface the calm copy "AI Editor will be connected by the Unboks team."
+// instead of crashing or wiping the operator's draft.
+
+export type AIEditorAction = "translate" | "style" | "fix";
+
+export type AIEditorLanguage =
+  | "English"
+  | "Dutch"
+  | "Spanish"
+  | "Papiamento"
+  | "Swedish"
+  | "Portuguese";
+
+export type AIEditorStyle =
+  | "professional"
+  | "warmer"
+  | "shorter"
+  | "friendlier"
+  | "direct";
+
+export interface AIEditorContext {
+  conversationId?: string;
+  escalationMode?: "soft" | "hard";
+  channel?: string;
+}
+
+export interface AIEditorParams {
+  action: AIEditorAction;
+  text: string;
+  targetLanguage?: AIEditorLanguage;
+  style?: AIEditorStyle;
+  context?: AIEditorContext;
+}
+
+export interface AIEditorResponse {
+  text: string;
+}
+
+export async function aiEditorEdit(params: AIEditorParams): Promise<AIEditorResponse> {
+  return apiFetch<AIEditorResponse>(`/ai-editor`, {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Learning entries
 // ---------------------------------------------------------------------------
 

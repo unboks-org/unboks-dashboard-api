@@ -24,11 +24,10 @@ import {
   X,
   AlertCircle,
   AlertTriangle,
-  Sparkles,
-  VolumeX,
 } from "lucide-react";
 import type { ApiMessage, ConversationDetail } from "@/lib/api";
 import { ApiError } from "@/lib/error";
+import { EscalationReplyComposer } from "@/components/inbox/EscalationReplyComposer";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
@@ -66,24 +65,13 @@ function MessageBubble({ msg }: { msg: ApiMessage }) {
   );
 }
 
-/** AI rewrite stub button — disabled, "coming soon" tooltip. No external API. */
-function AiRewriteButton({ disabled }: { disabled: boolean }) {
-  return (
-    <button
-      type="button"
-      disabled
-      title={disabled ? "Write a reply first." : "AI rewrite coming soon"}
-      aria-label="Make professional"
-      className="absolute bottom-2 right-2 w-7 h-7 rounded-full flex items-center justify-center text-[#9aa0a6] bg-white/80 border border-[#e8eaed] cursor-not-allowed"
-    >
-      <Sparkles className="w-3.5 h-3.5" />
-    </button>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Escalation banner + action panels
 // ---------------------------------------------------------------------------
+//
+// Soft + Hard composers live in EscalationReplyComposer. LegacyActionPanel is
+// kept for the rare case where an escalation has no mode set yet (legacy DB
+// rows) and the operator needs to pick soft/hard before composing.
 
 function EscalationBanner({ detail }: { detail: ConversationDetail }) {
   if (!detail.escalated || detail.escalationResolved) return null;
@@ -127,38 +115,7 @@ function EscalationBanner({ detail }: { detail: ConversationDetail }) {
   );
 }
 
-function SoftActionPanel({
-  conversationDbId,
-  onDone,
-}: {
-  conversationDbId: string;
-  onDone: () => void;
-}) {
-  const [guidance, setGuidance] = useState("");
-  const [saveToYourInfo, setSaveToYourInfo] = useState(false);
-  const [autoUseNextTime, setAutoUseNextTime] = useState(false);
-  const { guidance: guidanceMut, takeover, resolve } = useEscalationMutations();
-  const empty = guidance.trim().length === 0;
-
-  const onGuide = () => {
-    if (empty) return;
-    guidanceMut.mutate(
-      {
-        id: conversationDbId,
-        payload: { guidance: guidance.trim(), saveToYourInfo, autoUseNextTime },
-      },
-      {
-        onSuccess: () => {
-          setGuidance("");
-          setSaveToYourInfo(false);
-          setAutoUseNextTime(false);
-          onDone();
-        },
-      },
-    );
-  };
-
-  return (
+function _DeadSoft() { return (
     <div className="border-t border-[#e8eaed] bg-white px-4 py-3 space-y-2.5 flex-shrink-0">
       <p className="text-[11px] text-[#5f6368]">This is guidance for the AI, not a customer message.</p>
       <div className="relative">
@@ -489,11 +446,20 @@ function ConversationDetailPane({ conversation, onClose }: ConversationDetailPan
       </div>
 
       {showBanner && dbId && mode === "soft" && (
-        <SoftActionPanel conversationDbId={dbId} onDone={onClose} />
+        <EscalationReplyComposer
+          conversationDbId={dbId}
+          conversationId={conversation.id}
+          mode="soft"
+          channel={conversation.channel}
+          onDone={onClose}
+        />
       )}
       {showBanner && dbId && mode === "hard" && (
-        <HardActionPanel
+        <EscalationReplyComposer
           conversationDbId={dbId}
+          conversationId={conversation.id}
+          mode="hard"
+          channel={conversation.channel}
           aiMuted={detail?.aiMuted ?? false}
           onDone={onClose}
         />
