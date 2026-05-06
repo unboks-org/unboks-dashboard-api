@@ -1,0 +1,128 @@
+Project 2 dashboard frontend — redesign Inbox/channel header using Refero/Repro references.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python API assumptions.
+- Work only on the Inbox/channel header and related frontend layout.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch backend.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish until reviewed.
+
+Task:
+Fix the Inbox/channel page header layout.
+
+Use Refero/Repro:
+Use real SaaS inbox/search/header references before redesigning.
+References should be from:
+- Linear
+- Intercom inbox
+- Front
+- Gmail inbox layout
+- Slack search/header
+- Stripe dashboard
+
+If Refero/Repro is not connected, stop and report clearly before redesigning.
+
+Current issue:
+The page header shows duplicated text:
+- Small label: Inbox / WhatsApp / Email / Instagram
+- Main title: Inbox / WhatsApp / Email / Instagram
+
+This is redundant and looks unfinished.
+
+The search bar is also too large:
+- too wide
+- too tall
+- too much whitespace above the content
+- wastes vertical space
+
+Required new layout:
+Create one compact premium header row.
+
+Desktop:
+- Left side:
+  - Main title only once:
+    Inbox / WhatsApp / Email / Instagram / etc.
+  - Subtitle below or next to it:
+    Inbox: “All conversations”
+    WhatsApp: “3 conversations”
+    Email: “1 conversation”
+    Instagram: “0 conversations”
+- Right side:
+  - Compact search input
+  - Placeholder: Search messages
+- Header should use less height than current layout.
+- Search should be smaller and not dominate the page.
+- Content/list should start higher on the page.
+
+Mobile:
+- Header should stack cleanly:
+  - title/subtitle
+  - compact search below or above, whichever looks best
+- No duplicate titles.
+- No horizontal overflow.
+- Search should not take excessive vertical space.
+
+Specific requirements:
+1. Remove the duplicate small label.
+2. Show title only once.
+3. Keep subtitle/context.
+4. Move search box to the right side on desktop.
+5. Make search box smaller:
+   - less height
+   - reasonable width
+   - not full huge pill across the page
+6. Keep search functionality unchanged.
+7. Keep channel counts/subtitles correct.
+8. Keep Inbox/channel filtering unchanged.
+9. Do not break row list layout.
+10. Do not change sidebar.
+11. Do not change message row logic.
+
+Preferred design:
+- Header container with flex:
+  left title block, right search
+- Title: 18–22px semibold
+- Subtitle: 12–14px grey
+- Search: 280–360px desktop width
+- Search height: around 38–44px
+- Subtle grey background/border
+- Rounded but not huge
+- Clean vertical padding
+
+Likely files:
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/components/inbox/Header.tsx
+- artifacts/unboks/src/components/inbox/DashboardShell.tsx if current search/header is global
+
+Important investigation:
+- Check whether the search bar is in Header.tsx or DashboardShell.
+- If Header is global across pages, do not break Settings/Tasks.
+- If search appears on all dashboard pages, consider making it compact globally or allowing page-specific header layout.
+- Prefer minimal change to Inbox/channel view only if global change risks other pages.
+
+Acceptance:
+- No duplicate Inbox/WhatsApp/Email/Instagram title.
+- Inbox header shows:
+  Inbox
+  All conversations
+- WhatsApp header shows:
+  WhatsApp
+  3 conversations
+- Email header shows:
+  Email
+  1 conversation
+- Search box is smaller and positioned to the right on desktop.
+- Search still works.
+- Content starts higher / less wasted whitespace.
+- Mobile layout is clean.
+- Build/typecheck clean.
+- Report exact files changed.
+- Report whether Refero/Repro was connected and what references were used.
+- Do not commit.
+- Do not publish.

@@ -518,18 +518,41 @@ export default function Inbox() {
     return list;
   }, [allConversations, activeNav, searchQuery, isChannelEnabled, escalationFilter]);
 
+  const subtitle: React.ReactNode = (() => {
+    if (isLoading) return "Loading…";
+    if (isError) return "Couldn't load";
+    if (activeNav === "escalations") {
+      const n = filtered.length;
+      return `${n} ${n === 1 ? "escalation" : "escalations"}`;
+    }
+    if (activeChannel) {
+      const n = filtered.length;
+      return `${n} ${n === 1 ? "conversation" : "conversations"}`;
+    }
+    return "All conversations";
+  })();
+
+  const titleNode: React.ReactNode = activeChannel ? (
+    <span className="inline-flex items-center gap-2">
+      <span
+        aria-hidden="true"
+        className="h-2 w-2 rounded-full"
+        style={{ backgroundColor: CHANNEL_BADGE_COLORS[activeChannel] ?? "#9aa0a6" }}
+      />
+      {sectionTitle}
+    </span>
+  ) : (
+    sectionTitle
+  );
+
   return (
     <DashboardShell
       activeNav={activeNav}
       onNavSelect={handleNavSelect}
       searchQuery={searchQuery}
       onSearchChange={(q) => { setSearchQueryState(q); setSelectedConv(null); }}
-      pageTitle={sectionTitle}
-      titleSuffix={
-        isLoading ? <span className="text-[12px] text-[#5f6368]">Loading…</span>
-          : isError ? <span className="text-[12px] text-[#5f6368]">Couldn't load</span>
-          : null
-      }
+      pageTitle={titleNode}
+      pageSubtitle={subtitle}
     >
       <div className="flex h-full overflow-hidden">
         {/* Conversation list — hidden on mobile when detail is open */}
@@ -559,32 +582,7 @@ export default function Inbox() {
                 </button>
               ))}
             </div>
-          ) : (
-            <div className="sticky top-0 z-10 border-b border-[#f1f3f4] bg-white px-4 py-3">
-              <div className="flex items-center gap-2">
-                {activeChannel && (
-                  <span
-                    aria-hidden="true"
-                    className="h-2 w-2 rounded-full"
-                    style={{
-                      backgroundColor:
-                        CHANNEL_BADGE_COLORS[activeChannel] ?? "#9aa0a6",
-                    }}
-                  />
-                )}
-                <h2 className="text-[15px] font-semibold tracking-tight text-[#202124]">
-                  {sectionTitle}
-                </h2>
-              </div>
-              <p className="mt-0.5 text-[12px] text-[#5f6368]">
-                {isLoading
-                  ? "Loading…"
-                  : activeChannel
-                    ? `${filtered.length} ${filtered.length === 1 ? "conversation" : "conversations"}`
-                    : "All conversations"}
-              </p>
-            </div>
-          )}
+          ) : null}
           {isLoading && filtered.length === 0 ? (
             <div className="divide-y divide-[#f1f3f4]" aria-busy="true" aria-label="Loading conversations">
               {[0, 1, 2].map((i) => (
