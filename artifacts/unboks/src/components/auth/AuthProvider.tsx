@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     registerUnauthorizedHandler(() => {
       setIsAuthenticated(false);
-      toast.error("Session expired. Please log in again.");
+      toast.error("Session expired. Please sign in again.");
       navigate("/login");
     });
   }, [navigate]);

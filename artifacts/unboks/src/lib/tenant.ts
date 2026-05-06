@@ -21,9 +21,10 @@ export function setToken(token: string, slug?: string): void {
 }
 
 export function clearAuth(): void {
+  // Only clear the auth token. Keep the client slug so the login screen
+  // and tenant-scoped UI still know which workspace the user belongs to.
   const slug = getClientSlug();
   localStorage.removeItem(getTokenKey(slug));
-  localStorage.removeItem("wtyj_client");
 }
 
 // In production set VITE_API_BASE_URL=https://api.unboks.org

@@ -162,39 +162,26 @@ export interface LoginResponse {
 // Core fetch wrapper
 // ---------------------------------------------------------------------------
 
-let _first401At: number | null = null;
 let _onUnauthorized: (() => void) | null = null;
+let _authFailureFired = false;
 
 export function registerUnauthorizedHandler(fn: () => void) {
   _onUnauthorized = fn;
 }
 
-function handle401() {
-  const token = getToken();
-  const now = Date.now();
-
-  if (!token) {
-    // No token at all — clear immediately
-    clearAuth();
-    _onUnauthorized?.();
-    return;
-  }
-
-  if (_first401At === null) {
-    // First 401 with a token — record but tolerate (might be a stale request)
-    _first401At = now;
-    return;
-  }
-
-  if (now - _first401At < 60_000) {
-    // Second 401 within 60 s — session is truly invalid
-    _first401At = null;
-    clearAuth();
-    _onUnauthorized?.();
-  } else {
-    // More than 60 s since first — reset window
-    _first401At = now;
-  }
+/**
+ * Called only on a verified authentication failure (HTTP 401 or 403 from a
+ * request that DID send a Bearer token). Network/CORS/5xx errors do not
+ * route here, so transient backend issues never log the user out.
+ *
+ * Idempotent: only fires the global handler once per session to avoid
+ * redirect/toast storms when several queries fail at the same time.
+ */
+function handleAuthFailure() {
+  if (_authFailureFired) return;
+  _authFailureFired = true;
+  clearAuth();
+  _onUnauthorized?.();
 }
 
 async function apiFetch<T>(
@@ -212,11 +199,20 @@ async function apiFetch<T>(
 
   if (!skipAuth && token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${base}${path}`, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${base}${path}`, { ...options, headers });
+  } catch (networkErr) {
+    // Network failure / CORS / DNS / offline — keep the user logged in.
+    // Surface as ApiError(0) so callers can distinguish from auth errors.
+    throw new ApiError(0, networkErr instanceof Error ? networkErr.message : "Network error");
+  }
 
-  if (res.status === 401) {
-    handle401();
-    throw new ApiError(401, "Unauthorized");
+  // Only treat as an auth failure if the request actually sent a token.
+  // Unauthenticated requests (e.g., login) returning 401 are not a session expiry.
+  if ((res.status === 401 || res.status === 403) && !skipAuth && token) {
+    handleAuthFailure();
+    throw new ApiError(res.status, res.status === 401 ? "Unauthorized" : "Forbidden");
   }
 
   if (!res.ok) {
@@ -244,8 +240,8 @@ export async function apiLogin(password: string): Promise<LoginResponse> {
     method: "POST",
     body: JSON.stringify({ password }),
   }, true);
-  // Reset the 401 grace-period counter so a fresh session starts clean
-  _first401At = null;
+  // A successful login starts a fresh session — re-arm the auth-failure latch
+  _authFailureFired = false;
   return result;
 }
 
