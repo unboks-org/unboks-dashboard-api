@@ -1,14 +1,19 @@
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useRef, useState, ChangeEvent } from "react";
+import { ChevronDown, X } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { Switch } from "@/components/ui/switch";
 import { useEmailSettings } from "@/hooks/use-email-settings";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import { useEscalationNotificationPrefs, type NotifyChannelKey } from "@/hooks/use-escalation-notification-preferences";
 import { useEnabledChannels, TOGGLEABLE_CHANNELS } from "@/hooks/use-enabled-channels";
+import { useAccountSettings, type AccountSettings } from "@/hooks/use-account-settings";
+import { useYourInfoUpdates, UPDATE_TYPES, type YourInfoUpdateType } from "@/hooks/use-your-info-updates";
 import { loadSot, type SotBlock } from "@/data/sot";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+const ALLOWED_LOGO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2 MB
 
 function Section({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
@@ -104,9 +109,284 @@ export default function Settings() {
   const [sotOpen, setSotOpen] = useState(false);
   const [sotBlocks] = useState<SotBlock[]>(loadSot);
 
+  // Account settings (local v1)
+  const { settings: account, save: saveAccount } = useAccountSettings();
+  const [accountDraft, setAccountDraft] = useState<AccountSettings>(account);
+  const [accountSaved, setAccountSaved] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
+      toast.error("Logo must be a PNG, JPG, WebP or SVG image.");
+      return;
+    }
+    if (file.size > MAX_LOGO_BYTES) {
+      toast.error("Logo must be under 2 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : "";
+      if (dataUrl) setAccountDraft((d) => ({ ...d, logoDataUrl: dataUrl }));
+    };
+    reader.onerror = () => toast.error("Could not read that image.");
+    reader.readAsDataURL(file);
+  };
+
+  // Your Info Updates (local v1)
+  const { updates, addUpdate, setActive, removeUpdate } = useYourInfoUpdates();
+  const [updateText, setUpdateText] = useState("");
+  const [updateType, setUpdateType] = useState<YourInfoUpdateType>("general");
+  const [updateStart, setUpdateStart] = useState("");
+  const [updateEnd, setUpdateEnd] = useState("");
+
   return (
     <DashboardShell activeNav="settings" pageTitle="Settings">
       <div className="max-w-2xl min-w-0 overflow-x-hidden">
+
+        {/* Account Settings */}
+        <Section title="Account Settings" description="Your business identity used in this dashboard.">
+          <div className="space-y-3">
+            {([
+              { key: "businessName", label: "Business name", type: "text", placeholder: "Acme Co." },
+              { key: "contactEmail", label: "Contact email", type: "email", placeholder: "hello@acme.com" },
+              { key: "phone", label: "Phone number", type: "tel", placeholder: "+1 555 123 4567" },
+              { key: "website", label: "Website", type: "url", placeholder: "https://acme.com" },
+            ] as const).map((field) => (
+              <label key={field.key} className="block">
+                <span className="text-[12px] text-[#5f6368]">{field.label}</span>
+                <input
+                  type={field.type}
+                  value={accountDraft[field.key] ?? ""}
+                  onChange={(e) =>
+                    setAccountDraft((d) => ({ ...d, [field.key]: e.target.value }))
+                  }
+                  placeholder={field.placeholder}
+                  className="mt-1 w-full min-w-0 border border-[#dadce0] rounded-lg px-3 py-2 text-[13px] text-[#202124] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
+                />
+              </label>
+            ))}
+
+            <div className="pt-2">
+              <span className="text-[12px] text-[#5f6368]">Logo</span>
+              <div className="mt-1 flex items-start gap-3">
+                <div className="grid h-20 w-20 flex-shrink-0 place-items-center overflow-hidden rounded-lg border border-[#e8eaed] bg-[#f6f8fc]">
+                  {accountDraft.logoDataUrl ? (
+                    <img
+                      src={accountDraft.logoDataUrl}
+                      alt="Logo preview"
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-[11px] text-[#9aa0a6]">No logo</span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => logoInputRef.current?.click()}
+                      className="rounded-lg border border-[#dadce0] px-3 py-1.5 text-[13px] text-[#3c4043] hover:bg-[#f6f8fc]"
+                    >
+                      Upload logo
+                    </button>
+                    {accountDraft.logoDataUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setAccountDraft((d) => ({ ...d, logoDataUrl: undefined }))}
+                        className="rounded-lg border border-[#dadce0] px-3 py-1.5 text-[13px] text-[#5f6368] hover:bg-[#f6f8fc]"
+                      >
+                        Remove
+                      </button>
+                    )}
+                    <input
+                      ref={logoInputRef}
+                      type="file"
+                      accept={ALLOWED_LOGO_TYPES.join(",")}
+                      onChange={handleLogoSelect}
+                      className="hidden"
+                    />
+                  </div>
+                  <p className="mt-2 text-[12px] text-[#5f6368]">
+                    This logo is used in your dashboard. PNG, JPG, WebP or SVG. Max 2 MB.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  saveAccount(accountDraft);
+                  setAccountSaved(true);
+                  window.setTimeout(() => setAccountSaved(false), 1800);
+                }}
+                className="px-4 py-2 rounded-lg text-[13px] font-medium border border-[#1a73e8] bg-[#1a73e8] text-white hover:bg-[#1765c1] transition-colors"
+              >
+                Save
+              </button>
+              {accountSaved && <span className="text-[12px] text-[#34a853]">Saved</span>}
+            </div>
+            <p className="text-[12px] text-[#5f6368]">
+              Saved for dashboard setup. Public website and AI usage will be connected by the Unboks team.
+            </p>
+          </div>
+        </Section>
+
+        {/* Your Info Updates */}
+        <Section
+          title="Your Info Updates"
+          description="Add temporary information, offers, holidays, or special notes your AI should know about."
+        >
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {UPDATE_TYPES.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setUpdateType(t.value)}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-[12px] transition-colors",
+                    updateType === t.value
+                      ? "border-[#1a73e8] bg-[#e8f0fe] text-[#1a73e8]"
+                      : "border-[#dadce0] text-[#5f6368] hover:bg-[#f6f8fc]",
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              value={updateText}
+              onChange={(e) => setUpdateText(e.target.value)}
+              rows={3}
+              placeholder="Example: We are closed on Christmas Day, but open again on December 26."
+              className="w-full min-w-0 resize-y border border-[#dadce0] rounded-lg px-3 py-2 text-[13px] text-[#202124] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
+            />
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-[12px] text-[#5f6368]">Start date (optional)</span>
+                <input
+                  type="date"
+                  value={updateStart}
+                  onChange={(e) => setUpdateStart(e.target.value)}
+                  className="mt-1 w-full min-w-0 border border-[#dadce0] rounded-lg px-3 py-2 text-[13px] text-[#202124] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
+                />
+              </label>
+              <label className="block">
+                <span className="text-[12px] text-[#5f6368]">End date (optional)</span>
+                <input
+                  type="date"
+                  value={updateEnd}
+                  onChange={(e) => setUpdateEnd(e.target.value)}
+                  className="mt-1 w-full min-w-0 border border-[#dadce0] rounded-lg px-3 py-2 text-[13px] text-[#202124] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
+                />
+              </label>
+            </div>
+
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  const text = updateText.trim();
+                  if (!text) {
+                    toast.error("Write a short note before adding the update.");
+                    return;
+                  }
+                  addUpdate({
+                    type: updateType,
+                    text,
+                    startDate: updateStart || undefined,
+                    endDate: updateEnd || undefined,
+                  });
+                  setUpdateText("");
+                  setUpdateStart("");
+                  setUpdateEnd("");
+                  setUpdateType("general");
+                  toast.success("Update added.");
+                }}
+                className="px-4 py-2 rounded-lg text-[13px] font-medium border border-[#1a73e8] bg-[#1a73e8] text-white hover:bg-[#1765c1] transition-colors"
+              >
+                Add update
+              </button>
+            </div>
+
+            {updates.length === 0 ? (
+              <p className="text-[12px] text-[#9aa0a6]">No updates yet.</p>
+            ) : (
+              <ul className="space-y-2 pt-1">
+                {updates.map((u) => {
+                  const typeLabel = UPDATE_TYPES.find((t) => t.value === u.type)?.label ?? u.type;
+                  return (
+                    <li
+                      key={u.id}
+                      className={cn(
+                        "rounded-lg border border-[#e8eaed] bg-white p-3",
+                        !u.active && "opacity-60",
+                      )}
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className="inline-flex items-center rounded-full bg-[#f1f3f4] px-2 py-0.5 text-[11px] font-medium text-[#3c4043]">
+                          {typeLabel}
+                        </span>
+                        <span
+                          className={cn(
+                            "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                            u.active
+                              ? "bg-[#e6f4ea] text-[#137333]"
+                              : "bg-[#f6f8fc] text-[#5f6368]",
+                          )}
+                        >
+                          {u.active ? "Active" : "Inactive"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeUpdate(u.id)}
+                          aria-label="Remove update"
+                          className="ml-auto grid h-6 w-6 place-items-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap break-words text-[13px] text-[#202124]">
+                        {u.text}
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#5f6368]">
+                        <span>
+                          Added{" "}
+                          {new Date(u.createdAt).toLocaleDateString([], {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
+                        {u.startDate && <span>From {u.startDate}</span>}
+                        {u.endDate && <span>Until {u.endDate}</span>}
+                        <button
+                          type="button"
+                          onClick={() => setActive(u.id, !u.active)}
+                          className="ml-auto text-[#1a73e8] hover:underline"
+                        >
+                          {u.active ? "Mark inactive" : "Reactivate"}
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            <p className="text-[12px] text-[#5f6368]">
+              Saved for dashboard setup. AI usage will be connected by the Unboks team.
+            </p>
+          </div>
+        </Section>
 
         {/* Your Info (formerly "Source of Truth") */}
         <div className="border-b border-[#f1f3f4]">

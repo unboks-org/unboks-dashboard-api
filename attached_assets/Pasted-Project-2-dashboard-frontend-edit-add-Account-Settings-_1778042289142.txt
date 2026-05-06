@@ -1,0 +1,173 @@
+Project 2 dashboard frontend edit — add Account Settings and Your Info Updates sections.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, or Python API assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish.
+
+Context:
+Settings page is missing basic customer account settings and a place where the customer can add temporary/special information for the AI to use.
+
+Need to add two customer-facing sections:
+
+SECTION 1 — Account Settings
+Purpose:
+Let the customer manage basic account/business identity.
+
+Fields:
+- Business name
+- Contact email
+- Phone number
+- Website
+- Upload logo
+
+Logo upload requirements:
+- Customer can upload/select a logo image.
+- Accepted: PNG, JPG/JPEG, WebP, SVG if already safe/supported.
+- Show logo preview.
+- Add helper copy:
+  “This logo is used in your dashboard.”
+- Do not distort the logo.
+- Logo preview should fit inside a clean box.
+- If persistence backend is not available, store locally for v1 but label carefully as dashboard preference.
+- Do not claim it updates public website or AI unless backend supports that.
+
+Account details behavior:
+- Add Save button.
+- Save locally for v1 if no backend endpoint exists.
+- Persist after refresh using localStorage if needed.
+- Show “Saved” confirmation.
+- Do not overbuild.
+
+SECTION 2 — Your Info Updates
+Purpose:
+Let the customer add temporary or special information that the AI should know when answering customers.
+
+This section replaces the need for customers to edit the full knowledge base every time something changes.
+
+Examples:
+- Special offers
+- Valentine’s Day promotion
+- Christmas opening hours
+- Holiday closure
+- Seasonal prices
+- Temporary policy change
+- Event announcement
+- Fully booked dates
+- “We are closed this Monday”
+- “10% discount this week”
+- “New pickup location”
+
+Customer-facing title:
+Your Info Updates
+
+Description:
+Add temporary information, offers, holidays, or special notes your AI should know about.
+
+UI:
+- Textarea placeholder:
+  “Example: We are closed on Christmas Day, but open again on December 26.”
+- Optional type selector:
+  - General note
+  - Special offer
+  - Holiday
+  - Opening hours
+  - Pricing
+  - Other
+- Optional date fields if easy:
+  - Start date
+  - End date
+But do not overcomplicate. If date fields make the UI messy, defer them.
+
+Actions:
+- Add update
+- Mark inactive / remove
+- Show list of active updates below
+
+Each update card should show:
+- type
+- text
+- created date
+- active/inactive status
+- remove or deactivate button
+
+Important copy:
+If backend integration is not available yet, show a small note:
+“Saved for dashboard setup. AI usage will be connected by the Unboks team.”
+
+But if existing Python API endpoint already exists for SOT/Your Info, use that instead of localStorage.
+
+Data model for frontend/local fallback:
+AccountSettings:
+{
+  businessName: string,
+  contactEmail: string,
+  phone: string,
+  website: string,
+  logoDataUrl?: string
+}
+
+YourInfoUpdate:
+{
+  id: string,
+  type: "general" | "offer" | "holiday" | "hours" | "pricing" | "other",
+  text: string,
+  active: boolean,
+  createdAt: string,
+  startDate?: string,
+  endDate?: string
+}
+
+Preferred storage:
+- If backend endpoints exist, use them.
+- If no backend endpoints exist, use localStorage for v1 and keep code isolated in hooks so Jr can later replace with API calls.
+
+Suggested localStorage keys:
+- unboks_account_settings
+- unboks_your_info_updates
+
+Likely files:
+- artifacts/unboks/src/pages/Settings.tsx
+Possibly add hooks:
+- artifacts/unboks/src/hooks/use-account-settings.ts
+- artifacts/unboks/src/hooks/use-your-info-updates.ts
+
+Do not touch:
+- artifacts/api-server
+- DNS
+- backend
+- auth
+- deployment config
+- unrelated pages
+
+Design requirements:
+- Clean white dashboard style.
+- Mobile friendly.
+- No horizontal overflow.
+- Simple sections with clear Save buttons.
+- Not fancy.
+- Customer-facing language only.
+- Do not mention Source of Truth.
+- Use “Your Info” and “Your Info Updates”.
+
+Acceptance:
+- Settings has Account Settings section.
+- User can enter/edit business name, contact email, phone, website.
+- User can upload logo and see preview.
+- User can save account settings.
+- Settings has Your Info Updates section.
+- User can add a special note/offer/holiday/update.
+- Added update appears in a list.
+- User can deactivate/remove an update.
+- Data persists after refresh if using localStorage fallback.
+- Mobile layout is clean.
+- No backend changes.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.
