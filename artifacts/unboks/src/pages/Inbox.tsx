@@ -486,10 +486,15 @@ export default function Inbox() {
     setSelectedConv(null);
   };
 
-  const sectionTitle = useMemo(() => {
-    if (activeNav.startsWith("channel:")) return activeNav.split(":")[1];
-    return NAV_LABELS[activeNav] || "Inbox";
+  const activeChannel: Channel | null = useMemo(() => {
+    if (activeNav.startsWith("channel:")) return activeNav.split(":")[1] as Channel;
+    return null;
   }, [activeNav]);
+
+  const sectionTitle = useMemo(() => {
+    if (activeChannel) return activeChannel;
+    return NAV_LABELS[activeNav] || "Inbox";
+  }, [activeNav, activeChannel]);
 
   const filtered = useMemo(() => {
     let list = allConversations.filter((c) => isChannelEnabled(c.channel));
@@ -536,7 +541,7 @@ export default function Inbox() {
               : "flex-1 flex flex-col",
           )}
         >
-          {activeNav === "escalations" && (
+          {activeNav === "escalations" ? (
             <div className="flex items-center gap-1 px-3 py-2 border-b border-[#f1f3f4] bg-white sticky top-0 z-10">
               {(["all", "soft", "hard"] as const).map((m) => (
                 <button
@@ -553,6 +558,31 @@ export default function Inbox() {
                   {m === "all" ? "All" : m === "soft" ? "AI needs help" : "Human takeover"}
                 </button>
               ))}
+            </div>
+          ) : (
+            <div className="sticky top-0 z-10 border-b border-[#f1f3f4] bg-white px-4 py-3">
+              <div className="flex items-center gap-2">
+                {activeChannel && (
+                  <span
+                    aria-hidden="true"
+                    className="h-2 w-2 rounded-full"
+                    style={{
+                      backgroundColor:
+                        CHANNEL_BADGE_COLORS[activeChannel] ?? "#9aa0a6",
+                    }}
+                  />
+                )}
+                <h2 className="text-[15px] font-semibold tracking-tight text-[#202124]">
+                  {sectionTitle}
+                </h2>
+              </div>
+              <p className="mt-0.5 text-[12px] text-[#5f6368]">
+                {isLoading
+                  ? "Loading…"
+                  : activeChannel
+                    ? `${filtered.length} ${filtered.length === 1 ? "conversation" : "conversations"}`
+                    : "All conversations"}
+              </p>
             </div>
           )}
           {isLoading && filtered.length === 0 ? (
@@ -573,6 +603,7 @@ export default function Inbox() {
                 key={conv.id}
                 conversation={conv}
                 isSelected={selectedConv?.id === conv.id}
+                hideChannel={Boolean(activeChannel)}
                 onSelect={setSelectedConv}
               />
             ))

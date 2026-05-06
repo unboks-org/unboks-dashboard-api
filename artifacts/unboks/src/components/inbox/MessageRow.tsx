@@ -94,6 +94,7 @@ export function MessageRow({ conversation, isSelected = false, hideChannel = fal
               {conversation.timestamp}
             </span>
             <button
+              type="button"
               aria-label={starred ? "Unstar" : "Star"}
               onClick={(e) => {
                 e.stopPropagation();
