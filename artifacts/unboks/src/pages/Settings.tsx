@@ -49,9 +49,9 @@ function ToggleRow({ label, description, checked, onChange, disabled }: {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline gap-4 py-1.5">
+    <div className="flex items-baseline gap-4 py-1.5 min-w-0">
       <span className="text-[13px] text-[#5f6368] w-36 flex-shrink-0">{label}</span>
-      <span className="text-[13px] text-[#202124] font-mono bg-[#f6f8fc] px-2 py-0.5 rounded">{value}</span>
+      <span className="text-[13px] text-[#202124] font-mono bg-[#f6f8fc] px-2 py-0.5 rounded min-w-0 flex-1 break-all">{value}</span>
     </div>
   );
 }
@@ -117,7 +117,7 @@ export default function Settings() {
 
   return (
     <DashboardShell activeNav="settings" pageTitle="Settings">
-      <div className="max-w-2xl">
+      <div className="max-w-2xl min-w-0 overflow-x-hidden">
 
         {/* Client / System Info */}
         <Section title="Client & System" description="Current configuration for this workspace.">
