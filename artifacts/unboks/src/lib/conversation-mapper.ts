@@ -14,14 +14,77 @@ function validStr(value: unknown): string | null {
 }
 
 /**
- * Safe display name with priority order:
- * 1. name / customerName / senderName / contactName / profileName (if not ObjectID)
- * 2. email
- * 3. phone (only if it looks like a real phone number, not an ObjectID)
- * 4. from (if not ObjectID)
- * 5. "Unknown contact"
+ * Some Unboks backend records encode the channel directly inside the message
+ * body using a prefix like:
+ *
+ *   email::subj:workspace-noreply@google.com:boost productivity with …
+ *   whatsapp::Hey, are you open today?
+ *
+ * Format:
+ *   <platform>::                              — bare platform marker
+ *   <platform>::subj:<from>:<subject…>        — email-style envelope
+ *
+ * If we can parse a prefix, we trust it as the strongest channel signal and
+ * also extract the human-readable sender / subject.
  */
-export function safeDisplayName(c: ApiConversation): string {
+const PLATFORM_PREFIX_RE = /^([a-z][a-z0-9_-]*)::(.*)$/i;
+const SUBJ_PREFIX_RE = /^subj:([^:\n]*?):(.*)$/i;
+
+interface ParsedPrefix {
+  channel: Channel;
+  sender: string | null;
+  subject: string;
+  rest: string;
+}
+
+function rawLastMessageText(c: ApiConversation): string | null {
+  return (
+    validStr(c.lastMessage) ??
+    validStr(c.latestMessage) ??
+    validStr(c.last_message) ??
+    validStr(c.preview) ??
+    validStr(c.snippet) ??
+    validStr(c.body) ??
+    validStr(c.text) ??
+    null
+  );
+}
+
+function parsePlatformPrefix(rawText: string | null): ParsedPrefix | null {
+  if (!rawText) return null;
+  const lines = rawText.split("\n");
+  const firstLine = lines[0] ?? "";
+  const m = firstLine.match(PLATFORM_PREFIX_RE);
+  if (!m) return null;
+  const channel = platformToChannel(m[1]);
+  if (channel === "Unknown") return null;
+
+  const tail = m[2] ?? "";
+  const subj = tail.match(SUBJ_PREFIX_RE);
+  let sender: string | null = null;
+  let subject: string;
+  if (subj) {
+    sender = validStr(subj[1]);
+    subject = (subj[2] ?? "").trim();
+  } else {
+    subject = tail.trim();
+  }
+  const rest = lines.slice(1).join(" ").trim();
+  return { channel, sender, subject, rest };
+}
+
+/**
+ * Safe display name with priority order:
+ * 1. parsed prefix sender (e.g. envelope `from`)
+ * 2. name / customerName / senderName / contactName / profileName (if not ObjectID)
+ * 3. email
+ * 4. phone (only if it looks like a real phone number, not an ObjectID)
+ * 5. from (if not ObjectID)
+ * 6. "Unknown contact"
+ */
+export function safeDisplayName(c: ApiConversation, prefixSender?: string | null): string {
+  const fromPrefix = validStr(prefixSender);
+  if (fromPrefix && !isMongoObjectId(fromPrefix)) return fromPrefix;
   const nameCandidates = [
     c.name,
     c.customerName,
@@ -48,15 +111,7 @@ export function safeDisplayName(c: ApiConversation): string {
  * → last item in messages array → { subject: "No preview available", preview: "" }
  */
 export function safePreview(c: ApiConversation): { subject: string; preview: string } {
-  const rawText =
-    validStr(c.lastMessage) ??
-    validStr(c.latestMessage) ??
-    validStr(c.last_message) ??
-    validStr(c.preview) ??
-    validStr(c.snippet) ??
-    validStr(c.body) ??
-    validStr(c.text) ??
-    null;
+  const rawText = rawLastMessageText(c);
 
   if (rawText) {
     const parts = rawText.split("\n");
@@ -78,18 +133,18 @@ export function safePreview(c: ApiConversation): { subject: string; preview: str
 }
 
 /**
- * Channel inference.
+ * Channel inference, in priority order:
  *
- * 1. If the backend gave us an explicit platform string we trust it (via
- *    `platformToChannel`, which already knows aliases like `wa`,
+ * 1. Parsed `<platform>::` prefix in the message body (strongest).
+ * 2. Explicit `platform` field from the backend (covers aliases like `wa`,
  *    `whatsapp_business`, `meta_whatsapp`, …).
- * 2. If platform is missing we DO NOT fall back to Email. Instead we look at
- *    the conversation key — WhatsApp conversations on this backend are keyed
- *    by an E.164-shaped phone number, which is a strong positive signal.
- * 3. Anything else stays "Unknown" so it shows in Inbox/All but never gets
- *    miscategorised under a specific channel.
+ * 3. Phone-shaped conversation key → WhatsApp.
+ * 4. Default → WhatsApp. The Unboks backend currently encodes non-WhatsApp
+ *    channels with a `<platform>::` prefix; everything without a prefix is a
+ *    WhatsApp message in this product. We never silently fall back to Email.
  */
-function inferChannel(c: ApiConversation): Channel {
+function inferChannel(c: ApiConversation, prefix: ParsedPrefix | null): Channel {
+  if (prefix) return prefix.channel;
   const fromPlatform = platformToChannel(c.platform);
   if (fromPlatform !== "Unknown") return fromPlatform;
   const phone = typeof c.phone === "string" ? c.phone.trim() : "";
@@ -97,16 +152,30 @@ function inferChannel(c: ApiConversation): Channel {
     const digits = phone.replace(/[\s().-]/g, "");
     if (/^\+?\d{7,}$/.test(digits)) return "WhatsApp";
   }
-  return "Unknown";
+  return "WhatsApp";
 }
 
 /** Canonical conversation mapper — use this in every page/component */
 export function mapApiConversation(c: ApiConversation): Conversation {
-  const { subject, preview } = safePreview(c);
+  const rawText = rawLastMessageText(c);
+  const prefix = parsePlatformPrefix(rawText);
+
+  let subject: string;
+  let preview: string;
+  if (prefix) {
+    // Use the parsed envelope, hide the raw `email::subj:…` line from the UI.
+    subject = (prefix.subject || prefix.rest || "(no subject)").slice(0, 80);
+    preview = prefix.rest || prefix.subject || "";
+  } else {
+    const sp = safePreview(c);
+    subject = sp.subject;
+    preview = sp.preview;
+  }
+
   return {
     id: c.phone || c._id || "unknown",
-    channel: inferChannel(c),
-    sender: safeDisplayName(c),
+    channel: inferChannel(c, prefix),
+    sender: safeDisplayName(c, prefix?.sender ?? null),
     subject,
     preview,
     timestamp: c.timestamp || "",
