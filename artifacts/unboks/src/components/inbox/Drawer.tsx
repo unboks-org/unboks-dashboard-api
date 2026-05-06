@@ -137,11 +137,7 @@ export function Drawer({
             <Circle className="w-2.5 h-2.5 text-[#34a853] flex-shrink-0" fill="currentColor" />
             <span className="text-[14px] text-[#202124] font-medium">Active</span>
           </div>
-          <ul className="space-y-0.5 pl-[18px]">
-            <li className="text-[12px] text-[#5f6368]">Last activity: 30s ago</li>
-            <li className="text-[12px] text-[#5f6368]">12 conversations handled today</li>
-            <li className="text-[12px] text-[#5f6368]">3 escalations waiting</li>
-          </ul>
+          <p className="text-[12px] text-[#5f6368] pl-[18px]">Connected to Unboks</p>
         </div>
 
         {/* Nav list */}

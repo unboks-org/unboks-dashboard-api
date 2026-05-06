@@ -1,0 +1,71 @@
+Project 2 dashboard frontend edit #2 — remove fake/static sidebar status data.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, or Python API assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish.
+
+Issue:
+In the mobile/desktop sidebar top status area, the dashboard shows:
+- Last activity: 30s ago
+- 12 conversations handled today
+- 3 escalations waiting
+
+This appears to be old/static placeholder data.
+It is misleading for a real customer.
+
+Task:
+Find where this status block is rendered, likely in:
+- artifacts/unboks/src/components/inbox/Drawer.tsx
+- or DashboardShell/Header related files
+
+Fix it so the sidebar status area does NOT show fake/static numbers.
+
+Required behavior:
+1. Do not show hardcoded:
+   - "Last activity: 30s ago"
+   - "12 conversations handled today"
+   - "3 escalations waiting"
+2. If real status data exists from the Python backend, show real values only.
+3. If real status data is unavailable, show a neutral status:
+   - Active
+   - Connected to Unboks
+   or simply:
+   - Active
+4. Do not invent counts.
+5. Do not show stale mock/demo values.
+6. Keep the green active dot.
+7. Keep the visual layout clean.
+8. Mobile and desktop drawer/sidebar must match.
+
+Preferred simple v1 copy:
+- Active
+- Connected to Unboks
+
+Alternative if the existing frontend already has real status hook:
+- Use real openEscalations / activeConversations from API only if loaded.
+- While loading, show no numbers or "Checking status…"
+- On error, show "Status unavailable" not fake data.
+
+Constraints:
+- No backend changes.
+- No API route changes.
+- No database changes.
+- No new dependencies.
+- Do not redesign the whole sidebar.
+- Do not remove navigation items.
+- Do not touch channel mapping fix from edit #1.
+
+Acceptance:
+- Sidebar no longer shows fake "30s ago", "12 conversations", or "3 escalations".
+- No fake numbers appear anywhere in the status block.
+- Status block still looks intentional and professional.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.
