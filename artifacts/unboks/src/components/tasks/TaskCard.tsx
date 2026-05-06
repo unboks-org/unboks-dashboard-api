@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Check, RotateCcw, Loader2, Pencil, X, Copy } from "lucide-react";
+import { Check, RotateCcw, Loader2, Pencil, X, Copy, Pause, Play } from "lucide-react";
 import type { Task, TaskUser } from "@/lib/tasks-api";
 import { cn } from "@/lib/utils";
 
@@ -143,6 +143,8 @@ interface TaskCardProps {
   canEdit?: boolean;
   onMarkDone: (task: Task) => void;
   onReopen: (task: Task) => void;
+  onPark: (task: Task) => void;
+  onUnpark: (task: Task) => void;
   onOpenImage: (url: string) => void;
   onEdit?: (task: Task, patch: { bodyText: string; assignedTo: TaskUser }) => void;
 }
@@ -153,11 +155,16 @@ export function TaskCard({
   canEdit = false,
   onMarkDone,
   onReopen,
+  onPark,
+  onUnpark,
   onOpenImage,
   onEdit,
 }: TaskCardProps) {
   const body = useMemo(() => renderBody(task.bodyText || ""), [task.bodyText]);
   const isDone = task.status === "done";
+  const isParked = task.status === "parked";
+  // "Muted" = visually softer card surface for non-active states.
+  const muted = isDone || isParked;
 
   const [editing, setEditing] = useState(false);
   const [draftText, setDraftText] = useState(task.bodyText || "");
@@ -237,7 +244,9 @@ export function TaskCard({
     <article
       className={cn(
         "group rounded-2xl border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors",
-        isDone ? "border-[#dfe3ea] bg-[#f8fafc]" : "border-[#d9dee7] hover:border-[#cfd6e3]",
+        isDone && "border-[#dfe3ea] bg-[#f8fafc]",
+        isParked && "border-[#dbe3ec] bg-[#f5f7fa]",
+        !muted && "border-[#d9dee7] hover:border-[#cfd6e3]",
       )}
     >
       <div className="px-4 py-4 sm:px-5">
@@ -247,12 +256,12 @@ export function TaskCard({
               cards — single prominent assignee avatar, primary "Assigned to"
               label, muted secondary "Created by … · <time>" underneath. */}
           <div className="flex min-w-0 items-start gap-2.5">
-            <Avatar name={task.assignedTo} dim={isDone} size="md" />
+            <Avatar name={task.assignedTo} dim={muted} size="md" />
             <div className="min-w-0 leading-tight">
               <div
                 className={cn(
                   "truncate text-[13px] font-medium sm:text-[13.5px]",
-                  isDone ? "text-[#4b5563]" : "text-[#1f2937]",
+                  muted ? "text-[#4b5563]" : "text-[#1f2937]",
                 )}
               >
                 Assigned to {task.assignedTo}
@@ -282,6 +291,14 @@ export function TaskCard({
             {task.syncStatus === "failed" && (
               <span className="inline-flex items-center gap-1 rounded-full bg-[#fce8e6] px-2 py-0.5 text-[11px] font-medium text-[#a50e0e]">
                 Sync failed
+              </span>
+            )}
+            {isParked && (
+              <span
+                title="Parked — set aside, not urgent."
+                className="inline-flex items-center gap-1 rounded-full border border-[#cfd8e3] bg-[#eef2f7] px-2 py-0.5 text-[11px] font-medium text-[#475569]"
+              >
+                <Pause className="h-3 w-3" /> Parked
               </span>
             )}
             {isDone && (
@@ -327,7 +344,11 @@ export function TaskCard({
           <div
             className={cn(
               "whitespace-pre-wrap break-words text-[14px] leading-relaxed",
-              isDone ? "text-[#6b7280] line-through decoration-[#cbd5e1]" : "text-[#1f2937]",
+              isDone
+                ? "text-[#6b7280] line-through decoration-[#cbd5e1]"
+                : isParked
+                  ? "text-[#4b5563]"
+                  : "text-[#1f2937]",
             )}
           >
             {body || <span className="text-[#9aa0a6]">(no description)</span>}
@@ -343,7 +364,7 @@ export function TaskCard({
                 onClick={() => onOpenImage(att.url)}
                 className={cn(
                   "aspect-square overflow-hidden rounded-lg border border-[#e8eaed] bg-[#f6f8fc] transition-opacity hover:opacity-90",
-                  isDone && "opacity-70",
+                  muted && "opacity-70",
                 )}
                 aria-label={`Open ${att.fileName}`}
               >
@@ -422,7 +443,7 @@ export function TaskCard({
               <Pencil className="h-3.5 w-3.5" />
               Edit
             </button>
-            {isDone ? (
+            {isDone && (
               <button
                 type="button"
                 onClick={() => onReopen(task)}
@@ -432,16 +453,51 @@ export function TaskCard({
                 {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
                 Reopen
               </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => onMarkDone(task)}
-                disabled={busy}
-                className="inline-flex items-center gap-2 rounded-full bg-[#137333] px-4 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[#0f5d29] disabled:opacity-60"
-              >
-                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                Mark done
-              </button>
+            )}
+            {isParked && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onUnpark(task)}
+                  disabled={busy}
+                  className="inline-flex items-center gap-2 rounded-full border border-[#d9dee7] bg-white px-3 py-1.5 text-[12px] font-medium text-[#1f2937] transition-colors hover:bg-[#eef1f6] disabled:opacity-60"
+                >
+                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                  Move to open
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onMarkDone(task)}
+                  disabled={busy}
+                  className="inline-flex items-center gap-2 rounded-full bg-[#137333] px-4 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[#0f5d29] disabled:opacity-60"
+                >
+                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  Mark done
+                </button>
+              </>
+            )}
+            {!isDone && !isParked && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onPark(task)}
+                  disabled={busy}
+                  title="Set aside — keeps the task without marking it done."
+                  className="inline-flex items-center gap-2 rounded-full border border-[#d9dee7] bg-white px-3 py-1.5 text-[12px] font-medium text-[#1f2937] transition-colors hover:bg-[#eef1f6] disabled:opacity-60"
+                >
+                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Pause className="h-3.5 w-3.5" />}
+                  Park
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onMarkDone(task)}
+                  disabled={busy}
+                  className="inline-flex items-center gap-2 rounded-full bg-[#137333] px-4 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[#0f5d29] disabled:opacity-60"
+                >
+                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  Mark done
+                </button>
+              </>
             )}
           </>
         )}

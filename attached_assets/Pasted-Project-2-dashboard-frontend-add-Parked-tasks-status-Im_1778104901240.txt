@@ -1,0 +1,125 @@
+Project 2 dashboard frontend — add Parked tasks status.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python API assumptions.
+- Work only on Tasks page/task components.
+- Do not touch Settings.
+- Do not touch Inbox.
+- Do not touch DashboardShell.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish until reviewed.
+
+Feature:
+Add a way to “park” tasks.
+
+Reason:
+Some tasks do not need immediate action.
+They should not stay in Open, but they are not Done.
+They should move to Parked.
+
+Required behavior:
+1. Add a third task status:
+   - open
+   - parked
+   - done
+2. Add filter tabs:
+   - Open
+   - Parked
+   - Done
+   - All
+3. Open tab shows only open tasks.
+4. Parked tab shows only parked tasks.
+5. Done tab shows only done tasks.
+6. All tab shows all tasks.
+7. Task cards in Open should have:
+   - Park
+   - Mark done
+8. Task cards in Parked should have:
+   - Move to open
+   - Mark done
+9. Task cards in Done should have:
+   - Reopen
+10. Parking a local pending task must persist after refresh.
+11. Parking should keep sync status as pending if the task is local-only.
+12. Do not delete parked tasks.
+13. Do not treat Parked as Done.
+14. Do not hide Parked tasks completely; they should be visible in Parked and All.
+
+Copy:
+Button:
+“Park”
+
+Parked badge:
+“Parked”
+
+Move back button:
+“Move to open”
+
+Empty Parked state:
+“No parked tasks.”
+
+Data model:
+Extend status type from:
+"open" | "done"
+
+to:
+"open" | "parked" | "done"
+
+For backend API compatibility:
+- If backend does not support parked yet, parked should work locally for pending tasks.
+- For shared/backend tasks, only send PATCH { status: "parked" } if API client supports it.
+- If backend rejects parked status, show:
+  “Parking shared tasks will be available when sync supports it.”
+  and do not pretend it succeeded.
+
+Local pending tasks:
+- Must fully support parked.
+- Persist parked status in localStorage.
+- Edit / Copy text / attachments should still work.
+
+Visual design:
+- Parked should feel neutral.
+- Use a calm grey/blue badge, not red.
+- Open = normal active.
+- Parked = softer visual.
+- Done = muted/complete.
+- Keep the page premium and clean.
+- Mobile must remain clean.
+
+Likely files:
+- artifacts/unboks/src/pages/Tasks.tsx
+- artifacts/unboks/src/components/tasks/TaskCard.tsx
+- artifacts/unboks/src/lib/tasks-api.ts
+- artifacts/unboks/src/hooks/use-local-pending-tasks.ts
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Inbox.tsx
+- DashboardShell
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Open / Parked / Done / All filters exist.
+- Open tasks can be parked.
+- Parked tasks disappear from Open.
+- Parked tasks appear in Parked.
+- Parked tasks appear in All.
+- Parked tasks can be moved back to Open.
+- Parked tasks can be marked Done.
+- Done tasks can be reopened.
+- Local parked tasks persist after refresh.
+- Copy/Edit still work.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

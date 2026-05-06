@@ -23,7 +23,18 @@ import { ApiError } from "@/lib/error";
 import { getToken } from "@/lib/tenant";
 
 export type TaskUser = "Calvin" | "Jr";
-export type TaskStatus = "open" | "done";
+/** Task lifecycle:
+ *   open    — needs action
+ *   parked  — set aside, not urgent (also called "snoozed" in some apps)
+ *   done    — completed
+ *
+ * NOTE: the Python backend may not yet accept `parked` as a PATCH value.
+ * In that case `updateTaskStatus(id, "parked")` will fail with 400/422 and
+ * the UI surfaces a clear "Parking shared tasks will be available when sync
+ * supports it." message — see `isStatusValueRejected`. Local-only pending
+ * tasks always support `parked` via localStorage.
+ */
+export type TaskStatus = "open" | "parked" | "done";
 export type TaskImageMime = "image/png" | "image/jpeg" | "image/webp";
 
 export interface TaskAttachment {
@@ -160,6 +171,16 @@ export function isUploadUnsupported(err: unknown): boolean {
 export function isAuthError(err: unknown): boolean {
   if (!(err instanceof ApiError)) return false;
   return err.status === 401 || err.status === 403;
+}
+
+/** True when the API rejected the request body shape — typically because
+ *  the backend doesn't yet recognize a new status value (e.g., `parked`).
+ *  Distinct from `isUploadUnsupported` because we DO want to surface a
+ *  targeted "feature not yet supported" message to the user instead of
+ *  silently falling back. */
+export function isStatusValueRejected(err: unknown): boolean {
+  if (!(err instanceof ApiError)) return false;
+  return err.status === 400 || err.status === 422;
 }
 
 /** Convert a stored data: URL back into a File for re-upload during sync. */
