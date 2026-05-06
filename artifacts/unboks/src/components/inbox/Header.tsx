@@ -24,7 +24,7 @@ export function Header({ searchQuery, onSearchChange, onOpenDrawer }: HeaderProp
             type="search"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search in mail"
+            placeholder="Search messages"
             className="w-full bg-transparent text-[15px] text-[#202124] placeholder:text-[#5f6368] outline-none"
           />
         </div>
