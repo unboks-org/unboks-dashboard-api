@@ -23,6 +23,23 @@ import { ApiError } from "@/lib/error";
 import { getToken } from "@/lib/tenant";
 
 export type TaskUser = "Calvin" | "Jr";
+
+/**
+ * Identity constants for the dashboard.
+ *
+ * The Project 2 dashboard is operated by Calvin. Until the backend exposes a
+ * proper "me" endpoint, we hard-code the current user here so every place
+ * that needs to know "who is creating this task" agrees. Do NOT infer the
+ * current user from `assignedTo` — that's the recipient, not the author.
+ *
+ * Historical bug: some local-pending tasks were stored with `createdBy:
+ * "Jr"` because earlier code used the composer's `assignedTo` value as the
+ * author. We now centralize on these constants and migrate stale local
+ * entries on read (see `use-local-pending-tasks`).
+ */
+export const CURRENT_TASK_USER: TaskUser = "Calvin";
+/** Default recipient in the composer. The other user is the natural target. */
+export const DEFAULT_TASK_ASSIGNEE: TaskUser = "Jr";
 /** Task lifecycle:
  *   open    — needs action
  *   parked  — set aside, not urgent (per-user, local only — see below)

@@ -1,0 +1,81 @@
+Project 2 dashboard frontend bugfix — Tasks identifies Calvin as Jr.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python API assumptions.
+- Work only on Tasks page/task components/local task state.
+- Do not touch Settings unless a tiny identity setting is required.
+- Do not touch Inbox.
+- Do not touch DashboardShell.
+- Do not commit.
+- Do not publish until reviewed.
+
+Bug:
+The Tasks page thinks the current user is Jr.
+This is wrong.
+
+Current user in this dashboard/session should be:
+Calvin
+
+The other task user is:
+Jr
+
+Required behavior:
+1. When I create a task, createdBy must be Calvin.
+2. The default “To” / assignedTo should be Jr.
+3. A task created by me for Jr should display:
+   Assigned to Jr
+   Created by Calvin
+4. A task created for me should display:
+   Assigned to Calvin
+   Created by Jr
+5. The UI must not show Calvin-created tasks as “Created by Jr”.
+6. Existing local tasks that were incorrectly created as Jr should either:
+   - be migrated/fixed if safe, or
+   - keep their old data but all new tasks must be correct.
+7. Prefer fixing existing local pending tasks if they clearly came from this browser/user and have createdBy: "Jr" incorrectly.
+8. Do not break Parked, Done, Reopen, Edit, Copy text.
+9. Do not change backend/API.
+
+Investigation:
+- Inspect where current user is defined in:
+  - Tasks.tsx
+  - TaskComposer.tsx
+  - TaskCard.tsx
+  - use-local-pending-tasks.ts
+  - tasks-api.ts
+- Search for hardcoded "Jr" and "Calvin".
+- Check default createdBy.
+- Check default assignedTo.
+- Check task display logic.
+- Check localStorage migration behavior.
+
+Preferred v1 solution:
+- Define constants in one place:
+  CURRENT_TASK_USER = "Calvin"
+  DEFAULT_TASK_ASSIGNEE = "Jr"
+- Use CURRENT_TASK_USER for createdBy.
+- Use DEFAULT_TASK_ASSIGNEE as the initial assignedTo value.
+- Do not infer current user from assignedTo.
+- Do not swap names in display.
+
+Optional:
+If there is a simple user selector in future, keep structure ready, but for now hardcode current user as Calvin.
+
+Acceptance:
+- New task created from this dashboard says Created by Calvin.
+- Default assignment is To Jr.
+- If assigned to Calvin, task says Assigned to Calvin, Created by Calvin only if Calvin created it.
+- If task is from Jr to Calvin, it says Assigned to Calvin, Created by Jr.
+- No task created by Calvin is displayed as created by Jr.
+- Park works.
+- Edit works.
+- Copy text works.
+- Mark done works.
+- Local pending tasks persist after refresh.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

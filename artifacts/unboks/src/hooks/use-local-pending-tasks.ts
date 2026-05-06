@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import type { TaskUser, TaskStatus, TaskImageMime } from "@/lib/tasks-api";
+import {
+  CURRENT_TASK_USER,
+  type TaskUser,
+  type TaskStatus,
+  type TaskImageMime,
+} from "@/lib/tasks-api";
 
 const STORAGE_KEY = "unboks_pending_tasks";
 const EVENT_NAME = "unboks_pending_tasks_changed";
@@ -38,13 +43,54 @@ export interface LocalPendingTask {
   serverId?: string;
 }
 
+/** One-time migration for the historical "Jr-as-author" bug. Local-pending
+ *  tasks that live in *this* browser were authored by the current user
+ *  (Calvin) by definition — there's no way for Jr to reach into Calvin's
+ *  localStorage. Rewrite stale `createdBy: "Jr"` entries (and matching
+ *  `completedBy`) so cards display "Created by Calvin" correctly after the
+ *  fix lands. Other fields (assignedTo, body, attachments) are untouched.
+ *  Runs on every read but only writes when something actually changed —
+ *  stable across refreshes once migrated. */
+function migrateAuthor(task: LocalPendingTask): { task: LocalPendingTask; changed: boolean } {
+  let changed = false;
+  let next = task;
+  if (task.createdBy !== CURRENT_TASK_USER) {
+    next = { ...next, createdBy: CURRENT_TASK_USER };
+    changed = true;
+  }
+  // completedBy is only meaningful when the task is done; if present and
+  // wrong, the same logic applies (the local user marked it done).
+  if (task.status === "done" && task.completedBy && task.completedBy !== CURRENT_TASK_USER) {
+    next = { ...next, completedBy: CURRENT_TASK_USER };
+    changed = true;
+  }
+  return { task: next, changed };
+}
+
 function readFromStorage(): LocalPendingTask[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((t) => t && typeof t.localId === "string");
+    const valid: LocalPendingTask[] = parsed.filter(
+      (t): t is LocalPendingTask => t && typeof t.localId === "string",
+    );
+    let migrated = false;
+    const next = valid.map((t) => {
+      const m = migrateAuthor(t);
+      if (m.changed) migrated = true;
+      return m.task;
+    });
+    if (migrated) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Quota or privacy mode — non-fatal; the in-memory copy is still fixed
+        // for this session.
+      }
+    }
+    return next;
   } catch {
     return [];
   }
@@ -95,7 +141,7 @@ export function useLocalPendingTasks() {
       localId: newId(),
       bodyText: input.bodyText,
       bodyHtml: input.bodyHtml,
-      createdBy: "Calvin",
+      createdBy: CURRENT_TASK_USER,
       assignedTo: input.assignedTo,
       status: "open",
       attachments: input.attachments,
@@ -150,7 +196,7 @@ export function useLocalPendingTasks() {
               status,
               updatedAt: now,
               completedAt: status === "done" ? now : undefined,
-              completedBy: status === "done" ? ("Calvin" as TaskUser) : undefined,
+              completedBy: status === "done" ? CURRENT_TASK_USER : undefined,
             }
           : t,
       );

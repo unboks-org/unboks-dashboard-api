@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Image as ImageIcon, X, Loader2, Paperclip, Plus } from "lucide-react";
 import {
   ALLOWED_IMAGE_TYPES,
+  DEFAULT_TASK_ASSIGNEE,
   MAX_IMAGES_PER_TASK,
   TaskUser,
   validateImageFile,
@@ -21,7 +22,7 @@ interface TaskComposerProps {
 }
 
 export function TaskComposer({ submitting, backendUnavailable, onSubmit }: TaskComposerProps) {
-  const [assignedTo, setAssignedTo] = useState<TaskUser>("Jr");
+  const [assignedTo, setAssignedTo] = useState<TaskUser>(DEFAULT_TASK_ASSIGNEE);
   const [text, setText] = useState("");
   const [images, setImages] = useState<PendingImage[]>([]);
   const [focused, setFocused] = useState(false);
