@@ -96,6 +96,8 @@ export function safeDisplayName(c: ApiConversation, prefixSender?: string | null
     const s = validStr(candidate);
     if (s && !isMongoObjectId(s)) return s;
   }
+  const snake = validStr(c.customer_name);
+  if (snake && !isMongoObjectId(snake)) return snake;
   const email = validStr(c.email);
   if (email) return email;
   const phone = validStr(c.phone);
@@ -135,24 +137,27 @@ export function safePreview(c: ApiConversation): { subject: string; preview: str
 /**
  * Channel inference, in priority order:
  *
- * 1. Parsed `<platform>::` prefix in the message body (strongest).
- * 2. Explicit `platform` field from the backend (covers aliases like `wa`,
- *    `whatsapp_business`, `meta_whatsapp`, …).
- * 3. Phone-shaped conversation key → WhatsApp.
- * 4. Default → WhatsApp. The Unboks backend currently encodes non-WhatsApp
- *    channels with a `<platform>::` prefix; everything without a prefix is a
- *    WhatsApp message in this product. We never silently fall back to Email.
+ * 1. Explicit `channel` field from the live Python backend
+ *    (`GET /api/<slug>/dashboard/api/messages/conversations` returns
+ *    `{ ..., "channel": "whatsapp" }`).
+ * 2. Legacy `platform` field, for older API shapes.
+ * 3. Parsed `<platform>::` prefix in the message body (some legacy email
+ *    records embed it inline).
+ * 4. Phone-shaped conversation key → WhatsApp.
+ * 5. Otherwise `Unknown` — never silently fall back to Email.
  */
 function inferChannel(c: ApiConversation, prefix: ParsedPrefix | null): Channel {
-  if (prefix) return prefix.channel;
+  const fromChannel = platformToChannel(c.channel);
+  if (fromChannel !== "Unknown") return fromChannel;
   const fromPlatform = platformToChannel(c.platform);
   if (fromPlatform !== "Unknown") return fromPlatform;
+  if (prefix) return prefix.channel;
   const phone = typeof c.phone === "string" ? c.phone.trim() : "";
   if (phone && !isMongoObjectId(phone)) {
     const digits = phone.replace(/[\s().-]/g, "");
     if (/^\+?\d{7,}$/.test(digits)) return "WhatsApp";
   }
-  return "WhatsApp";
+  return "Unknown";
 }
 
 /** Canonical conversation mapper — use this in every page/component */
@@ -178,7 +183,7 @@ export function mapApiConversation(c: ApiConversation): Conversation {
     sender: safeDisplayName(c, prefix?.sender ?? null),
     subject,
     preview,
-    timestamp: c.timestamp || "",
+    timestamp: c.timestamp || c.last_message_at || "",
     unread: c.unread ?? false,
     escalated: c.escalated ?? false,
     hasAttachment: c.hasAttachment ?? false,

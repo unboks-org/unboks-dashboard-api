@@ -1,0 +1,72 @@
+Project 2 dashboard frontend fix — read Python backend channel field correctly.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, or Python API assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish until tested.
+
+Confirmed live Python API response:
+GET /api/unboks/dashboard/api/messages/conversations returns objects like:
+
+{
+  "phone": "69f629ce9fe8a9a114bcf408",
+  "customer_name": "DoubleR banden Fleet",
+  "last_message": "...",
+  "last_message_role": "assistant",
+  "last_message_at": "2026-05-06T01:23:45.688889+00:00",
+  "status": "active",
+  "message_count": 14,
+  "channel": "whatsapp"
+}
+
+Important:
+The Python backend returns channel, not platform.
+
+Current issue:
+Inbox shows conversations, but clicking WhatsApp channel does not show the WhatsApp conversations.
+The API clearly returns channel="whatsapp" for those rows.
+Frontend must use this channel field for normalization/filtering/counts/badges.
+
+Task:
+Update frontend API types and mapping so channel is read from the Python response.
+
+Required behavior:
+1. ApiConversation type must include optional channel?: string.
+2. Conversation mapping must normalize from:
+   - apiConversation.channel first
+   - then apiConversation.platform fallback if present
+3. channel="whatsapp" must map to Channel "WhatsApp".
+4. channel="email" must map to Channel "Email".
+5. WhatsApp conversations from live API must appear under:
+   - Inbox
+   - WhatsApp filter
+6. Email conversations from live API must appear under:
+   - Inbox
+   - Email filter
+7. Counts in sidebar must use normalized channel from channel/platform.
+8. Message row badges must use the same normalized channel.
+9. Do not infer WhatsApp from phone if channel is already provided.
+10. Unknown fallback remains Unknown, not Email.
+
+Likely files:
+- artifacts/unboks/src/lib/api.ts
+- artifacts/unboks/src/lib/conversation-mapper.ts
+- artifacts/unboks/src/lib/channel-map.ts only if needed
+
+Acceptance:
+- Live API row with channel="whatsapp" maps to WhatsApp.
+- Live API row with channel="email" maps to Email.
+- WhatsApp sidebar shows the 3 WhatsApp conversations from the current API response.
+- Email sidebar shows the 1 Google Workspace email conversation.
+- Inbox shows all 4 conversations.
+- Row badges show WhatsApp or Email correctly.
+- Clicking Inbox resets to all.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

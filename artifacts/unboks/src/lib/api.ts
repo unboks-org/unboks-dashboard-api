@@ -23,11 +23,16 @@ export type LearningStatus = "none" | "suggested" | "approved" | "saved";
 
 export interface ApiConversation {
   phone: string;
-  name: string;
-  lastMessage: string;
-  timestamp: string;
-  unread: boolean;
-  platform: string;
+  name?: string;
+  lastMessage?: string;
+  timestamp?: string;
+  unread?: boolean;
+  /**
+   * The Python backend returns the channel under `channel`. Older shapes
+   * also returned it under `platform`. Both are accepted by the mapper.
+   */
+  channel?: string;
+  platform?: string;
   hasAttachment?: boolean;
   escalated?: boolean;
   escalationMode?: EscalationMode;
@@ -37,6 +42,7 @@ export interface ApiConversation {
   // Alternative field names that different API shapes may return
   _id?: string;
   customerName?: string;
+  customer_name?: string;
   senderName?: string;
   contactName?: string;
   profileName?: string;
@@ -44,6 +50,10 @@ export interface ApiConversation {
   from?: string;
   latestMessage?: string;
   last_message?: string;
+  last_message_at?: string;
+  last_message_role?: string;
+  message_count?: number;
+  status?: string;
   preview?: string;
   snippet?: string;
   body?: string;
