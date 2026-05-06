@@ -1,18 +1,19 @@
 import { useState, useCallback, useEffect } from "react";
 import type { Channel } from "@/data/conversations";
 
-export type ToggledChannel = Exclude<Channel, "All" | "Messenger">;
+export type ToggledChannel = Exclude<Channel, "All" | "Unknown">;
 
 export const TOGGLEABLE_CHANNELS: ToggledChannel[] = [
   "WhatsApp",
   "Instagram",
   "Facebook",
+  "Messenger",
   "Email",
   "X",
   "TikTok",
 ];
 
-const DEFAULT_ENABLED: ToggledChannel[] = ["WhatsApp", "Instagram", "Facebook", "Email"];
+const DEFAULT_ENABLED: ToggledChannel[] = ["WhatsApp", "Instagram", "Facebook", "Messenger", "Email"];
 const STORAGE_KEY = "unboks_enabled_channels";
 const EVENT_NAME = "unboks_enabled_channels_changed";
 
@@ -70,8 +71,8 @@ export function useEnabledChannels() {
 
   const isChannelEnabled = useCallback(
     (channel: Channel) => {
-      // "All", "Messenger", and "Unknown" always pass through
-      if (channel === "All" || channel === "Messenger" || channel === "Unknown") return true;
+      // "All" and "Unknown" always pass through
+      if (channel === "All" || channel === "Unknown") return true;
       return enabledChannels.includes(channel as ToggledChannel);
     },
     [enabledChannels]

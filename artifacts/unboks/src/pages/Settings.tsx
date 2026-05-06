@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
+import { Switch } from "@/components/ui/switch";
 import { useConfig, useScheduleSlots, useScheduleSlotMutations } from "@/hooks/use-client-api";
 import { useEmailSettings } from "@/hooks/use-email-settings";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
@@ -31,27 +32,17 @@ function ToggleRow({ label, description, checked, onChange, disabled }: {
   disabled?: boolean;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-2">
-      <div>
+    <div className="flex items-center justify-between gap-4 py-2">
+      <div className="min-w-0">
         <p className="text-[14px] text-[#202124]">{label}</p>
         {description && <p className="text-[12px] text-[#5f6368] mt-0.5">{description}</p>}
       </div>
-      <button
-        role="switch"
-        aria-checked={checked}
-        onClick={() => !disabled && onChange(!checked)}
+      <Switch
+        checked={checked}
+        onCheckedChange={onChange}
         disabled={disabled}
-        className={cn(
-          "relative w-10 h-6 rounded-full transition-colors flex-shrink-0 mt-0.5",
-          checked ? "bg-[#1a73e8]" : "bg-[#dadce0]",
-          disabled && "opacity-50 cursor-not-allowed",
-        )}
-      >
-        <span className={cn(
-          "absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform",
-          checked ? "translate-x-5" : "translate-x-1",
-        )} />
-      </button>
+        className="flex-shrink-0 data-[state=checked]:bg-[#1a73e8] data-[state=unchecked]:bg-[#dadce0]"
+      />
     </div>
   );
 }

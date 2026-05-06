@@ -1,0 +1,69 @@
+Project 2 dashboard frontend edit #5 — fix Channels settings list.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, or Python API assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish.
+
+Issue:
+In Settings → Channels:
+1. Messenger is missing from the channel list.
+2. The channel toggle switches look odd/broken. The knob appears visually detached or misaligned.
+3. This section needs to look clean and customer-ready.
+
+Task:
+Fix the frontend Settings → Channels section.
+
+Required behavior:
+1. Add Messenger to the Channels settings list.
+2. Channels list should include:
+   - WhatsApp
+   - Instagram
+   - Facebook
+   - Messenger
+   - Email
+   - X
+   - TikTok
+3. Preserve current channel enable/disable functionality.
+4. Toggle switches must look normal:
+   - clean pill track
+   - white circular knob
+   - knob aligned vertically centered
+   - on state blue
+   - off state grey
+   - no visual clipping
+   - no strange detached white circle
+5. Desktop and mobile should both look clean.
+6. Do not redesign the whole Settings page.
+7. Do not change backend/API.
+8. Do not change channel mapping fix from edit #1.
+9. Do not remove any existing supported channel types.
+
+Likely files:
+- artifacts/unboks/src/pages/Settings.tsx
+- artifacts/unboks/src/hooks/use-enabled-channels.ts
+- artifacts/unboks/src/data/conversations.ts
+- artifacts/unboks/src/components/ui/switch.tsx if the shared Switch component itself is the styling issue
+
+Investigation:
+- Check what list Settings uses for Channels.
+- Check if Messenger exists in channel type definitions but is missing from settings list.
+- Check whether the Settings page uses the shared Switch component correctly.
+- If the shared Switch component is broken globally, fix it carefully.
+- If only Settings styling is wrong, fix only Settings usage/classes.
+
+Acceptance:
+- Messenger appears in Settings → Channels.
+- All listed channels have aligned, normal-looking toggles.
+- On/off states are visually clear.
+- Toggling still works.
+- No channel disappears unintentionally.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.
