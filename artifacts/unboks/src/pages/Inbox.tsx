@@ -32,6 +32,7 @@ import type { ApiMessage, ConversationDetail } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { EscalationReplyComposer } from "@/components/inbox/EscalationReplyComposer";
 import { EmailMessageDetail } from "@/components/inbox/EmailMessageDetail";
+import { MessageTranslateBlock } from "@/components/inbox/MessageTranslateBlock";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
@@ -48,7 +49,15 @@ const NAV_LABELS: Record<string, string> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function MessageBubble({ msg }: { msg: ApiMessage }) {
+function MessageBubble({
+  msg,
+  conversationId,
+  channel,
+}: {
+  msg: ApiMessage;
+  conversationId: string;
+  channel: string;
+}) {
   const isAssistant = msg.role === "assistant";
   return (
     <div className={cn("flex", isAssistant ? "justify-end" : "justify-start")}>
@@ -64,6 +73,13 @@ function MessageBubble({ msg }: { msg: ApiMessage }) {
         {msg.timestamp && (
           <p className="text-[11px] mt-1 opacity-60">{msg.timestamp}</p>
         )}
+        <MessageTranslateBlock
+          messageId={msg.id}
+          text={msg.content}
+          conversationId={conversationId}
+          channel={channel}
+          variant="bubble"
+        />
       </div>
     </div>
   );
@@ -424,8 +440,22 @@ function ConversationDetailPane({
 
         {!isLoading && messages.length > 0 && (
           conversation.channel === "Email"
-            ? messages.map((msg, i) => <EmailMessageDetail key={msg.id ?? i} msg={msg} />)
-            : messages.map((msg, i) => <MessageBubble key={msg.id ?? i} msg={msg} />)
+            ? messages.map((msg, i) => (
+                <EmailMessageDetail
+                  key={msg.id ?? i}
+                  msg={msg}
+                  conversationId={conversation.id}
+                  channel={conversation.channel}
+                />
+              ))
+            : messages.map((msg, i) => (
+                <MessageBubble
+                  key={msg.id ?? i}
+                  msg={msg}
+                  conversationId={conversation.id}
+                  channel={conversation.channel}
+                />
+              ))
         )}
 
         {!isLoading && messages.length === 0 && (

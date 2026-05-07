@@ -84,6 +84,14 @@ export function MessageTranslateBlock({
           setState({ kind: "translated", text: result.text });
         },
         onError: (err) => {
+          // 401/403 are owned by the global session-expired handler; the
+          // translate block must NOT show its own error UI in that case,
+          // otherwise the operator sees two competing notices. Reset to
+          // idle so the trigger reappears once they're re-authenticated.
+          if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+            setState({ kind: "idle" });
+            return;
+          }
           if (isNotConnected(err)) {
             setState({
               kind: "error",
@@ -92,16 +100,7 @@ export function MessageTranslateBlock({
             });
             return;
           }
-          if (err instanceof ApiError && err.status >= 500) {
-            setState({
-              kind: "error",
-              tone: "error",
-              message: "Could not translate this message. Try again.",
-            });
-            return;
-          }
-          // 401/403 are handled globally by the auth layer; for anything else
-          // surface a calm generic message and keep the original intact.
+          // Everything else (5xx, parse errors, unexpected): calm generic.
           setState({
             kind: "error",
             tone: "error",
@@ -120,12 +119,10 @@ export function MessageTranslateBlock({
     }
   };
 
-  const triggerLabel =
-    state.kind === "loading"
-      ? "Translating…"
-      : state.kind === "hidden"
-        ? "Show translation"
-        : "Translate";
+  // Label stays "Translate" even after Hide: re-clicking restores the cached
+  // translation without re-calling the API, so the action is conceptually
+  // the same from the operator's point of view.
+  const triggerLabel = state.kind === "loading" ? "Translating…" : "Translate";
 
   // Only show the trigger when there's nothing to hide. The "Hide
   // translation" link lives inside the result block for visual proximity.

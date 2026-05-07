@@ -23,9 +23,11 @@ import {
   saveScheduleSlots,
   type ScheduleSlot,
   aiEditorEdit,
+  translateMessage,
   type GuidancePayload,
   type ResolvePayload,
   type AIEditorParams,
+  type TranslateMessageParams,
 } from "@/lib/api";
 
 // ------ Conversations ------

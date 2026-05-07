@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, ShieldAlert } from "lucide-react";
 import type { ApiMessage } from "@/lib/api";
 import { parseEmail, tokenizeInline } from "@/lib/email-parser";
 import { cn } from "@/lib/utils";
+import { MessageTranslateBlock } from "@/components/inbox/MessageTranslateBlock";
 
 // ---------------------------------------------------------------------------
 // EmailMessageDetail
@@ -35,9 +36,15 @@ function InlineText({ value }: { value: string }) {
 
 interface EmailMessageDetailProps {
   msg: ApiMessage;
+  conversationId: string;
+  channel: string;
 }
 
-export function EmailMessageDetail({ msg }: EmailMessageDetailProps) {
+export function EmailMessageDetail({
+  msg,
+  conversationId,
+  channel,
+}: EmailMessageDetailProps) {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const { body, signature, disclaimer } = parseEmail(msg.content);
   const isAssistant = msg.role === "assistant";
@@ -85,6 +92,14 @@ export function EmailMessageDetail({ msg }: EmailMessageDetailProps) {
           <InlineText value={signature} />
         </div>
       )}
+
+      <MessageTranslateBlock
+        messageId={msg.id}
+        text={msg.content}
+        conversationId={conversationId}
+        channel={channel}
+        variant="card"
+      />
 
       {disclaimer && (
         <div className="mt-3 rounded-lg bg-[#f8f9fa] px-3 py-2">
