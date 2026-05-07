@@ -1,0 +1,184 @@
+Project 2 dashboard frontend — add Translate button for conversation messages using Refero/Repro.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Do not modify DNS, secrets, deployment, auth, or Python backend assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish until reviewed.
+
+Feature:
+Add message translation for human operators.
+
+Problem:
+Unboks customers receive messages in many languages.
+The human operator may not understand the customer language.
+The dashboard needs a simple Translate action on messages so the operator can understand what was said.
+
+This is different from the AI Editor.
+AI Editor is for improving the operator’s draft.
+Message Translate is for translating received/sent messages inside the conversation thread.
+
+Use Refero/Repro:
+Use real premium translation/message UI references before designing.
+References should include:
+- Intercom conversation translation
+- Zendesk translation
+- Front email/message actions
+- Gmail translate message
+- Slack message actions
+- Apple translate UI
+- WhatsApp message action patterns
+
+If Refero/Repro is not connected, stop and report clearly before editing.
+
+Required behavior:
+1. Each message bubble in the conversation detail should have a Translate action.
+2. The Translate action should be visible in a clean premium way.
+3. It should not clutter every bubble.
+4. Preferred UI:
+   - small “Translate” button/icon on hover for desktop
+   - always accessible via small action button/menu on mobile
+   - or a compact button below/near the message if hover is not reliable
+5. Clicking Translate translates that specific message into the operator’s language.
+6. Default target language for now:
+   English
+7. Later this can become configurable, but v1 can use English.
+8. After translation, show translated text under the original message.
+9. Keep original text visible.
+10. Add label:
+   “Translated to English”
+11. Add action:
+   “Hide translation”
+12. If clicked again, do not re-call API if translation is already cached in local state.
+13. Translation must not send anything to the customer.
+14. Translation must not modify the original conversation history.
+15. Translation must not affect Marina’s reply behavior.
+16. It is only for the operator to understand the message.
+
+UI design:
+- Premium and calm.
+- No huge modal.
+- Translation appears inline under the message.
+- Use a soft tinted box or subtle divider.
+- The translated text must be clearly separated from original.
+- Do not make the thread noisy.
+- Message bubbles should remain readable.
+- Mobile must work.
+
+Suggested UI:
+Under translated message:
+
+Translated to English
+"This works well. Thanks!"
+
+Hide translation
+
+For a message action button:
+- icon: Languages / translate
+- label: Translate
+- tooltip: Translate message
+
+Backend/API:
+Preferred endpoint:
+
+POST /api/{client}/dashboard/api/translate
+
+Body:
+{
+  "text": "message text",
+  "targetLanguage": "English",
+  "sourceLanguage": "auto",
+  "context": {
+    "conversationId": "string",
+    "messageId": "string",
+    "channel": "whatsapp | email | instagram | facebook | messenger | x | tiktok"
+  }
+}
+
+Expected response:
+{
+  "text": "translated text",
+  "sourceLanguage": "Swedish optional",
+  "targetLanguage": "English"
+}
+
+If this endpoint is not available yet:
+- show calm notice:
+  “Translation will be connected by the Unboks team.”
+- do not crash
+- do not erase or alter message
+- do not fake translation
+
+Possible reuse:
+If /api/{client}/dashboard/api/ai-editor already supports action: "translate", it is acceptable to reuse that endpoint for v1:
+
+POST /api/{client}/dashboard/api/ai-editor
+
+Body:
+{
+  "action": "translate",
+  "text": "message text",
+  "targetLanguage": "English",
+  "context": {
+    "conversationId": "string",
+    "messageId": "string",
+    "usage": "operator_message_translation"
+  }
+}
+
+Important:
+If reusing AI Editor endpoint, keep frontend naming separate:
+- Message button says Translate
+- Do not call it AI Editor in the message bubble
+
+Local caching:
+- Cache translation by message id in component state.
+- Optional localStorage cache is okay but not required.
+- Do not persist fake failed translations.
+
+Error behavior:
+- If 401/403, use existing session expired behavior.
+- If 404/501, show “Translation will be connected by the Unboks team.”
+- If 500, show “Could not translate this message. Try again.”
+
+Likely files:
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/lib/api.ts
+- artifacts/unboks/src/hooks/use-client-api.ts
+Possibly create:
+- artifacts/unboks/src/components/inbox/MessageBubble.tsx
+- artifacts/unboks/src/components/inbox/MessageTranslation.tsx
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Tasks.tsx
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Each message can be translated.
+- Translation is shown inline under the original message.
+- Original message remains visible.
+- Translation is labelled “Translated to English”.
+- Translation can be hidden.
+- Translation does not send anything to customer.
+- Translation does not alter conversation history.
+- Translation failure is calm and clear.
+- Mobile layout works.
+- Build/typecheck clean.
+- Report exact files changed.
+- Report whether Refero/Repro was connected and what references were used.
+- Do not commit.
+- Do not publish.

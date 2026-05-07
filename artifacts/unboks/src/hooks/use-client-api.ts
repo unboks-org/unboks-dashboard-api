@@ -195,3 +195,15 @@ export function useAIEditor() {
     mutationFn: (params: AIEditorParams) => aiEditorEdit(params),
   });
 }
+
+// ------ Message Translation ------
+//
+// Operator-only read-side translation (see `translateMessage` in lib/api).
+// Distinct from `useAIEditor` so the message bubble UI never accidentally
+// surfaces AI-Editor copy / styling.
+
+export function useMessageTranslation() {
+  return useMutation({
+    mutationFn: (params: TranslateMessageParams) => translateMessage(params),
+  });
+}

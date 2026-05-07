@@ -544,6 +544,61 @@ export async function aiEditorEdit(params: AIEditorParams): Promise<AIEditorResp
 }
 
 // ---------------------------------------------------------------------------
+// Message Translation (operator read-side)
+// ---------------------------------------------------------------------------
+//
+// Distinct from AI Editor in intent: this is for the human operator to read
+// an inbound (or outbound) message in English. It does NOT modify the
+// conversation, does NOT send anything to the customer, and is not used by
+// Marina's reply pipeline.
+//
+// V1 reuses the AI Editor endpoint with `action: "translate"`. Frontend
+// naming is kept separate so the message bubble button can read "Translate"
+// and never expose AI Editor terminology to the operator on the read side.
+// If the backend later ships a dedicated `/translate` route, only this
+// function changes.
+
+export interface TranslateMessageContext {
+  conversationId: string;
+  messageId: string;
+  channel?: string;
+  /** Disambiguates from AI Editor's draft-rewrite usage on the server side. */
+  usage?: "operator_message_translation";
+}
+
+export interface TranslateMessageParams {
+  text: string;
+  targetLanguage: AIEditorLanguage;
+  context: TranslateMessageContext;
+}
+
+export interface TranslateMessageResponse {
+  /** Translated text in `targetLanguage`. */
+  text: string;
+  /** Detected source language, when the backend provides it. */
+  sourceLanguage?: string;
+  targetLanguage?: AIEditorLanguage;
+}
+
+export async function translateMessage(
+  params: TranslateMessageParams,
+): Promise<TranslateMessageResponse> {
+  const result = await aiEditorEdit({
+    action: "translate",
+    text: params.text,
+    targetLanguage: params.targetLanguage,
+    context: {
+      conversationId: params.context.conversationId,
+      channel: params.context.channel,
+    },
+  });
+  return {
+    text: result.text,
+    targetLanguage: params.targetLanguage,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Learning entries
 // ---------------------------------------------------------------------------
 
