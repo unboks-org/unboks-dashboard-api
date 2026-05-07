@@ -25,21 +25,34 @@ import { getToken } from "@/lib/tenant";
 export type TaskUser = "Calvin" | "Jr";
 
 /**
- * Identity constants for the dashboard.
+ * Operator identity for task authorship.
  *
- * The Project 2 dashboard is operated by Calvin. Until the backend exposes a
- * proper "me" endpoint, we hard-code the current user here so every place
- * that needs to know "who is creating this task" agrees. Do NOT infer the
- * current user from `assignedTo` — that's the recipient, not the author.
+ * Calvin and Jr share the same dashboard login (one bearer token), so the
+ * Python backend can't tell them apart. The dashboard exposes an "Acting as"
+ * toggle (see `use-dashboard-identity`) and stores the choice in
+ * localStorage. These helpers read the same storage key from non-React
+ * modules so authorship stays consistent across the codebase.
  *
- * Historical bug: some local-pending tasks were stored with `createdBy:
- * "Jr"` because earlier code used the composer's `assignedTo` value as the
- * author. We now centralize on these constants and migrate stale local
- * entries on read (see `use-local-pending-tasks`).
+ * Do NOT infer the author from `assignedTo` — that's the recipient.
  */
-export const CURRENT_TASK_USER: TaskUser = "Calvin";
-/** Default recipient in the composer. The other user is the natural target. */
-export const DEFAULT_TASK_ASSIGNEE: TaskUser = "Jr";
+const IDENTITY_STORAGE_KEY = "unboks_dashboard_identity";
+const VALID_IDENTITIES: TaskUser[] = ["Calvin", "Jr"];
+
+export function getCurrentTaskUser(): TaskUser {
+  if (typeof localStorage === "undefined") return "Calvin";
+  try {
+    const raw = localStorage.getItem(IDENTITY_STORAGE_KEY);
+    if (raw && (VALID_IDENTITIES as string[]).includes(raw)) return raw as TaskUser;
+  } catch {
+    // ignore — fall through
+  }
+  return "Calvin";
+}
+
+/** The natural recipient when composing — always the *other* user. */
+export function getDefaultTaskAssignee(): TaskUser {
+  return getCurrentTaskUser() === "Calvin" ? "Jr" : "Calvin";
+}
 /** Task lifecycle:
  *   open    — needs action
  *   parked  — set aside, not urgent (per-user, local only — see below)

@@ -1,0 +1,125 @@
+Project 2 dashboard frontend bugfix — AI needs help / Human takeover buttons do nothing.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Do not modify DNS, secrets, deployment, auth, or Python backend assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish until reviewed.
+
+Bug:
+In the escalation detail pane there are two buttons:
+
+AI needs help
+Human takeover
+
+They currently do nothing.
+
+Required behavior:
+These buttons must toggle the escalation mode.
+
+Definitions:
+- AI needs help = soft escalation
+- Human takeover = hard escalation
+
+Expected UI behavior:
+1. Clicking “AI needs help” sets mode to soft.
+2. Clicking “Human takeover” sets mode to hard.
+3. Active mode button must be visually selected.
+4. The reply composer must update immediately:
+   - soft mode shows “Reply to Marina”
+   - hard mode shows “Reply to customer”
+5. Hard mode should show AI muted / Human takeover state.
+6. Soft mode should show Marina guidance state.
+7. Do not require page refresh.
+8. Do not silently fail without feedback.
+9. Do not pretend backend succeeded if it did not.
+
+Backend endpoints Jr said exist/intended:
+POST /api/{client}/dashboard/api/escalations/{id}/mode
+Purpose: Toggle soft <-> hard mode.
+
+Body:
+{
+  "mode": "soft"
+}
+
+or:
+{
+  "mode": "hard"
+}
+
+Also available/intended:
+POST /api/{client}/dashboard/api/escalations/{id}/takeover
+Purpose: mute AI / human takeover.
+
+POST /api/{client}/dashboard/api/escalations/{id}/handback
+Purpose: unmute AI / return to AI control.
+
+Preferred frontend behavior:
+- Use POST /escalations/:id/mode as the primary action.
+- When switching to hard, it is acceptable to call /mode with hard and/or /takeover if current API client already supports it.
+- When switching to soft, call /mode with soft and/or /handback if current API client already supports it.
+- If backend returns success, update local UI state.
+- If backend endpoint is missing/404/501, update the UI locally with a clear “Pending sync” or calm notice:
+  “Mode saved locally. Backend connection will complete this soon.”
+- If backend returns 401/403, show session expired behavior.
+- If backend returns other error, show the error calmly and do not pretend success.
+
+Important:
+Frontend should still let the operator choose mode locally so the composer behaves correctly, even while backend is catching up.
+But it must not claim backend saved it unless backend returns ok:true.
+
+Required API client work:
+Add or fix functions in frontend API client:
+- setEscalationMode(escalationId, mode)
+- takeOverEscalation(escalationId) if used
+- handBackEscalation(escalationId) if used
+
+Required state:
+- selected escalation mode must be stored in local component state after click.
+- use backend-provided mode as initial value.
+- if backend mode is missing, default to current inferred mode or “soft” unless hard signals exist.
+- hard signals: aiMuted true, human_takeover_at exists, handoff_required true.
+
+Likely files:
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/lib/api.ts
+- artifacts/unboks/src/hooks/use-client-api.ts
+Possibly create/update:
+- artifacts/unboks/src/components/inbox/EscalationReplyComposer.tsx
+- artifacts/unboks/src/components/inbox/AIEditorPanel.tsx
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Tasks.tsx
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Click AI needs help → button becomes active.
+- Composer changes to “Reply to Marina”.
+- Send button says “Send to Marina”.
+- Click Human takeover → button becomes active.
+- Composer changes to “Reply to customer”.
+- Send button says “Reply to customer”.
+- Hard mode visually shows Human takeover / AI muted.
+- Mode persists in UI during the session.
+- If backend supports /mode, backend is called.
+- If backend does not support /mode, frontend shows calm pending notice, not silent fail.
+- No crash.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

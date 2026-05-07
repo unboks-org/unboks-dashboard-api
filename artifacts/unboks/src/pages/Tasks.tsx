@@ -6,7 +6,6 @@ import { useAuth } from "@/components/auth/useAuth";
 import { TaskComposer } from "@/components/tasks/TaskComposer";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import {
-  CURRENT_TASK_USER,
   Task,
   TaskStatus,
   TaskUser,
@@ -19,6 +18,7 @@ import {
   updateTaskStatus,
   uploadTaskAttachments,
 } from "@/lib/tasks-api";
+import { useDashboardIdentity } from "@/hooks/use-dashboard-identity";
 import {
   LOCAL_ATTACHMENT_MAX_BYTES,
   LocalAttachment,
@@ -44,23 +44,22 @@ const STATUS_ORDER: Record<TaskStatus, number> = { open: 0, parked: 1, done: 2 }
 
 /** Adapt a localStorage pending task into the shared Task shape used by the UI.
  *
- *  Display-time guarantee: a local-pending task lives in *this* browser, so
- *  by definition it was authored (and, if completed, completed) by the
- *  current dashboard user. Forcing `createdBy`/`completedBy` here is a
- *  belt-and-suspenders defense against any stale localStorage written by
- *  earlier buggy versions where the composer's `assignedTo` value leaked
- *  into `createdBy`. The on-read migration in `use-local-pending-tasks`
- *  already rewrites those entries, but normalizing again at the display
- *  boundary means the card can never show "Created by Jr" for a task
- *  Calvin actually created — even if migration somehow didn't fire (e.g.
- *  the user's tab was opened against an older build). */
+ *  Authorship: Calvin and Jr share this browser via the "Acting as" toggle
+ *  (`useDashboardIdentity`). The author was captured when the task was
+ *  created (`addLocal`) and must NOT be re-derived from the current
+ *  identity at display time — doing so would erase Jr's authorship the
+ *  moment Calvin opens the dashboard, and vice versa. */
 function localToTask(local: LocalPendingTask): Task {
   return {
     id: `local:${local.localId}`,
     localId: local.localId,
     bodyHtml: local.bodyHtml,
     bodyText: local.bodyText,
-    createdBy: CURRENT_TASK_USER,
+    // Trust the value stored at creation time. Calvin and Jr now share this
+    // browser via the "Acting as" toggle, so we must NOT force-rewrite the
+    // author on every read — that would erase Jr's authorship as soon as
+    // Calvin opens the dashboard, and vice versa.
+    createdBy: local.createdBy,
     assignedTo: local.assignedTo,
     status: local.status,
     attachments: local.attachments.map((a) => ({
@@ -74,7 +73,7 @@ function localToTask(local: LocalPendingTask): Task {
     createdAt: local.createdAt,
     updatedAt: local.updatedAt,
     completedAt: local.completedAt,
-    completedBy: local.status === "done" ? CURRENT_TASK_USER : local.completedBy,
+    completedBy: local.completedBy,
     syncStatus: local.syncStatus,
   };
 }
@@ -137,6 +136,7 @@ function StatusPill({ status }: { status: SyncStatus }) {
 export default function Tasks() {
   const queryClient = useQueryClient();
   const { logout } = useAuth();
+  const { identity, otherIdentity, setIdentity } = useDashboardIdentity();
   const [filter, setFilter] = useState<Filter>("open");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -507,13 +507,50 @@ export default function Tasks() {
               Shared task board for Calvin and Jr.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={logout}
-            className="rounded-full border border-[#d9dee7] bg-white px-3 py-1.5 text-[12px] font-medium text-[#4b5563] transition-colors hover:bg-[#eef1f6]"
-          >
-            Sign out
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Acting-as toggle. Calvin and Jr share one login, so the
+                dashboard cannot infer who is at the keyboard. The active
+                identity drives `createdBy` on newly created local tasks and
+                the default recipient in the composer (always the other
+                person). Persisted in localStorage by useDashboardIdentity. */}
+            <div
+              role="group"
+              aria-label="Acting as"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#d9dee7] bg-white p-0.5 pl-2.5 text-[11.5px] text-[#4b5563]"
+            >
+              <span className="hidden font-medium sm:inline">Acting as</span>
+              <div className="inline-flex rounded-full bg-[#f1f3f4] p-0.5">
+                {(["Calvin", "Jr"] as TaskUser[]).map((u) => {
+                  const active = identity === u;
+                  return (
+                    <button
+                      key={u}
+                      type="button"
+                      aria-pressed={active}
+                      aria-label={`Act as ${u}`}
+                      title={`Act as ${u}`}
+                      onClick={() => setIdentity(u)}
+                      className={cn(
+                        "rounded-full px-2.5 py-1 text-[11.5px] font-medium transition-colors",
+                        active
+                          ? "bg-[#1a73e8] text-white shadow-sm"
+                          : "text-[#3c4043] hover:bg-white",
+                      )}
+                    >
+                      {u}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded-full border border-[#d9dee7] bg-white px-3 py-1.5 text-[12px] font-medium text-[#4b5563] transition-colors hover:bg-[#eef1f6]"
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       </header>
 
@@ -521,6 +558,7 @@ export default function Tasks() {
         <TaskComposer
           submitting={submitting}
           backendUnavailable={backendUnavailable}
+          defaultAssignee={otherIdentity}
           onSubmit={handleSubmit}
         />
 

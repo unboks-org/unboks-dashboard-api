@@ -1,9 +1,9 @@
-import { useRef, useState, useCallback, ChangeEvent, ClipboardEvent } from "react";
+import { useRef, useState, useCallback, useEffect, ChangeEvent, ClipboardEvent } from "react";
 import { toast } from "sonner";
 import { Image as ImageIcon, X, Loader2, Paperclip, Plus } from "lucide-react";
 import {
   ALLOWED_IMAGE_TYPES,
-  DEFAULT_TASK_ASSIGNEE,
+  getDefaultTaskAssignee,
   MAX_IMAGES_PER_TASK,
   TaskUser,
   validateImageFile,
@@ -18,11 +18,27 @@ interface PendingImage {
 interface TaskComposerProps {
   submitting: boolean;
   backendUnavailable?: boolean;
+  /** The natural recipient — always the *other* operator. Driven by the
+   *  Acting-as toggle in the parent (`useDashboardIdentity`). When the
+   *  operator flips identity (Calvin → Jr or back), the composer's default
+   *  recipient flips with it, as long as the user hasn't already overridden
+   *  the assignee for the current draft. */
+  defaultAssignee?: TaskUser;
   onSubmit: (payload: { assignedTo: TaskUser; text: string; files: File[] }) => Promise<void>;
 }
 
-export function TaskComposer({ submitting, backendUnavailable, onSubmit }: TaskComposerProps) {
-  const [assignedTo, setAssignedTo] = useState<TaskUser>(DEFAULT_TASK_ASSIGNEE);
+export function TaskComposer({ submitting, backendUnavailable, defaultAssignee, onSubmit }: TaskComposerProps) {
+  const initialAssignee = defaultAssignee ?? getDefaultTaskAssignee();
+  const [assignedTo, setAssignedTo] = useState<TaskUser>(initialAssignee);
+  const [assigneeTouched, setAssigneeTouched] = useState(false);
+  // Keep the assignee in sync with the Acting-as toggle until the user
+  // manually picks a recipient — at which point we respect their choice
+  // for the rest of this draft.
+  useEffect(() => {
+    if (!assigneeTouched && defaultAssignee) {
+      setAssignedTo(defaultAssignee);
+    }
+  }, [defaultAssignee, assigneeTouched]);
   const [text, setText] = useState("");
   const [images, setImages] = useState<PendingImage[]>([]);
   const [focused, setFocused] = useState(false);
@@ -103,7 +119,12 @@ export function TaskComposer({ submitting, backendUnavailable, onSubmit }: TaskC
       current.forEach((p) => URL.revokeObjectURL(p.previewUrl));
       return [];
     });
-  }, []);
+    // Release the per-draft override so the next draft picks up the
+    // current Acting-as default again — invariant whether the parent
+    // passed a defaultAssignee prop or not.
+    setAssigneeTouched(false);
+    setAssignedTo(defaultAssignee ?? getDefaultTaskAssignee());
+  }, [defaultAssignee]);
 
   const handleSubmit = useCallback(async () => {
     const trimmed = text.trim();
@@ -152,7 +173,11 @@ export function TaskComposer({ submitting, backendUnavailable, onSubmit }: TaskC
               <button
                 key={u}
                 type="button"
-                onClick={() => setAssignedTo(u)}
+                onClick={() => {
+                  if (u === assignedTo) return;
+                  setAssignedTo(u);
+                  setAssigneeTouched(true);
+                }}
                 className={cn(
                   "rounded-full px-3 py-1 text-[12px] font-medium transition-colors",
                   assignedTo === u

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  CURRENT_TASK_USER,
+  getCurrentTaskUser,
   type TaskUser,
   type TaskStatus,
   type TaskImageMime,
@@ -43,28 +43,17 @@ export interface LocalPendingTask {
   serverId?: string;
 }
 
-/** One-time migration for the historical "Jr-as-author" bug. Local-pending
- *  tasks that live in *this* browser were authored by the current user
- *  (Calvin) by definition — there's no way for Jr to reach into Calvin's
- *  localStorage. Rewrite stale `createdBy: "Jr"` entries (and matching
- *  `completedBy`) so cards display "Created by Calvin" correctly after the
- *  fix lands. Other fields (assignedTo, body, attachments) are untouched.
- *  Runs on every read but only writes when something actually changed —
- *  stable across refreshes once migrated. */
-function migrateAuthor(task: LocalPendingTask): { task: LocalPendingTask; changed: boolean } {
-  let changed = false;
-  let next = task;
-  if (task.createdBy !== CURRENT_TASK_USER) {
-    next = { ...next, createdBy: CURRENT_TASK_USER };
-    changed = true;
+/** Repair a stored task that's missing fields the UI now expects. Specifically:
+ *  - createdBy may be missing on very old entries → fall back to the current
+ *    operator identity (best guess; the user can edit the task to fix it).
+ *  We deliberately do NOT rewrite a non-empty `createdBy` to the current
+ *  identity — Calvin and Jr now share this browser, and force-rewriting
+ *  would erase Jr's authorship every time Calvin opens the dashboard. */
+function backfillAuthor(task: LocalPendingTask): { task: LocalPendingTask; changed: boolean } {
+  if (task.createdBy === "Calvin" || task.createdBy === "Jr") {
+    return { task, changed: false };
   }
-  // completedBy is only meaningful when the task is done; if present and
-  // wrong, the same logic applies (the local user marked it done).
-  if (task.status === "done" && task.completedBy && task.completedBy !== CURRENT_TASK_USER) {
-    next = { ...next, completedBy: CURRENT_TASK_USER };
-    changed = true;
-  }
-  return { task: next, changed };
+  return { task: { ...task, createdBy: getCurrentTaskUser() }, changed: true };
 }
 
 function readFromStorage(): LocalPendingTask[] {
@@ -78,7 +67,7 @@ function readFromStorage(): LocalPendingTask[] {
     );
     let migrated = false;
     const next = valid.map((t) => {
-      const m = migrateAuthor(t);
+      const m = backfillAuthor(t);
       if (m.changed) migrated = true;
       return m.task;
     });
@@ -141,7 +130,7 @@ export function useLocalPendingTasks() {
       localId: newId(),
       bodyText: input.bodyText,
       bodyHtml: input.bodyHtml,
-      createdBy: CURRENT_TASK_USER,
+      createdBy: getCurrentTaskUser(),
       assignedTo: input.assignedTo,
       status: "open",
       attachments: input.attachments,
@@ -196,7 +185,7 @@ export function useLocalPendingTasks() {
               status,
               updatedAt: now,
               completedAt: status === "done" ? now : undefined,
-              completedBy: status === "done" ? CURRENT_TASK_USER : undefined,
+              completedBy: status === "done" ? getCurrentTaskUser() : undefined,
             }
           : t,
       );
