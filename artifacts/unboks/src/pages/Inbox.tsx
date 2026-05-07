@@ -112,47 +112,10 @@ function MessageBubble({
 // operator can flip soft <-> hard at any time, including when the backend
 // hasn't populated escalationMode yet.
 
-function EscalationBanner({ detail }: { detail: ConversationDetail }) {
-  if (!detail.escalated || detail.escalationResolved) return null;
-  const mode = detail.escalationMode;
-  if (mode === "soft") {
-    return (
-      <div className="bg-[#fef7e0] border-b border-[#feefc3] px-4 py-2.5 flex items-start gap-2">
-        <AlertCircle className="w-4 h-4 text-[#a06800] flex-shrink-0 mt-0.5" />
-        <div className="min-w-0">
-          <p className="text-[13px] font-semibold text-[#a06800]">AI needs help</p>
-          <p className="text-[12px] text-[#5f4400]">AI is waiting for your guidance before it replies.</p>
-          {detail.escalationSummary && (
-            <p className="text-[12px] text-[#5f4400] mt-1 italic">{detail.escalationSummary}</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-  if (mode === "hard") {
-    return (
-      <div className="bg-[#fce8e6] border-b border-[#f6c6c2] px-4 py-2.5 flex items-start gap-2">
-        <AlertTriangle className="w-4 h-4 text-[#c5221f] flex-shrink-0 mt-0.5" />
-        <div className="min-w-0">
-          <p className="text-[13px] font-semibold text-[#c5221f]">Human takeover</p>
-          <p className="text-[12px] text-[#7a1c1a]">AI has handed this conversation to you. Reply directly to the customer.</p>
-          {detail.escalationSummary && (
-            <p className="text-[12px] text-[#7a1c1a] mt-1 italic">{detail.escalationSummary}</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="bg-[#f1f3f4] border-b border-[#e8eaed] px-4 py-2.5 flex items-start gap-2">
-      <AlertCircle className="w-4 h-4 text-[#5f6368] flex-shrink-0 mt-0.5" />
-      <div className="min-w-0">
-        <p className="text-[13px] font-semibold text-[#202124]">Escalation</p>
-        <p className="text-[12px] text-[#5f6368]">This conversation needs attention.</p>
-      </div>
-    </div>
-  );
-}
+// EscalationBanner (yellow/red full-width strip) was retired in favour of a
+// compact status pill rendered inline in the conversation header — see
+// `EscalationModeToggle`. The escalation summary, when the backend supplies
+// one, surfaces as a small helper line directly under the header.
 
 // Statuses that indicate the backend just hasn't shipped this endpoint yet
 // (or the network never reached the API). We keep the operator's local pick
@@ -236,7 +199,7 @@ function EscalationModeToggle({
   const isHard = selectedMode === "hard";
 
   return (
-    <div className="border-b border-[#f1f3f4] bg-white px-4 py-2 space-y-2 flex-shrink-0">
+    <>
       <div
         role="group"
         aria-label="Escalation mode"
@@ -248,13 +211,13 @@ function EscalationModeToggle({
           aria-pressed={isSoft}
           disabled={pendingMode === "soft"}
           className={cn(
-            "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium transition-colors",
+            "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11.5px] font-medium transition-colors",
             isSoft
               ? "bg-[#fef7e0] text-[#5f3e00] border border-[#feefc3] shadow-sm"
               : "text-[#5f6368] hover:text-[#202124]",
           )}
         >
-          <AlertCircle className="w-3.5 h-3.5" />
+          <AlertCircle className="w-3 h-3" />
           AI needs help
         </button>
         <button
@@ -263,13 +226,13 @@ function EscalationModeToggle({
           aria-pressed={isHard}
           disabled={pendingMode === "hard"}
           className={cn(
-            "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium transition-colors",
+            "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11.5px] font-medium transition-colors",
             isHard
               ? "bg-[#fce8e6] text-[#5f1414] border border-[#f6c6c2] shadow-sm"
               : "text-[#5f6368] hover:text-[#202124]",
           )}
         >
-          <AlertTriangle className="w-3.5 h-3.5" />
+          <AlertTriangle className="w-3 h-3" />
           Human takeover
         </button>
       </div>
@@ -277,7 +240,7 @@ function EscalationModeToggle({
         <div
           role="status"
           className={cn(
-            "rounded-md border px-3 py-1.5 text-[12px]",
+            "mt-1.5 rounded-md border px-2.5 py-1 text-[11.5px]",
             notice.tone === "info"
               ? "border-[#cfe2ff] bg-[#f0f6ff] text-[#0b3b8c]"
               : "border-[#f6c6c2] bg-[#fce8e6] text-[#5f1414]",
@@ -286,7 +249,7 @@ function EscalationModeToggle({
           {notice.text}
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -367,36 +330,52 @@ function ConversationDetailPane({
 
   return (
     <div className="flex-1 flex flex-col bg-white overflow-hidden border-l border-[#f1f3f4]">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#f1f3f4] flex-shrink-0">
+      {/* Header — compact: identity on the left, escalation mode pill on the
+          right. The previous full-width yellow/red banner was retired so the
+          message thread starts higher and the pane reads as premium. */}
+      <div className="flex items-center gap-3 px-4 py-2 border-b border-[#f1f3f4] flex-shrink-0">
         <button
           onClick={onClose}
           aria-label="Close conversation"
-          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368] md:hidden"
+          className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368] md:hidden"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
         <button
           onClick={onClose}
           aria-label="Close conversation"
-          className="hidden md:flex w-8 h-8 items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368]"
+          className="hidden md:flex w-7 h-7 items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368]"
         >
           <X className="w-4 h-4" />
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-[15px] font-semibold text-[#202124] truncate">{conversation.sender}</p>
-          <div className="flex items-center gap-2 mt-0.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <p className="text-[14px] font-semibold text-[#202124] truncate">{conversation.sender}</p>
             <span
-              className="text-[11px] font-medium px-2 py-0.5 rounded-full text-white"
+              className="text-[10.5px] font-medium px-1.5 py-0.5 rounded-full text-white flex-shrink-0"
               style={{ backgroundColor: badgeColor }}
             >
               {conversation.channel}
             </span>
             {conversation.timestamp && (
-              <span className="text-[11px] text-[#9aa0a6]">{conversation.timestamp}</span>
+              <span className="text-[11px] text-[#9aa0a6] flex-shrink-0">{conversation.timestamp}</span>
             )}
           </div>
+          {showBanner && detail?.escalationSummary && (
+            <p className="text-[11px] text-[#5f6368] mt-0.5 truncate" title={detail.escalationSummary}>
+              {detail.escalationSummary}
+            </p>
+          )}
         </div>
+        {showBanner && dbId && (
+          <div className="flex-shrink-0">
+            <EscalationModeToggle
+              conversationDbId={dbId}
+              selectedMode={selectedMode}
+              onChange={setSelectedMode}
+            />
+          </div>
+        )}
         {conversation.channel === "Email" && (onEmailReply || onEmailForward || onEmailDelete) && (
           <div className="flex items-center gap-1 flex-shrink-0">
             {onEmailReply && (
@@ -435,15 +414,6 @@ function ConversationDetailPane({
           </div>
         )}
       </div>
-
-      {detail && <EscalationBanner detail={detail} />}
-      {showBanner && dbId && (
-        <EscalationModeToggle
-          conversationDbId={dbId}
-          selectedMode={selectedMode}
-          onChange={setSelectedMode}
-        />
-      )}
 
       {/* Message thread */}
       <div

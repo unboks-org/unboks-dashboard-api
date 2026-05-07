@@ -1,0 +1,186 @@
+Project 2 dashboard frontend — premium compact escalation detail layout using Refero/Repro.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not modify backend.
+- Work only on escalation detail/conversation detail frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch sidebar unless absolutely required.
+- Do not commit.
+- Do not publish until reviewed.
+
+Issue:
+The escalation detail pane is cluttered and wastes too much vertical space.
+
+Current problems:
+1. Too much white space at the top.
+2. Large yellow “AI needs help” banner takes too much height.
+3. AI needs help / Human takeover mode buttons are too large and basic.
+4. Conversation message area becomes too small.
+5. The soft escalation badge above “Reply to Marina” wastes space.
+6. The reply composer starts too low.
+7. Overall design does not feel premium.
+
+Goal:
+Make the escalation detail pane compact, premium, and easier to read.
+Give more vertical space to the actual conversation messages.
+
+Use Refero/Repro:
+Use real premium customer support/inbox escalation references before redesigning.
+References should include:
+- Intercom conversation detail
+- Zendesk ticket sidebar/conversation UI
+- Front shared inbox
+- Linear compact status pills
+- Slack thread action bars
+- Gmail message detail density
+
+If Refero/Repro is not connected, stop and report clearly before editing.
+
+Required layout changes:
+
+1. Header
+Current header has:
+- Anne-Sophie
+- WhatsApp badge
+- time
+- then a large yellow banner below
+
+Change to compact header:
+- Left:
+  Anne-Sophie
+  WhatsApp badge
+  time
+- Right:
+  compact escalation status pill:
+  “AI needs help”
+  or:
+  “Human takeover”
+- Remove the large yellow full-width banner.
+- Do not use a giant alert block unless there is a real error.
+
+Preferred header example:
+Anne-Sophie   [WhatsApp]   3:05 PM                         [AI needs help]
+
+2. Mode switch
+Current mode buttons are large:
+AI needs help
+Human takeover
+
+Replace with a smaller premium segmented control.
+It should be compact, probably directly under header or aligned right under the status pill.
+
+Requirements:
+- “AI needs help” = soft mode
+- “Human takeover” = hard mode
+- Active state clear but subtle
+- Small height
+- Rounded pill style
+- No huge yellow/red blocks
+- No large vertical spacing
+
+3. Conversation area
+The message area must get more vertical space.
+Reduce top chrome height so messages are easier to read.
+Conversation should start higher.
+
+4. Reply composer
+Current composer has:
+[Soft escalation badge]
+Reply to Marina
+helper text
+textarea
+
+Change to:
+Reply to Marina  [Soft escalation]
+Marina will use your guidance to answer the customer.
+
+So the soft/hard badge should be inline to the right of the composer title, not above it.
+
+For hard mode:
+Reply to customer  [Human takeover]
+This reply will be sent directly to the customer.
+
+5. Composer density
+- Keep textarea readable.
+- Reduce unnecessary top padding.
+- Keep Send button visible.
+- Do not make composer feel cramped.
+- The composer should feel premium and operational.
+
+6. Status copy
+Remove large banner copy:
+“AI is waiting for your guidance before it replies.”
+
+If still needed, put it as small helper text near the mode/status:
+“Marina is waiting for guidance.”
+or:
+“AI is muted. Human reply required.”
+
+Keep it compact.
+
+Visual design:
+- Premium SaaS support inbox
+- Less yellow
+- Less vertical waste
+- Smaller pills
+- Better alignment
+- More message space
+- Clear hierarchy
+- No clutter
+- No huge warning banner
+- Subtle borders
+- Good contrast
+- Mobile still works
+
+Important behavior:
+1. Do not remove soft/hard mode functionality.
+2. Do not break mode switching.
+3. Do not break Translate buttons.
+4. Do not break message display.
+5. Do not break Reply to Marina.
+6. Do not break Reply to customer.
+7. Do not break AI Editor visibility rule:
+   - soft mode: no AI Editor
+   - hard mode: AI Editor visible
+8. Do not change backend/API.
+
+Likely files:
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/components/inbox/EscalationReplyComposer.tsx
+- artifacts/unboks/src/components/inbox/MessageBubble.tsx if exists
+- artifacts/unboks/src/components/inbox/AIEditorPanel.tsx only if layout references it
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Tasks.tsx
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Large yellow full-width escalation banner is gone.
+- Escalation status appears as compact pill near the header.
+- Mode switch is smaller and more premium.
+- Conversation messages start higher.
+- Message area has more vertical room.
+- Reply composer title shows badge inline:
+  Reply to Marina [Soft escalation]
+- Hard mode shows:
+  Reply to customer [Human takeover]
+- Soft mode still hides AI Editor.
+- Hard mode still shows AI Editor.
+- Translate buttons still visible.
+- Mode switching still works.
+- Mobile layout remains clean.
+- Build/typecheck clean.
+- Report exact files changed.
+- Report whether Refero/Repro was connected and what references were used.
+- Do not commit.
+- Do not publish.
