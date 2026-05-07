@@ -1,0 +1,184 @@
+Project 2 dashboard frontend hard bugfix — visible TASK-### number is still missing from task cards.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not modify backend.
+- Work only on Tasks page/task components/local task state.
+- Do not touch Settings.
+- Do not touch Inbox.
+- Do not touch DashboardShell.
+- Do not commit.
+- Do not publish until reviewed.
+
+BUG:
+The unique task number feature is still not visible in the UI.
+
+Screenshot shows a task card with:
+
+Assigned to Jr
+Created by Calvin · Today, 16:08
+Test, checking Unique numbers
+
+But there is NO visible TASK-### anywhere.
+
+This is a hard acceptance failure.
+
+Do not explain that storage logic exists.
+Do not say the implementation is correct.
+The user cannot see the task number, so the feature is broken.
+
+Required visible result:
+Every task card header must visibly show a task identifier like:
+
+TASK-001
+TASK-002
+TASK-003
+
+Example final layout:
+
+TASK-043
+Assigned to Jr
+Created by Calvin · Today, 16:08
+
+or:
+
+TASK-043 · Assigned to Jr
+Created by Calvin · Today, 16:08
+
+Hard requirement:
+The TASK-### badge must be visible on every task card, including:
+- local pending tasks
+- synced/backend tasks
+- tasks created before this feature existed
+- tasks created while backend is available
+- tasks created while backend is unavailable
+
+Do not hide the badge because task.taskNumber is missing.
+If task.taskNumber is missing at render time, assign/display a stable fallback number immediately and persist it.
+
+Current likely failure:
+TaskCard only renders the badge if:
+
+typeof task.taskNumber === "number"
+
+But the task object reaching TaskCard still has no taskNumber, so nothing renders.
+
+Fix the full path:
+1. Inspect TaskCard.tsx.
+2. Find where the TASK badge is supposed to render.
+3. Make it impossible for a task card to render without a visible task number.
+4. Inspect Tasks.tsx allTasks memo.
+5. Confirm every task passed into TaskCard has a displayTaskNumber.
+6. Inspect use-task-number-overlay.ts.
+7. Confirm backend/synced tasks get overlay numbers.
+8. Inspect use-local-pending-tasks.ts.
+9. Confirm local tasks get numbers.
+10. Add a final display-layer guarantee.
+
+Required implementation:
+Add a function/helper that guarantees a visible task number before rendering.
+
+Example concept:
+
+function getVisibleTaskNumber(task) {
+  if (typeof task.taskNumber === "number") return task.taskNumber;
+  return ensureOverlayNumber(task.id);
+}
+
+Then TaskCard receives either:
+- task.taskNumber guaranteed as number
+or
+- displayTaskNumber guaranteed as number
+
+TaskCard must render:
+
+TASK-${String(displayTaskNumber).padStart(3, "0")}
+
+Do not rely on optional conditional rendering that silently hides the badge.
+
+Existing tasks:
+If old tasks have no number:
+- assign one using stable id overlay
+- persist it in localStorage
+- do not change it after refresh
+
+Backend/synced tasks:
+If backend has no taskNumber:
+- assign local overlay number based on backend task id
+- persist it
+- display it
+- do not change it after refresh
+
+Local tasks:
+If local task has no taskNumber:
+- migrate it
+- persist it
+- display it
+
+Counter:
+- use one shared counter
+- next number must be max existing number + 1
+- do not create duplicates
+
+Visual:
+- Show the task number as a small clear pill/badge in the top-left of the task header.
+- It must be visible without opening the task.
+- Use neutral styling, for example:
+  TASK-043 pill above or next to “Assigned to Jr”.
+- Do not make it tiny/pale.
+- It must be readable.
+
+Acceptance test before reporting done:
+1. Open /tasks.
+2. Look at the first visible task card.
+3. Confirm visually that TASK-### appears.
+4. Create a new task.
+5. Confirm the new task visibly shows TASK-### immediately.
+6. Refresh the page.
+7. Confirm the same task still shows the same TASK-###.
+8. Park the task.
+9. Confirm the same number remains.
+10. Mark done.
+11. Confirm the same number remains.
+12. Open All tab.
+13. Confirm every visible task has a TASK-### badge.
+14. There must be zero task cards without a visible TASK-###.
+
+Important:
+Do not mark this complete unless the screenshot visibly shows TASK-### on the task card.
+
+Likely files:
+- artifacts/unboks/src/components/tasks/TaskCard.tsx
+- artifacts/unboks/src/pages/Tasks.tsx
+- artifacts/unboks/src/hooks/use-task-number-overlay.ts
+- artifacts/unboks/src/hooks/use-local-pending-tasks.ts
+- artifacts/unboks/src/lib/tasks-api.ts
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Inbox.tsx
+- DashboardShell
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Every task card visibly shows TASK-###.
+- Existing tasks show TASK-###.
+- New tasks show TASK-### immediately.
+- Refresh keeps the same number.
+- Park keeps the same number.
+- Done keeps the same number.
+- Reopen keeps the same number.
+- Edit keeps the same number.
+- No duplicates.
+- Build/typecheck clean.
+- Report exact files changed.
+- Include a screenshot or explicit visual confirmation that TASK-### is visible.
+- Do not commit.
+- Do not publish.

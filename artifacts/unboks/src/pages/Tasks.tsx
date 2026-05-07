@@ -166,11 +166,12 @@ export default function Tasks() {
   // and apply it on top of every backend row at render time.
   const { setOverride: setAuthorOverride, apply: applyAuthorOverlay } =
     useTaskAuthorOverlay();
-  // Per-server-id task number overlay. Lets a backend/shared task display
-  // a TASK-### badge — either because it was synced from a numbered local
-  // pending task, or because it was created directly on the backend from
-  // this dashboard. Pre-existing backend rows with no overlay entry render
-  // without a badge, per spec.
+  // Per-server-id task number overlay. Every backend/shared task gets a
+  // visible TASK-### badge: explicit overlay writes happen at create
+  // (handleSubmit) and at sync (syncPendingTasks); pre-existing rows that
+  // pre-date this feature are auto-allocated at render time inside
+  // `applyTaskNumber()`'s ensureAllocated() — same shared counter, same
+  // persistence, so the number is stable across refresh.
   const { setNumber: setTaskNumber, apply: applyTaskNumber } =
     useTaskNumberOverlay();
 

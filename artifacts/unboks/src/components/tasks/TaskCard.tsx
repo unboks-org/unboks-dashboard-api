@@ -259,19 +259,25 @@ export function TaskCard({
             <Avatar name={task.assignedTo} dim={muted} size="md" />
             <div className="min-w-0 leading-tight">
               <div className="flex min-w-0 items-center gap-2">
-                {typeof task.taskNumber === "number" && (
-                  <span
-                    title="Task number"
-                    className={cn(
-                      "inline-flex flex-shrink-0 items-center rounded-md border px-1.5 py-0.5 font-mono text-[10.5px] font-semibold tracking-wide tabular-nums",
-                      muted
-                        ? "border-[#e2e8f0] bg-[#f1f5f9] text-[#64748b]"
-                        : "border-[#dbe3ef] bg-[#eef2f7] text-[#475569]",
-                    )}
-                  >
-                    {formatTaskNumber(task.taskNumber)}
-                  </span>
-                )}
+                {/* TASK-### badge — ALWAYS rendered. The Tasks page guarantees
+                    every task reaches this component with a numeric
+                    `taskNumber` (local: assigned at creation; backend:
+                    assigned by the per-server-id overlay's render-time
+                    ensureAllocated()). The fallback "TASK-—" is defensive
+                    only and should never appear in practice. */}
+                <span
+                  title="Task number"
+                  className={cn(
+                    "inline-flex flex-shrink-0 items-center rounded-md border px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-wide tabular-nums",
+                    muted
+                      ? "border-[#e2e8f0] bg-[#f1f5f9] text-[#64748b]"
+                      : "border-[#c8d4e3] bg-[#eef2f7] text-[#334155]",
+                  )}
+                >
+                  {typeof task.taskNumber === "number"
+                    ? formatTaskNumber(task.taskNumber)
+                    : "TASK-—"}
+                </span>
                 <div
                   className={cn(
                     "truncate text-[13px] font-medium sm:text-[13.5px]",

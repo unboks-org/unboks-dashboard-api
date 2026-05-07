@@ -33,11 +33,69 @@
  * Cross-tab sync via the `storage` event so two open tabs agree.
  */
 import { useCallback, useEffect, useState } from "react";
+import { allocateNextTaskNumber } from "./use-local-pending-tasks";
 
 const STORAGE_KEY = "unboks_task_numbers";
 const COUNTER_KEY = "unboks_next_task_number";
 
 type NumberMap = Record<string, number>;
+
+/** Module-scoped cache of `serverTaskId → number`. The render-time
+ *  `ensureAllocated()` writes here BEFORE it touches React state so that
+ *  React StrictMode's double-invoke (and any rapid re-render) cannot
+ *  allocate the same task twice. The cache is the synchronous source of
+ *  truth; React state + localStorage trail it for cross-tab sync. */
+const ALLOC_CACHE = new Map<string, number>();
+
+/** Render-time allocator: guarantees a stable number for any task id, so
+ *  cards can render the TASK-### badge unconditionally on first paint —
+ *  no flash of "no number" while a useEffect catches up. Idempotent per
+ *  id and safe to call from `useMemo`. The localStorage write is the
+ *  single source of truth; the React state update happens lazily on the
+ *  next storage tick or via the explicit setters. */
+function ensureAllocated(taskId: string): number {
+  if (!taskId) return 0;
+  const cached = ALLOC_CACHE.get(taskId);
+  if (cached !== undefined) return cached;
+
+  // Check persistent storage first — another tab (or a previous mount of
+  // this tab) may have already allocated for this id.
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        const existing = (parsed as Record<string, unknown>)[taskId];
+        if (typeof existing === "number" && Number.isFinite(existing) && existing >= 1) {
+          ALLOC_CACHE.set(taskId, existing);
+          return existing;
+        }
+      }
+    }
+  } catch {
+    // Storage unreadable — fall through to allocation.
+  }
+
+  // Allocate fresh from the shared counter and persist immediately so a
+  // refresh (or another tab) sees the same number for this id.
+  const n = allocateNextTaskNumber();
+  ALLOC_CACHE.set(taskId, n);
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const parsed =
+      raw && typeof raw === "string" ? JSON.parse(raw) : {};
+    const map =
+      parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : {};
+    map[taskId] = n;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // Quota / privacy mode — the in-memory cache still gives a stable
+    // number for this session.
+  }
+  return n;
+}
 
 /** Heal cross-tab races where two tabs allocated the same TASK-### for two
  *  different backend ids before either could persist. Strategy mirrors
@@ -112,6 +170,9 @@ function readFromStorage(): NumberMap {
         // Quota / privacy mode — the in-memory copy is still correct.
       }
     }
+    // Hydrate the module cache so subsequent ensureAllocated() calls hit
+    // the cache before allocating.
+    for (const [id, n] of Object.entries(deduped.map)) ALLOC_CACHE.set(id, n);
     return deduped.map;
   } catch {
     return {};
@@ -179,8 +240,12 @@ export function useTaskNumberOverlay(): UseTaskNumberOverlayApi {
       // Don't override an explicit number (e.g. on local-pending rows that
       // are mapped through localToTask before the sync removes them).
       if (typeof task.taskNumber === "number") return task;
-      const n = numbers[task.id];
-      if (typeof n !== "number") return task;
+      // Render-time guarantee: every task gets a stable, persisted number.
+      // ensureAllocated() is idempotent per id and safe to call from a
+      // useMemo; it writes to localStorage + the module cache so a refresh
+      // returns the same value. We don't read `numbers` here because the
+      // module cache already mirrors it.
+      const n = numbers[task.id] ?? ensureAllocated(task.id);
       return { ...task, taskNumber: n };
     },
     [numbers],
