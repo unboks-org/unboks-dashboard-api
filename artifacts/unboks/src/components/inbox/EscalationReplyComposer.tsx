@@ -12,8 +12,10 @@
  *    is muted. Primary action: "Reply to customer". A small "Human takeover"
  *    or "AI muted" pill makes the state explicit.
  *
- * Both modes embed the AI Editor (Translate / Style / Fix) and remember the
- * previous draft so an Apply can be undone.
+ * Only hard escalation embeds the AI Editor (Translate / Style / Fix). In
+ * soft mode the operator is writing internal guidance to Marina, not a
+ * customer-facing reply, so AI rewriting would be off-purpose; the AI Editor
+ * button and panel are hidden entirely.
  *
  * If a send endpoint isn't connected (status 0 / 404 / 501 / 503), the
  * composer shows the calm fallback copy specified by product:
@@ -24,7 +26,7 @@
  * Strict copy rule: no em dashes anywhere in this file's user-facing text.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, VolumeX, User, Bot, Undo2 } from "lucide-react";
 import { useEscalationMutations } from "@/hooks/use-client-api";
 import { ApiError } from "@/lib/error";
@@ -63,6 +65,16 @@ export function EscalationReplyComposer({
 
   const { guidance, reply, resolve, takeover, handback } = useEscalationMutations();
   const isSoft = mode === "soft";
+
+  // When the operator toggles soft/hard we deliberately keep `draft` and
+  // `prevDraft` so an in-progress message survives the switch. We do reset
+  // the AI panel and any stale per-action notice, since both are tied to the
+  // previous mode's intent (notices say "Saved..." vs "Reply will be...";
+  // the AI panel makes no sense in soft mode).
+  useEffect(() => {
+    setAiOpen(false);
+    setNotice(null);
+  }, [mode]);
   const empty = draft.trim().length === 0;
   const sendPending = isSoft ? guidance.isPending : reply.isPending;
 
@@ -209,35 +221,37 @@ export function EscalationReplyComposer({
               : "border-[#dadce0] focus:border-[#c5221f]",
           )}
         />
-        <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setAiOpen(true)}
-            disabled={empty}
-            className={cn(
-              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium border transition-colors",
-              empty
-                ? "border-[#e8eaed] text-[#9aa0a6] bg-white cursor-not-allowed"
-                : "border-[#1a73e8]/30 text-[#1a73e8] bg-[#f0f6ff] hover:bg-[#e8f0fe]",
-            )}
-            aria-label="Open AI Editor"
-            title="AI Editor: Translate, Style, Fix"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            AI Editor
-          </button>
-          {prevDraft !== null && (
+        {!isSoft && (
+          <div className="mt-1.5 flex items-center gap-2 flex-wrap">
             <button
               type="button"
-              onClick={onUndo}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[12px] text-[#5f6368] hover:bg-[#f1f3f4]"
-              title="Undo last AI edit"
+              onClick={() => setAiOpen(true)}
+              disabled={empty}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium border transition-colors",
+                empty
+                  ? "border-[#e8eaed] text-[#9aa0a6] bg-white cursor-not-allowed"
+                  : "border-[#1a73e8]/30 text-[#1a73e8] bg-[#f0f6ff] hover:bg-[#e8f0fe]",
+              )}
+              aria-label="Open AI Editor"
+              title="AI Editor: Translate, Style, Fix"
             >
-              <Undo2 className="w-3.5 h-3.5" />
-              Undo edit
+              <Sparkles className="w-3.5 h-3.5" />
+              AI Editor
             </button>
-          )}
-        </div>
+            {prevDraft !== null && (
+              <button
+                type="button"
+                onClick={onUndo}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[12px] text-[#5f6368] hover:bg-[#f1f3f4]"
+                title="Undo last AI edit"
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+                Undo edit
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Calm fallback / error notice */}
@@ -307,18 +321,21 @@ export function EscalationReplyComposer({
         )}
       </div>
 
-      {/* AI Editor */}
-      <AIEditorPanel
-        open={aiOpen}
-        onClose={() => setAiOpen(false)}
-        draftText={draft}
-        onApply={onApplyEdit}
-        context={{
-          conversationId,
-          escalationMode: mode,
-          channel: channel.toLowerCase(),
-        }}
-      />
+      {/* AI Editor — hard escalation only. Soft mode is internal guidance to
+          Marina, so AI rewriting would be off-purpose. */}
+      {!isSoft && (
+        <AIEditorPanel
+          open={aiOpen}
+          onClose={() => setAiOpen(false)}
+          draftText={draft}
+          onApply={onApplyEdit}
+          context={{
+            conversationId,
+            escalationMode: mode,
+            channel: channel.toLowerCase(),
+          }}
+        />
+      )}
     </div>
   );
 }

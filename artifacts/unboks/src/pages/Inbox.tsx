@@ -473,9 +473,10 @@ function ConversationDetailPane({
 
       {showBanner && dbId && (
         <EscalationReplyComposer
-          // Re-mount the composer when the operator switches mode so its own
-          // internal draft/notice state resets cleanly between soft and hard.
-          key={selectedMode}
+          // Do NOT key on selectedMode. Remounting would wipe the operator's
+          // in-progress draft when they toggle soft/hard, which is a real loss.
+          // The composer handles per-mode UI (AI Editor visibility, notice
+          // reset, AI panel auto-close) internally via the `mode` prop.
           conversationDbId={dbId}
           conversationId={conversation.id}
           mode={selectedMode}

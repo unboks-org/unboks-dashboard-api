@@ -1,0 +1,66 @@
+Project 2 dashboard frontend bugfix — remove AI Editor from soft escalation composer.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not modify backend.
+- Work only on escalation composer frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch Inbox list unless needed for composer rendering.
+- Do not commit.
+- Do not publish until reviewed.
+
+Product rule:
+AI Editor is only needed for hard escalations.
+
+Soft escalation:
+- Operator writes guidance to Marina.
+- Marina uses that guidance to craft the real customer reply.
+- Therefore the operator does NOT need AI Editor in soft mode.
+
+Hard escalation:
+- Operator writes directly to the customer.
+- Therefore AI Editor is useful and should remain available.
+
+Required behavior:
+1. In soft escalation mode, hide/remove the AI Editor button completely.
+2. Soft composer should show:
+   - Soft escalation badge
+   - Reply to Marina
+   - Helper copy: Marina will use your guidance to answer the customer.
+   - Textarea
+   - Send to Marina button
+3. Soft composer must not show:
+   - AI Editor
+   - Translate
+   - Style
+   - Fix
+4. In hard escalation mode, keep AI Editor visible.
+5. Hard composer should show:
+   - Human takeover / Hard escalation badge
+   - Reply to customer
+   - Helper copy: This reply will be sent directly to the customer.
+   - Textarea
+   - AI Editor
+   - Reply to customer button
+6. Switching from soft to hard should make AI Editor appear.
+7. Switching from hard to soft should hide AI Editor.
+8. Do not break existing draft text when switching modes.
+9. Do not change backend/API.
+
+Likely files:
+- artifacts/unboks/src/components/inbox/EscalationReplyComposer.tsx
+- artifacts/unboks/src/components/inbox/AIEditorPanel.tsx
+- artifacts/unboks/src/pages/Inbox.tsx if composer is inline there
+
+Acceptance:
+- Soft escalation does not show AI Editor.
+- Hard escalation does show AI Editor.
+- Mode switch updates the composer immediately.
+- Send to Marina still works or keeps current placeholder behavior.
+- Reply to customer still works or keeps current placeholder behavior.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.
