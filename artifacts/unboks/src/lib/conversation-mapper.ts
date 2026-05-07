@@ -343,14 +343,70 @@ function pickBool(o: Record<string, unknown>, ...keys: string[]): boolean | null
   return null;
 }
 
+/**
+ * Infer the escalation mode from the wide variety of fields the Python
+ * backend may set. The backend has historically returned the same conceptual
+ * "hard" escalation under several different flags, and the previous
+ * normalizer only looked at the explicit `mode` / `escalation_mode` /
+ * `escalationMode` fields — so hard escalations whose mode lived in
+ * `ai_muted` / `human_takeover_at` / `handoff_required` / `escalation_type`
+ * came through as `mode: null` and never matched the "Human takeover" tab.
+ *
+ * Resolution rules (hard always wins over soft when both are present):
+ *
+ *   HARD if any of:
+ *     - mode / escalation_mode / escalationMode === "hard"
+ *     - type / escalation_type === "hard"
+ *     - handoff_required === true
+ *     - ai_muted / aiMuted === true
+ *     - human_takeover_at / humanTakeoverAt is a non-empty string
+ *
+ *   SOFT if any of:
+ *     - mode / escalation_mode / escalationMode === "soft"
+ *     - type / escalation_type === "soft"
+ *     - requires_human === true
+ *     - escalated === true (last-resort soft default — only when no hard
+ *       signal was found, since "escalated" alone implies the AI flagged it
+ *       for a human but the operator hasn't necessarily taken over yet)
+ *
+ * Returns null only if neither side has any signal — in which case the row
+ * still appears in "All" (legacy behavior preserved).
+ */
+function inferEscalationMode(o: Record<string, unknown>): "soft" | "hard" | null {
+  const explicitMode = pickStr(o, "mode", "escalation_mode", "escalationMode");
+  const explicitType = pickStr(o, "type", "escalation_type", "escalationType");
+
+  // --- Hard signals ---
+  const hardFromMode = explicitMode === "hard" || explicitType === "hard";
+  const handoffRequired = pickBool(o, "handoff_required", "handoffRequired") === true;
+  const aiMuted = pickBool(o, "ai_muted", "aiMuted") === true;
+  const humanTakeoverAt = pickStr(o, "human_takeover_at", "humanTakeoverAt");
+  if (
+    hardFromMode ||
+    handoffRequired ||
+    aiMuted ||
+    (humanTakeoverAt !== null && humanTakeoverAt.length > 0)
+  ) {
+    return "hard";
+  }
+
+  // --- Soft signals ---
+  const softFromMode = explicitMode === "soft" || explicitType === "soft";
+  const requiresHuman = pickBool(o, "requires_human", "requiresHuman") === true;
+  const escalated = pickBool(o, "escalated") === true;
+  if (softFromMode || requiresHuman || escalated) {
+    return "soft";
+  }
+
+  return null;
+}
+
 export function normalizeEscalation(raw: unknown): NormalizedEscalation | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
   const id = pickStr(o, "id", "_id", "escalation_id", "escalationId");
   if (!id) return null;
-  const modeRaw = pickStr(o, "mode", "escalation_mode", "escalationMode");
-  const mode: "soft" | "hard" | null =
-    modeRaw === "soft" ? "soft" : modeRaw === "hard" ? "hard" : null;
+  const mode = inferEscalationMode(o);
   // Resolved: prefer explicit; else infer from `status`; else default false
   // so legacy rows with no resolved field still appear in "All".
   const resolvedExplicit = pickBool(
