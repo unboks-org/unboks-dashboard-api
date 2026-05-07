@@ -129,21 +129,19 @@ export function MessageTranslateBlock({
   const showTrigger =
     state.kind === "idle" || state.kind === "loading" || state.kind === "hidden";
 
-  const triggerClass =
-    variant === "bubble"
-      ? cn(
-          "mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium opacity-70 transition-opacity hover:opacity-100",
-          // Inherit color from the bubble; underline-on-hover keeps it calm.
-          "hover:underline disabled:cursor-not-allowed",
-        )
-      : cn(
-          "mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#e2e8f0] bg-white px-2.5 py-1 text-[11.5px] font-medium text-[#475569] transition-colors hover:border-[#cbd5e1] hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-60",
-        );
+  // Both variants now use a clearly-visible pill against a neutral
+  // background so the action is unambiguously findable on desktop AND
+  // mobile (no opacity/hover gating). This is the Intercom / Slack
+  // pattern: a small, calm chip that lives next to the message rather
+  // than embedded inside its colored body.
+  const triggerClass = cn(
+    "inline-flex items-center gap-1.5 rounded-full border border-[#dbe3ef] bg-white px-2.5 py-1 text-[11.5px] font-medium text-[#475569] shadow-[0_1px_1px_rgba(15,23,42,0.04)] transition-colors hover:border-[#c7d2e0] hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-60",
+  );
 
   return (
     <>
       {showTrigger && (
-        <div className={variant === "bubble" ? "" : ""}>
+        <div className={variant === "bubble" ? "mt-1" : "mt-3"}>
           <button
             type="button"
             onClick={onTranslate}

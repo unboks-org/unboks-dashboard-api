@@ -1,0 +1,140 @@
+Project 2 dashboard frontend bugfix — Translate button is missing from conversation messages.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not modify backend.
+- Work only on conversation detail/message bubble frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch DashboardShell unless absolutely required.
+- Do not commit.
+- Do not publish until reviewed.
+
+Bug:
+The conversation detail has messages in Swedish, but there is no visible Translate button anywhere.
+
+The user needs a clear way to translate customer messages because operators may not understand every language.
+
+Required behavior:
+1. Every message bubble in the conversation detail must have a visible Translate action.
+2. It must not be hidden only on hover.
+3. It must be visible enough that the operator can find it immediately.
+4. Preferred placement:
+   - small “Translate” button under the message timestamp
+   - or small button in the message bubble footer
+   - or compact icon + “Translate” at the bottom of each bubble
+5. The button should be subtle but always visible.
+6. On mobile, it must also be visible.
+7. Do not rely only on hover because mobile has no hover and operators may miss it.
+8. Translation is for the operator only.
+9. Translation must not send anything to the customer.
+10. Translation must not modify the original message.
+
+UI copy:
+Button:
+Translate
+
+After translation:
+Translated to English
+
+Action:
+Hide translation
+
+If backend is missing:
+Translation will be connected by the Unboks team.
+
+If translation fails:
+Could not translate this message. Try again.
+
+Required translation flow:
+- Clicking Translate sends only that message text to translation API if available.
+- Default target language: English.
+- Keep original message visible.
+- Show translated text inline below the original.
+- Cache translated result in component state so repeated clicks do not call API again.
+- Hide translation should collapse it without deleting the cached result.
+
+Backend/API:
+Preferred:
+POST /api/{client}/dashboard/api/translate
+
+Body:
+{
+  "text": "message text",
+  "targetLanguage": "English",
+  "sourceLanguage": "auto",
+  "context": {
+    "conversationId": "string",
+    "messageId": "string",
+    "channel": "whatsapp | email | instagram | facebook | messenger | x | tiktok"
+  }
+}
+
+Response:
+{
+  "text": "translated text",
+  "sourceLanguage": "optional",
+  "targetLanguage": "English"
+}
+
+Alternative allowed:
+Reuse:
+POST /api/{client}/dashboard/api/ai-editor
+
+Body:
+{
+  "action": "translate",
+  "text": "message text",
+  "targetLanguage": "English",
+  "context": {
+    "usage": "operator_message_translation",
+    "conversationId": "string",
+    "messageId": "string"
+  }
+}
+
+Important:
+Even if backend endpoint is not ready, the Translate button must still be visible.
+If clicked and backend is missing, show the calm placeholder message.
+
+Likely files:
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/lib/api.ts
+- artifacts/unboks/src/hooks/use-client-api.ts
+Possibly create:
+- artifacts/unboks/src/components/inbox/MessageBubble.tsx
+- artifacts/unboks/src/components/inbox/MessageTranslation.tsx
+
+Investigation:
+- Find where message bubbles are rendered.
+- Check if Translate was added only to email messages or only hover state.
+- Check if Translate is hidden behind CSS opacity or group-hover.
+- Remove hover-only dependency.
+- Ensure every message bubble gets the action.
+- Ensure both incoming and outgoing messages can be translated, but prioritize incoming customer messages if needed.
+
+Design:
+- Premium and subtle.
+- Do not clutter the bubble.
+- Button can be small text with icon.
+- Example:
+  Translate
+  or:
+  🌐 Translate
+- Keep the bubble readable.
+
+Acceptance:
+- Open a Swedish conversation.
+- Each message bubble shows a visible Translate button.
+- Button is visible without hover.
+- Clicking Translate shows translated text inline.
+- Original text stays visible.
+- Hide translation works.
+- Backend missing shows calm placeholder, not silent fail.
+- Mobile shows the Translate button.
+- No message is sent to customer.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

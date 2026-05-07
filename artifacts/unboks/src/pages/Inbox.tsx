@@ -59,27 +59,45 @@ function MessageBubble({
   channel: string;
 }) {
   const isAssistant = msg.role === "assistant";
+  // Translate trigger lives OUTSIDE the colored bubble so it's clearly
+  // visible against the page background on every message — no hover, no
+  // opacity tricks. Width caps to the bubble's max width so the trigger
+  // and translation block sit naturally beneath the message.
   return (
     <div className={cn("flex", isAssistant ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-[75%] px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed",
-          isAssistant
-            ? "bg-[#e8f0fe] text-[#1a73e8] rounded-br-sm"
-            : "bg-[#f1f3f4] text-[#202124] rounded-bl-sm",
+          "flex max-w-[75%] flex-col",
+          isAssistant ? "items-end" : "items-start",
         )}
       >
-        {msg.content}
-        {msg.timestamp && (
-          <p className="text-[11px] mt-1 opacity-60">{msg.timestamp}</p>
-        )}
-        <MessageTranslateBlock
-          messageId={msg.id}
-          text={msg.content}
-          conversationId={conversationId}
-          channel={channel}
-          variant="bubble"
-        />
+        <div
+          className={cn(
+            "px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed",
+            isAssistant
+              ? "bg-[#e8f0fe] text-[#1a73e8] rounded-br-sm"
+              : "bg-[#f1f3f4] text-[#202124] rounded-bl-sm",
+          )}
+        >
+          {msg.content}
+          {msg.timestamp && (
+            <p className="text-[11px] mt-1 opacity-60">{msg.timestamp}</p>
+          )}
+        </div>
+        <div
+          className={cn(
+            "flex w-full",
+            isAssistant ? "justify-end" : "justify-start",
+          )}
+        >
+          <MessageTranslateBlock
+            messageId={msg.id}
+            text={msg.content}
+            conversationId={conversationId}
+            channel={channel}
+            variant="bubble"
+          />
+        </div>
       </div>
     </div>
   );
