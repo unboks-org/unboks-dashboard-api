@@ -1,5 +1,6 @@
 import { ApiError } from "@/lib/error";
 import { getApiBase, getToken, clearAuth } from "@/lib/tenant";
+import { formatConversationTimestamp } from "@/lib/conversation-mapper";
 
 // ---------------------------------------------------------------------------
 // Valid clients
@@ -283,14 +284,133 @@ export function encodeConversationKey(rawKey: string): string {
   return encodeURIComponent(cleaned);
 }
 
+/**
+ * Normalize a single raw message from the backend into the strict
+ * `ApiMessage` shape used by the UI. The Python backend has shipped several
+ * message shapes over time and the email pipeline in particular returns
+ * objects whose body field is `text` / `body` / `message` rather than
+ * `content`, plus `created_at` instead of `timestamp`. Without this mapping
+ * the detail pane rendered empty bubbles for every email message because
+ * `msg.content` resolved to undefined.
+ *
+ * Field priority follows the backend's documented + observed shapes; first
+ * non-empty wins. Role is mapped from `role` / `direction` / `sender` /
+ * `from`, with `incoming|inbound|customer|user` → `user` and everything
+ * else (`outgoing|outbound|assistant|agent|bot|ai`) → `assistant`.
+ */
+function pickStr(o: Record<string, unknown>, ...keys: string[]): string | null {
+  for (const k of keys) {
+    const v = o[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return null;
+}
+
+function normalizeMessage(raw: unknown, idx: number): ApiMessage | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+
+  const content =
+    pickStr(o, "text", "content", "body", "message", "snippet") ?? "";
+  // Drop messages with no body — they'd render as empty bubbles otherwise.
+  // (e.g. system pings, attachment-only rows we don't yet preview.)
+  if (!content) return null;
+
+  const roleRaw = (
+    pickStr(o, "role", "direction", "sender", "from", "author") ?? ""
+  ).toLowerCase();
+  const role: "user" | "assistant" =
+    /^(incoming|inbound|in|customer|user|client|contact)$/.test(roleRaw)
+      ? "user"
+      : "assistant";
+
+  const timestampRaw = pickStr(
+    o,
+    "timestamp",
+    "created_at",
+    "createdAt",
+    "sent_at",
+    "sentAt",
+    "date",
+    "time",
+  );
+  const timestamp = timestampRaw
+    ? formatConversationTimestamp(timestampRaw)
+    : "";
+
+  const id = pickStr(o, "id", "_id", "messageId", "message_id") ?? `msg-${idx}`;
+
+  return { id, role, content, timestamp };
+}
+
+/** Pull the messages array from any of the shapes the backend has returned:
+ *  bare array, `{ messages: [...] }`, `{ history: [...] }`, etc. */
+function extractRawMessages(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === "object") {
+    const o = raw as Record<string, unknown>;
+    for (const key of ["messages", "history", "thread", "items", "data"]) {
+      const v = o[key];
+      if (Array.isArray(v)) return v;
+    }
+  }
+  return [];
+}
+
 export async function fetchConversation(phone: string): Promise<ConversationDetail> {
   const key = (phone ?? "").replace(/[\r\n]+/g, "").trim();
   if (!key) {
     throw new ApiError(400, "Conversation id is missing.");
   }
-  return apiFetch<ConversationDetail>(
+  // Fetch as `unknown` so we can defensively normalize both the message
+  // field names and the envelope shape (bare array vs. object with
+  // `messages`). Email conversations in particular return body text under
+  // `text` / `body` rather than `content`, and timestamps under
+  // `created_at` rather than `timestamp` — without normalization the
+  // detail pane renders empty bubbles for every email.
+  const raw = await apiFetch<unknown>(
     `/messages/conversations/${encodeConversationKey(key)}`,
   );
+
+  const rawMessages = extractRawMessages(raw);
+  const messages = rawMessages
+    .map((m, i) => normalizeMessage(m, i))
+    .filter((m): m is ApiMessage => m !== null);
+
+  // Pull metadata from the envelope when present; otherwise fall back to
+  // sensible defaults so the rest of the UI (header, escalation banner,
+  // composer) keeps working even on minimal responses.
+  const env = (raw && typeof raw === "object" && !Array.isArray(raw)
+    ? (raw as Record<string, unknown>)
+    : {}) as Record<string, unknown>;
+
+  return {
+    phone: pickStr(env, "phone", "external_id", "externalId") ?? key,
+    name: pickStr(env, "name", "customerName", "customer_name") ?? "",
+    contactId: pickStr(env, "contactId", "contact_id"),
+    platform: pickStr(env, "platform", "channel") ?? "",
+    messages,
+    escalated: typeof env.escalated === "boolean" ? env.escalated : undefined,
+    escalationResolved:
+      typeof env.escalationResolved === "boolean"
+        ? env.escalationResolved
+        : typeof env.escalation_resolved === "boolean"
+          ? (env.escalation_resolved as boolean)
+          : undefined,
+    escalationMode: (pickStr(env, "escalationMode", "escalation_mode") ?? null) as ConversationDetail["escalationMode"],
+    escalationReason: pickStr(env, "escalationReason", "escalation_reason"),
+    escalationSummary: pickStr(env, "escalationSummary", "escalation_summary"),
+    humanGuidance: pickStr(env, "humanGuidance", "human_guidance"),
+    humanResponder: pickStr(env, "humanResponder", "human_responder"),
+    humanRespondedAt: pickStr(env, "humanRespondedAt", "human_responded_at"),
+    humanTakeoverAt: pickStr(env, "humanTakeoverAt", "human_takeover_at"),
+    aiMuted: typeof env.aiMuted === "boolean"
+      ? env.aiMuted
+      : typeof env.ai_muted === "boolean"
+        ? (env.ai_muted as boolean)
+        : undefined,
+    learningStatus: (pickStr(env, "learningStatus", "learning_status") ?? undefined) as ConversationDetail["learningStatus"],
+  };
 }
 
 export async function deleteConversation(phone: string): Promise<void> {

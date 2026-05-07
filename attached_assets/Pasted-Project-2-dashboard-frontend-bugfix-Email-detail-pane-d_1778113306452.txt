@@ -1,0 +1,101 @@
+Project 2 dashboard frontend bugfix — Email detail pane does not show message body.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python API assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch DashboardShell unless absolutely required.
+- Do not commit.
+- Do not publish until reviewed.
+
+Bug:
+Email conversations appear in the Email list.
+But when clicking an email conversation, the right-side detail pane opens but does not show the actual email/message body.
+It shows the contact/header area, then empty/loading placeholder bubbles.
+
+WhatsApp detail may work, but Email detail is broken.
+
+Important:
+The Python backend uses the `phone` field as the conversation identifier.
+For email conversations, `phone` can contain special characters, for example:
+email::subj:workspace-noreply@google.com:boost productivity...
+
+Frontend must safely fetch details for these email conversation IDs.
+
+Required behavior:
+1. Clicking an Email row must show the full message history/body in the detail pane.
+2. Email detail request must use the exact backend-provided conversation identifier.
+3. The identifier must be URL encoded with encodeURIComponent before building the URL.
+4. Do not double-encode.
+5. WhatsApp detail must still work.
+6. Message body must render from whatever field the Python backend returns:
+   - text
+   - content
+   - body
+   - message
+7. Timestamp must render formatted, not raw ISO.
+8. If the detail API fails, show a readable error in the detail pane, not empty placeholder bubbles.
+9. Do not show fake/mock detail messages.
+10. Do not change backend/API.
+
+Investigation:
+- Inspect the click handler for selecting a conversation.
+- Inspect the selected conversation id/key passed to the detail fetch.
+- Inspect fetchConversationDetail / fetchConversationMessages in:
+  artifacts/unboks/src/lib/api.ts
+  artifacts/unboks/src/hooks/use-client-api.ts
+- Confirm the request URL for Email uses encodeURIComponent.
+- Add console/debug temporarily if needed, then remove.
+- Check live API shape for:
+  GET /api/unboks/dashboard/api/messages/conversations/{encodedPhone}
+- Normalize returned message fields defensively.
+
+Expected API call:
+If id is:
+email::subj:workspace-noreply@google.com:boost productivity...
+
+Request path must contain:
+encodeURIComponent(id)
+
+NOT raw:
+.../conversations/email::subj:workspace-noreply@google.com:boost productivity...
+
+Possible message response shapes:
+[
+  {
+    "id": "...",
+    "role": "user" | "assistant",
+    "text": "...",
+    "created_at": "..."
+  }
+]
+
+or:
+{
+  "messages": [...]
+}
+
+Frontend must support both if currently needed.
+
+Likely files:
+- artifacts/unboks/src/lib/api.ts
+- artifacts/unboks/src/hooks/use-client-api.ts
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/lib/conversation-mapper.ts if detail mapping lives there
+
+Acceptance:
+- Click first Email row → full email/message body appears in right pane.
+- Click each Email row → body appears.
+- Click WhatsApp row → body still appears.
+- No empty placeholder bubbles after loading completes.
+- If API error happens, detail pane shows clear error.
+- Email IDs with ::, @, spaces, subject text work.
+- Timestamps in detail pane are formatted.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.
