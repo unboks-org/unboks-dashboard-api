@@ -1,0 +1,183 @@
+Project 2 dashboard frontend — add language selection to message Translate action using Refero/Repro.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not modify backend.
+- Work only on conversation detail/message translation frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch DashboardShell unless absolutely required.
+- Do not commit.
+- Do not publish until reviewed.
+
+Current issue:
+Message bubbles now show a Translate button, but it only translates to English.
+Operators may need translation into different languages.
+
+Task:
+Add a small premium language selection flow to the message Translate action.
+
+Use Refero/Repro:
+Use real translation/message UI references before designing.
+References should include:
+- Gmail translate message
+- Apple Translate
+- Intercom conversation tools
+- Zendesk translation
+- Slack message actions
+- Front email/message actions
+
+If Refero/Repro is not connected, stop and report clearly before editing.
+
+Required behavior:
+1. Translate action must let the operator choose target language.
+2. Default target language should be English.
+3. Operator can choose another language before translating.
+4. Translation target must be sent to the API as targetLanguage.
+5. The translated output label must show the selected language:
+   - Translated to English
+   - Translated to Dutch
+   - Translated to Spanish
+   - Translated to Papiamento
+   - etc.
+6. Original message remains visible.
+7. Translation appears inline under the original message.
+8. Hide translation still works.
+9. Changing target language should retranslate or allow translating again into the new language.
+10. Do not send anything to the customer.
+11. Do not modify original conversation history.
+
+Preferred UI:
+Replace single “Translate” button with a compact split control or dropdown:
+
+Option A:
+[Translate ▼]
+Click opens small dropdown:
+- English
+- Dutch
+- Spanish
+- Papiamento
+- Portuguese
+- Swedish
+
+Option B:
+[Translate] [English ▼]
+Translate uses selected language.
+
+Pick the cleaner premium solution.
+
+Language options for v1:
+- English
+- Dutch
+- Spanish
+- Papiamento
+- Portuguese
+- Swedish
+
+Optional later:
+- French
+- German
+
+Do not overbuild.
+No huge modal.
+No full-screen selector.
+
+Design:
+- Small, clean, premium.
+- Must not clutter message bubbles.
+- Works on desktop and mobile.
+- Dropdown should be readable and easy to tap.
+- Keep button visible without hover.
+- Use the existing Translate button style if good, but add language choice.
+- No giant menu.
+- No messy text.
+
+API:
+Preferred endpoint:
+POST /api/{client}/dashboard/api/translate
+
+Body:
+{
+  "text": "message text",
+  "targetLanguage": "Dutch",
+  "sourceLanguage": "auto",
+  "context": {
+    "conversationId": "string",
+    "messageId": "string",
+    "channel": "whatsapp | email | instagram | facebook | messenger | x | tiktok"
+  }
+}
+
+Alternative allowed:
+POST /api/{client}/dashboard/api/ai-editor
+
+Body:
+{
+  "action": "translate",
+  "text": "message text",
+  "targetLanguage": "Dutch",
+  "context": {
+    "usage": "operator_message_translation",
+    "conversationId": "string",
+    "messageId": "string"
+  }
+}
+
+Response:
+{
+  "text": "translated text",
+  "sourceLanguage": "optional",
+  "targetLanguage": "Dutch"
+}
+
+Caching:
+- Cache translation by message id + target language.
+- Example key:
+  messageId + ":" + targetLanguage
+- If the same message is translated to English and Dutch, both can be cached separately.
+- Do not reuse English translation when Dutch is selected.
+
+Error behavior:
+- If backend missing:
+  “Translation will be connected by the Unboks team.”
+- If failed:
+  “Could not translate this message. Try again.”
+- If 401/403:
+  use existing session expired behavior.
+
+Likely files:
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/lib/api.ts
+- artifacts/unboks/src/hooks/use-client-api.ts
+Possibly:
+- artifacts/unboks/src/components/inbox/MessageBubble.tsx
+- artifacts/unboks/src/components/inbox/MessageTranslation.tsx
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Tasks.tsx
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Translate control is visible on message bubbles.
+- Operator can choose target language.
+- Default is English.
+- Selecting Dutch sends targetLanguage: "Dutch".
+- Selecting Spanish sends targetLanguage: "Spanish".
+- Translation label shows the selected language.
+- Original message remains visible.
+- Hide translation works.
+- Changing language does not reuse wrong cached translation.
+- Mobile layout works.
+- Build/typecheck clean.
+- Report exact files changed.
+- Report whether Refero/Repro was connected and what references were used.
+- Do not commit.
+- Do not publish.
