@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Check, RotateCcw, Loader2, Pencil, X, Copy, Pause, Play } from "lucide-react";
-import type { Task, TaskUser } from "@/lib/tasks-api";
+import { formatTaskNumber, type Task, type TaskUser } from "@/lib/tasks-api";
 import { cn } from "@/lib/utils";
 
 /** Convert HTML to plain text while preserving paragraph/line breaks.
@@ -258,13 +258,28 @@ export function TaskCard({
           <div className="flex min-w-0 items-start gap-2.5">
             <Avatar name={task.assignedTo} dim={muted} size="md" />
             <div className="min-w-0 leading-tight">
-              <div
-                className={cn(
-                  "truncate text-[13px] font-medium sm:text-[13.5px]",
-                  muted ? "text-[#4b5563]" : "text-[#1f2937]",
+              <div className="flex min-w-0 items-center gap-2">
+                {typeof task.taskNumber === "number" && (
+                  <span
+                    title="Task number"
+                    className={cn(
+                      "inline-flex flex-shrink-0 items-center rounded-md border px-1.5 py-0.5 font-mono text-[10.5px] font-semibold tracking-wide tabular-nums",
+                      muted
+                        ? "border-[#e2e8f0] bg-[#f1f5f9] text-[#64748b]"
+                        : "border-[#dbe3ef] bg-[#eef2f7] text-[#475569]",
+                    )}
+                  >
+                    {formatTaskNumber(task.taskNumber)}
+                  </span>
                 )}
-              >
-                Assigned to {task.assignedTo}
+                <div
+                  className={cn(
+                    "truncate text-[13px] font-medium sm:text-[13.5px]",
+                    muted ? "text-[#4b5563]" : "text-[#1f2937]",
+                  )}
+                >
+                  Assigned to {task.assignedTo}
+                </div>
               </div>
               <div className="mt-0.5 truncate text-[11.5px] text-[#6b7280] sm:text-[12px]">
                 Created by {task.createdBy} · {formatTaskDate(task.createdAt)}

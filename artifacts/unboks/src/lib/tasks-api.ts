@@ -99,6 +99,19 @@ export interface Task {
   localId?: string;
   /** Sync state for local-only tasks. Absent for backend tasks. */
   syncStatus?: "pending" | "syncing" | "failed";
+  /** Per-board human-friendly number, e.g. 7 → "TASK-007". Required for
+   *  local-pending tasks; optional for backend tasks until the API ships a
+   *  real per-workspace `task_number`. The UI hides the badge when absent
+   *  rather than inventing unstable numbers that change on refresh. */
+  taskNumber?: number;
+}
+
+/** Format a task number for display, e.g. 7 → "TASK-007". Numbers above
+ *  999 keep their natural width (e.g. 1234 → "TASK-1234") so the badge
+ *  never silently truncates. */
+export function formatTaskNumber(n: number): string {
+  const safe = Math.max(0, Math.floor(n));
+  return `TASK-${String(safe).padStart(3, "0")}`;
 }
 
 export interface CreateTaskPayload {

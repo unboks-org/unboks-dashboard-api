@@ -1,0 +1,125 @@
+Project 2 dashboard frontend — add unique visible task numbers.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not modify backend.
+- Work only on Tasks page/task components/local task state.
+- Do not touch Settings.
+- Do not touch Inbox.
+- Do not touch DashboardShell.
+- Do not commit.
+- Do not publish until reviewed.
+
+Feature:
+Each task needs a visible unique identification number.
+
+Purpose:
+Calvin and Jr need to reference tasks clearly, for example:
+“Check TASK-007”
+“Park TASK-012”
+“Done with TASK-003”
+
+Required behavior:
+1. Every task card must show a visible task number.
+2. Format:
+   TASK-001
+   TASK-002
+   TASK-003
+3. Numbers must be unique within the local task board.
+4. New tasks get the next available number.
+5. Task number must persist after refresh.
+6. Editing a task must not change the task number.
+7. Parking a task must not change the task number.
+8. Marking done must not change the task number.
+9. Reopening must not change the task number.
+10. Copy text should copy only the task body by default, not the task number, unless there is already a separate “Copy task” action.
+11. Task number should be visible near the task header.
+12. Task number should be small but clear.
+
+Preferred UI:
+Task card header should show something like:
+
+TASK-007
+Assigned to Jr
+Created by Calvin · Today, 22:35
+
+or:
+
+TASK-007 · Assigned to Jr
+Created by Calvin · Today, 22:35
+
+Use a small neutral pill/badge for TASK-007.
+
+Data model:
+Add a field to local tasks:
+
+taskNumber: number
+
+Display helper:
+
+formatTaskNumber(7) => "TASK-007"
+
+For existing local tasks:
+- Add a migration that assigns task numbers to old tasks that do not have one.
+- Preserve their current order as much as possible.
+- Do not renumber tasks that already have a taskNumber.
+
+Counter storage:
+Use localStorage to track next task number.
+
+Suggested key:
+unboks_next_task_number
+
+Suggested behavior:
+- On create, read next number.
+- Assign it.
+- Increment and save next number.
+- If existing tasks have higher taskNumber, next number should be max + 1.
+
+Backend/shared tasks:
+- If backend tasks already have id/taskNumber, display backend taskNumber if present.
+- If backend task has no taskNumber, show a short safe fallback like:
+  TASK-REMOTE
+  or hide number for backend tasks until backend supports it.
+- Do not invent unstable numbers for backend tasks that change on refresh.
+- For local pending tasks, taskNumber is required.
+
+Important:
+This is frontend-only for now.
+When backend tasks are implemented, Jr should add a real per-workspace task_number field.
+
+Likely files:
+- artifacts/unboks/src/components/tasks/TaskCard.tsx
+- artifacts/unboks/src/components/tasks/TaskComposer.tsx
+- artifacts/unboks/src/pages/Tasks.tsx
+- artifacts/unboks/src/hooks/use-local-pending-tasks.ts
+- artifacts/unboks/src/lib/tasks-api.ts
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Inbox.tsx
+- DashboardShell
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- New task shows TASK-001 or next available number.
+- Every local task has a visible unique number.
+- Existing local tasks get numbers after migration.
+- Refresh keeps the same numbers.
+- Edit keeps the same number.
+- Park keeps the same number.
+- Done keeps the same number.
+- Reopen keeps the same number.
+- UI remains premium and clean.
+- Mobile layout works.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

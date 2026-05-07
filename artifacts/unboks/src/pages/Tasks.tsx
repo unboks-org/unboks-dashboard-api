@@ -76,6 +76,7 @@ function localToTask(local: LocalPendingTask): Task {
     completedAt: local.completedAt,
     completedBy: local.completedBy,
     syncStatus: local.syncStatus,
+    taskNumber: local.taskNumber,
   };
 }
 
