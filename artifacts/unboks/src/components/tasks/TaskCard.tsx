@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Check, RotateCcw, Loader2, Pencil, X, Copy, Pause, Play } from "lucide-react";
+import { Check, RotateCcw, Loader2, Pencil, X, Copy, Pause, Play, ChevronDown, ChevronUp } from "lucide-react";
 import { formatTaskNumber, type Task, type TaskUser } from "@/lib/tasks-api";
 import { cn } from "@/lib/utils";
 
@@ -166,7 +166,20 @@ export function TaskCard({
   // "Muted" = visually softer card surface for non-active states.
   const muted = isDone || isParked;
 
+  // Collapse long bodies behind a Show more toggle so the board doesn't
+  // require 10s of scrolling to skim. Trip on either threshold so a
+  // single very long line collapses the same as a 6-line block.
+  const COLLAPSE_LINE_THRESHOLD = 5;
+  const COLLAPSE_CHAR_THRESHOLD = 280;
+  const bodyLineCount = (task.bodyText || "").split("\n").length;
+  const bodyCharCount = (task.bodyText || "").length;
+  const isLong =
+    bodyLineCount > COLLAPSE_LINE_THRESHOLD ||
+    bodyCharCount > COLLAPSE_CHAR_THRESHOLD;
+
   const [editing, setEditing] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const collapsed = isLong && !expanded;
   const [draftText, setDraftText] = useState(task.bodyText || "");
   const [draftAssignee, setDraftAssignee] = useState<TaskUser>(task.assignedTo);
   const [copied, setCopied] = useState(false);
@@ -362,18 +375,41 @@ export function TaskCard({
             />
           </div>
         ) : (
-          <div
-            className={cn(
-              "whitespace-pre-wrap break-words text-[14px] leading-relaxed",
-              isDone
-                ? "text-[#6b7280] line-through decoration-[#cbd5e1]"
-                : isParked
-                  ? "text-[#4b5563]"
-                  : "text-[#1f2937]",
+          <>
+            <div
+              className={cn(
+                "whitespace-pre-wrap break-words text-[14px] leading-relaxed",
+                collapsed && "max-h-[7.5em] overflow-hidden",
+                isDone
+                  ? "text-[#6b7280] line-through decoration-[#cbd5e1]"
+                  : isParked
+                    ? "text-[#4b5563]"
+                    : "text-[#1f2937]",
+              )}
+            >
+              {body || <span className="text-[#9aa0a6]">(no description)</span>}
+            </div>
+            {isLong && (
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                aria-expanded={expanded}
+                className="mt-2 inline-flex items-center gap-1 rounded-full border border-[#dadce0] bg-white px-2.5 py-0.5 text-[11.5px] font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4]"
+              >
+                {expanded ? (
+                  <>
+                    <ChevronUp className="h-3 w-3" />
+                    Show less
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-3 w-3" />
+                    Show more
+                  </>
+                )}
+              </button>
             )}
-          >
-            {body || <span className="text-[#9aa0a6]">(no description)</span>}
-          </div>
+          </>
         )}
 
         {task.attachments.length > 0 && (
