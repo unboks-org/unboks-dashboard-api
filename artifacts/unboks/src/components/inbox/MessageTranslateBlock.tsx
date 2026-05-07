@@ -129,19 +129,21 @@ export function MessageTranslateBlock({
   const showTrigger =
     state.kind === "idle" || state.kind === "loading" || state.kind === "hidden";
 
-  // Both variants now use a clearly-visible pill against a neutral
-  // background so the action is unambiguously findable on desktop AND
-  // mobile (no opacity/hover gating). This is the Intercom / Slack
-  // pattern: a small, calm chip that lives next to the message rather
-  // than embedded inside its colored body.
+  // Always-visible, high-contrast pill. Earlier versions used
+  // `bg-white` with a near-grey border, which disappeared against the
+  // chat pane's near-white background (#f8f9fa). This version uses the
+  // dashboard's blue accent so the action is unmistakable on desktop AND
+  // mobile, with no hover or opacity tricks. Identical styling for both
+  // variants so chat bubbles and email cards behave the same.
   const triggerClass = cn(
-    "inline-flex items-center gap-1.5 rounded-full border border-[#dbe3ef] bg-white px-2.5 py-1 text-[11.5px] font-medium text-[#475569] shadow-[0_1px_1px_rgba(15,23,42,0.04)] transition-colors hover:border-[#c7d2e0] hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-60",
+    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+    "border-[#1a73e8] bg-[#e8f0fe] text-[#1a73e8] hover:bg-[#d2e3fc]",
   );
 
   return (
     <>
       {showTrigger && (
-        <div className={variant === "bubble" ? "mt-1" : "mt-3"}>
+        <div className={variant === "bubble" ? "mt-1.5" : "mt-3"}>
           <button
             type="button"
             onClick={onTranslate}
@@ -151,9 +153,9 @@ export function MessageTranslateBlock({
             className={triggerClass}
           >
             {state.kind === "loading" ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <Languages className="h-3 w-3" />
+              <Languages className="h-3.5 w-3.5" />
             )}
             {triggerLabel}
           </button>

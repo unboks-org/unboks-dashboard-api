@@ -1,0 +1,98 @@
+Project 2 dashboard frontend hard bugfix — sidebar order still wrong.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not modify backend.
+- Work only on the dashboard sidebar/drawer navigation.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch Inbox logic unless required for active state.
+- Do not touch backend, DNS, auth, .replit, or attached_assets.
+- Do not commit.
+- Do not publish until reviewed.
+
+BUG:
+Sidebar order was requested to change, but it did not change.
+
+Current rendered sidebar still shows:
+
+Inbox
+Escalations
+
+This is wrong.
+
+Required visible result:
+The sidebar must show:
+
+Escalations
+Inbox
+
+Escalations must be first because it is the most urgent operator function.
+
+Hard acceptance:
+Do not mark complete unless the screenshot visibly shows Escalations above Inbox.
+
+Required behavior:
+1. Escalations appears first in the main navigation.
+2. Inbox appears second.
+3. Escalations count badge still works.
+4. Inbox still works.
+5. Active state still works.
+6. Clicking Escalations still opens Escalations.
+7. Clicking Inbox still opens Inbox.
+8. Mobile drawer uses the same order.
+9. Desktop sidebar uses the same order.
+10. Do not change channel order.
+11. Do not change Workspace order unless unrelated cleanup is required.
+12. Do not break navigation persistence.
+
+Likely failure:
+There may be more than one nav array or render path.
+
+Investigate:
+- Search for "Inbox" in sidebar/navigation components.
+- Search for "Escalations" in sidebar/navigation components.
+- Check Drawer.tsx.
+- Check DashboardShell.tsx.
+- Check any NAV_ITEMS / PRIMARY_NAV / mainNav array.
+- Check mobile drawer render path.
+- Check desktop sidebar render path.
+- Make sure both use the same order.
+
+Likely files:
+- artifacts/unboks/src/components/inbox/Drawer.tsx
+- artifacts/unboks/src/components/inbox/DashboardShell.tsx
+
+Implementation requirement:
+Wherever the primary nav items are defined, reorder them so Escalations is before Inbox.
+
+Example:
+
+const primaryNavItems = [
+  { id: "escalations", label: "Escalations", ... },
+  { id: "inbox", label: "Inbox", ... },
+]
+
+NOT:
+
+const primaryNavItems = [
+  { id: "inbox", label: "Inbox", ... },
+  { id: "escalations", label: "Escalations", ... },
+]
+
+Acceptance test before reporting done:
+1. Open dashboard sidebar.
+2. Confirm Escalations appears above Inbox.
+3. Click Escalations, it opens Escalations.
+4. Click Inbox, it opens Inbox.
+5. Refresh page, sidebar order remains Escalations first.
+6. Check mobile drawer if possible, same order.
+7. Build/typecheck clean.
+8. Report exact files changed.
+9. Include explicit visual confirmation:
+   “Escalations is now above Inbox.”
+10. Do not commit.
+11. Do not publish.
+
+Do not mark this done unless Escalations visibly appears above Inbox in the real rendered sidebar.
