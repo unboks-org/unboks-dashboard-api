@@ -24,6 +24,8 @@ import {
   X,
   AlertCircle,
   AlertTriangle,
+  ChevronDown,
+  ChevronRight,
   Reply,
   Forward,
   Trash2,
@@ -32,6 +34,7 @@ import type { ApiMessage, ConversationDetail } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { EscalationReplyComposer } from "@/components/inbox/EscalationReplyComposer";
 import { EmailMessageDetail } from "@/components/inbox/EmailMessageDetail";
+import { EscalationReasonPanel } from "@/components/inbox/EscalationReasonPanel";
 import {
   ConversationTranslationBar,
   ConversationTranslationProvider,
@@ -317,6 +320,17 @@ function ConversationDetailPane({
     setSelectedMode(backendMode ?? (hasHardSignals ? "hard" : "soft"));
   }, [showBanner, dbId, conversation.id, backendMode, hasHardSignals]);
 
+  // Decision-first escalation pane: the conversation trail is collapsed
+  // by default so the operator's first read is the Escalation reason
+  // panel + the composer. They can expand the trail when they need
+  // context. Reset to collapsed whenever the open conversation changes
+  // so a previously-expanded trail doesn't carry over.
+  const isEscalation = Boolean(showBanner);
+  const [trailOpen, setTrailOpen] = useState(false);
+  useEffect(() => {
+    setTrailOpen(false);
+  }, [conversation.id]);
+
   return (
     <div className="flex-1 flex flex-col bg-white overflow-hidden border-l border-[#f1f3f4]">
       {/* Header — compact: identity on the left, escalation mode pill on the
@@ -404,95 +418,175 @@ function ConversationDetailPane({
         )}
       </div>
 
-      {/* Conversation-level translation: provider wraps both the toolbar
-          and the thread so each message can render its translation inline
-          without prop-drilling. The toolbar is the only place an operator
-          starts a translation in v2. */}
-      <ConversationTranslationProvider
-        conversationId={conversation.id}
-        channel={conversation.channel}
-        messages={messages}
-      >
-        <ConversationTranslationBar />
+      {isEscalation ? (
+        // ----- DECISION-FIRST ESCALATION LAYOUT -------------------------
+        // Order: Escalation reason → Composer → Conversation trail.
+        // The whole stack scrolls as one column so the panel + composer
+        // are always reachable above the (collapsed-by-default) trail,
+        // even on short viewports. The translation toolbar lives inside
+        // the trail since translations only matter when the operator is
+        // actually reading messages.
+        <div className="flex-1 overflow-y-auto">
+          <EscalationReasonPanel
+            mode={selectedMode}
+            summary={detail?.escalationSummary}
+            reason={detail?.escalationReason}
+            aiMuted={detail?.aiMuted}
+          />
 
-        {/* Message thread */}
-        <div
-          className={cn(
-            "flex-1 overflow-y-auto px-4 py-4",
-            conversation.channel === "Email" ? "space-y-4 bg-[#f8f9fa]" : "space-y-3",
-          )}
-        >
-          {isLoading && (
-            <p className="text-[13px] text-[#5f6368] text-center py-8">Loading messages…</p>
-          )}
-
-          {!isLoading && messages.length > 0 && (
-            conversation.channel === "Email"
-              ? messages.map((msg, i) => (
-                  <EmailMessageDetail key={msg.id ?? i} msg={msg} />
-                ))
-              : messages.map((msg, i) => (
-                  <MessageBubble key={msg.id ?? i} msg={msg} />
-                ))
+          {dbId && (
+            <EscalationReplyComposer
+              // Do NOT key on selectedMode. Remounting would wipe the
+              // operator's in-progress draft when they toggle soft/hard.
+              conversationDbId={dbId}
+              conversationId={conversation.id}
+              mode={selectedMode}
+              channel={conversation.channel}
+              aiMuted={selectedMode === "hard" ? detail?.aiMuted ?? false : false}
+              onDone={onClose}
+            />
           )}
 
-        {!isLoading && messages.length === 0 && (
-          <div className="py-8 space-y-3">
-            {conversation.subject !== "No preview available" && (
-              <div className="bg-[#f1f3f4] rounded-2xl rounded-bl-sm px-4 py-2.5 text-[13px] text-[#202124] text-left max-w-[75%]">
-                <p className="font-medium">{conversation.subject}</p>
-                {conversation.preview && conversation.preview !== conversation.subject && (
-                  <p className="text-[#5f6368] mt-1">{conversation.preview}</p>
-                )}
-              </div>
-            )}
-
-            {/* Calm, prominent error block. Replaces the previous tiny grey
-                line that read as "blank pane" when an Email conversation
-                detail failed to load. Shows status + reason so users know it
-                isn't a hung loader. */}
-            {errorDetail && (
-              <div
-                role="alert"
-                className="mx-auto max-w-[420px] rounded-xl border border-[#fad2cf] bg-[#fce8e6] px-4 py-3 text-left"
+          {/* Conversation trail — collapsed by default. The translation
+              provider lives inside so its bar appears only when the
+              operator opens the trail. */}
+          <ConversationTranslationProvider
+            conversationId={conversation.id}
+            channel={conversation.channel}
+            messages={messages}
+          >
+            <div className="border-t border-[#e8eaed]">
+              <button
+                type="button"
+                onClick={() => setTrailOpen((v) => !v)}
+                aria-expanded={trailOpen}
+                aria-controls="conversation-trail"
+                className="flex w-full items-center gap-2 bg-white px-4 py-2 text-left text-[12px] font-semibold text-[#5f6368] hover:bg-[#f8f9fa]"
               >
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-[#c5221f] flex-shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-semibold text-[#5f1414]">
-                      Couldn't load conversation
-                    </p>
-                    <p className="mt-1 text-[12px] text-[#5f6368] break-words">
-                      {errorDetail.status
-                        ? `${errorDetail.status} · ${errorDetail.message}`
-                        : errorDetail.message}
-                    </p>
-                  </div>
+                {trailOpen ? (
+                  <ChevronDown className="h-3.5 w-3.5 flex-shrink-0" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5 flex-shrink-0" />
+                )}
+                <span>Conversation trail</span>
+                {messages.length > 0 && (
+                  <span className="text-[11px] font-normal text-[#9aa0a6]">
+                    ({messages.length})
+                  </span>
+                )}
+                <span className="ml-auto text-[11px] font-normal text-[#9aa0a6]">
+                  {trailOpen ? "Hide conversation" : "Show conversation"}
+                </span>
+              </button>
+              {trailOpen && (
+                <div id="conversation-trail">
+                  <ConversationTranslationBar />
+                  <ConversationThreadBody
+                    isLoading={isLoading}
+                    messages={messages}
+                    conversation={conversation}
+                    errorDetail={errorDetail}
+                  />
+                </div>
+              )}
+            </div>
+          </ConversationTranslationProvider>
+        </div>
+      ) : (
+        // ----- STANDARD (non-escalation) LAYOUT -------------------------
+        // Conversation-first: translation toolbar + full thread, no
+        // composer. Unchanged from prior behavior for plain inbox items.
+        <ConversationTranslationProvider
+          conversationId={conversation.id}
+          channel={conversation.channel}
+          messages={messages}
+        >
+          <ConversationTranslationBar />
+          <ConversationThreadBody
+            isLoading={isLoading}
+            messages={messages}
+            conversation={conversation}
+            errorDetail={errorDetail}
+          />
+        </ConversationTranslationProvider>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ConversationThreadBody — the message list + empty/error placeholders.
+// Extracted so both the standard layout and the collapsible trail in the
+// escalation layout can reuse it without duplicating the placeholder logic.
+// ---------------------------------------------------------------------------
+function ConversationThreadBody({
+  isLoading,
+  messages,
+  conversation,
+  errorDetail,
+}: {
+  isLoading: boolean;
+  messages: ApiMessage[];
+  conversation: Conversation;
+  errorDetail: { status: number | null; message: string } | null;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex-1 overflow-y-auto px-4 py-4",
+        conversation.channel === "Email" ? "space-y-4 bg-[#f8f9fa]" : "space-y-3",
+      )}
+    >
+      {isLoading && (
+        <p className="text-[13px] text-[#5f6368] text-center py-8">Loading messages…</p>
+      )}
+
+      {!isLoading && messages.length > 0 && (
+        conversation.channel === "Email"
+          ? messages.map((msg, i) => (
+              <EmailMessageDetail key={msg.id ?? i} msg={msg} />
+            ))
+          : messages.map((msg, i) => (
+              <MessageBubble key={msg.id ?? i} msg={msg} />
+            ))
+      )}
+
+      {!isLoading && messages.length === 0 && (
+        <div className="py-8 space-y-3">
+          {conversation.subject !== "No preview available" && (
+            <div className="bg-[#f1f3f4] rounded-2xl rounded-bl-sm px-4 py-2.5 text-[13px] text-[#202124] text-left max-w-[75%]">
+              <p className="font-medium">{conversation.subject}</p>
+              {conversation.preview && conversation.preview !== conversation.subject && (
+                <p className="text-[#5f6368] mt-1">{conversation.preview}</p>
+              )}
+            </div>
+          )}
+
+          {errorDetail && (
+            <div
+              role="alert"
+              className="mx-auto max-w-[420px] rounded-xl border border-[#fad2cf] bg-[#fce8e6] px-4 py-3 text-left"
+            >
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-[#c5221f] flex-shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-[#5f1414]">
+                    Couldn't load conversation
+                  </p>
+                  <p className="mt-1 text-[12px] text-[#5f6368] break-words">
+                    {errorDetail.status
+                      ? `${errorDetail.status} · ${errorDetail.message}`
+                      : errorDetail.message}
+                  </p>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {!errorDetail && conversation.subject === "No preview available" && (
-              <p className="text-center text-[13px] text-[#9aa0a6]">No messages to display.</p>
-            )}
-          </div>
-        )}
+          {!errorDetail && conversation.subject === "No preview available" && (
+            <p className="text-center text-[13px] text-[#9aa0a6]">No messages to display.</p>
+          )}
         </div>
-      </ConversationTranslationProvider>
-
-      {showBanner && dbId && (
-        <EscalationReplyComposer
-          // Do NOT key on selectedMode. Remounting would wipe the operator's
-          // in-progress draft when they toggle soft/hard, which is a real loss.
-          // The composer handles per-mode UI (AI Editor visibility, notice
-          // reset, AI panel auto-close) internally via the `mode` prop.
-          conversationDbId={dbId}
-          conversationId={conversation.id}
-          mode={selectedMode}
-          channel={conversation.channel}
-          aiMuted={selectedMode === "hard" ? detail?.aiMuted ?? false : false}
-          onDone={onClose}
-        />
       )}
     </div>
   );

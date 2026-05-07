@@ -1,0 +1,256 @@
+Project 2 dashboard frontend — make Escalation detail decision-first with premium escalation reason box using Refero/Repro.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python backend assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch sidebar unless absolutely required.
+- Do not commit.
+- Do not publish until reviewed.
+
+Product problem:
+The Escalations page is currently conversation-first.
+When an operator clicks an escalation, they mostly see the full message trail.
+
+That is wrong for escalation handling.
+
+Escalations must be decision-first.
+
+The operator needs to instantly understand:
+1. Why was this escalated?
+2. What does the customer want?
+3. What does Marina need from the operator?
+4. What are the operator’s options?
+5. What should the operator reply?
+
+The full conversation trail should still be available, but it should be secondary.
+
+Use Refero/Repro:
+Use real premium customer-support escalation/ticket references before designing.
+References should include:
+- Intercom conversation details
+- Zendesk ticket summary panels
+- Front shared inbox
+- Linear issue detail summary/action panels
+- Salesforce service console
+- Slack thread summary/action UX
+
+If Refero/Repro is not connected, stop and report clearly before editing.
+
+Required new layout:
+When an escalation is selected, show a premium “Escalation reason” panel at the top of the detail pane, before the message trail.
+
+This panel must be the first thing the operator sees.
+
+Panel title:
+Escalation reason
+
+Panel content should include:
+
+1. Reason / Summary
+Short human-readable explanation of why this escalation needs attention.
+
+Example:
+“Calvin wants to schedule an activation meeting and gave 2 possible time slots. Marina needs a human to confirm which time works.”
+
+2. What the customer wants
+Short summary of the customer request.
+
+Example:
+“Customer wants to meet this week to activate the service.”
+
+3. What Marina needs
+Specific operator decision needed.
+
+Example:
+“Choose one of the proposed time slots, suggest another time, or ask Marina to collect more availability.”
+
+4. Operator options
+Show compact action chips or bullets:
+- Confirm a proposed time
+- Suggest another time
+- Ask Marina to collect more availability
+- Switch to human takeover
+
+5. Mode indicator
+Show whether this is:
+- AI needs help / Soft escalation
+- Human takeover / Hard escalation
+
+Soft escalation behavior:
+- The operator replies to Marina.
+- The reason panel should help the operator write guidance quickly.
+- Composer title:
+  Reply to Marina
+- Helper:
+  Marina will use your guidance to answer the customer.
+
+Hard escalation behavior:
+- The operator replies directly to the customer.
+- The reason panel should explain why human takeover is needed.
+- Composer title:
+  Reply to customer
+- Helper:
+  This reply will be sent directly to the customer.
+- AI Editor should remain available only in hard mode.
+
+Message trail:
+The full conversation trail must still be available, but it should not dominate the initial view.
+
+Preferred UX:
+- Put “Conversation trail” below the escalation reason panel and composer.
+- It can be collapsed by default or shown lower down.
+- If collapsed, button text:
+  Show conversation
+  Hide conversation
+- If not collapsed, still place it below the reason/action panel so the operator sees the reason first.
+
+Important:
+Do not remove the conversation trail completely.
+The operator should always be able to review it if needed.
+
+Data sources:
+Use available fields first:
+- escalation.summary
+- escalation.reason
+- escalation.customerRequest
+- escalation.nextAction
+- escalation.mode
+- escalationMode
+- humanGuidance
+- messages
+- last_message
+- last_message_text
+
+If backend does not provide structured fields yet:
+- Build a frontend fallback summary from available escalation/message data.
+- Do not invent too much.
+- Use safe fallback copy like:
+  “This conversation was escalated because Marina needs human input before replying.”
+- For options, use generic options based on mode.
+
+Fallback for soft escalation:
+Reason:
+“Marina needs human guidance before replying to this customer.”
+
+What Marina needs:
+“Review the customer’s request and tell Marina how to respond.”
+
+Options:
+- Tell Marina what to answer
+- Ask Marina to request more details
+- Switch to human takeover
+- Mark resolved
+
+Fallback for hard escalation:
+Reason:
+“This conversation is in human takeover mode.”
+
+What the customer needs:
+“Customer is waiting for a direct human reply.”
+
+Options:
+- Reply directly to customer
+- Ask for more information
+- Hand back to Marina
+- Mark resolved
+
+Design requirements:
+- Premium SaaS support dashboard style.
+- Compact, high information density.
+- No giant yellow warning banner.
+- No raw dump of text.
+- Clear section hierarchy.
+- Good spacing.
+- Subtle borders.
+- Strong readable text.
+- Action chips should be small and elegant.
+- Mode badge should be visible but not loud.
+- Conversation messages should get enough space.
+- Mobile must remain clean.
+
+Visual suggestion:
+Top of detail pane:
+
+[Escalation reason]                         [AI needs help]
+Calvin wants to schedule an activation meeting and gave 2 possible time slots.
+
+Customer wants
+Meet this week to activate the service.
+
+Marina needs
+Choose a time or ask for more availability.
+
+Options
+[Confirm time] [Suggest another time] [Ask for more availability] [Human takeover]
+
+Then:
+Reply to Marina [Soft escalation]
+[textarea]
+[Send to Marina]
+
+Then:
+Conversation trail
+[Show / Hide]
+
+Interaction requirements:
+1. Action chips may insert suggested guidance into the composer if easy.
+2. If action-chip insertion is too much for v1, chips can be visual only.
+3. Do not break existing mode switch.
+4. Do not break Send to Marina.
+5. Do not break Reply to customer.
+6. Do not break translation.
+7. Do not break message rendering.
+8. Do not break escalation filtering.
+9. Do not change backend/API.
+
+Mode switch:
+Keep soft/hard mode switch, but make it compact.
+Do not use large warning banners.
+Mode switch should still update composer behavior:
+- soft = Reply to Marina
+- hard = Reply to customer
+
+Likely files:
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/components/inbox/EscalationReplyComposer.tsx
+- artifacts/unboks/src/components/inbox/MessageBubble.tsx if it exists
+Possibly create:
+- artifacts/unboks/src/components/inbox/EscalationReasonPanel.tsx
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Tasks.tsx
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Selecting an escalation shows an Escalation reason panel at the top.
+- Operator can understand why the escalation exists without reading the full conversation first.
+- Panel shows reason/summary.
+- Panel shows what the customer wants.
+- Panel shows what Marina or the human needs.
+- Panel shows operator options.
+- Soft escalation shows Reply to Marina.
+- Hard escalation shows Reply to customer.
+- Conversation trail is still available but secondary.
+- No giant yellow banner dominates the page.
+- Layout feels premium and compact.
+- Mode switching still works.
+- Send/reply composer still works or keeps current placeholder behavior.
+- Translate conversation still works.
+- Mobile layout works.
+- Build/typecheck clean.
+- Report exact files changed.
+- Report whether Refero/Repro was connected and what references were used.
+- Do not commit.
+- Do not publish.
