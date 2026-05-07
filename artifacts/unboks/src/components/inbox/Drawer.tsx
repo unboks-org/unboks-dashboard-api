@@ -69,9 +69,11 @@ export function Drawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Escalations comes first: it's the most urgent operator function
+  // (an escalation needs human attention now, an inbox can wait).
   const PRIMARY: NavItem[] = [
-    { id: "inbox", icon: InboxIcon, label: "Inbox", count: inboxCount },
     { id: "escalations", icon: AlertCircle, label: "Escalations", count: escalationsCount },
+    { id: "inbox", icon: InboxIcon, label: "Inbox", count: inboxCount },
   ];
 
   const { isChannelEnabled } = useEnabledChannels();
