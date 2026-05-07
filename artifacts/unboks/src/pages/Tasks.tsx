@@ -6,6 +6,7 @@ import { useAuth } from "@/components/auth/useAuth";
 import { TaskComposer } from "@/components/tasks/TaskComposer";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import {
+  CURRENT_TASK_USER,
   Task,
   TaskStatus,
   TaskUser,
@@ -41,14 +42,25 @@ const FILTERS: { id: Filter; label: string }[] = [
 /** Status sort priority for the All view — open first, parked middle, done last. */
 const STATUS_ORDER: Record<TaskStatus, number> = { open: 0, parked: 1, done: 2 };
 
-/** Adapt a localStorage pending task into the shared Task shape used by the UI. */
+/** Adapt a localStorage pending task into the shared Task shape used by the UI.
+ *
+ *  Display-time guarantee: a local-pending task lives in *this* browser, so
+ *  by definition it was authored (and, if completed, completed) by the
+ *  current dashboard user. Forcing `createdBy`/`completedBy` here is a
+ *  belt-and-suspenders defense against any stale localStorage written by
+ *  earlier buggy versions where the composer's `assignedTo` value leaked
+ *  into `createdBy`. The on-read migration in `use-local-pending-tasks`
+ *  already rewrites those entries, but normalizing again at the display
+ *  boundary means the card can never show "Created by Jr" for a task
+ *  Calvin actually created — even if migration somehow didn't fire (e.g.
+ *  the user's tab was opened against an older build). */
 function localToTask(local: LocalPendingTask): Task {
   return {
     id: `local:${local.localId}`,
     localId: local.localId,
     bodyHtml: local.bodyHtml,
     bodyText: local.bodyText,
-    createdBy: local.createdBy,
+    createdBy: CURRENT_TASK_USER,
     assignedTo: local.assignedTo,
     status: local.status,
     attachments: local.attachments.map((a) => ({
@@ -62,7 +74,7 @@ function localToTask(local: LocalPendingTask): Task {
     createdAt: local.createdAt,
     updatedAt: local.updatedAt,
     completedAt: local.completedAt,
-    completedBy: local.completedBy,
+    completedBy: local.status === "done" ? CURRENT_TASK_USER : local.completedBy,
     syncStatus: local.syncStatus,
   };
 }
