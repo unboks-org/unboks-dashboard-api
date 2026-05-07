@@ -27,6 +27,7 @@ import {
   useLocalPendingTasks,
 } from "@/hooks/use-local-pending-tasks";
 import { useParkedTasks } from "@/hooks/use-parked-tasks";
+import { useTaskAuthorOverlay } from "@/hooks/use-task-author-overlay";
 import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 
@@ -156,6 +157,12 @@ export default function Tasks() {
   // Per-user "parked" overlay for backend/shared tasks. Parking is a
   // personal action — Calvin parking a task should not affect Jr's view.
   const { parkedIds, addParked, removeParked } = useParkedTasks();
+  // Per-user authorship overlay. Calvin and Jr share one bearer token, so
+  // backend `GET /tasks` always returns the same default `createdBy`. We
+  // record who actually clicked Add (or Done) here, keyed by server task id,
+  // and apply it on top of every backend row at render time.
+  const { setOverride: setAuthorOverride, apply: applyAuthorOverlay } =
+    useTaskAuthorOverlay();
 
   const { data: backendTasks, isLoading, isError, error } = useQuery({
     queryKey: ["tasks"],
@@ -264,12 +271,18 @@ export default function Tasks() {
 
         // --- Step 2: create the task --------------------------------------
         try {
-          await createTask({
+          const created = await createTask({
             assignedTo,
             bodyText: text,
             bodyHtml: "",
             attachmentIds,
           });
+          // Record the acting identity so the next refetch (which will
+          // overwrite createdBy with the backend's default for our shared
+          // token) still displays the right author. See use-task-author-overlay.
+          if (created?.id) {
+            setAuthorOverride(created.id, { createdBy: identity });
+          }
           await queryClient.invalidateQueries({ queryKey: ["tasks"] });
           toast.success("Task added.");
         } catch (err) {
@@ -289,7 +302,7 @@ export default function Tasks() {
         setSubmitting(false);
       }
     },
-    [backendUnavailable, queryClient, saveLocally],
+    [backendUnavailable, identity, queryClient, saveLocally, setAuthorOverride],
   );
 
   const setStatus = useCallback(
@@ -336,6 +349,11 @@ export default function Tasks() {
       setBusyId(task.id);
       try {
         await updateMutation.mutateAsync({ id: task.id, status });
+        // Record who actually closed/reopened it. Same rationale as the
+        // create-time overlay: the backend can't distinguish Calvin from Jr.
+        if (status === "done") {
+          setAuthorOverride(task.id, { completedBy: identity });
+        }
       } catch (err) {
         const msg = err instanceof ApiError ? err.message : "Failed to update task.";
         toast.error(msg);
@@ -343,7 +361,7 @@ export default function Tasks() {
         setBusyId(null);
       }
     },
-    [addParked, parkedIds, removeParked, setLocalStatus, updateMutation],
+    [addParked, identity, parkedIds, removeParked, setAuthorOverride, setLocalStatus, updateMutation],
   );
 
   const syncPendingTasks = useCallback(async () => {
@@ -382,6 +400,13 @@ export default function Tasks() {
           // Persist the server id immediately so any subsequent failure in
           // this iteration still leaves a recoverable retry-only state.
           setServerId(local.localId, serverTaskId);
+          // Carry the local authorship forward onto the server row. The
+          // backend strips it (shared token), so without this overlay the
+          // refetch would overwrite e.g. "Calvin" with "Jr".
+          setAuthorOverride(serverTaskId, {
+            createdBy: local.createdBy,
+            completedBy: local.completedBy,
+          });
         }
 
         if (local.status === "parked") {
@@ -425,18 +450,26 @@ export default function Tasks() {
     }
     if (okCount > 0) toast.success(`Synced ${okCount} task${okCount === 1 ? "" : "s"}.`);
     if (failCount > 0) toast.error(`${failCount} task${failCount === 1 ? "" : "s"} failed to sync — try again.`);
-  }, [addParked, localTasks, markSyncStatus, queryClient, removeLocal, setServerId]);
+  }, [addParked, localTasks, markSyncStatus, queryClient, removeLocal, setAuthorOverride, setServerId]);
 
   const allTasks = useMemo<Task[]>(() => {
-    // Apply the per-user "parked" overlay to backend tasks. We only
-    // override `open` → `parked`; if the backend says the task is `done`,
-    // that wins (a parked task that gets completed should appear in Done,
-    // not Parked).
-    const backend = (backendTasks ?? []).map((t) =>
-      t.status === "open" && parkedIds.has(t.id) ? { ...t, status: "parked" as const } : t,
-    );
+    // Apply two per-user overlays to every backend task:
+    //   1. Authorship — Calvin and Jr share one bearer token, so the API
+    //      always returns the same default `createdBy`. The overlay restores
+    //      the operator who actually clicked Add (or Done).
+    //   2. Parked — personal action, never sent to the backend. We only
+    //      override `open` → `parked`; if the backend says the task is `done`,
+    //      that wins (a parked task that gets completed should appear in Done,
+    //      not Parked).
+    const backend = (backendTasks ?? []).map((raw) => {
+      const t = applyAuthorOverlay(raw);
+      if (t.status === "open" && parkedIds.has(t.id)) {
+        return { ...t, status: "parked" as const };
+      }
+      return t;
+    });
     return [...backend, ...localTasks.map(localToTask)];
-  }, [backendTasks, localTasks, parkedIds]);
+  }, [applyAuthorOverlay, backendTasks, localTasks, parkedIds]);
 
   const counts = useMemo(
     () => ({
