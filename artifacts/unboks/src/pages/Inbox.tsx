@@ -15,6 +15,7 @@ import {
   normalizeEscalation,
   escalationToConversationRow,
 } from "@/lib/conversation-mapper";
+import { dedupeEscalations } from "@/lib/dedupe-escalations";
 import { CHANNEL_BADGE_COLORS } from "@/lib/channel-map";
 import type { NavId } from "@/components/inbox/Drawer";
 import { useEnabledChannels } from "@/hooks/use-enabled-channels";
@@ -281,15 +282,22 @@ function ConversationDetailPane({
       : { status: null, message: error instanceof Error ? error.message : "Unknown error" }
     : null;
   // Escalation routes use the conversation DB id. Look it up from the
-  // escalations list (cached query) via the same normalizer as the list and
-  // the sidebar count, so snake_case shapes (`external_id`, etc.) resolve to
-  // the same `dbId` as `conversation.id` (which is the normalized phone).
+  // escalations list (cached query) via the same normalizer + dedup pass
+  // as the list and the sidebar count, so snake_case shapes
+  // (`external_id`, etc.) resolve to the same `dbId` as `conversation.id`
+  // (which is the normalized phone), and we always target the surviving
+  // row when the backend emits duplicates.
   const { data: escalations } = useEscalations("all");
   const dbId = useMemo(() => {
     if (!escalations) return null;
+    const active = [];
     for (const raw of escalations as unknown[]) {
       const n = normalizeEscalation(raw);
-      if (n && !n.resolved && n.phone && n.phone === conversation.id) return n.id;
+      if (n && !n.resolved) active.push(n);
+    }
+    const deduped = dedupeEscalations(active);
+    for (const n of deduped) {
+      if (n.phone && n.phone === conversation.id) return n.id;
     }
     return null;
   }, [escalations, conversation.id]);
@@ -432,6 +440,8 @@ function ConversationDetailPane({
             summary={detail?.escalationSummary}
             reason={detail?.escalationReason}
             aiMuted={detail?.aiMuted}
+            messages={messages}
+            customerName={conversation.sender}
           />
 
           {dbId && (
@@ -659,14 +669,20 @@ export default function Inbox() {
   const escalationRows: Conversation[] = useMemo(() => {
     if (!rawEscalations) return [];
     const convoById = new Map(allConversations.map((c) => [c.id, c]));
-    const out: Conversation[] = [];
+    // Normalize + drop resolved + dedupe by stable conversation key so a
+    // single customer/conversation never appears as 2-3 rows. Sidebar
+    // count uses the identical pass.
+    const active = [];
     for (const raw of rawEscalations as unknown[]) {
       const n = normalizeEscalation(raw);
       if (!n || n.resolved) continue;
-      const enrich = n.phone ? convoById.get(n.phone) ?? null : null;
-      out.push(escalationToConversationRow(n, enrich));
+      active.push(n);
     }
-    return out;
+    const deduped = dedupeEscalations(active);
+    return deduped.map((n) => {
+      const enrich = n.phone ? convoById.get(n.phone) ?? null : null;
+      return escalationToConversationRow(n, enrich);
+    });
   }, [rawEscalations, allConversations]);
 
   // Stable handler. Always updates local filter state for inbox-context ids,
