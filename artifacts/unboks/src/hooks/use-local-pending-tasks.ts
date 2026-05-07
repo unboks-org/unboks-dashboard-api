@@ -84,6 +84,53 @@ function writeNextNumber(n: number) {
   }
 }
 
+/** Allocate the next task number from the shared counter, taking the maximum
+ *  of the persisted counter and the largest number currently present in the
+ *  local-pending list (covers cross-tab races where another tab created a
+ *  task since we read storage). Persists `n + 1` so the next caller — local
+ *  or backend — gets a fresh, unique value. Used by both `addLocal` and the
+ *  Tasks page when a backend task is created on this device. */
+export function allocateNextTaskNumber(): number {
+  let existingMax = 0;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        for (const t of parsed) {
+          const n = (t as { taskNumber?: unknown })?.taskNumber;
+          if (typeof n === "number" && Number.isFinite(n) && n > existingMax) {
+            existingMax = n;
+          }
+        }
+      }
+    }
+  } catch {
+    // Storage unreadable — fall back to the persisted counter alone.
+  }
+  // Also scan the per-server-id overlay so backend numbers count toward the
+  // shared sequence. Importing the overlay key here avoids a circular
+  // import; the overlay module owns the writes.
+  try {
+    const raw = localStorage.getItem("unboks_task_numbers");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        for (const v of Object.values(parsed as Record<string, unknown>)) {
+          if (typeof v === "number" && Number.isFinite(v) && v > existingMax) {
+            existingMax = v;
+          }
+        }
+      }
+    }
+  } catch {
+    // Same as above — non-fatal.
+  }
+  const candidate = Math.max(readNextNumber(), existingMax + 1);
+  writeNextNumber(candidate + 1);
+  return candidate;
+}
+
 /** Backfill `taskNumber` for stored tasks created before this feature shipped.
  *  Order rule: oldest task (by `createdAt`) gets the lowest number, so the
  *  visible numbering reflects creation order even though the in-memory list
@@ -251,21 +298,10 @@ export function useLocalPendingTasks() {
 
   const addLocal = useCallback((input: AddLocalTaskInput): LocalPendingTask => {
     const now = new Date().toISOString();
-    // Allocate the next task number. Read fresh from storage to stay correct
-    // across tabs (another tab may have created a task since we mounted), and
-    // never reuse a number already present in the in-memory list. We build
-    // the record outside the setter so its `localId` is stable for the
-    // returned reference — Tasks.tsx threads that id through sync.
-    const baseList = readFromStorage();
-    const existingMax = baseList.reduce(
-      (m, t) =>
-        typeof t.taskNumber === "number" && Number.isFinite(t.taskNumber)
-          ? Math.max(m, t.taskNumber)
-          : m,
-      0,
-    );
-    const candidate = Math.max(readNextNumber(), existingMax + 1);
-    writeNextNumber(candidate + 1);
+    // Allocate from the shared counter. allocateNextTaskNumber() handles
+    // cross-tab races (re-reading storage) and also factors in the backend
+    // overlay so local + backend numbering stays globally unique.
+    const candidate = allocateNextTaskNumber();
     const next: LocalPendingTask = {
       localId: newId(),
       bodyText: input.bodyText,

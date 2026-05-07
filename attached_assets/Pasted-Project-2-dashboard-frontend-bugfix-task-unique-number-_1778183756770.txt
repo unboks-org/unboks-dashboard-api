@@ -1,0 +1,128 @@
+Project 2 dashboard frontend bugfix — task unique number is missing from task cards.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not modify backend.
+- Work only on Tasks page/task components/local task state.
+- Do not touch Settings.
+- Do not touch Inbox.
+- Do not touch DashboardShell.
+- Do not commit.
+- Do not publish until reviewed.
+
+Bug:
+Task cards still do not show a unique visible task number.
+
+This feature was requested:
+Each task must have a visible unique identification number like:
+
+TASK-001
+TASK-002
+TASK-003
+
+The user does not see it anywhere on the task card.
+
+Required behavior:
+1. Every task card must visibly show a unique task number.
+2. The number must be shown in the task card header, near the assignment metadata.
+3. Format must be:
+   TASK-001
+   TASK-002
+   TASK-003
+4. It must be visible without opening/editing the task.
+5. It must be small but clear, preferably a neutral pill/badge.
+6. Existing local tasks must get task numbers via migration.
+7. New tasks must get the next available task number.
+8. Task number must persist after refresh.
+9. Edit must not change the task number.
+10. Park must not change the task number.
+11. Mark done must not change the task number.
+12. Reopen must not change the task number.
+13. Copy text should still copy only the task body unless there is a separate “Copy task reference” action.
+14. Do not use the internal UUID as the visible number.
+15. Do not show unstable numbers that change after refresh.
+
+Hard requirement:
+The user must see something like this on each card:
+
+TASK-007
+Assigned to Jr
+Created by Calvin · Today, 22:35
+
+or:
+
+TASK-007 · Assigned to Jr
+Created by Calvin · Today, 22:35
+
+Data model:
+Local task should include:
+
+taskNumber: number
+
+Display helper:
+
+formatTaskNumber(7) => "TASK-007"
+
+Migration:
+For existing local tasks without taskNumber:
+- assign numbers once
+- preserve current order as much as possible
+- do not renumber tasks that already have taskNumber
+- after migration, save updated tasks back to localStorage
+
+Counter:
+Use localStorage to track next task number.
+
+Suggested key:
+unboks_next_task_number
+
+Creation behavior:
+- On create, read next number.
+- Assign taskNumber.
+- Increment and save next number.
+- If existing tasks contain a higher taskNumber, next number must be max + 1.
+
+Backend/shared tasks:
+- If backend task has taskNumber, display it.
+- If backend task has no taskNumber, show a stable fallback only if possible.
+- Do not invent changing numbers for backend tasks.
+- For now, local pending tasks must always have taskNumber.
+
+Investigation:
+Search these files for taskNumber / TASK-:
+- artifacts/unboks/src/components/tasks/TaskCard.tsx
+- artifacts/unboks/src/components/tasks/TaskComposer.tsx
+- artifacts/unboks/src/pages/Tasks.tsx
+- artifacts/unboks/src/hooks/use-local-pending-tasks.ts
+- artifacts/unboks/src/lib/tasks-api.ts
+
+Likely failure:
+- taskNumber was not added to local task type
+- or taskNumber was added but not rendered in TaskCard
+- or migration did not run
+- or the field is named differently and TaskCard ignores it
+
+Required implementation:
+1. Add taskNumber to the local task type.
+2. Add migration for existing tasks.
+3. Add next-number generator.
+4. Pass taskNumber into the normalized Task object.
+5. Render TASK-### visibly in TaskCard.
+6. Typecheck.
+
+Acceptance:
+- Existing tasks show TASK-### after refresh.
+- New task shows the next TASK-###.
+- Every visible local task card has a task number.
+- Numbers do not change after refresh.
+- Edit keeps same number.
+- Park keeps same number.
+- Done keeps same number.
+- Reopen keeps same number.
+- Assigned/Created metadata still works.
+- Acting as Calvin still creates tasks as Calvin.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

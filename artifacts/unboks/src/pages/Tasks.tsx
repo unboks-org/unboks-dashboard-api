@@ -23,11 +23,13 @@ import {
   LOCAL_ATTACHMENT_MAX_BYTES,
   LocalAttachment,
   LocalPendingTask,
+  allocateNextTaskNumber,
   fileToDataUrl,
   useLocalPendingTasks,
 } from "@/hooks/use-local-pending-tasks";
 import { useParkedTasks } from "@/hooks/use-parked-tasks";
 import { useTaskAuthorOverlay } from "@/hooks/use-task-author-overlay";
+import { useTaskNumberOverlay } from "@/hooks/use-task-number-overlay";
 import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 
@@ -164,6 +166,13 @@ export default function Tasks() {
   // and apply it on top of every backend row at render time.
   const { setOverride: setAuthorOverride, apply: applyAuthorOverlay } =
     useTaskAuthorOverlay();
+  // Per-server-id task number overlay. Lets a backend/shared task display
+  // a TASK-### badge — either because it was synced from a numbered local
+  // pending task, or because it was created directly on the backend from
+  // this dashboard. Pre-existing backend rows with no overlay entry render
+  // without a badge, per spec.
+  const { setNumber: setTaskNumber, apply: applyTaskNumber } =
+    useTaskNumberOverlay();
 
   const { data: backendTasks, isLoading, isError, error } = useQuery({
     queryKey: ["tasks"],
@@ -283,6 +292,10 @@ export default function Tasks() {
           // token) still displays the right author. See use-task-author-overlay.
           if (created?.id) {
             setAuthorOverride(created.id, { createdBy: identity });
+            // Also assign a stable TASK-### so the new backend card renders
+            // a number immediately. Uses the same shared counter as local
+            // pending tasks, so numbering stays globally unique.
+            setTaskNumber(created.id, allocateNextTaskNumber());
           }
           await queryClient.invalidateQueries({ queryKey: ["tasks"] });
           toast.success("Task added.");
@@ -408,6 +421,10 @@ export default function Tasks() {
             createdBy: local.createdBy,
             completedBy: local.completedBy,
           });
+          // Carry the local TASK-### forward onto the server row so the
+          // visible badge survives sync. Without this, removeLocal() below
+          // would drop the only place the number lives.
+          setTaskNumber(serverTaskId, local.taskNumber);
         }
 
         if (local.status === "parked") {
@@ -463,14 +480,15 @@ export default function Tasks() {
     //      that wins (a parked task that gets completed should appear in Done,
     //      not Parked).
     const backend = (backendTasks ?? []).map((raw) => {
-      const t = applyAuthorOverlay(raw);
-      if (t.status === "open" && parkedIds.has(t.id)) {
-        return { ...t, status: "parked" as const };
+      const withAuthor = applyAuthorOverlay(raw);
+      const withNumber = applyTaskNumber(withAuthor);
+      if (withNumber.status === "open" && parkedIds.has(withNumber.id)) {
+        return { ...withNumber, status: "parked" as const };
       }
-      return t;
+      return withNumber;
     });
     return [...backend, ...localTasks.map(localToTask)];
-  }, [applyAuthorOverlay, backendTasks, localTasks, parkedIds]);
+  }, [applyAuthorOverlay, applyTaskNumber, backendTasks, localTasks, parkedIds]);
 
   const counts = useMemo(
     () => ({
