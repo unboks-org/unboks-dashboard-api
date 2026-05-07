@@ -1,0 +1,114 @@
+Project 2 dashboard frontend UX fix — remember selected translation language globally.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not modify backend.
+- Work only on conversation detail/message translation frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch DashboardShell unless absolutely required.
+- Do not commit.
+- Do not publish until reviewed.
+
+Issue:
+Each message bubble has a Translate language selector.
+When the operator chooses a language on one message, the other Translate controls still stay on the old default language.
+
+Bad UX:
+The operator has to change the language again for every single message.
+
+Required behavior:
+1. Translation target language should be shared globally across the conversation view.
+2. Default target language is English.
+3. If operator changes language to Dutch on one message, all Translate controls immediately show Dutch.
+4. If operator changes language to Spanish on one message, all Translate controls immediately show Spanish.
+5. The next message translated should use the currently selected global language.
+6. The selected language should persist during navigation in the dashboard.
+7. Prefer persisting selected language in localStorage so refresh keeps the preference.
+8. Suggested localStorage key:
+   unboks_translation_target_language
+9. Do not make the operator choose language per message unless they intentionally change it.
+10. Existing cached translations must remain correct per message and per language.
+
+Important caching rule:
+Cache translation by:
+messageId + targetLanguage
+
+Example:
+- message 123 translated to English
+- message 123 translated to Dutch
+
+These are separate cached translations.
+
+If global language changes:
+- already shown translation in another language can either remain visible with its correct label, or be hidden until retranslated.
+- Preferred behavior:
+  If a visible translation does not match the selected language, show a small “Translate to Dutch” state instead of showing the old English translation as if it were Dutch.
+- Never label an English translation as Dutch.
+
+Preferred implementation:
+Create shared translation language state at the conversation/detail level.
+
+Example:
+const [translationLanguage, setTranslationLanguage] = usePersistentTranslationLanguage()
+
+Pass these props into each message bubble:
+- translationLanguage
+- onTranslationLanguageChange
+
+Do not keep independent language state inside every message bubble.
+
+Language options:
+- English
+- Dutch
+- Spanish
+- Papiamento
+- Portuguese
+- Swedish
+
+UI behavior:
+- Every Translate control shows the same selected language.
+- Changing the dropdown on any message updates all controls.
+- The Translate button sends targetLanguage equal to the shared selected language.
+- The translation result label says:
+  Translated to Dutch
+  Translated to Spanish
+  etc.
+
+Likely files:
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/components/inbox/MessageBubble.tsx if it exists
+- artifacts/unboks/src/components/inbox/MessageTranslation.tsx if it exists
+
+Possibly add:
+- artifacts/unboks/src/hooks/use-translation-language.ts
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Tasks.tsx
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Open a conversation with multiple messages.
+- All Translate controls default to English.
+- Change one Translate dropdown to Dutch.
+- All other Translate dropdowns immediately show Dutch.
+- Click Translate on another message.
+- API request sends targetLanguage: "Dutch".
+- Refresh page.
+- Translate controls still default to Dutch.
+- Change to Spanish.
+- All controls update to Spanish.
+- Cached translations are not mislabeled.
+- Mobile layout still works.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

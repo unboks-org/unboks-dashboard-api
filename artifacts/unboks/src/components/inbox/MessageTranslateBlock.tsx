@@ -31,22 +31,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Languages, Loader2, X } from "lucide-react";
 import { useMessageTranslation } from "@/hooks/use-client-api";
+import {
+  TRANSLATION_LANGUAGES,
+  useTranslationLanguage,
+} from "@/hooks/use-translation-language";
 import { ApiError } from "@/lib/error";
 import type { AIEditorLanguage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const NOT_CONNECTED_STATUSES = new Set([0, 404, 501, 503]);
-
-const LANGUAGES: AIEditorLanguage[] = [
-  "English",
-  "Dutch",
-  "Spanish",
-  "Papiamento",
-  "Portuguese",
-  "Swedish",
-];
-
-const DEFAULT_LANGUAGE: AIEditorLanguage = "English";
 
 interface MessageTranslateBlockProps {
   messageId: string;
@@ -73,7 +66,9 @@ export function MessageTranslateBlock({
   variant = "bubble",
 }: MessageTranslateBlockProps) {
   const translate = useMessageTranslation();
-  const [language, setLanguage] = useState<AIEditorLanguage>(DEFAULT_LANGUAGE);
+  // Language is shared across every MessageTranslateBlock in the tab and
+  // persisted in localStorage — see useTranslationLanguage.
+  const [language, setLanguage] = useTranslationLanguage();
   const [view, setView] = useState<View>({ kind: "idle" });
   const [pickerOpen, setPickerOpen] = useState(false);
   // Cache key: targetLanguage. Survives Hide / re-translate cycles.
@@ -162,19 +157,19 @@ export function MessageTranslateBlock({
     setPickerOpen(false);
     if (next === language) return;
     setLanguage(next);
-    // If a translation is currently visible, swap it for the new language's
-    // cached value if we have one, otherwise return to idle so the operator
-    // can click Translate to fetch the new language. We never silently
-    // re-call the API on a language change.
-    if (view.kind === "translated") {
-      const cached = cacheRef.current.get(next);
-      if (cached !== undefined) {
-        setView({ kind: "translated", language: next });
-      } else {
-        setView({ kind: "idle" });
-      }
-    }
   };
+
+  // Language can change from another MessageTranslateBlock in the same
+  // tab (shared hook). When it does, never keep the previous translation
+  // visible under a wrong "Translated to {newLang}" label — swap to the
+  // newly-selected language's cached translation if we have one,
+  // otherwise return to idle so the operator can click Translate.
+  useEffect(() => {
+    if (view.kind !== "translated") return;
+    if (view.language === language) return;
+    const cached = cacheRef.current.get(language);
+    setView(cached !== undefined ? { kind: "translated", language } : { kind: "idle" });
+  }, [language, view]);
 
   const triggerLabel = view.kind === "loading" ? "Translating…" : "Translate";
   const showTrigger = view.kind === "idle" || view.kind === "loading";
@@ -237,7 +232,7 @@ export function MessageTranslateBlock({
                   "right-0",
                 )}
               >
-                {LANGUAGES.map((lang) => {
+                {TRANSLATION_LANGUAGES.map((lang) => {
                   const selected = lang === language;
                   return (
                     <button
