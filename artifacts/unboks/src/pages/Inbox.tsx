@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { DashboardShell, PENDING_NAV_KEY } from "@/components/inbox/DashboardShell";
 import { MessageRow } from "@/components/inbox/MessageRow";
@@ -73,9 +73,10 @@ function MessageBubble({ msg }: { msg: ApiMessage }) {
 // Escalation banner + action panels
 // ---------------------------------------------------------------------------
 //
-// Soft + Hard composers live in EscalationReplyComposer. LegacyActionPanel is
-// kept for the rare case where an escalation has no mode set yet (legacy DB
-// rows) and the operator needs to pick soft/hard before composing.
+// Soft + Hard composers live in EscalationReplyComposer. EscalationModeToggle
+// (below) is the persistent switch shown above the message thread so the
+// operator can flip soft <-> hard at any time, including when the backend
+// hasn't populated escalationMode yet.
 
 function EscalationBanner({ detail }: { detail: ConversationDetail }) {
   if (!detail.escalated || detail.escalationResolved) return null;
@@ -119,40 +120,138 @@ function EscalationBanner({ detail }: { detail: ConversationDetail }) {
   );
 }
 
-function LegacyActionPanel({
-  conversationDbId,
-  onDone,
-}: {
+// Statuses that indicate the backend just hasn't shipped this endpoint yet
+// (or the network never reached the API). We keep the operator's local pick
+// in those cases and surface a calm "Pending sync" notice — never claim the
+// backend saved if it didn't.
+const NOT_CONNECTED_MODE_STATUSES = new Set([0, 404, 501, 503]);
+
+function isModeNotConnected(err: unknown): boolean {
+  if (err instanceof ApiError) return NOT_CONNECTED_MODE_STATUSES.has(err.status);
+  return !(err instanceof Error) || err.name === "TypeError" || err.message === "Failed to fetch";
+}
+
+interface EscalationModeToggleProps {
   conversationDbId: string;
-  onDone: () => void;
-}) {
-  const { setMode, resolve } = useEscalationMutations();
+  selectedMode: "soft" | "hard";
+  onChange: (next: "soft" | "hard") => void;
+}
+
+/**
+ * Persistent mode toggle shown above the message thread for any open
+ * escalation. Clicking either button:
+ *   1. Updates the local `selectedMode` immediately so the composer below
+ *      re-renders without a backend round trip (operator never sees a dead
+ *      button).
+ *   2. POSTs to /escalations/:id/mode. On 0/404/501/503 we keep the local
+ *      pick and show a calm "Mode saved locally" notice. On other errors we
+ *      surface the message and still keep the local pick (so the composer
+ *      stays correct), but we do NOT claim backend saved it.
+ *   3. 401/403 is handled globally by AuthProvider (session-expired toast),
+ *      so we don't duplicate that here.
+ */
+function EscalationModeToggle({
+  conversationDbId,
+  selectedMode,
+  onChange,
+}: EscalationModeToggleProps) {
+  const { setMode } = useEscalationMutations();
+  const [notice, setNotice] = useState<{
+    tone: "info" | "error";
+    text: string;
+  } | null>(null);
+  const [pendingMode, setPendingMode] = useState<"soft" | "hard" | null>(null);
+
+  const apply = (next: "soft" | "hard") => {
+    if (next === selectedMode || pendingMode) return;
+    setNotice(null);
+    setPendingMode(next);
+    onChange(next);
+    setMode.mutate(
+      { id: conversationDbId, mode: next },
+      {
+        onSuccess: () => {
+          setPendingMode(null);
+        },
+        onError: (err) => {
+          setPendingMode(null);
+          if (isModeNotConnected(err)) {
+            setNotice({
+              tone: "info",
+              text: "Mode saved locally. Backend connection will complete this soon.",
+            });
+            return;
+          }
+          // Auth errors are surfaced globally by AuthProvider; for everything
+          // else, show calmly and keep the local pick (composer stays right).
+          if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+            return;
+          }
+          setNotice({
+            tone: "error",
+            text:
+              "Mode saved locally, but couldn't sync to backend: " +
+              (err instanceof Error ? err.message : "Unknown error"),
+          });
+        },
+      },
+    );
+  };
+
+  const isSoft = selectedMode === "soft";
+  const isHard = selectedMode === "hard";
+
   return (
-    <div className="border-t border-[#e8eaed] bg-white px-4 py-3 space-y-2 flex-shrink-0">
-      <p className="text-[12px] text-[#5f6368]">Choose how you want to handle this escalation.</p>
-      <div className="flex items-center gap-2 flex-wrap">
+    <div className="border-b border-[#f1f3f4] bg-white px-4 py-2 space-y-2 flex-shrink-0">
+      <div
+        role="group"
+        aria-label="Escalation mode"
+        className="inline-flex rounded-full border border-[#dadce0] p-0.5 bg-[#f8f9fa]"
+      >
         <button
           type="button"
-          onClick={() => setMode.mutate({ id: conversationDbId, mode: "soft" }, { onSuccess: onDone })}
-          className="px-3 py-1.5 text-[13px] font-medium text-[#202124] bg-[#fef7e0] border border-[#feefc3] rounded-md hover:bg-[#fdecb3]"
+          onClick={() => apply("soft")}
+          aria-pressed={isSoft}
+          disabled={pendingMode === "soft"}
+          className={cn(
+            "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium transition-colors",
+            isSoft
+              ? "bg-[#fef7e0] text-[#5f3e00] border border-[#feefc3] shadow-sm"
+              : "text-[#5f6368] hover:text-[#202124]",
+          )}
         >
+          <AlertCircle className="w-3.5 h-3.5" />
           AI needs help
         </button>
         <button
           type="button"
-          onClick={() => setMode.mutate({ id: conversationDbId, mode: "hard" }, { onSuccess: onDone })}
-          className="px-3 py-1.5 text-[13px] font-medium text-[#c5221f] bg-[#fce8e6] border border-[#f6c6c2] rounded-md hover:bg-[#f9d3cf]"
+          onClick={() => apply("hard")}
+          aria-pressed={isHard}
+          disabled={pendingMode === "hard"}
+          className={cn(
+            "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium transition-colors",
+            isHard
+              ? "bg-[#fce8e6] text-[#5f1414] border border-[#f6c6c2] shadow-sm"
+              : "text-[#5f6368] hover:text-[#202124]",
+          )}
         >
+          <AlertTriangle className="w-3.5 h-3.5" />
           Human takeover
         </button>
-        <button
-          type="button"
-          onClick={() => resolve.mutate({ id: conversationDbId, payload: {} }, { onSuccess: onDone })}
-          className="ml-auto text-[12px] text-[#5f6368] hover:underline"
-        >
-          Mark resolved
-        </button>
       </div>
+      {notice && (
+        <div
+          role="status"
+          className={cn(
+            "rounded-md border px-3 py-1.5 text-[12px]",
+            notice.tone === "info"
+              ? "border-[#cfe2ff] bg-[#f0f6ff] text-[#0b3b8c]"
+              : "border-[#f6c6c2] bg-[#fce8e6] text-[#5f1414]",
+          )}
+        >
+          {notice.text}
+        </div>
+      )}
     </div>
   );
 }
@@ -207,7 +306,30 @@ function ConversationDetailPane({
   }, [escalations, conversation.id]);
 
   const showBanner = detail?.escalated && !detail?.escalationResolved;
-  const mode = detail?.escalationMode ?? null;
+  const backendMode = detail?.escalationMode ?? null;
+  // Hard signals on the detail payload — used to infer the initial mode when
+  // the backend hasn't set escalationMode yet, per spec.
+  const hasHardSignals = Boolean(
+    detail?.aiMuted ||
+      (typeof detail?.humanTakeoverAt === "string" && detail.humanTakeoverAt.length > 0),
+  );
+
+  // Locally-controlled mode. Initial value comes from the backend; clicks on
+  // the toggle update it immediately so the composer below re-renders without
+  // waiting for a backend round trip. We re-seed it whenever the open
+  // conversation changes (the pane is reused across selections) or once the
+  // backend value first becomes known.
+  const [selectedMode, setSelectedMode] = useState<"soft" | "hard">(() =>
+    backendMode ?? (hasHardSignals ? "hard" : "soft"),
+  );
+  const lastSeedKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (!showBanner || !dbId) return;
+    const seedKey = `${conversation.id}|${dbId}`;
+    if (lastSeedKey.current === seedKey) return;
+    lastSeedKey.current = seedKey;
+    setSelectedMode(backendMode ?? (hasHardSignals ? "hard" : "soft"));
+  }, [showBanner, dbId, conversation.id, backendMode, hasHardSignals]);
 
   return (
     <div className="flex-1 flex flex-col bg-white overflow-hidden border-l border-[#f1f3f4]">
@@ -281,6 +403,13 @@ function ConversationDetailPane({
       </div>
 
       {detail && <EscalationBanner detail={detail} />}
+      {showBanner && dbId && (
+        <EscalationModeToggle
+          conversationDbId={dbId}
+          selectedMode={selectedMode}
+          onChange={setSelectedMode}
+        />
+      )}
 
       {/* Message thread */}
       <div
@@ -342,27 +471,18 @@ function ConversationDetailPane({
         )}
       </div>
 
-      {showBanner && dbId && mode === "soft" && (
+      {showBanner && dbId && (
         <EscalationReplyComposer
+          // Re-mount the composer when the operator switches mode so its own
+          // internal draft/notice state resets cleanly between soft and hard.
+          key={selectedMode}
           conversationDbId={dbId}
           conversationId={conversation.id}
-          mode="soft"
+          mode={selectedMode}
           channel={conversation.channel}
+          aiMuted={selectedMode === "hard" ? detail?.aiMuted ?? false : false}
           onDone={onClose}
         />
-      )}
-      {showBanner && dbId && mode === "hard" && (
-        <EscalationReplyComposer
-          conversationDbId={dbId}
-          conversationId={conversation.id}
-          mode="hard"
-          channel={conversation.channel}
-          aiMuted={detail?.aiMuted ?? false}
-          onDone={onClose}
-        />
-      )}
-      {showBanner && dbId && mode === null && (
-        <LegacyActionPanel conversationDbId={dbId} onDone={onClose} />
       )}
     </div>
   );
