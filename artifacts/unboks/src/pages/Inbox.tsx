@@ -24,10 +24,14 @@ import {
   X,
   AlertCircle,
   AlertTriangle,
+  Reply,
+  Forward,
+  Trash2,
 } from "lucide-react";
 import type { ApiMessage, ConversationDetail } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { EscalationReplyComposer } from "@/components/inbox/EscalationReplyComposer";
+import { EmailMessageDetail } from "@/components/inbox/EmailMessageDetail";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
@@ -160,9 +164,23 @@ function LegacyActionPanel({
 interface ConversationDetailPaneProps {
   conversation: Conversation;
   onClose: () => void;
+  /**
+   * Email-only header actions. Wired through from Inbox so the same handlers
+   * power both the row icons and the detail-pane buttons. When omitted (e.g.
+   * non-email channel) the action bar is not rendered.
+   */
+  onEmailReply?: (conv: Conversation) => void;
+  onEmailForward?: (conv: Conversation) => void;
+  onEmailDelete?: (conv: Conversation) => void;
 }
 
-function ConversationDetailPane({ conversation, onClose }: ConversationDetailPaneProps) {
+function ConversationDetailPane({
+  conversation,
+  onClose,
+  onEmailReply,
+  onEmailForward,
+  onEmailDelete,
+}: ConversationDetailPaneProps) {
   const { data: detail, isLoading, isError, error } = useConversation(conversation.id);
   const badgeColor = CHANNEL_BADGE_COLORS[conversation.channel] ?? "#9aa0a6";
   const messages: ApiMessage[] = detail?.messages ?? [];
@@ -223,18 +241,62 @@ function ConversationDetailPane({ conversation, onClose }: ConversationDetailPan
             )}
           </div>
         </div>
+        {conversation.channel === "Email" && (onEmailReply || onEmailForward || onEmailDelete) && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {onEmailReply && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onEmailReply(conversation); }}
+                aria-label="Reply"
+                title="Reply"
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368]"
+              >
+                <Reply className="w-4 h-4" />
+              </button>
+            )}
+            {onEmailForward && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onEmailForward(conversation); }}
+                aria-label="Forward"
+                title="Forward"
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368]"
+              >
+                <Forward className="w-4 h-4" />
+              </button>
+            )}
+            {onEmailDelete && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onEmailDelete(conversation); }}
+                aria-label="Delete"
+                title="Delete"
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#fce8e6] text-[#5f6368] hover:text-[#c5221f]"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {detail && <EscalationBanner detail={detail} />}
 
       {/* Message thread */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      <div
+        className={cn(
+          "flex-1 overflow-y-auto px-4 py-4",
+          conversation.channel === "Email" ? "space-y-4 bg-[#f8f9fa]" : "space-y-3",
+        )}
+      >
         {isLoading && (
           <p className="text-[13px] text-[#5f6368] text-center py-8">Loading messages…</p>
         )}
 
         {!isLoading && messages.length > 0 && (
-          messages.map((msg, i) => <MessageBubble key={msg.id ?? i} msg={msg} />)
+          conversation.channel === "Email"
+            ? messages.map((msg, i) => <EmailMessageDetail key={msg.id ?? i} msg={msg} />)
+            : messages.map((msg, i) => <MessageBubble key={msg.id ?? i} msg={msg} />)
         )}
 
         {!isLoading && messages.length === 0 && (
@@ -327,7 +389,7 @@ export default function Inbox() {
     setSelectedConv(conv);
   }, []);
   const handleEmailForward = useCallback((_conv: Conversation) => {
-    window.alert("Forward will be connected by the Unboks team.");
+    window.alert("Email forwarding will be connected by the Unboks team.");
   }, []);
   const handleEmailDelete = useCallback(
     (conv: Conversation) => {
@@ -578,6 +640,9 @@ export default function Inbox() {
           <ConversationDetailPane
             conversation={selectedConv}
             onClose={() => setSelectedConv(null)}
+            onEmailReply={selectedConv.channel === "Email" ? handleEmailReply : undefined}
+            onEmailForward={selectedConv.channel === "Email" ? handleEmailForward : undefined}
+            onEmailDelete={selectedConv.channel === "Email" ? handleEmailDelete : undefined}
           />
         )}
       </div>

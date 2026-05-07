@@ -1,0 +1,171 @@
+Project 2 dashboard frontend — premium Email detail view redesign using Refero/Repro, plus clean email parsing.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Do not modify DNS, secrets, deployment, auth, or Python backend assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch Project 1 or Project 3.
+- Do not commit.
+- Do not publish until reviewed.
+
+Issue:
+Email detail currently renders as one ugly raw text blob.
+
+Example:
+“we good ? what time can we meet this week to activate my service ? Calvin -- *Calvin Adamus* Co-Founder GAIMIN Group *Email:* Calvin@gaimin.io Confidentiality Warning: ...”
+
+This is not acceptable.
+It feels like a dump of words, not a premium email/message interface.
+
+Goal:
+Create a clean, premium email detail layout.
+
+Use Refero/Repro:
+Use real email/message detail references before redesigning.
+References should include:
+- Gmail email detail
+- Front email client
+- Superhuman
+- Intercom conversation detail
+- Zendesk message detail
+- Linear/Stripe clean panel layout
+
+If Refero/Repro is not connected, stop and report clearly before editing.
+
+Required behavior:
+1. Email detail pane must not show one raw text dump.
+2. It should display a clean email-style message.
+3. Extract and separate:
+   - main message body
+   - sender signature if present
+   - confidentiality/disclaimer footer if present
+4. Signature/disclaimer should not dominate the message.
+5. Long legal confidentiality text should be collapsed by default or visually de-emphasized.
+6. Message body should be the focus.
+7. Preserve the full content somewhere accessible, but do not make the UI ugly.
+8. Do not alter WhatsApp message display unless shared component requires minor safe polish.
+9. Do not change backend/API.
+
+Email layout:
+Header area:
+- Sender name or email
+- Channel badge: Email
+- Timestamp
+- Action icons/buttons:
+  - Reply
+  - Forward
+  - Delete
+
+Message card:
+- Main body text, readable and clean
+- Proper line breaks
+- No raw markdown stars if possible
+- No giant single paragraph if signature exists
+
+Signature:
+If detected, show below main body in a lighter section:
+- Smaller text
+- Muted color
+- Optional label: Signature
+- Do not let it overpower the message
+
+Confidentiality warning/disclaimer:
+If detected, show collapsed by default:
+- Label: Confidentiality notice
+- Button: Show / Hide
+- Muted styling
+- Do not show full legal text by default unless expanded
+
+Parsing rules:
+Detect common separators:
+- "--"
+- "Kind regards"
+- "Best regards"
+- "Regards"
+- "Met vriendelijke groet"
+- "Confidentiality Warning:"
+- "This message and any attachments"
+- "If you are not the intended recipient"
+- "written with Chatgpt"
+
+If a confidentiality warning starts, move everything from that point into a collapsible notice.
+
+If a signature starts, move signature into signature block.
+
+If parsing fails, still render the text with good spacing and line breaks.
+
+Markdown-ish cleanup:
+- Convert `*Calvin Adamus*` to bold if safe, or remove the literal asterisks.
+- Convert `*Email:*` to bold label if safe, or clean to `Email:`.
+- Do not display raw markdown markers unless necessary.
+
+Visual style:
+- Premium SaaS email client
+- White background
+- Clean message card
+- Good spacing
+- Main message text 14 to 15px, readable
+- Secondary/signature text muted but readable
+- No huge grey blob
+- No raw backend dump feeling
+- No heavy shadows
+- Subtle borders
+
+Actions:
+Add persistent email detail actions:
+- Reply
+- Forward
+- Delete
+
+Behavior:
+- Reply button opens/focuses reply composer if one exists.
+- If reply backend is not connected, show calm placeholder:
+  “Email reply will be connected by the Unboks team.”
+- Forward button opens forward UI if one exists.
+- If backend is not connected, show:
+  “Email forwarding will be connected by the Unboks team.”
+- Delete button must ask confirmation first.
+- If backend is not connected, show:
+  “Email deletion will be connected by the Unboks team.”
+- Do not pretend actions succeeded if backend did not confirm.
+- Icon clicks must not close the detail pane accidentally.
+
+Likely files:
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/components/inbox/MessageRow.tsx if email row actions are shared
+- artifacts/unboks/src/lib/api.ts if placeholders/client helpers exist
+Possibly create:
+- artifacts/unboks/src/components/inbox/EmailMessageDetail.tsx
+- artifacts/unboks/src/lib/email-parser.ts
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Tasks.tsx
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Email body is readable and premium.
+- Main message is clearly separated from signature/disclaimer.
+- Confidentiality warning is collapsed or de-emphasized.
+- Raw markdown stars are cleaned.
+- Email detail does not look like a word dump.
+- Reply / Forward / Delete actions are visible in email detail.
+- Actions do not falsely claim success without backend.
+- WhatsApp detail still works.
+- Email list still works.
+- Build/typecheck clean.
+- Report exact files changed.
+- Report whether Refero/Repro was connected and what references were used.
+- Do not commit.
+- Do not publish.

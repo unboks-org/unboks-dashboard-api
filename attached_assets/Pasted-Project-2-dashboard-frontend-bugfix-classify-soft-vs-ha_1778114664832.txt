@@ -1,0 +1,121 @@
+Project 2 dashboard frontend bugfix — classify soft vs hard escalations correctly.
+
+Important current architecture:
+- Project 2 Replit is frontend only.
+- api.unboks.org points to the canonical Python backend on Vultr.
+- Do not modify artifacts/api-server.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python backend assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch backend.
+- Do not commit.
+- Do not publish until reviewed.
+
+Bug:
+Escalations now appear in the Escalations page, but they are not categorized correctly.
+
+The tabs are:
+- All
+- AI needs help
+- Human takeover
+
+Current issue:
+Hard escalations appear in All, but not under Human takeover.
+Soft/hard distinction is not working.
+
+Expected behavior:
+1. All tab shows all unresolved escalations.
+2. AI needs help tab shows only soft escalations.
+3. Human takeover tab shows only hard escalations.
+4. The two current escalations are hard escalations and must appear under Human takeover.
+5. Hard escalation rows should show a clear “Human takeover” or “Hard escalation” badge.
+6. Soft escalation rows should show “AI needs help” or “Soft escalation” badge.
+7. Missing/legacy mode can still appear in All, but must not be incorrectly hidden.
+8. Do not classify everything as generic “Escalation”.
+
+Likely cause:
+The Python backend is returning escalation mode fields in a different shape than the frontend expects.
+
+Possible backend fields to support:
+- mode
+- escalation_mode
+- escalationMode
+- type
+- escalation_type
+- handoff_required
+- requires_human
+- ai_muted
+- aiMuted
+- human_takeover_at
+- humanTakeoverAt
+- status
+
+Mapping rules:
+Hard escalation / Human takeover if any of these are true:
+- mode === "hard"
+- escalation_mode === "hard"
+- escalationMode === "hard"
+- type === "hard"
+- escalation_type === "hard"
+- handoff_required === true
+- ai_muted === true
+- aiMuted === true
+- human_takeover_at exists
+- humanTakeoverAt exists
+
+Soft escalation / AI needs help if any of these are true:
+- mode === "soft"
+- escalation_mode === "soft"
+- escalationMode === "soft"
+- type === "soft"
+- escalation_type === "soft"
+- requires_human === true
+- escalated === true but not hard
+
+Priority:
+Hard wins over soft.
+If both soft and hard signals exist, classify as hard.
+
+Required implementation:
+1. Add or fix a normalizer function for escalation mode.
+2. Normalize every escalation row before filtering/rendering.
+3. Use normalized mode for:
+   - tab filtering
+   - badges
+   - row labels
+   - detail pane/composer behavior
+4. Do not rely on a single field unless the live API proves that field is always present.
+5. Add temporary console logging only if needed, then remove before final.
+6. Do not use mock data.
+
+Investigation:
+- Inspect the live API response for:
+  GET /api/unboks/dashboard/api/escalations
+- Inspect how Escalations page gets data.
+- Inspect how rows are converted into Conversation objects.
+- Inspect current tab filter code.
+- Check whether it filters by "soft" / "hard" while rows have undefined mode.
+- Check whether email hard escalations have aiMuted or handoff_required that frontend ignores.
+
+Likely files:
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/lib/conversation-mapper.ts
+- artifacts/unboks/src/lib/api.ts
+- artifacts/unboks/src/hooks/use-client-api.ts
+- artifacts/unboks/src/components/inbox/MessageRow.tsx if badges are rendered there
+
+Acceptance:
+- All tab shows both current escalations.
+- Human takeover tab shows the two current hard escalations.
+- AI needs help tab does not show those hard escalations.
+- Hard escalation rows show clear hard/human takeover label.
+- Soft escalations, when present, show under AI needs help.
+- Hard wins if both soft and hard signals are present.
+- Detail pane/composer knows hard vs soft mode correctly.
+- No backend changes.
+- No artifacts/api-server changes.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.
