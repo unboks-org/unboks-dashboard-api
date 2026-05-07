@@ -1,0 +1,262 @@
+Project 2 dashboard frontend — fix duplicate escalations and make Escalation Reason specific, not generic.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python backend assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch sidebar unless absolutely required.
+- Do not commit.
+- Do not publish until reviewed.
+
+Current problem:
+The Escalations page is showing duplicate rows for the same customer/conversation.
+
+Example:
+Calvin appears 3 times in the escalation list.
+
+If those rows belong to the same active unresolved conversation/escalation, the operator should see only one Calvin row.
+
+Also, the Escalation Reason panel is currently generic and useless.
+
+Current bad copy:
+“Marina needs human guidance before replying to this customer.”
+“Review the customer's request, then guide Marina on how to respond.”
+
+This is not an escalation reason.
+The operator already knows they need to guide Marina because it is a soft escalation.
+
+Product goal:
+Escalations must be decision-first.
+
+The operator needs to immediately understand:
+1. Why am I looking at this escalation?
+2. What exactly happened?
+3. What does the customer want?
+4. What decision does Marina need from me?
+5. What are my realistic options?
+
+The conversation trail is secondary.
+The Escalation Reason box must be an operational briefing.
+
+PART A — DEDUPLICATE ESCALATION LIST
+
+Required behavior:
+1. The escalation list should show one active unresolved escalation per conversation.
+2. Do not show the same customer/conversation 3 times if it is the same active escalation thread.
+3. Deduplicate by the best stable conversation key available:
+   - conversationId
+   - phone
+   - conversation_id
+   - thread_key
+   - email thread key
+   - fallback: customerName + channel only if no stable id exists
+4. If multiple rows exist for the same conversation, keep the newest unresolved row.
+5. If duplicates contain different useful fields, merge them carefully:
+   - newest updatedAt/createdAt
+   - strongest mode signal, hard wins over soft
+   - keep best summary if available
+   - keep real phone/conversationId if one row has it
+6. Do not deduplicate different conversations from the same customer if they have different stable conversation ids.
+7. Sidebar count should match the deduplicated visible list.
+8. All tab should show deduplicated unresolved escalations.
+9. AI needs help tab should show deduplicated soft escalations.
+10. Human takeover tab should show deduplicated hard escalations.
+
+Mode logic:
+- hard = Human takeover
+- soft = AI needs help
+- hard wins over soft if conflicting signals exist
+
+PART B — ESCALATION REASON PANEL MUST BE SPECIFIC
+
+Current generic filler must be removed.
+
+The panel should not say:
+- “Review the customer's request”
+- “Guide Marina on how to respond”
+- “Marina needs human guidance before replying”
+
+unless there is literally no conversation data.
+
+Required panel sections:
+
+1. Escalation reason
+Specific reason based on the actual conversation.
+
+Example:
+“Calvin is asking to schedule an activation call after discussing WhatsApp and Facebook message automation. He offered two possible time slots and Marina needs a human to choose or confirm one.”
+
+2. Customer wants
+Specific customer request.
+
+Example:
+“Customer wants to meet this week to activate the service.”
+
+3. Marina needs
+Specific decision needed from the operator.
+
+Example:
+“Choose one of the proposed time slots, suggest another time, or ask Calvin to send more availability.”
+
+4. Options
+Specific practical options, not generic filler.
+
+Example options:
+- Confirm first proposed time
+- Confirm second proposed time
+- Suggest another time
+- Ask Marina to collect more availability
+- Switch to human takeover
+
+The panel must help the operator answer quickly.
+
+Frontend fallback logic:
+If backend does not provide structured fields yet, build the best possible frontend fallback from available data:
+- escalation.summary
+- escalation.reason
+- escalation.customerRequest
+- escalation.nextAction
+- last_message
+- messages
+- latest customer message
+- latest assistant/Marina message
+- mode
+- channel
+- customerName
+
+Do not invent fake details.
+But do extract obvious concrete details from the text when possible, such as:
+- customer wants a meeting
+- customer gave time slots
+- customer asks about pricing
+- customer asks about WhatsApp
+- customer asks about Facebook
+- customer asks for activation
+- customer asks for a human
+- customer has a complaint
+- customer wants booking/order help
+
+If the message says “Tomorrow (Wednesday...)” or contains possible times, mention that in the reason.
+
+Better fallback examples:
+For scheduling:
+Reason:
+“Calvin wants to schedule a meeting and has suggested availability. Marina needs a human to choose or confirm the next step.”
+
+Customer wants:
+“A meeting or activation call.”
+
+Marina needs:
+“Tell Marina which time to confirm, suggest another time, or ask for more availability.”
+
+For pricing:
+Reason:
+“Customer is asking about pricing and the answer may depend on their channels, volume, or setup.”
+
+Customer wants:
+“Pricing information.”
+
+Marina needs:
+“Confirm whether Marina should explain pricing generally, collect requirements, or hand over to a human.”
+
+For vague fallback only:
+Reason:
+“This conversation was escalated because Marina needs human input before replying.”
+
+Use that only if there is not enough information.
+
+PART C — CONVERSATION TRAIL SECONDARY
+
+The message trail must remain available, but it should not be the first thing the operator has to inspect.
+
+Preferred:
+- Escalation reason panel first.
+- Composer second.
+- Conversation trail below, collapsed or secondary.
+- Operator can still click “Show conversation” / “Hide conversation”.
+
+PART D — VISUAL DESIGN
+
+Use Refero/Repro:
+Use real premium customer support/ticket UX references before editing:
+- Intercom conversation detail
+- Zendesk ticket summary panel
+- Front shared inbox
+- Salesforce service console
+- Linear issue summary/action panel
+- Slack thread summary/action UI
+
+If Refero/Repro is not connected, stop and report clearly before editing.
+
+Design:
+- Premium SaaS support dashboard
+- Compact
+- Clear
+- Decision-first
+- No giant yellow banner
+- No generic filler
+- Good hierarchy
+- Strong readable text
+- Specific options in small action chips
+- Message trail secondary
+- Mobile clean
+
+PART E — DO NOT BREAK EXISTING FEATURES
+
+Do not break:
+- soft/hard mode switch
+- Reply to Marina
+- Reply to customer
+- AI Editor only in hard mode
+- translation conversation feature
+- escalation filters
+- email/WhatsApp conversation detail
+- sidebar counts
+- newest-first ordering
+
+Likely files:
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/lib/conversation-mapper.ts
+- artifacts/unboks/src/lib/api.ts
+- artifacts/unboks/src/hooks/use-client-api.ts
+- artifacts/unboks/src/components/inbox/EscalationReasonPanel.tsx if it exists
+
+Possibly create:
+- artifacts/unboks/src/lib/escalation-summary.ts
+- artifacts/unboks/src/components/inbox/EscalationReasonPanel.tsx
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Tasks.tsx
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+1. Calvin does not appear 3 times if all rows are the same active escalation conversation.
+2. Escalation list shows one row per active unresolved conversation.
+3. Sidebar escalation count matches deduplicated list count.
+4. All tab shows deduplicated escalations.
+5. AI needs help shows deduplicated soft escalations.
+6. Human takeover shows deduplicated hard escalations.
+7. Escalation Reason panel contains a specific reason, not generic instructions.
+8. Panel explains what the customer wants.
+9. Panel explains what Marina or the human needs from the operator.
+10. Panel gives practical options.
+11. Generic fallback copy is used only if no message data exists.
+12. Conversation trail is still available but secondary.
+13. Reply composer still works.
+14. Translation still works.
+15. Build/typecheck clean.
+16. Report exact files changed.
+17. Report whether Refero/Repro was connected and what references were used.
+18. Do not commit.
+19. Do not publish.
