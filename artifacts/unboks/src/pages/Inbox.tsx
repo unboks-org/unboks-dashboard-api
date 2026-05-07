@@ -32,7 +32,11 @@ import type { ApiMessage, ConversationDetail } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { EscalationReplyComposer } from "@/components/inbox/EscalationReplyComposer";
 import { EmailMessageDetail } from "@/components/inbox/EmailMessageDetail";
-import { MessageTranslateBlock } from "@/components/inbox/MessageTranslateBlock";
+import {
+  ConversationTranslationBar,
+  ConversationTranslationProvider,
+  MessageTranslationView,
+} from "@/components/inbox/ConversationTranslation";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
@@ -49,20 +53,13 @@ const NAV_LABELS: Record<string, string> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function MessageBubble({
-  msg,
-  conversationId,
-  channel,
-}: {
-  msg: ApiMessage;
-  conversationId: string;
-  channel: string;
-}) {
+function MessageBubble({ msg }: { msg: ApiMessage }) {
   const isAssistant = msg.role === "assistant";
-  // Translate trigger lives OUTSIDE the colored bubble so it's clearly
-  // visible against the page background on every message — no hover, no
-  // opacity tricks. Width caps to the bubble's max width so the trigger
-  // and translation block sit naturally beneath the message.
+  // Translation, when present for the current global target language and
+  // visibility, is rendered inline below the bubble by `MessageTranslationView`,
+  // which reads from the conversation-level translation context. There are
+  // no per-bubble Translate buttons — the single Translate Conversation
+  // toolbar at the top of the thread drives all translations.
   return (
     <div className={cn("flex", isAssistant ? "justify-end" : "justify-start")}>
       <div
@@ -84,20 +81,12 @@ function MessageBubble({
             <p className="text-[11px] mt-1 opacity-60">{msg.timestamp}</p>
           )}
         </div>
-        <div
-          className={cn(
-            "flex w-full",
-            isAssistant ? "justify-end" : "justify-start",
-          )}
-        >
-          <MessageTranslateBlock
+        {msg.id && (
+          <MessageTranslationView
             messageId={msg.id}
-            text={msg.content}
-            conversationId={conversationId}
-            channel={channel}
-            variant="bubble"
+            align={isAssistant ? "right" : "left"}
           />
-        </div>
+        )}
       </div>
     </div>
   );
@@ -415,36 +404,37 @@ function ConversationDetailPane({
         )}
       </div>
 
-      {/* Message thread */}
-      <div
-        className={cn(
-          "flex-1 overflow-y-auto px-4 py-4",
-          conversation.channel === "Email" ? "space-y-4 bg-[#f8f9fa]" : "space-y-3",
-        )}
+      {/* Conversation-level translation: provider wraps both the toolbar
+          and the thread so each message can render its translation inline
+          without prop-drilling. The toolbar is the only place an operator
+          starts a translation in v2. */}
+      <ConversationTranslationProvider
+        conversationId={conversation.id}
+        channel={conversation.channel}
+        messages={messages}
       >
-        {isLoading && (
-          <p className="text-[13px] text-[#5f6368] text-center py-8">Loading messages…</p>
-        )}
+        <ConversationTranslationBar />
 
-        {!isLoading && messages.length > 0 && (
-          conversation.channel === "Email"
-            ? messages.map((msg, i) => (
-                <EmailMessageDetail
-                  key={msg.id ?? i}
-                  msg={msg}
-                  conversationId={conversation.id}
-                  channel={conversation.channel}
-                />
-              ))
-            : messages.map((msg, i) => (
-                <MessageBubble
-                  key={msg.id ?? i}
-                  msg={msg}
-                  conversationId={conversation.id}
-                  channel={conversation.channel}
-                />
-              ))
-        )}
+        {/* Message thread */}
+        <div
+          className={cn(
+            "flex-1 overflow-y-auto px-4 py-4",
+            conversation.channel === "Email" ? "space-y-4 bg-[#f8f9fa]" : "space-y-3",
+          )}
+        >
+          {isLoading && (
+            <p className="text-[13px] text-[#5f6368] text-center py-8">Loading messages…</p>
+          )}
+
+          {!isLoading && messages.length > 0 && (
+            conversation.channel === "Email"
+              ? messages.map((msg, i) => (
+                  <EmailMessageDetail key={msg.id ?? i} msg={msg} />
+                ))
+              : messages.map((msg, i) => (
+                  <MessageBubble key={msg.id ?? i} msg={msg} />
+                ))
+          )}
 
         {!isLoading && messages.length === 0 && (
           <div className="py-8 space-y-3">
@@ -487,7 +477,8 @@ function ConversationDetailPane({
             )}
           </div>
         )}
-      </div>
+        </div>
+      </ConversationTranslationProvider>
 
       {showBanner && dbId && (
         <EscalationReplyComposer

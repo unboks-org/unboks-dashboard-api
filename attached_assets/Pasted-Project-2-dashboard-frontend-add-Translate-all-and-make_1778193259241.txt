@@ -1,0 +1,171 @@
+Project 2 dashboard frontend — add Translate all and make Translate controls smaller.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not modify backend.
+- Work only on conversation detail/message translation frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch DashboardShell unless absolutely required.
+- Do not commit.
+- Do not publish until reviewed.
+
+Issue:
+The current Translate control on every message is too large and repetitive.
+
+Current control:
+[Translate] [Dutch ▼]
+
+It takes too much space inside the conversation thread.
+
+Also, operators need a faster way to translate the whole conversation instead of clicking Translate on every single message.
+
+Task:
+Improve translation UX.
+
+Required features:
+1. Make per-message Translate controls smaller.
+2. Add a “Translate all” control for the whole conversation.
+3. Add a checkbox/toggle option for showing translated messages.
+4. Keep selected target language shared globally across all messages.
+5. Default target language remains English unless user changed it.
+6. If user chooses Dutch, Translate all translates all visible messages to Dutch.
+7. Do not send anything to the customer.
+8. Do not modify original message history.
+
+Header/control placement:
+Add a compact translation toolbar near the conversation header or just above the message list.
+
+Suggested layout:
+[ ] Translate all messages   Language: [Dutch ▼]
+
+or:
+[Translate all] [Dutch ▼] [✓ Show translations]
+
+Preferred premium layout:
+- Small compact toolbar
+- Light background
+- Subtle border
+- Does not take much vertical space
+- Sits above messages, below the contact header/mode controls
+
+Required behavior:
+1. “Translate all” translates all visible messages in the current conversation.
+2. It should use the selected global language.
+3. It should skip messages already translated to that language.
+4. It should show progress/loading state:
+   “Translating…”
+5. If some translations fail, keep successful translations and show calm note:
+   “Some messages could not be translated.”
+6. The operator can hide/show translations.
+7. A checkbox/toggle controls whether translations are displayed:
+   - checked = show translations
+   - unchecked = hide translations
+8. Per-message “Hide translation” still works if already present, but global show/hide should be respected.
+9. Translation cache must be by message id + target language.
+10. Changing language updates all controls and future translations.
+
+Per-message button changes:
+- Make button smaller.
+- Do not use a large pill for every message.
+- Use compact text/icon:
+  “Translate”
+  or small icon + “Translate”
+- Language dropdown should not repeat on every message if global toolbar exists.
+- Preferred:
+  - Global toolbar has language selector.
+  - Per-message button only says “Translate”.
+- This reduces clutter.
+
+New preferred UI:
+Conversation toolbar:
+Translate all   [Dutch ▼]   [checkbox] Show translations
+
+Message bubble:
+10:16 AM · Translate
+
+After translated:
+Translated to Dutch
+[translated text]
+Hide
+
+API:
+Use existing translation call.
+Preferred:
+POST /api/{client}/dashboard/api/translate
+
+Body:
+{
+  "text": "message text",
+  "targetLanguage": "Dutch",
+  "sourceLanguage": "auto",
+  "context": {
+    "conversationId": "string",
+    "messageId": "string",
+    "channel": "whatsapp | email | instagram | facebook | messenger | x | tiktok"
+  }
+}
+
+Alternative:
+POST /api/{client}/dashboard/api/ai-editor
+with:
+{
+  "action": "translate",
+  "text": "message text",
+  "targetLanguage": "Dutch",
+  "context": {
+    "usage": "operator_message_translation",
+    "conversationId": "string",
+    "messageId": "string"
+  }
+}
+
+If backend is missing:
+- Translate button should still be visible.
+- Translate all should show:
+  “Translation will be connected by the Unboks team.”
+- Do not crash.
+- Do not fake translations.
+
+Important:
+Do not translate system/status UI.
+Only translate actual conversation messages.
+
+Likely files:
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/components/inbox/MessageBubble.tsx if it exists
+- artifacts/unboks/src/components/inbox/MessageTranslation.tsx if it exists
+- artifacts/unboks/src/lib/api.ts
+- artifacts/unboks/src/hooks/use-client-api.ts
+Possibly:
+- artifacts/unboks/src/hooks/use-translation-language.ts
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Tasks.tsx
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Per-message Translate buttons are smaller.
+- Language dropdown is not repeated on every message if global toolbar exists.
+- Conversation has a clear Translate all control.
+- Conversation has a target language selector.
+- Conversation has a checkbox/toggle to show/hide translations.
+- Selecting Dutch once applies to all translation controls.
+- Translate all translates all visible messages to Dutch.
+- Existing translated messages are not retranslated unnecessarily.
+- Original messages remain visible.
+- Translations are clearly labelled.
+- Nothing is sent to the customer.
+- Mobile layout remains clean.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.
