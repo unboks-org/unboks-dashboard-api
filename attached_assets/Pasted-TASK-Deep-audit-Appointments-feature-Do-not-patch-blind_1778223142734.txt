@@ -1,0 +1,232 @@
+TASK: Deep audit Appointments feature. Do not patch blindly.
+
+PROJECT SCOPE:
+Project 2 customer dashboard + backend only.
+Do NOT touch Project 1 public website.
+Do NOT touch pricing.
+
+Problem:
+Appointments has a bug. We need a deep audit before making changes.
+
+Known symptoms:
+- Appointments sidebar badge can show stale counts.
+- Archived conversations may still leave appointment counts active.
+- Appointments are now backend-derived from scheduling escalations.
+- Need to verify whether Appointments list, counts, archive behavior, refresh behavior, and conversation linking are correct.
+
+IMPORTANT:
+This is an audit-first task.
+Do not immediately rewrite the feature.
+Do not guess.
+Trace the full Appointments data flow from backend creation to frontend display/counts.
+
+Audit scope:
+
+1. Backend appointment creation
+Inspect how appointments are created from escalation summaries.
+
+Check:
+- where scheduling intent is detected
+- when appointment_upsert is called
+- what conversation_id is used
+- what channel is stored
+- what customer name is stored
+- what status is assigned
+- how proposed times are stored
+- whether duplicate appointments are prevented correctly
+- whether one row per conversation works across WhatsApp/email/IG/FB
+- whether email conversation IDs use the same format as frontend expects
+
+2. Backend appointments endpoint
+Inspect GET /appointments.
+
+Check:
+- response shape
+- whether it returns active only or all appointments
+- whether archived conversations are included
+- whether blocked conversations are included
+- whether resolved escalation appointments are included
+- whether deleted email conversations are included
+- whether appointment status affects visibility
+- whether appointment rows are stale after parent conversation changes
+
+3. Appointment statuses
+Audit all statuses used.
+
+List every possible appointment status currently used in code, for example:
+- detected
+- pending_team_confirmation
+- confirmed
+- cancelled
+- archived
+- resolved
+- any other value
+
+Check:
+- which statuses should appear in active sidebar count
+- which statuses should appear in Appointments page
+- which statuses should be hidden
+- whether archived parent conversation should override appointment status
+
+4. Conversation linkage
+This is critical.
+
+For every appointment, verify the link back to the parent conversation.
+
+Check:
+- WhatsApp stable key
+- Email stable key
+- Instagram/Facebook/Messenger stable key
+- conversation_id format
+- whether frontend uses the same key
+- whether archive/delete/block state can be matched to the appointment
+- whether conversation_id changes after refresh
+- whether appointment rows are orphaned
+
+5. Archive behavior
+Check what happens when a conversation with an appointment is archived.
+
+Expected:
+- Archived parent conversation should not count as active appointment.
+- Appointments badge should decrease.
+- Active Appointments list should hide it unless Archive view intentionally shows it.
+- Refresh should keep it hidden.
+- If customer sends new inbound message and conversation restores to Active, related appointment can become active again if still relevant.
+
+Audit:
+- Does archive operation update appointment?
+- Does GET /appointments filter based on conversation archive state?
+- Does frontend filter appointments using archived conversation keys?
+- Is archive state backend-backed or localStorage-backed?
+- If localStorage-backed, does appointment filtering read the same archived keys?
+
+6. Delete behavior
+Check email delete behavior.
+
+Expected:
+- If parent email conversation is deleted, related appointment should not count as active.
+- It should not appear in active Appointments.
+- It should not break if detail link is clicked.
+
+7. Block behavior
+Expected:
+- Blocked conversations should not count as active appointments.
+- New inbound messages on blocked conversations should not restore appointment to active.
+
+8. Resolve behavior
+Check whether resolving an escalation should affect the appointment.
+
+Question to answer:
+- If escalation is resolved but appointment is still pending, should appointment remain active?
+- If the appointment only represents “operator needs to confirm time,” then resolving that escalation may mean appointment should no longer be active unless there is a separate appointment status.
+
+Audit current behavior and report recommendation.
+
+Do not change this until reported.
+
+9. Sidebar badge count
+Trace Appointments badge source.
+
+Check:
+- hardcoded/static count?
+- frontend hook?
+- backend /appointments count?
+- derived from appointments.length?
+- derived from active filtered appointments?
+- does it exclude archived/deleted/blocked/resolved?
+- does it update after archive/delete/resolve?
+- does it update after refresh?
+
+Expected:
+Sidebar Appointments badge should count only active actionable appointments.
+
+10. Frontend useAppointments hook
+Inspect:
+- hook source
+- normalization logic
+- fallback/localStorage behavior
+- whether it uses backend /appointments
+- whether local demo data still exists
+- whether old localStorage appointments are merged with backend data
+- whether stale localStorage data can create fake counts
+- whether items and appointments response keys are both handled safely
+
+11. Appointments page/list UI
+Inspect:
+- what rows are shown
+- click behavior
+- empty state
+- link to conversation
+- whether archived/deleted parent conversations still open correctly
+- whether stale appointments remain visible
+- whether refresh changes state
+
+12. Data consistency
+Check for orphaned appointments.
+
+Audit whether appointment rows can exist when:
+- parent conversation no longer active
+- parent conversation deleted
+- parent conversation archived
+- customer id changed
+- email thread key changed
+- escalation dedup updated conversation
+
+13. Tests
+Inspect existing appointment tests.
+
+Check:
+- scheduling creates appointment
+- vague scheduling creates detected
+- non-scheduling creates none
+- dedup updates appointment
+- endpoint shape
+- email routing key
+- archive/filter/count behavior
+- deleted email behavior
+- blocked conversation behavior
+- refresh persistence behavior
+
+Identify missing tests.
+
+Required audit report:
+Provide a structured report with:
+
+A. Current data flow
+- how appointment is created
+- where it is stored
+- how frontend receives it
+- how sidebar count is calculated
+
+B. Root cause candidates
+List likely causes of the current bug.
+
+C. Confirmed bugs
+Only list confirmed bugs based on code inspection, not guesses.
+
+D. Recommended fix plan
+Clear steps, in order.
+Do not implement yet unless the fix is tiny and obvious; ask for green light first.
+
+E. Required tests
+List exact tests to add before/with the fix.
+
+F. Risk assessment
+Explain what could break:
+- inbox
+- escalation
+- archive
+- delete email
+- appointments page
+- sidebar counts
+
+Acceptance criteria for audit:
+- No blind patching.
+- Full backend + frontend path inspected.
+- Sidebar count source identified.
+- Archive/delete/block interaction identified.
+- Appointments endpoint behavior identified.
+- LocalStorage/demo fallback checked.
+- Stable conversation key behavior checked.
+- Clear fix plan delivered.
+- No unrelated changes.
