@@ -272,7 +272,15 @@ function ConversationDetailPane({
 }: ConversationDetailPaneProps) {
   const { data: detail, isLoading, isError, error } = useConversation(conversation.id);
   const badgeColor = CHANNEL_BADGE_COLORS[conversation.channel] ?? "#9aa0a6";
-  const messages: ApiMessage[] = detail?.messages ?? [];
+  // Sort newest-first by parsed backend timestamp so the latest message is
+  // always at the top of the thread (Inbox / Escalation trail / WhatsApp /
+  // Email all share this single render path). Spread first — never mutate
+  // the React Query cache array. Messages with timestampMs === 0 (missing
+  // or unparseable backend timestamp) sort to the bottom by stable order.
+  const messages: ApiMessage[] = useMemo(() => {
+    const src = detail?.messages ?? [];
+    return [...src].sort((a, b) => (b.timestampMs ?? 0) - (a.timestampMs ?? 0));
+  }, [detail?.messages]);
   // Surface the underlying API status/message so an email conversation that
   // 404s (or whose id breaks server-side routing) doesn't render as a blank
   // pane. ApiError carries the HTTP status; fall back to its message string.

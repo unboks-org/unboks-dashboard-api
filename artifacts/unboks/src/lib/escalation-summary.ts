@@ -7,26 +7,30 @@
  * needs human guidance...") that taught the operator nothing they didn't
  * already know from the mode pill.
  *
- * This module reads the actual conversation messages and tries to extract
- * concrete, useful detail — what topic the customer is on, whether they
- * proposed times, whether they asked about pricing, whether they asked for
- * a human, etc. — and turns that into a short operational briefing:
+ * This module reads the actual conversation messages and extracts concrete
+ * details — what topic the customer is on, whether they proposed specific
+ * dates/times, whether they asked about pricing, etc. — and turns that into
+ * a short operational briefing:
  *
  *   {
- *     reason         : "Calvin wants to schedule a call and proposed a time."
- *     customerWants  : "A meeting or activation call."
- *     marinaNeeds    : "Tell Marina which time to confirm or suggest..."
- *     options        : [ "Confirm the proposed time", ... ]
+ *     reason         : "Calvin wants to schedule an activation call. He
+ *                       suggested Wednesday at 10:00 or Thursday at 14:00.
+ *                       Marina needs a human to choose which slot works..."
+ *     customerWants  : "An activation meeting this week."
+ *     marinaNeeds    : "Choose one of Calvin's proposed time slots, ..."
+ *     options        : [ "Confirm Wednesday at 10:00", ... ]
  *   }
  *
  * Hard rules
  * ----------
  *  - Never invent customer-specific facts. Every concrete claim must come
- *    from text actually present in the messages.
- *  - When the backend DOES ship a non-empty `summary`, it wins as the
- *    reason (it's more authoritative than our heuristics).
- *  - The vague "Marina needs human guidance before replying" copy is used
- *    ONLY when there is genuinely no message data to analyse.
+ *    from text actually present in the messages (or a backend field).
+ *  - When the backend ships a non-empty `summary`, it wins as the reason
+ *    (more authoritative than our heuristics) — but we still extract
+ *    concrete slots from the message corpus so the option chips can name
+ *    them.
+ *  - Vague "Marina needs human guidance before replying" copy is used
+ *    ONLY when there is genuinely no message data AND no backend summary.
  */
 
 import type { ApiMessage } from "./api";
@@ -46,10 +50,10 @@ interface BuildArgs {
   customerName?: string | null;
 }
 
-// Topic detectors. Each returns true if the topic is mentioned in `text`.
-// Rules are intentionally simple word/phrase checks — false positives are
-// preferable to silent generic fallback as long as the resulting wording
-// stays neutral ("asking about X").
+// ---------------------------------------------------------------------------
+// Topic detection
+// ---------------------------------------------------------------------------
+
 type Topic =
   | "meeting"
   | "pricing"
@@ -64,7 +68,7 @@ type Topic =
 const TOPIC_RULES: Array<{ topic: Topic; pattern: RegExp }> = [
   {
     topic: "meeting",
-    pattern: /\b(meet|meeting|call|schedule|appointment|catch up|chat|jump on|hop on|zoom|google meet|teams)\b/i,
+    pattern: /\b(meet|meeting|call|schedule|appointment|catch up|chat|jump on|hop on|zoom|google meet|teams|availability|available)\b/i,
   },
   {
     topic: "pricing",
@@ -94,24 +98,6 @@ const TOPIC_RULES: Array<{ topic: Topic; pattern: RegExp }> = [
   },
 ];
 
-// Time / date hints. A loose detector — we don't try to parse the time, we
-// just want to mention "and proposed a time" when the message clearly does.
-const TIME_HINT =
-  /\b(\d{1,2}[:.]\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)|today|tomorrow|tonight|this (?:morning|afternoon|evening|week|weekend)|next (?:week|monday|tuesday|wednesday|thursday|friday|saturday|sunday)|(?:mon|tue|wed|thu|fri|sat|sun)(?:day)?)\b/i;
-// Multiple time slots (rough): two TIME_HINT-ish things separated by
-// "or"/"," — we use a light heuristic on the message rather than counting
-// matches because dates can take many forms.
-const SLOTS_HINT =
-  /\b(?:two|three|2|3) (?:options|times|slots|possibilities)|\boption\s*1\b|\bslot 1\b|\beither .* or\b|\b\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm)? (?:or|and) \d{1,2}(?:[:.]\d{2})?\s*(?:am|pm)?/i;
-
-function firstName(name?: string | null): string {
-  if (!name) return "The customer";
-  const n = name.trim();
-  if (!n || n.toLowerCase() === "unknown contact") return "The customer";
-  // Take the first whitespace-separated chunk; strip trailing punctuation.
-  return n.split(/\s+/)[0].replace(/[^\p{L}\p{N}'-]/gu, "") || "The customer";
-}
-
 function detectTopics(text: string): Set<Topic> {
   const found = new Set<Topic>();
   for (const { topic, pattern } of TOPIC_RULES) {
@@ -120,20 +106,168 @@ function detectTopics(text: string): Set<Topic> {
   return found;
 }
 
-function lastUserMessage(messages: ApiMessage[]): ApiMessage | null {
+// ---------------------------------------------------------------------------
+// Concrete time-slot extraction
+// ---------------------------------------------------------------------------
+//
+// Goal: when the customer wrote something like "Wednesday at 10:00 or
+// Thursday at 14:00", surface the actual strings "Wednesday at 10:00" and
+// "Thursday at 14:00" — both in the reason line and as option chips
+// ("Confirm Wednesday at 10:00").
+//
+// We deliberately keep the grammar conservative: every extracted slot must
+// pair an explicit day token (weekday name OR today/tomorrow/tonight) with
+// an explicit time token (HH:MM, with or without am/pm; or a bare H/HH
+// with am/pm). Bare numbers without a day or am/pm marker are ignored to
+// avoid false positives like "200 customers" or "version 2".
+
+const DAY_TOKENS: Record<string, string> = {
+  monday: "Monday", mon: "Monday",
+  tuesday: "Tuesday", tue: "Tuesday", tues: "Tuesday",
+  wednesday: "Wednesday", wed: "Wednesday",
+  thursday: "Thursday", thu: "Thursday", thurs: "Thursday",
+  friday: "Friday", fri: "Friday",
+  saturday: "Saturday", sat: "Saturday",
+  sunday: "Sunday", sun: "Sunday",
+  today: "today",
+  tomorrow: "tomorrow",
+  tonight: "tonight",
+  // Light multilingual coverage. Title-cased to the English equivalent so
+  // the option chips read consistently in the operator UI.
+  maandag: "Monday", dinsdag: "Tuesday", woensdag: "Wednesday",
+  donderdag: "Thursday", vrijdag: "Friday", zaterdag: "Saturday", zondag: "Sunday",
+  lunes: "Monday", martes: "Tuesday", miercoles: "Wednesday", "miércoles": "Wednesday",
+  jueves: "Thursday", viernes: "Friday", sabado: "Saturday", "sábado": "Saturday",
+  domingo: "Sunday",
+};
+
+const DAY_RE_SOURCE = Object.keys(DAY_TOKENS)
+  .sort((a, b) => b.length - a.length) // longest-first so "wednesday" beats "wed"
+  .join("|");
+
+// Time format: HH:MM optional am/pm  OR  H/HH am/pm.
+const TIME_RE_SOURCE = "(?:\\d{1,2}[:.]\\d{2}\\s*(?:am|pm)?|\\d{1,2}\\s*(?:am|pm))";
+
+// A "slot" = day token, optional "at"/comma/space, time token.
+const SLOT_RE = new RegExp(
+  `\\b(${DAY_RE_SOURCE})\\b(?:\\s+(?:at|@|,|kl|klockan|om))?\\s+(${TIME_RE_SOURCE})`,
+  "gi",
+);
+
+// Detect a "this week" / "next week" mention so the customerWants line can
+// be more specific even when no concrete day/time is present.
+const WEEK_HINT = /\b(this|next)\s+(week|weekend|monday|tuesday|wednesday|thursday|friday|saturday|sunday|morning|afternoon|evening)\b/i;
+
+// Loose time hint — used only to colour the reason ("suggested a time")
+// when no concrete slot was extractable but the message clearly mentions
+// some time/day.
+const TIME_HINT = new RegExp(
+  `\\b(${DAY_RE_SOURCE}|${TIME_RE_SOURCE}|this (?:morning|afternoon|evening|week|weekend)|next (?:week|monday|tuesday|wednesday|thursday|friday|saturday|sunday))\\b`,
+  "i",
+);
+
+function normalizeTime(raw: string): string {
+  // Standardise spacing, lowercase am/pm, and turn `10.00` into `10:00`.
+  let t = raw.trim().toLowerCase().replace(".", ":");
+  // Re-insert a single space before am/pm if it got eaten ("10am" → "10 am"
+  // we leave as-is — concise is fine; but "10:00am" reads cleaner as
+  // "10:00 am").
+  t = t.replace(/(\d)(am|pm)\b/, "$1 $2");
+  // "10 am" → keep, "10:00 am" → keep, "10:00" → keep.
+  return t;
+}
+
+export interface TimeSlot {
+  /** Title-cased day word, e.g. "Wednesday" or "tomorrow". */
+  day: string;
+  /** Normalised time, e.g. "10:00" or "3 pm". */
+  time: string;
+  /** Pretty form for display, e.g. "Wednesday at 10:00". */
+  pretty: string;
+}
+
+export function extractTimeSlots(text: string): TimeSlot[] {
+  if (!text) return [];
+  const out: TimeSlot[] = [];
+  const seen = new Set<string>();
+  // Use matchAll so we get all (day, time) pairs in order.
+  for (const m of text.matchAll(SLOT_RE)) {
+    const dayKey = m[1].toLowerCase();
+    const day = DAY_TOKENS[dayKey] ?? m[1];
+    const time = normalizeTime(m[2]);
+    const key = `${day.toLowerCase()}|${time}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    // Lower-case "today/tomorrow/tonight" stay lowercase; weekday names
+    // stay title-cased. Connector "at" if the day is a weekday, no
+    // connector for relative words ("tomorrow 10:00" → "tomorrow 10:00").
+    const connector = /^[A-Z]/.test(day) ? " at " : " ";
+    const pretty = `${day}${connector}${time}`;
+    out.push({ day, time, pretty });
+    if (out.length >= 4) break; // hard cap so chips never explode
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Briefing assembly
+// ---------------------------------------------------------------------------
+
+function firstName(name?: string | null): string {
+  if (!name) return "The customer";
+  const n = name.trim();
+  if (!n || n.toLowerCase() === "unknown contact") return "The customer";
+  return n.split(/\s+/)[0].replace(/[^\p{L}\p{N}'-]/gu, "") || "The customer";
+}
+
+/**
+ * Order-agnostic "latest message" picker. We can't assume the input is
+ * sorted ascending OR descending — Inbox now passes a newest-first sorted
+ * array to render the thread, but other callers may pass raw backend
+ * order. Pick by `timestampMs` first; if the whole array has 0 (no
+ * parseable timestamps), fall back to the last item in array order
+ * (matches the historical assumption that backends emit oldest-first).
+ */
+function pickLatest(
+  messages: ApiMessage[],
+  predicate?: (m: ApiMessage) => boolean,
+): ApiMessage | null {
+  if (messages.length === 0) return null;
+  let best: ApiMessage | null = null;
+  let bestMs = -1;
+  for (const m of messages) {
+    if (predicate && !predicate(m)) continue;
+    const ms = m.timestampMs ?? 0;
+    if (ms > bestMs) {
+      bestMs = ms;
+      best = m;
+    }
+  }
+  if (best && bestMs > 0) return best;
+  // No usable timestamps — fall back to scanning array order. Try tail
+  // first (oldest-first backend), then head (newest-first sorted UI).
   for (let i = messages.length - 1; i >= 0; i -= 1) {
-    if (messages[i].role === "user") return messages[i];
+    if (!predicate || predicate(messages[i])) return messages[i];
   }
   return null;
 }
 
-// Build a one-line topic phrase like "asking about pricing and activation".
-// Returns null when nothing concrete was detected so the caller can fall
-// back to the vague safe copy.
+function joinSlots(slots: TimeSlot[]): string {
+  if (slots.length === 0) return "";
+  if (slots.length === 1) return slots[0].pretty;
+  if (slots.length === 2) return `${slots[0].pretty} or ${slots[1].pretty}`;
+  return `${slots
+    .slice(0, -1)
+    .map((s) => s.pretty)
+    .join(", ")}, or ${slots[slots.length - 1].pretty}`;
+}
+
 function topicPhrase(topics: Set<Topic>): string | null {
   const parts: string[] = [];
-  if (topics.has("meeting")) parts.push("schedule a meeting");
-  if (topics.has("activation")) parts.push("activate the service");
+  if (topics.has("activation") && topics.has("meeting"))
+    parts.push("schedule an activation call");
+  else if (topics.has("activation")) parts.push("activate the service");
+  else if (topics.has("meeting")) parts.push("schedule a meeting");
   if (topics.has("booking")) parts.push("book or order something");
   if (topics.has("pricing")) parts.push("pricing");
   if (topics.has("whatsapp") && topics.has("facebook"))
@@ -149,11 +283,18 @@ function topicPhrase(topics: Set<Topic>): string | null {
   return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
 }
 
-function customerWantsLine(topics: Set<Topic>, hasTimeHint: boolean): string {
-  if (topics.has("meeting") || topics.has("activation"))
-    return hasTimeHint
-      ? "A meeting or activation call, and has suggested availability."
-      : "A meeting or activation call.";
+function customerWantsLine(
+  topics: Set<Topic>,
+  slots: TimeSlot[],
+  hasWeekHint: boolean,
+): string {
+  const isMeeting = topics.has("meeting") || topics.has("activation");
+  if (isMeeting) {
+    const what = topics.has("activation") ? "An activation call" : "A meeting";
+    if (slots.length > 0) return `${what} at one of the times they suggested.`;
+    if (hasWeekHint) return `${what} this week.`;
+    return `${what}.`;
+  }
   if (topics.has("pricing")) return "Pricing information.";
   if (topics.has("complaint")) return "Help resolving a problem they raised.";
   if (topics.has("booking")) return "Help with a booking or order.";
@@ -167,27 +308,35 @@ function customerWantsLine(topics: Set<Topic>, hasTimeHint: boolean): string {
 function marinaNeedsLine(
   mode: "soft" | "hard",
   topics: Set<Topic>,
-  hasSlots: boolean,
+  slots: TimeSlot[],
   hasTimeHint: boolean,
 ): string {
+  const isMeeting = topics.has("meeting") || topics.has("activation");
+  if (isMeeting) {
+    if (mode === "hard") {
+      if (slots.length >= 2)
+        return "Confirm one of the proposed slots, suggest another time, or ask the customer for more availability.";
+      if (slots.length === 1)
+        return `Confirm ${slots[0].pretty}, suggest another time, or ask for more availability.`;
+      if (hasTimeHint)
+        return "Reply directly with a time, or ask the customer for their availability.";
+      return "Reply directly with a time, or ask the customer for their availability.";
+    }
+    // soft
+    if (slots.length >= 2)
+      return "Tell Marina which proposed slot to confirm, suggest another time, or ask Marina to collect more availability.";
+    if (slots.length === 1)
+      return `Tell Marina to confirm ${slots[0].pretty}, suggest another time, or ask for more availability.`;
+    if (hasTimeHint)
+      return "Tell Marina whether the proposed time works or ask her to suggest alternatives.";
+    return "Tell Marina to propose a time or ask the customer for their availability.";
+  }
   if (mode === "hard") {
-    if (topics.has("meeting") || topics.has("activation"))
-      return hasSlots
-        ? "Choose one of the proposed times, suggest another, or ask for more availability."
-        : "Reply directly with a time, or ask the customer for their availability.";
     if (topics.has("pricing"))
       return "Reply directly with pricing, or ask what they need first.";
     if (topics.has("complaint"))
       return "Reply directly to the customer with next steps or a resolution.";
     return "Send a direct reply, request more information, or hand back to Marina.";
-  }
-  // soft
-  if (topics.has("meeting") || topics.has("activation")) {
-    if (hasSlots)
-      return "Tell Marina which time to confirm, suggest another time, or ask Marina to collect more availability.";
-    if (hasTimeHint)
-      return "Tell Marina whether the proposed time works or ask her to suggest alternatives.";
-    return "Tell Marina to propose a time or ask the customer for their availability.";
   }
   if (topics.has("pricing"))
     return "Tell Marina what to quote, or ask her to collect requirements first.";
@@ -203,31 +352,32 @@ function marinaNeedsLine(
 function optionsList(
   mode: "soft" | "hard",
   topics: Set<Topic>,
-  hasSlots: boolean,
+  slots: TimeSlot[],
 ): string[] {
-  if (topics.has("meeting") || topics.has("activation")) {
-    if (mode === "hard") {
-      const opts = hasSlots
-        ? ["Confirm first proposed time", "Confirm second proposed time"]
-        : ["Reply with a time"];
-      return [
-        ...opts,
-        "Suggest another time",
-        "Ask for more availability",
-        "Hand back to Marina",
-        "Mark resolved",
-      ];
-    }
-    const opts = hasSlots
-      ? ["Confirm first proposed time", "Confirm second proposed time"]
-      : ["Tell Marina to confirm a time"];
-    return [
-      ...opts,
-      "Suggest another time",
-      "Ask Marina to collect more availability",
-      "Switch to human takeover",
-      "Mark resolved",
-    ];
+  const isMeeting = topics.has("meeting") || topics.has("activation");
+  if (isMeeting) {
+    // Concrete slot chips when we have them — operator can scan and pick.
+    const slotChips =
+      slots.length > 0
+        ? slots.map((s) => `Confirm ${s.pretty}`)
+        : mode === "hard"
+          ? ["Reply with a time"]
+          : ["Tell Marina to confirm a time"];
+    const tail =
+      mode === "hard"
+        ? [
+            "Suggest another time",
+            "Ask for more availability",
+            "Hand back to Marina",
+            "Mark resolved",
+          ]
+        : [
+            "Suggest another time",
+            "Ask Marina to collect more availability",
+            "Switch to human takeover",
+            "Mark resolved",
+          ];
+    return [...slotChips, ...tail];
   }
   if (topics.has("pricing")) {
     return mode === "hard"
@@ -283,7 +433,6 @@ function optionsList(
           "Mark resolved",
         ];
   }
-  // Generic but mode-appropriate.
   return mode === "hard"
     ? [
         "Reply directly to customer",
@@ -303,32 +452,46 @@ function reasonLine(
   name: string,
   mode: "soft" | "hard",
   topics: Set<Topic>,
-  hasSlots: boolean,
+  slots: TimeSlot[],
   hasTimeHint: boolean,
 ): string {
   const phrase = topicPhrase(topics);
+  const isMeeting = topics.has("meeting") || topics.has("activation");
+
   if (!phrase) {
-    // No identifiable topic — return a slightly less generic line that
-    // still names the customer when known. Better than the old "Marina
-    // needs human guidance" which told the operator nothing.
     return mode === "hard"
       ? `${name} is waiting for a direct human reply.`
       : `${name} sent a message Marina is unsure how to answer.`;
   }
+
   const verb = topics.has("complaint") ? "raised" : "is asking about";
-  const tail =
-    topics.has("meeting") || topics.has("activation")
-      ? hasSlots
-        ? " and proposed time slots"
-        : hasTimeHint
-          ? " and suggested a time"
-          : ""
-      : "";
-  if (mode === "hard") {
-    return `${name} ${verb} ${phrase}${tail}. Marina has handed this over for a direct human reply.`;
+  const head = `${name} ${verb} ${phrase}`;
+
+  // Detail tail — concrete slots take priority over vague hints.
+  let detail = "";
+  if (isMeeting) {
+    if (slots.length > 0) {
+      const joined = joinSlots(slots);
+      const verb2 = slots.length > 1 ? "suggested" : "suggested";
+      detail = ` They ${verb2} ${joined}.`;
+    } else if (hasTimeHint) {
+      detail = " They mentioned some availability.";
+    }
   }
-  return `${name} ${verb} ${phrase}${tail}. Marina needs a human to decide the next step.`;
+
+  const closer =
+    mode === "hard"
+      ? "Marina has handed this over for a direct human reply."
+      : isMeeting
+        ? slots.length > 0
+          ? "Marina needs a human to choose a slot or suggest another time."
+          : "Marina needs a human to confirm or propose a time."
+        : "Marina needs a human to decide the next step.";
+
+  return `${head}.${detail} ${closer}`;
 }
+
+// ---------------------------------------------------------------------------
 
 export function buildEscalationBriefing({
   mode,
@@ -341,55 +504,54 @@ export function buildEscalationBriefing({
   const trimmedSummary = summary?.trim() ?? "";
   const trimmedReason = reason?.trim() ?? "";
 
-  // Collect text from the latest customer message AND the most recent
-  // assistant message (Marina). The customer message drives intent; the
-  // assistant turn occasionally carries clarifying topic words.
-  const lastUser = lastUserMessage(messages);
-  const corpus = [
-    lastUser?.content ?? "",
-    messages.length > 0 ? messages[messages.length - 1].content ?? "" : "",
-  ]
+  // Build the corpus from the latest customer message + the latest
+  // message overall (which may be Marina's reply). Order-agnostic so it
+  // works whether the caller passes oldest-first (raw backend) or
+  // newest-first (Inbox's sorted thread). The customer message drives
+  // intent; the latest assistant turn occasionally carries clarifying
+  // topic/slot words (e.g. "we have a slot Wednesday at 10:00 — does
+  // that work?").
+  const lastUser = pickLatest(messages, (m) => m.role === "user");
+  const lastAny = pickLatest(messages);
+  const corpus = [lastUser?.content ?? "", lastAny?.content ?? ""]
     .join(" \n ")
     .trim();
 
   const hasMessageData = corpus.length > 0;
   const topics = hasMessageData ? detectTopics(corpus) : new Set<Topic>();
+  const slots = hasMessageData ? extractTimeSlots(corpus) : [];
   const hasTimeHint = hasMessageData && TIME_HINT.test(corpus);
-  const hasSlots = hasMessageData && SLOTS_HINT.test(corpus);
+  const hasWeekHint = hasMessageData && WEEK_HINT.test(corpus);
 
   // Reason: backend-supplied summary wins; otherwise our heuristic; only
   // fall back to the vague generic when there is genuinely nothing to go
-  // on (no summary AND no message text).
+  // on. Even when a backend summary exists, slots still feed the option
+  // chips below so the operator can act on concrete times.
   let reasonText: string;
   if (trimmedSummary.length > 0) {
     reasonText = trimmedSummary;
   } else if (hasMessageData) {
-    reasonText = reasonLine(name, mode, topics, hasSlots, hasTimeHint);
+    reasonText = reasonLine(name, mode, topics, slots, hasTimeHint);
   } else {
     reasonText =
       "This conversation was escalated because Marina needs human input before replying.";
   }
 
-  // Customer wants / Marina needs / options also key off the heuristic;
-  // when there is no data, return generic-but-mode-appropriate lines.
   const customerWants = hasMessageData
-    ? customerWantsLine(topics, hasTimeHint)
+    ? customerWantsLine(topics, slots, hasWeekHint)
     : mode === "hard"
       ? "A direct reply from a human."
       : "A reply Marina can send confidently.";
 
   const marinaNeeds = hasMessageData
-    ? marinaNeedsLine(mode, topics, hasSlots, hasTimeHint)
+    ? marinaNeedsLine(mode, topics, slots, hasTimeHint)
     : mode === "hard"
       ? "Send a direct reply, request more information, or hand back to Marina."
       : "Tell Marina what to answer, ask her to collect more details, or take over yourself.";
 
-  const options = optionsList(mode, topics, hasSlots);
+  const options = optionsList(mode, topics, slots);
 
-  // If the backend supplied a `reason` distinct from the summary, append
-  // it as a quiet "Why" line by stashing it on the reason text via a
-  // sentinel the panel can split on. Simpler: surface as a separate
-  // sentence here only if it actually adds information.
+  // Append the backend `reason` when it's truly distinct extra signal.
   if (
     trimmedReason.length > 0 &&
     trimmedReason !== reasonText &&

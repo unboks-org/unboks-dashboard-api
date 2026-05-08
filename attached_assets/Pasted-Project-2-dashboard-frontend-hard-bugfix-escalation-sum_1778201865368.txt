@@ -1,0 +1,182 @@
+Project 2 dashboard frontend hard bugfix — escalation summary must extract concrete details, and all message trails must show newest first.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python backend assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch sidebar unless absolutely required.
+- Do not commit.
+- Do not publish until reviewed.
+
+BUG 1:
+Escalation Reason panel is still too vague.
+
+Current example:
+“Calvin is asking about schedule a meeting and suggested a time. Marina needs a human to decide the next step.”
+
+This is not good enough.
+
+The conversation contains actual details, including proposed time slots.
+The escalation summary must extract and show those concrete details.
+
+Required behavior:
+1. Escalation summary must be specific.
+2. If customer gives dates, times, time slots, days, or availability, show them explicitly.
+3. Do not say “suggested a time” if the actual time is visible in the conversation.
+4. Extract concrete useful details from the message trail:
+   - proposed dates
+   - proposed times
+   - meeting topic
+   - service to activate
+   - requested channel
+   - pricing question
+   - booking/order details
+   - complaint reason
+   - customer decision needed
+5. Operator options must reflect those details.
+
+Example good summary:
+“Calvin wants to schedule an activation call. He suggested Wednesday at 10:00 or Thursday at 14:00. Marina needs a human to choose which slot works or suggest another time.”
+
+Customer wants:
+“An activation meeting this week.”
+
+Marina needs:
+“Choose one of Calvin’s proposed time slots, suggest another time, or ask him for more availability.”
+
+Options:
+- Confirm Wednesday at 10:00
+- Confirm Thursday at 14:00
+- Suggest another time
+- Ask Marina to collect more availability
+- Switch to human takeover
+
+If the exact time slots are available in the message trail, they must appear in the reason panel.
+
+Frontend fallback:
+If backend does not provide structured summary fields, scan available messages and build a better fallback:
+- latest customer messages
+- latest operator/Marina replies
+- last_message
+- detail.messages
+- escalation.summary if present
+
+Add helper extraction for common scheduling patterns:
+- tomorrow
+- today
+- Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
+- Dutch/Swedish/Spanish/Portuguese day names if easy
+- numeric times like 10:00, 14:30, 3 PM, 3:30 PM
+- phrases like “this week”, “next week”, “morning”, “afternoon”
+- “two options”, “2 slots”, “available at”
+
+Do not over-invent.
+If exact times are not present, say “availability was mentioned” but do not pretend exact slots.
+
+Better fallback for scheduling:
+- If message contains meeting/activate/call/appointment/time/slot/availability:
+  Reason should say this is a scheduling escalation.
+- If concrete slots are detected, list them.
+- If no concrete slots are detected, say the customer is asking to schedule and Marina needs the operator to provide or request availability.
+
+BUG 2:
+Conversation message trail is still not newest first.
+
+The user has asked multiple times:
+Latest message must be at the top.
+
+Required behavior:
+1. In every conversation detail/message trail, newest message appears first.
+2. This applies to:
+   - Inbox detail
+   - Escalation detail
+   - WhatsApp detail
+   - Email detail
+   - Conversation trail under escalation reason
+3. Do not require scrolling down to see the newest message.
+4. Sort by actual backend timestamp descending.
+5. Python timestamps with microseconds must parse correctly:
+   2026-05-05T20:06:19.000326+00:00
+6. Missing/invalid timestamps go last.
+7. Do not mutate React Query/cache arrays directly.
+8. Do not only sort conversation list. Sort the individual message thread too.
+9. If message trail is collapsed/expanded, it still opens newest first.
+10. Remove any CSS behavior that auto-scrolls to bottom after render.
+11. Do not use flex-col-reverse unless it causes confusing order. Prefer sorted array descending.
+
+Timestamp display:
+- No raw ISO timestamps.
+- Display readable time only:
+  Today: 20:06 or 8:06 PM depending current app convention
+  Yesterday: Yesterday, 20:06
+  Older: May 5, 20:06
+
+Investigation:
+- Find all places where messages are rendered.
+- Search for:
+  messages.map
+  conversation.messages
+  detail.messages
+  sortedMessages
+  scrollIntoView
+  scrollTop
+  flex-col-reverse
+  created_at
+  timestamp
+  message.created_at
+- Confirm there is not more than one message render path.
+- Ensure all paths use the same sorted newest-first helper.
+
+Suggested implementation:
+Create helper:
+parseTimestampMs(value): number
+sortMessagesNewestFirst(messages): Message[]
+formatMessageTime(value): string
+
+Use it everywhere message threads are rendered.
+
+Likely files:
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/lib/conversation-mapper.ts
+- artifacts/unboks/src/lib/api.ts
+- artifacts/unboks/src/hooks/use-client-api.ts
+Possibly create:
+- artifacts/unboks/src/lib/message-time.ts
+- artifacts/unboks/src/lib/escalation-summary.ts
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Tasks.tsx
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance for escalation summary:
+1. If a customer provided time slots, the Escalation Reason panel shows the actual time slots.
+2. Summary does not use vague wording like “suggested a time” when exact times exist.
+3. Customer wants section is specific.
+4. Marina needs section is specific.
+5. Options include the actual proposed time choices when present.
+6. Generic fallback is used only when there is no useful data.
+
+Acceptance for newest-first messages:
+1. Open any WhatsApp conversation.
+2. The newest message is at the top.
+3. Open any Email conversation.
+4. The newest message is at the top.
+5. Open Escalations conversation trail.
+6. The newest message is at the top.
+7. No scrolling down is needed to see the latest message.
+8. Raw ISO timestamps are not shown.
+9. Build/typecheck clean.
+10. Report exact files changed.
+11. Do not commit.
+12. Do not publish.

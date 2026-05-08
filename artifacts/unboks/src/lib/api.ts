@@ -1,6 +1,6 @@
 import { ApiError } from "@/lib/error";
 import { getApiBase, getToken, clearAuth } from "@/lib/tenant";
-import { formatConversationTimestamp } from "@/lib/conversation-mapper";
+import { formatConversationTimestamp, parseTimestampMs } from "@/lib/conversation-mapper";
 
 // ---------------------------------------------------------------------------
 // Valid clients
@@ -73,7 +73,15 @@ export interface ApiMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  /** Display-formatted timestamp (e.g. "9:42 AM", "Yesterday", "3 Nov"). */
   timestamp: string;
+  /**
+   * Parsed milliseconds-since-epoch for the original backend timestamp,
+   * or 0 if the field was missing / not a real date. Used to sort the
+   * message thread newest-first without re-parsing the display string
+   * (which is lossy — "9:42 AM" has no date).
+   */
+  timestampMs: number;
 }
 
 export interface ConversationDetail {
@@ -337,10 +345,14 @@ function normalizeMessage(raw: unknown, idx: number): ApiMessage | null {
   const timestamp = timestampRaw
     ? formatConversationTimestamp(timestampRaw)
     : "";
+  // parseTimestampMs handles ISO 8601 including Python microsecond format
+  // (`2026-05-05T20:06:19.000326+00:00`) and rejects display-only labels
+  // like "9:42 AM" by returning 0.
+  const timestampMs = parseTimestampMs(timestampRaw);
 
   const id = pickStr(o, "id", "_id", "messageId", "message_id") ?? `msg-${idx}`;
 
-  return { id, role, content, timestamp };
+  return { id, role, content, timestamp, timestampMs };
 }
 
 /** Pull the messages array from any of the shapes the backend has returned:
