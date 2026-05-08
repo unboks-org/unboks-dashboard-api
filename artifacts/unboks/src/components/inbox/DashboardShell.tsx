@@ -120,7 +120,9 @@ export function DashboardShell({
   // Use the same normalizer AND the same dedup pass as the Escalations
   // list so the sidebar count and the rendered list can never disagree
   // (the backend can emit several rows per active conversation; the list
-  // collapses them, so the count must too).
+  // collapses them, so the count must too). Also apply the archive
+  // overlay — archived escalations must NOT contribute to the badge,
+  // matching the persistence brief and the Escalations page filter.
   const escalationsCount = useMemo(() => {
     if (!hasEscData || !apiEscalations) return 0;
     const active = [];
@@ -128,19 +130,24 @@ export function DashboardShell({
       const e = normalizeEscalation(raw);
       if (e && !e.resolved) active.push(e);
     }
-    // Apply the same hide filter the Escalations page uses, so the
-    // badge can never claim more rows than the list actually shows.
-    // We mirror `escalationToConversationRow`'s key derivation:
+    // Apply the same hide AND archive filters the Escalations page
+    // uses. We mirror `escalationToConversationRow`'s key derivation:
     // routable phone (or synthesized `esc:<id>`), plus the escalation
-    // id itself.
+    // id itself. The archive check also receives the enrichment row's
+    // `timestampMs` so the auto-restore-on-new-inbound path stays in
+    // lockstep with the Inbox list (a fresh inbound un-archives the
+    // row in both surfaces on the same render).
     const convoByPhone = new Map(allConversations.map((c) => [c.id, c]));
     return dedupeEscalations(active).filter((n) => {
       const enrich = n.phone ? convoByPhone.get(n.phone) ?? null : null;
       const conversationKey = enrich?.conversationKey ?? n.phone ?? `esc:${n.id}`;
       const id = n.phone || `esc:${n.id}`;
-      return !isRowHidden([conversationKey, id, n.id]);
+      const keys = [conversationKey, id, n.id];
+      if (isRowHidden(keys)) return false;
+      if (isRowArchived(keys, enrich?.timestampMs)) return false;
+      return true;
     }).length;
-  }, [apiEscalations, hasEscData, allConversations, isRowHidden]);
+  }, [apiEscalations, hasEscData, allConversations, isRowHidden, isRowArchived]);
 
   // Appointments sidebar count must use the same merged + de-duplicated
   // list the Appointments page renders, so the badge can never disagree

@@ -915,20 +915,19 @@ export default function Inbox() {
     }
     // Active vs Archived split — applied AFTER channel filtering so an
     // Archived row is reachable from the same channel surface it was
-    // archived from. We deliberately SKIP this filter on the
-    // Escalations tab: that view has no Active/Archived toggle in the
-    // header (it shows All / Agent-needs-help / Human-takeover
-    // instead), so applying the archive filter there would silently
-    // hide an escalated row with no visible way to restore it. Per
-    // the brief, escalations remain visible regardless of archive
-    // state and operators archive/restore them from the row or detail
-    // header. `isRowArchived` consults the row's raw last-message
-    // timestamp so a fresh inbound auto-restores without operator
-    // action (mirroring the backend behaviour we'd build).
-    if (activeNav !== "escalations") {
+    // archived from. Per the persistence brief, archived rows MUST be
+    // excluded from every active surface, including Escalations All /
+    // Agent-needs-help / Human-takeover. The Escalations tab doesn't
+    // expose an Active/Archived toggle, so we hard-fix it to "active":
+    // an archived escalation is hidden everywhere (Active inbox,
+    // channel filters, escalations sub-filters, sidebar counts) and
+    // only re-appears via the auto-restore-on-new-inbound path that
+    // `isRowArchived` honours via the row's raw last_message_at.
+    {
+      const view = activeNav === "escalations" ? "active" : inboxView;
       list = list.filter((c) => {
         const arch = isRowArchived(collectConversationHideKeys(c), c.timestampMs);
-        return inboxView === "archived" ? arch : !arch;
+        return view === "archived" ? arch : !arch;
       });
     }
     if (searchQuery.trim()) {
