@@ -1,0 +1,108 @@
+Project 2 dashboard frontend — show default email address in Escalation Alerts.
+
+Important:
+- Project 2 Replit is frontend only.
+- Canonical backend is api.unboks.org.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Work only on Settings → Escalation Alerts frontend.
+- Do not touch Inbox.
+- Do not touch Tasks.
+- Do not touch Appointments.
+- Do not touch sidebar.
+- Do not commit.
+- Do not publish until reviewed.
+
+Issue:
+In Settings → Escalation Alerts, the Email row currently says:
+
+Email
+Always on · uses your default account email
+
+Badge:
+Default
+
+But it does not show which default email address is being used.
+
+Required behavior:
+1. Show the actual default email address in the Email row.
+2. Keep Email always on.
+3. Keep the Default badge.
+4. The user should clearly see where email escalation alerts are sent.
+
+Preferred UI:
+
+Email                                      Default
+Always on · hello@unboks.org
+
+or:
+
+Email                                      Default
+Always on · alerts sent to hello@unboks.org
+
+Use the real email value from backend if available.
+
+Backend context:
+Jr said GET /settings/escalation-alerts resolves the "default" email sentinel into the actual support_email from client.json so frontend renders the real value rather than the literal string.
+
+Expected GET response may include:
+
+{
+  "channels": {
+    "email": {
+      "enabled": true,
+      "destination": "hello@unboks.org"
+    }
+  }
+}
+
+or possibly:
+
+{
+  "channels": {
+    "email": {
+      "enabled": true,
+      "destination": "default",
+      "resolvedDestination": "hello@unboks.org"
+    }
+  }
+}
+
+Frontend should support both:
+- destination if it is not "default"
+- resolvedDestination
+- email
+- supportEmail
+- support_email
+
+Fallback:
+If no real email is returned, show:
+Always on · uses your default account email
+
+Do not show:
+destination: default
+
+Required implementation:
+1. Inspect escalation alert settings hook/API.
+2. Ensure GET /settings/escalation-alerts is being used.
+3. Extract the email destination/resolved destination.
+4. Render it in the Email row.
+5. Do not allow editing the default email in this section.
+6. Save behavior for WhatsApp/Telegram/Messenger must remain unchanged.
+
+Likely files:
+- artifacts/unboks/src/pages/Settings.tsx
+- artifacts/unboks/src/hooks/use-escalation-notification-preferences.ts
+- artifacts/unboks/src/lib/api.ts
+
+Acceptance:
+- Email row shows actual default email address.
+- If backend returns hello@unboks.org, UI shows hello@unboks.org.
+- If backend returns support_email, UI shows that.
+- If backend only returns default, UI falls back to old copy.
+- Default badge remains.
+- Email remains always on.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

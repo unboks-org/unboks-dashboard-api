@@ -671,23 +671,67 @@ export interface EmailDeletePayload {
   deleteMode?: "trash";
 }
 
+/**
+ * Send an email reply.
+ *
+ * Primary endpoint (the contract Jr published in Brief 210):
+ *   POST /messages/conversations/{id}/email/reply
+ *
+ * Some live deployments responded with HTTP 405 to the `/email/reply`
+ * suffix because the backend mounted the route as the channel-agnostic
+ * `/reply` (the `/email/...` suffix landed only on `forward` + `delete`).
+ * To unblock operators without guessing wildly we add ONE narrow
+ * compatibility fallback: on 404/405 retry the bare `/reply` path. Any
+ * other error bubbles up untouched. If both attempts return 404/405 we
+ * surface the explicit spec copy so the operator sees a useful error
+ * instead of a generic "not available yet" placeholder.
+ *
+ * Logged (info-level) so it's visible in browser devtools which path
+ * actually carried the message.
+ */
 export async function replyToEmail(
   conversationId: string,
   payload: EmailReplyPayload,
 ): Promise<{ ok: boolean }> {
   const key = (conversationId ?? "").replace(/[\r\n]+/g, "").trim();
   if (!key) throw new ApiError(400, "Conversation id is missing.");
-  return apiFetch<{ ok: boolean }>(
-    `/messages/conversations/${encodeConversationKey(key)}/email/reply`,
-    {
-      method: "POST",
-      body: JSON.stringify({
-        body: payload.body,
-        mode: payload.mode ?? "direct",
-        attachments: payload.attachments ?? [],
-      }),
-    },
-  );
+  const enc = encodeConversationKey(key);
+  const body = JSON.stringify({
+    body: payload.body,
+    mode: payload.mode ?? "direct",
+    attachments: payload.attachments ?? [],
+  });
+  const primary = `/messages/conversations/${enc}/email/reply`;
+  const fallback = `/messages/conversations/${enc}/reply`;
+  try {
+    const result = await apiFetch<{ ok: boolean }>(primary, { method: "POST", body });
+    // eslint-disable-next-line no-console
+    console.info(`[unboks] email reply via ${primary}`);
+    return result;
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 404 || err.status === 405)) {
+      try {
+        const result = await apiFetch<{ ok: boolean }>(fallback, { method: "POST", body });
+        // eslint-disable-next-line no-console
+        console.info(
+          `[unboks] email reply via ${fallback} (fell back from ${primary} → HTTP ${err.status})`,
+        );
+        return result;
+      } catch (fallbackErr) {
+        if (
+          fallbackErr instanceof ApiError &&
+          (fallbackErr.status === 404 || fallbackErr.status === 405)
+        ) {
+          throw new ApiError(
+            405,
+            "Email reply endpoint method mismatch. Backend returned HTTP 405.",
+          );
+        }
+        throw fallbackErr;
+      }
+    }
+    throw err;
+  }
 }
 
 export async function forwardEmail(
