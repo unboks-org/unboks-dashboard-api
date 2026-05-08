@@ -139,8 +139,13 @@ function Avatar({
 interface TaskCardProps {
   task: Task;
   busy: boolean;
-  /** When true, the Edit action is enabled (local-pending tasks only for now). */
+  /** Defaults to true. The page may pass `false` to disable Edit while a
+   *  save is in flight; otherwise editing is always available. */
   canEdit?: boolean;
+  /** True when a backend task is currently being shown with a local edit
+   *  override (no server PATCH endpoint yet). Surfaces an honest
+   *  "Edited locally" badge so the operator knows the change is local. */
+  editedLocally?: boolean;
   onMarkDone: (task: Task) => void;
   onReopen: (task: Task) => void;
   onPark: (task: Task) => void;
@@ -152,7 +157,8 @@ interface TaskCardProps {
 export function TaskCard({
   task,
   busy,
-  canEdit = false,
+  canEdit = true,
+  editedLocally = false,
   onMarkDone,
   onReopen,
   onPark,
@@ -340,6 +346,15 @@ export function TaskCard({
                 <Check className="h-3 w-3" /> Done
               </span>
             )}
+            {editedLocally && (
+              <span
+                title="Edited on this device. The change will sync when the backend supports it."
+                className="inline-flex items-center gap-1 rounded-full border border-[#f5cf6c] bg-[#fff4d1] px-2 py-0.5 text-[11px] font-medium text-[#6b4f00]"
+              >
+                <Pencil className="h-3 w-3" />
+                Edited locally
+              </span>
+            )}
           </div>
         </header>
 
@@ -483,18 +498,13 @@ export function TaskCard({
             <button
               type="button"
               onClick={() => canEdit && setEditing(true)}
-              disabled={!canEdit}
-              title={
-                canEdit
-                  ? "Edit task"
-                  : "Editing shared tasks will be available when the backend supports it."
-              }
-              aria-label={canEdit ? "Edit task" : "Editing shared tasks not yet supported"}
+              disabled={!canEdit || busy}
+              title="Edit task"
+              aria-label="Edit task"
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors",
-                canEdit
-                  ? "border-[#d9dee7] bg-white text-[#1f2937] hover:bg-[#eef1f6]"
-                  : "border-transparent bg-transparent text-[#9aa0a6] cursor-not-allowed",
+                "border-[#d9dee7] bg-white text-[#1f2937] hover:bg-[#eef1f6]",
+                "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-white",
               )}
             >
               <Pencil className="h-3.5 w-3.5" />

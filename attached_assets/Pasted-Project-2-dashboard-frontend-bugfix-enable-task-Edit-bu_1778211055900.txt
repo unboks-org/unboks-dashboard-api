@@ -1,0 +1,108 @@
+Project 2 dashboard frontend bugfix — enable task Edit button for all tasks.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not modify backend.
+- Work only on Tasks page/task components/local task state.
+- Do not touch Settings.
+- Do not touch Inbox.
+- Do not touch Appointments.
+- Do not touch sidebar.
+- Do not commit.
+- Do not publish until reviewed.
+
+Bug:
+The Edit button on task cards is greyed out/disabled.
+
+Current UI:
+Copy text works.
+Park works.
+Mark done works.
+Edit is disabled.
+
+This is wrong.
+The operator must be able to edit task text.
+
+Required behavior:
+1. Edit button must be enabled for all visible tasks.
+2. Clicking Edit opens edit mode.
+3. User can change the task text.
+4. User can Save or Cancel.
+5. Save updates the visible task immediately.
+6. Cancel keeps the previous text.
+7. Edit must work for:
+   - local pending tasks
+   - synced/backend tasks
+   - parked tasks
+   - open tasks
+8. If backend edit endpoint is not connected, save the edit locally and show a small “Edited locally” or “Pending sync” badge.
+9. Do not pretend backend saved the edit if it did not.
+10. Edited text must persist after refresh.
+11. Do not break task number.
+12. Do not break createdBy / assignedTo.
+13. Do not break Copy text, Park, Mark done, Reopen, attachments, or task collapse.
+
+Product rule:
+Frontend must allow editing now.
+Backend sync can catch up later.
+
+Implementation guidance:
+For local pending tasks:
+- update the local task in localStorage.
+
+For synced/backend tasks:
+- store local edit override by task id.
+- Suggested localStorage key:
+  unboks_task_local_edits
+
+Data shape:
+{
+  [taskId]: {
+    body: "edited task text",
+    editedAt: "ISO timestamp",
+    pendingSync: true
+  }
+}
+
+Rendering rule:
+When rendering a task:
+- if local edit override exists, display override body
+- show small badge:
+  Edited locally
+  or:
+  Pending sync
+
+When backend edit endpoint is added later:
+- sync these overrides
+- remove pending badge after backend confirms
+
+TaskCard behavior:
+- Remove disabled state from Edit button unless task is currently in a loading/saving state.
+- If edit is intentionally unavailable for some reason, show a tooltip explaining why. But default should be enabled.
+
+Likely files:
+- artifacts/unboks/src/components/tasks/TaskCard.tsx
+- artifacts/unboks/src/pages/Tasks.tsx
+- artifacts/unboks/src/hooks/use-local-pending-tasks.ts
+
+Possibly create:
+- artifacts/unboks/src/hooks/use-local-task-edits.ts
+
+Acceptance:
+- Edit button is clickable.
+- Clicking Edit opens edit mode.
+- Save changes updates task text.
+- Cancel keeps original text.
+- Edit persists after refresh.
+- Synced/backend tasks can be edited locally.
+- Edited synced tasks show “Edited locally” or “Pending sync”.
+- Task number remains visible and unchanged.
+- Park still works.
+- Mark done still works.
+- Reopen still works.
+- Copy text still works.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

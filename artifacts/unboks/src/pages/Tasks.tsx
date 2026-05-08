@@ -30,6 +30,7 @@ import {
 import { useParkedTasks } from "@/hooks/use-parked-tasks";
 import { useTaskAuthorOverlay } from "@/hooks/use-task-author-overlay";
 import { useTaskNumberOverlay } from "@/hooks/use-task-number-overlay";
+import { useLocalTaskEdits } from "@/hooks/use-local-task-edits";
 import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 
@@ -174,6 +175,14 @@ export default function Tasks() {
   // persistence, so the number is stable across refresh.
   const { setNumber: setTaskNumber, apply: applyTaskNumber } =
     useTaskNumberOverlay();
+  // Per-task local edit overrides for backend/synced rows. Local-pending
+  // tasks already mutate their canonical record via `updateLocal`, so this
+  // overlay only kicks in for backend tasks that lack a `localId`. The
+  // override body is applied at render time and the card surfaces an
+  // "Edited locally" badge so the operator can see the change isn't yet
+  // persisted server-side.
+  const { edits: localTaskEdits, setEdit: setLocalTaskEdit } =
+    useLocalTaskEdits();
 
   const { data: backendTasks, isLoading, isError, error } = useQuery({
     queryKey: ["tasks"],
@@ -483,13 +492,22 @@ export default function Tasks() {
     const backend = (backendTasks ?? []).map((raw) => {
       const withAuthor = applyAuthorOverlay(raw);
       const withNumber = applyTaskNumber(withAuthor);
-      if (withNumber.status === "open" && parkedIds.has(withNumber.id)) {
-        return { ...withNumber, status: "parked" as const };
+      // Apply the per-task local edit override on top of the backend body.
+      // We only swap `bodyText` (and clear `bodyHtml` so the plain-text
+      // edit isn't overridden by stale HTML) — every other field stays
+      // canonical so task number, author, status, attachments and dates
+      // remain correct.
+      const override = localTaskEdits[withNumber.id];
+      const withEdit = override
+        ? { ...withNumber, bodyText: override.body, bodyHtml: "" }
+        : withNumber;
+      if (withEdit.status === "open" && parkedIds.has(withEdit.id)) {
+        return { ...withEdit, status: "parked" as const };
       }
-      return withNumber;
+      return withEdit;
     });
     return [...backend, ...localTasks.map(localToTask)];
-  }, [applyAuthorOverlay, applyTaskNumber, backendTasks, localTasks, parkedIds]);
+  }, [applyAuthorOverlay, applyTaskNumber, backendTasks, localTaskEdits, localTasks, parkedIds]);
 
   const counts = useMemo(
     () => ({
@@ -705,16 +723,27 @@ export default function Tasks() {
               key={t.id}
               task={t}
               busy={busyId === t.id}
-              canEdit={Boolean(t.localId)}
+              canEdit
+              editedLocally={!t.localId && Boolean(localTaskEdits[t.id])}
               onMarkDone={(task) => setStatus(task, "done")}
               onReopen={(task) => setStatus(task, "open")}
               onPark={(task) => setStatus(task, "parked")}
               onUnpark={(task) => setStatus(task, "open")}
               onOpenImage={(url) => setLightboxUrl(url)}
               onEdit={(task, patch) => {
-                if (!task.localId) return;
-                updateLocal(task.localId, patch);
-                toast.success("Task updated.");
+                if (task.localId) {
+                  // Local-pending task: mutate the canonical record so the
+                  // edit will be picked up by the next sync.
+                  updateLocal(task.localId, patch);
+                  toast.success("Task updated.");
+                  return;
+                }
+                // Backend task: there is no PATCH-body endpoint yet, so
+                // store an honest local override and badge it as "Edited
+                // locally". Backend status / sync wiring will be added when
+                // the API ships.
+                setLocalTaskEdit(task.id, patch.bodyText);
+                toast.success("Edited locally. Will sync when the backend supports it.");
               }}
             />
           ))}
