@@ -285,8 +285,8 @@ export function DataRetentionSettings() {
           }
         />
         <Row
-          label="Keep approved AI learnings after archive or delete"
-          helper="Approved answers and business knowledge can remain available to the AI without keeping the full private conversation forever."
+          label="Keep approved Agent answers after archive or delete"
+          helper="Approved answers and business knowledge can remain available to your Agent without keeping the full private conversation forever."
           htmlFor="dr-keep-learnings"
           control={
             <label

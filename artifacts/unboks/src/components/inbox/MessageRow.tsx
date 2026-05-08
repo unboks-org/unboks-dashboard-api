@@ -94,7 +94,7 @@ export function MessageRow({
                 )}
               >
                 {conversation.escalationMode === "soft"
-                  ? "AI needs help"
+                  ? "Agent needs help"
                   : conversation.escalationMode === "hard"
                     ? "Human takeover"
                     : "Escalation"}

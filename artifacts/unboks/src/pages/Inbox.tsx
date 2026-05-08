@@ -220,7 +220,7 @@ function EscalationModeToggle({
           )}
         >
           <AlertCircle className="w-3 h-3" />
-          AI needs help
+          Agent needs help
         </button>
         <button
           type="button"
@@ -910,7 +910,7 @@ export default function Inbox() {
                       : "text-[#5f6368] hover:bg-[#f1f3f4]",
                   )}
                 >
-                  {m === "all" ? "All" : m === "soft" ? "AI needs help" : "Human takeover"}
+                  {m === "all" ? "All" : m === "soft" ? "Agent needs help" : "Human takeover"}
                 </button>
               ))}
             </div>

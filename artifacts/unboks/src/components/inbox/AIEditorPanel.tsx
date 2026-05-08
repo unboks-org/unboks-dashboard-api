@@ -49,7 +49,7 @@ const TABS: { value: AIEditorAction; label: string; Icon: typeof Sparkles }[] = 
 ];
 
 const NOT_CONNECTED_STATUSES = new Set([0, 404, 501, 503]);
-const NOT_CONNECTED_COPY = "AI Editor will be connected by the Unboks team.";
+const NOT_CONNECTED_COPY = "Agent Editor will be connected by the Unboks team.";
 
 interface AIEditorPanelProps {
   open: boolean;
@@ -143,7 +143,7 @@ export function AIEditorPanel({
       className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-[#202124]/40 backdrop-blur-[2px]"
       role="dialog"
       aria-modal="true"
-      aria-label="AI Editor"
+      aria-label="Agent Editor"
       onMouseDown={(e) => {
         // Click outside to close, but only on the backdrop itself.
         if (e.target === e.currentTarget) onClose();
@@ -160,11 +160,11 @@ export function AIEditorPanel({
         {/* Header */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-[#f1f3f4]">
           <Sparkles className="w-4 h-4 text-[#1a73e8]" />
-          <h2 className="text-[14px] font-semibold text-[#202124] flex-1">AI Editor</h2>
+          <h2 className="text-[14px] font-semibold text-[#202124] flex-1">Agent Editor</h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close AI Editor"
+            aria-label="Close Agent Editor"
             className="grid h-7 w-7 place-items-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
           >
             <X className="w-4 h-4" />

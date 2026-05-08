@@ -1,0 +1,62 @@
+Green light approved.
+
+Apply the AI/Marina → Agent client-facing terminology changes from the audit.
+
+Important:
+Do not touch backend logic, API route names, database fields, internal type names, internal variable names, or non-visible developer comments unless required to keep visible chip behavior working.
+
+Approved wording decisions:
+1. Item 14:
+   Change “Reply to Marina” to “Guide your Agent”.
+
+2. Item 30:
+   Change “Your AI knowledge” to “Company knowledge”.
+
+3. Item 42:
+   Change “Keep approved AI learnings after archive or delete” to:
+   “Keep approved Agent answers after archive or delete”.
+
+4. Coupled escalation chip rename:
+   Yes, change visible Marina/AI chip/helper labels to Agent.
+   Update the matching regexes in the same patch so the chips keep working.
+   Add support for both old and new wording where needed, for example marina|agent or marina|ai|agent, so existing generated strings do not break if old backend/example text still appears.
+
+Apply all LOW-risk client-facing replacements from the audit:
+- “AI needs help” → “Agent needs help”
+- “AI muted” → “Agent muted”
+- “AI Editor” → “Agent Editor”
+- “Undo last AI edit” → “Undo last Agent edit”
+- “Hand back to AI” → “Hand back to Agent”
+- “Marina will use your guidance…” → “Your Agent will use your guidance…”
+- “Write guidance for Marina...” → “Write guidance for your Agent...”
+- “Send to Marina” → “Send to Agent”
+- “Send guidance to Marina…” → “Send guidance to your Agent…”
+- “Marina needs” → “Agent needs”
+- “Hand the conversation back to Marina.” → “Hand the conversation back to your Agent.”
+- “Insert this guidance for Marina.” → “Insert this guidance for your Agent.”
+- Settings copy: replace visible “AI” references with “Agent”, except where “Company knowledge” is clearer.
+- SOT visible copy: replace visible AI references with Agent.
+
+Tone:
+Use “Unboks Agent” on first mention where natural.
+Use “your Agent” or “Agent” after that.
+Do not overuse the word Agent if the sentence becomes awkward.
+Keep copy simple and premium.
+
+Do not change:
+- /ai-editor endpoint
+- useAIEditor hook name
+- AIEditorPanel component/type names
+- backend contract fields
+- database/schema names
+- internal comments
+- API role names like assistant/user
+- icon imports
+- automation wording where it refers to retention/workflow automation
+
+After patch:
+1. Run build/typecheck if available.
+2. Search again for visible/client-facing “AI”, “Marina”, “bot”, and “assistant”.
+3. Report remaining matches and explain if each is internal or intentionally kept.
+4. Confirm all changed files.
+5. Confirm escalation chips still have matching logic after rename.

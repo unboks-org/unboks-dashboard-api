@@ -17,7 +17,7 @@ export const DEFAULT_SOT: SotBlock[] = [
     id: "core-value",
     title: "Core Value",
     content:
-      "We save our clients time by letting AI answer routine messages and only passing selected messages to a human.",
+      "We save our clients time by letting your Unboks Agent answer routine messages and only passing selected messages to a human.",
   },
   {
     id: "clients",
@@ -34,14 +34,14 @@ export const DEFAULT_SOT: SotBlock[] = [
     id: "core-functionality",
     title: "Core Functionality",
     items: [
-      "AI automatically replies to messages.",
-      "AI uses client-provided information to answer.",
-      "AI sorts and classifies messages (e.g. question, booking, order).",
-      "AI forwards messages to the right person.",
-      "AI follows up automatically.",
-      "AI learns and improves over time.",
-      "AI supports multiple languages.",
-      "AI runs 24/7.",
+      "Your Unboks Agent automatically replies to messages.",
+      "Agent uses client-provided information to answer.",
+      "Agent sorts and classifies messages (e.g. question, booking, order).",
+      "Agent forwards messages to the right person.",
+      "Agent follows up automatically.",
+      "Your Agent improves from approved answers.",
+      "Agent supports multiple languages.",
+      "Agent runs 24/7.",
       "All conversations are visible in one unified inbox.",
       "Humans can step in and reply from the dashboard.",
     ],
@@ -64,17 +64,17 @@ export const DEFAULT_SOT: SotBlock[] = [
       },
       {
         title: "Hard escalation — behavior",
-        content: "AI stops and hands the conversation to a human. The human replies directly from the dashboard.",
+        content: "Your Agent stops and hands the conversation to a human. The human replies directly from the dashboard.",
       },
       {
         title: "Soft escalation",
         content:
-          "AI asks a human for input internally and uses that input to reply to the customer.",
+          "Your Agent asks a human for input internally and uses that input to reply to the customer.",
       },
       {
         title: "No escalation",
         content:
-          "Unclear question or low confidence — AI continues asking and iterating until resolved.",
+          "Unclear question or low confidence, Agent continues asking and iterating until resolved.",
       },
     ],
   },
@@ -116,7 +116,7 @@ export const DEFAULT_SOT: SotBlock[] = [
     title: "Communication Style",
     items: [
       "Tone of voice is defined during intake.",
-      "Unboks sets how the AI communicates.",
+      "Unboks sets how your Agent communicates.",
       "Clients do not change tone directly.",
       "Unboks can update tone when needed.",
     ],
@@ -191,7 +191,7 @@ export const DEFAULT_SOT: SotBlock[] = [
     id: "positioning",
     title: "Positioning",
     content:
-      "Unboks replaces time spent on repetitive messages by letting AI handle them and only sending the important ones to you.",
+      "Unboks replaces time spent on repetitive messages by letting your Agent handle them and only sending the important ones to you.",
   },
   {
     id: "not-unboks",

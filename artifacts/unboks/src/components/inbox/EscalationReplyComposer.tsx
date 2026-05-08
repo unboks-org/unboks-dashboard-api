@@ -190,7 +190,7 @@ export const EscalationReplyComposer = forwardRef<
             if (isNotConnected(err)) {
               setNotice({
                 tone: "info",
-                text: "Saved. Marina connection will be completed by the Unboks team.",
+                text: "Saved. Agent connection will be completed by the Unboks team.",
               });
               return;
             }
@@ -320,7 +320,7 @@ export const EscalationReplyComposer = forwardRef<
               setNotice({
                 tone: "info",
                 text:
-                  "Saved. Marina connection will be completed by the Unboks team. Escalation was not resolved.",
+                  "Saved. Agent connection will be completed by the Unboks team. Escalation was not resolved.",
               });
               return;
             }
@@ -428,14 +428,14 @@ export const EscalationReplyComposer = forwardRef<
           if (isNotConnected(err)) {
             setNotice({
               tone: "info",
-              text: "Hand back to Marina will be connected by the Unboks team.",
+              text: "Hand back to Agent will be connected by the Unboks team.",
             });
             return;
           }
           setNotice({
             tone: "error",
             text:
-              "Couldn't hand back to Marina: " +
+              "Couldn't hand back to Agent: " +
               (err instanceof Error ? err.message : "Unknown error"),
           });
         },
@@ -490,14 +490,14 @@ export const EscalationReplyComposer = forwardRef<
     [conversationDbId, mode, resolve, takeover, handback],
   );
 
-  const headingText = isSoft ? "Reply to Marina" : "Reply to customer";
+  const headingText = isSoft ? "Guide your Agent" : "Reply to customer";
   const helperText = isSoft
-    ? "Marina will use your guidance to answer the customer."
+    ? "Your Unboks Agent will use your guidance to answer the customer."
     : "This reply will be sent directly to the customer.";
   const placeholder = isSoft
-    ? "Write guidance for Marina..."
+    ? "Write guidance for your Agent..."
     : "Write your reply...";
-  const sendLabel = isSoft ? "Send to Marina" : "Reply to customer";
+  const sendLabel = isSoft ? "Send to Agent" : "Reply to customer";
 
   return (
     <div className="border-t border-[#e8eaed] bg-white px-4 py-2.5 space-y-2 flex-shrink-0">
@@ -522,7 +522,7 @@ export const EscalationReplyComposer = forwardRef<
           {!isSoft && aiMuted && (
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[#f1f3f4] text-[10.5px] text-[#5f6368]">
               <VolumeX className="w-2.5 h-2.5" />
-              AI muted
+              Agent muted
             </span>
           )}
         </div>
@@ -559,18 +559,18 @@ export const EscalationReplyComposer = forwardRef<
                   ? "border-[#e8eaed] text-[#9aa0a6] bg-white cursor-not-allowed"
                   : "border-[#1a73e8]/30 text-[#1a73e8] bg-[#f0f6ff] hover:bg-[#e8f0fe]",
               )}
-              aria-label="Open AI Editor"
-              title="AI Editor: Translate, Style, Fix"
+              aria-label="Open Agent Editor"
+              title="Agent Editor: Translate, Style, Fix"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              AI Editor
+              Agent Editor
             </button>
             {prevDraft !== null && (
               <button
                 type="button"
                 onClick={onUndo}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[12px] text-[#5f6368] hover:bg-[#f1f3f4]"
-                title="Undo last AI edit"
+                title="Undo last Agent edit"
               >
                 <Undo2 className="w-3.5 h-3.5" />
                 Undo edit
@@ -625,7 +625,7 @@ export const EscalationReplyComposer = forwardRef<
           aria-label={isSoft ? "Send guidance and mark resolved" : "Reply to customer and mark resolved"}
           title={
             isSoft
-              ? "Send guidance to Marina and mark this escalation resolved."
+              ? "Send guidance to your Agent and mark this escalation resolved."
               : "Reply directly to the customer and mark this escalation resolved."
           }
           className={cn(
@@ -667,7 +667,7 @@ export const EscalationReplyComposer = forwardRef<
             "hover:bg-[#f1f3f4] transition-colors",
             "disabled:text-[#9aa0a6] disabled:hover:bg-transparent disabled:cursor-not-allowed",
           )}
-          title={isSoft ? "Send guidance to Marina without resolving." : "Reply to customer without resolving."}
+          title={isSoft ? "Send guidance to your Agent without resolving." : "Reply to customer without resolving."}
         >
           {sendPending && !combinedPending
             ? "Sending..."
@@ -708,7 +708,7 @@ export const EscalationReplyComposer = forwardRef<
             disabled={handback.isPending || combinedPending}
             className="ml-auto text-[12px] text-[#1a73e8] hover:underline disabled:opacity-50 disabled:no-underline"
           >
-            Hand back to AI
+            Hand back to Agent
           </button>
         )}
       </div>

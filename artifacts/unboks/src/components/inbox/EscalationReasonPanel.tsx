@@ -146,15 +146,15 @@ export function EscalationReasonPanel({
               ) : (
                 <User className="h-2.5 w-2.5" />
               )}
-              {isSoft ? "AI needs help" : "Human takeover"}
+              {isSoft ? "Agent needs help" : "Human takeover"}
             </span>
             {!isSoft && aiMuted && (
               <span
                 className="inline-flex items-center gap-1 rounded-full bg-[#f1f3f4] px-1.5 py-0.5 text-[10.5px] text-[#5f6368]"
-                title="Marina will not auto-reply while in human takeover."
+                title="Your Agent will not auto-reply while in human takeover."
               >
                 <VolumeX className="h-2.5 w-2.5" />
-                AI muted
+                Agent muted
               </span>
             )}
           </div>
@@ -177,7 +177,7 @@ export function EscalationReasonPanel({
           </div>
           <div>
             <dt className="text-[10.5px] font-semibold uppercase tracking-wide text-[#9aa0a6]">
-              {isSoft ? "Marina needs" : "Operator needs to decide"}
+              {isSoft ? "Agent needs" : "Operator needs to decide"}
             </dt>
             <dd className="mt-0.5 text-[12.5px] leading-[1.5] text-[#202124]">
               {briefing.marinaNeeds}
@@ -245,7 +245,9 @@ function chipToAction(
 
   // --- Pure actions (mode-changing / lifecycle) ----------------------------
   if (/switch to human takeover/i.test(normalized)) return { kind: "takeover" };
-  if (/hand back to (marina|ai)/i.test(normalized)) return { kind: "handback" };
+  // Accept legacy "Marina" / "AI" wording alongside the new "Agent" label
+  // so chips coming from older backend-generated text keep working.
+  if (/hand back to (marina|ai|agent)/i.test(normalized)) return { kind: "handback" };
   if (/^mark resolved$/i.test(normalized)) return { kind: "resolve" };
 
   // --- "Confirm <slot>" ----------------------------------------------------
@@ -282,7 +284,7 @@ function chipToAction(
 
   // --- Availability requests ----------------------------------------------
   if (
-    /ask (marina to collect more availability|for more availability|marina to collect availability|for availability)/i.test(
+    /ask (marina to collect more availability|agent to collect more availability|for more availability|marina to collect availability|agent to collect availability|for availability)/i.test(
       normalized,
     )
   ) {
@@ -343,41 +345,41 @@ function chipToAction(
 
   // --- Soft-mode guidance scaffolds ---------------------------------------
   if (mode === "soft") {
-    if (/^tell marina to confirm a time$/i.test(normalized)) {
+    if (/^tell (marina|agent) to confirm a time$/i.test(normalized)) {
       const ref = firstSlot ? firstSlot : "the time the customer suggested";
       return {
         kind: "draft",
         text: `Please confirm ${ref} with ${firstName}.`,
       };
     }
-    if (/^tell marina what to quote$/i.test(normalized)) {
+    if (/^tell (marina|agent) what to quote$/i.test(normalized)) {
       return {
         kind: "draft",
         text: `Please share these prices with ${firstName}: `,
       };
     }
-    if (/^tell marina how to acknowledge$/i.test(normalized)) {
+    if (/^tell (marina|agent) how to acknowledge$/i.test(normalized)) {
       return {
         kind: "draft",
         text: `Please acknowledge ${firstName}'s issue and let them know we're looking into it.`,
       };
     }
-    if (/^tell marina how to handle the booking$/i.test(normalized)) {
+    if (/^tell (marina|agent) how to handle the booking$/i.test(normalized)) {
       return {
         kind: "draft",
         text: `Please help ${firstName} with the booking. Confirm the details and let them know next steps.`,
       };
     }
-    if (/^tell marina to set expectations$/i.test(normalized)) {
+    if (/^tell (marina|agent) to set expectations$/i.test(normalized)) {
       return {
         kind: "draft",
         text: `Please let ${firstName} know that a human will follow up shortly.`,
       };
     }
-    if (/^tell marina what to answer$/i.test(normalized)) {
+    if (/^tell (marina|agent) what to answer$/i.test(normalized)) {
       return { kind: "focus" };
     }
-    if (/^ask marina to (collect details|collect requirements first|request more details|request missing details|collect more availability)$/i.test(lower)) {
+    if (/^ask (marina|agent) to (collect details|collect requirements first|request more details|request missing details|collect more availability)$/i.test(lower)) {
       return {
         kind: "draft",
         text: `Please ask ${firstName} for more details so we can help properly.`,
@@ -393,14 +395,14 @@ function chipTooltip(label: string, mode: "soft" | "hard"): string {
   if (/switch to human takeover/i.test(label)) {
     return "Switch this conversation to human takeover.";
   }
-  if (/hand back to (marina|ai)/i.test(label)) {
-    return "Hand the conversation back to Marina.";
+  if (/hand back to (marina|ai|agent)/i.test(label)) {
+    return "Hand the conversation back to your Agent.";
   }
   if (/^mark resolved$/i.test(label)) {
     return "Mark this escalation as resolved.";
   }
   return mode === "soft"
-    ? "Insert this guidance for Marina."
+    ? "Insert this guidance for your Agent."
     : "Insert this reply for the customer.";
 }
 

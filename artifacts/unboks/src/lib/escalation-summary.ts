@@ -379,29 +379,29 @@ function marinaNeedsLine(
     }
     // soft
     if (slots.length >= 2)
-      return "Tell Marina which proposed slot to confirm, suggest another time, or ask Marina to collect more availability.";
+      return "Tell your Agent which proposed slot to confirm, suggest another time, or ask it to collect more availability.";
     if (slots.length === 1)
-      return `Tell Marina to confirm ${slots[0].pretty}, suggest another time, or ask for more availability.`;
+      return `Tell your Agent to confirm ${slots[0].pretty}, suggest another time, or ask for more availability.`;
     if (hasTimeHint)
-      return "Tell Marina whether the proposed time works or ask her to suggest alternatives.";
-    return "Tell Marina to propose a time or ask the customer for their availability.";
+      return "Tell your Agent whether the proposed time works, or ask for alternatives.";
+    return "Tell your Agent to propose a time, or ask the customer for their availability.";
   }
   if (mode === "hard") {
     if (topics.has("pricing"))
       return "Reply directly with pricing, or ask what they need first.";
     if (topics.has("complaint"))
       return "Reply directly to the customer with next steps or a resolution.";
-    return "Send a direct reply, request more information, or hand back to Marina.";
+    return "Send a direct reply, request more information, or hand back to your Agent.";
   }
   if (topics.has("pricing"))
-    return "Tell Marina what to quote, or ask her to collect requirements first.";
+    return "Tell your Agent what to quote, or to collect requirements first.";
   if (topics.has("complaint"))
-    return "Tell Marina how to acknowledge the issue and what next step to offer.";
+    return "Tell your Agent how to acknowledge the issue and what next step to offer.";
   if (topics.has("human"))
-    return "Decide whether to take over directly or have Marina set expectations for a human reply.";
+    return "Decide whether to take over directly, or have your Agent set expectations for a human reply.";
   if (topics.has("booking"))
-    return "Tell Marina how to handle the booking or order request.";
-  return "Tell Marina what to answer, ask her to collect more details, or take over yourself.";
+    return "Tell your Agent how to handle the booking or order request.";
+  return "Tell your Agent what to answer, ask it to collect more details, or take over yourself.";
 }
 
 function optionsList(
@@ -417,18 +417,18 @@ function optionsList(
         ? slots.map((s) => `Confirm ${s.pretty}`)
         : mode === "hard"
           ? ["Reply with a time"]
-          : ["Tell Marina to confirm a time"];
+          : ["Tell Agent to confirm a time"];
     const tail =
       mode === "hard"
         ? [
             "Suggest another time",
             "Ask for more availability",
-            "Hand back to Marina",
+            "Hand back to Agent",
             "Mark resolved",
           ]
         : [
             "Suggest another time",
-            "Ask Marina to collect more availability",
+            "Ask Agent to collect more availability",
             "Switch to human takeover",
             "Mark resolved",
           ];
@@ -439,12 +439,12 @@ function optionsList(
       ? [
           "Reply with pricing",
           "Ask what they need first",
-          "Hand back to Marina",
+          "Hand back to Agent",
           "Mark resolved",
         ]
       : [
-          "Tell Marina what to quote",
-          "Ask Marina to collect requirements first",
+          "Tell Agent what to quote",
+          "Ask Agent to collect requirements first",
           "Switch to human takeover",
           "Mark resolved",
         ];
@@ -454,22 +454,22 @@ function optionsList(
       ? [
           "Reply with a resolution",
           "Ask for more details",
-          "Hand back to Marina",
+          "Hand back to Agent",
           "Mark resolved",
         ]
       : [
-          "Tell Marina how to acknowledge",
+          "Tell Agent how to acknowledge",
           "Switch to human takeover",
-          "Ask Marina to collect details",
+          "Ask Agent to collect details",
           "Mark resolved",
         ];
   }
   if (topics.has("human")) {
     return mode === "hard"
-      ? ["Reply directly to customer", "Hand back to Marina", "Mark resolved"]
+      ? ["Reply directly to customer", "Hand back to Agent", "Mark resolved"]
       : [
           "Switch to human takeover",
-          "Tell Marina to set expectations",
+          "Tell Agent to set expectations",
           "Mark resolved",
         ];
   }
@@ -478,12 +478,12 @@ function optionsList(
       ? [
           "Reply with booking details",
           "Ask for missing information",
-          "Hand back to Marina",
+          "Hand back to Agent",
           "Mark resolved",
         ]
       : [
-          "Tell Marina how to handle the booking",
-          "Ask Marina to request missing details",
+          "Tell Agent how to handle the booking",
+          "Ask Agent to request missing details",
           "Switch to human takeover",
           "Mark resolved",
         ];
@@ -492,12 +492,12 @@ function optionsList(
     ? [
         "Reply directly to customer",
         "Ask for more information",
-        "Hand back to Marina",
+        "Hand back to Agent",
         "Mark resolved",
       ]
     : [
-        "Tell Marina what to answer",
-        "Ask Marina to request more details",
+        "Tell Agent what to answer",
+        "Ask Agent to request more details",
         "Switch to human takeover",
         "Mark resolved",
       ];
@@ -516,7 +516,7 @@ function reasonLine(
   if (!phrase) {
     return mode === "hard"
       ? `${name} is waiting for a direct human reply.`
-      : `${name} sent a message Marina is unsure how to answer.`;
+      : `${name} sent a message your Agent is unsure how to answer.`;
   }
 
   const verb = topics.has("complaint") ? "raised" : "is asking about";
@@ -536,12 +536,12 @@ function reasonLine(
 
   const closer =
     mode === "hard"
-      ? "Marina has handed this over for a direct human reply."
+      ? "Your Agent has handed this over for a direct human reply."
       : isMeeting
         ? slots.length > 0
-          ? "Marina needs a human to choose a slot or suggest another time."
-          : "Marina needs a human to confirm or propose a time."
-        : "Marina needs a human to decide the next step.";
+          ? "Your Agent needs a human to choose a slot or suggest another time."
+          : "Your Agent needs a human to confirm or propose a time."
+        : "Your Agent needs a human to decide the next step.";
 
   return `${head}.${detail} ${closer}`;
 }
@@ -605,20 +605,20 @@ export function buildEscalationBriefing({
     reasonText = reasonLine(name, mode, topics, slots, hasTimeHint);
   } else {
     reasonText =
-      "This conversation was escalated because Marina needs human input before replying.";
+      "This conversation was escalated because your Agent needs human input before replying.";
   }
 
   const customerWants = hasMessageData
     ? customerWantsLine(topics, slots, hasWeekHint)
     : mode === "hard"
       ? "A direct reply from a human."
-      : "A reply Marina can send confidently.";
+      : "A reply your Agent can send confidently.";
 
   const marinaNeeds = hasMessageData
     ? marinaNeedsLine(mode, topics, slots, hasTimeHint)
     : mode === "hard"
-      ? "Send a direct reply, request more information, or hand back to Marina."
-      : "Tell Marina what to answer, ask her to collect more details, or take over yourself.";
+      ? "Send a direct reply, request more information, or hand back to your Agent."
+      : "Tell your Agent what to answer, ask it to collect more details, or take over yourself.";
 
   // Options precedence:
   //  1. Backend-supplied `recommendedOptions` — render EVERY entry as a

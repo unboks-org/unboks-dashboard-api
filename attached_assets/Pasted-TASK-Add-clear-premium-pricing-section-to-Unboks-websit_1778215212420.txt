@@ -1,0 +1,154 @@
+TASK: Add clear premium pricing section to Unboks website.
+
+Important:
+This is about money. The pricing must be extremely clear, simple, and premium.
+An unclear mind will say NO.
+Do not make the pricing clever, complicated, vague, or over-designed.
+Make it easy for a Curaçao business owner to understand in 10 seconds.
+
+Use Refero to its utmost best.
+Use Refero to inspect high-quality SaaS/service pricing pages and apply the best structure, spacing, clarity, hierarchy, and trust-building layout.
+The result must feel premium, serious, simple, and businesslike.
+
+Do not change unrelated pages or functionality.
+Do not touch dashboard functionality.
+Do not invent features.
+Do not use the word AI in the pricing copy. Use Agent.
+
+Goal:
+Add a pricing section/page for Unboks with the business model below.
+
+Core offer:
+- First 14 days are free.
+- Day 1–14 is a live proof period.
+- These 14 days do not count as paid subscription time.
+- On day 15 the client either continues and pays, or Unboks is disconnected.
+- If the client continues, the monthly plan starts and setup fee is charged from the first paid invoice.
+- Larger setup fees can be split over 3 months.
+
+Pricing tiers:
+
+1. Starter
+Price: Cg. 495/month
+Setup: Cg. 1,500
+Includes:
+- 1 channel
+- 1 user/chair
+- Unboks Agent answers repetitive questions
+- Human escalation
+- Company knowledge / Your Info
+- Basic dashboard access
+
+Best for:
+Small businesses with one main message channel, usually WhatsApp.
+
+2. Business
+Price: Cg. 995/month
+Setup: Cg. 2,500
+Includes:
+- 2 channels
+- 3 users/chairs
+- Unboks Agent answers repetitive questions
+- Human escalation
+- Company knowledge / Your Info
+- Dashboard access
+- Message overview across channels
+- Escalation overview
+- Monthly Agent improvement
+
+Best for:
+Businesses that receive customer messages every day and want Unboks to reduce repetitive work across more than one channel.
+
+This should be visually marked as:
+Most popular
+
+3. Team
+Price: Cg. 1,995/month
+Setup: Cg. 5,000
+Includes:
+- 3 channels
+- 5 users/chairs
+- Unboks Agent answers repetitive questions
+- Human escalation
+- Company knowledge / Your Info
+- Team dashboard access
+- Message overview across channels
+- Escalation overview
+- Higher usage allowance
+- Priority support
+- Monthly performance review
+
+Best for:
+Businesses where multiple people already handle customer messages.
+
+Add-ons:
+- Extra channel: Cg. 75/month
+- Extra user/chair: Cg. 95/month
+- X/Twitter usage: billed separately
+- High traffic: custom
+- Extra brand/location: custom
+
+Required wording / structure:
+Add a strong simple heading:
+“Simple pricing. Prove it first.”
+
+Subheading:
+“Try Unboks live for 14 days. We set up your Unboks Agent, connect the agreed channels, and run it with your business information. If it works for your business, your paid plan starts on day 15. If not, we disconnect it.”
+
+Add a clear visual explanation:
+Day 1–14: Free proof period
+Day 15: Continue and pay, or disconnect
+Setup fee: Charged only from the first paid invoice
+
+Tone:
+- Premium
+- Clear
+- Direct
+- Calm
+- No hype
+- No vague startup language
+- No technical jargon
+- No “AI”
+- Use “Agent”
+- Use “channels”
+- Use “users/chairs”
+- Keep prices visible and easy to compare
+
+Design requirements:
+- Pricing cards should be clean and premium.
+- Business plan should stand out as the recommended/default plan.
+- No unnecessary vertical whitespace.
+- No clutter.
+- No tiny grey unreadable text.
+- No fake animations that distract from pricing.
+- No confusing feature walls.
+- Use strong hierarchy: plan name, price, setup, best-for, included items.
+- Add-ons should be below the cards in a simple compact row or table.
+- The 14-day proof period should appear before the pricing cards so people understand the offer before seeing the prices.
+- Use existing site style, but improve clarity and premium feel.
+- Mobile must look excellent: pricing cards stacked, readable, no horizontal overflow.
+
+Important:
+Do not add unconfirmed product claims.
+Do not mention advanced workflows, automatic bookings, CRM replacement, guaranteed savings, or anything not listed above.
+Do not add unlimited anything.
+Do not add fake enterprise features.
+Do not add “contact sales” as the main path unless it is for custom/high traffic only.
+
+Definitions to include in compact form:
+Channel = one connected message source, such as WhatsApp, Instagram, Facebook, TikTok, X/Twitter, or email.
+User/chair = one person who can use the dashboard.
+
+Acceptance criteria:
+- Pricing section/page exists and is easy to find from the website.
+- 14-day free proof period is clearly explained.
+- Starter, Business, and Team tiers are shown with correct prices.
+- Setup fees are shown.
+- Business is marked as Most popular.
+- Add-ons are shown clearly.
+- No use of “AI” in the pricing copy.
+- No hallucinated features.
+- Page looks premium, simple, and trustworthy.
+- Mobile layout works cleanly.
+- Build passes.
+- Provide a short summary of changed files and what was added.
