@@ -1,0 +1,143 @@
+Project 2 dashboard frontend — make Connect Cloud Storage compact list using Refero/Repro.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python backend assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Inbox.
+- Do not touch Tasks.
+- Do not touch sidebar.
+- Do not commit.
+- Do not publish until reviewed.
+
+Issue:
+Settings → Your AI knowledge → Connect cloud storage is too bulky.
+
+Current layout:
+- Large provider cards
+- Two-column grid
+- Too much white space
+- Large buttons
+- Takes too much vertical space
+
+This should be a compact premium list, not big cards.
+
+Use Refero/Repro:
+Use premium SaaS settings/integration references before redesigning.
+References should include:
+- Linear integrations/settings list
+- Slack connected apps
+- Notion connections
+- Stripe settings/integrations
+- Google Workspace connected apps
+- Intercom app/integration settings
+
+If Refero/Repro is not connected, stop and report clearly before editing.
+
+Required new layout:
+Replace the large card grid with a compact list.
+
+Section:
+Connect cloud storage
+
+Description:
+Link folders from Google Drive, OneDrive, Dropbox, SharePoint, or Box so your AI can use the documents inside.
+
+List rows:
+Each provider should be one horizontal row:
+
+[icon] Google Drive
+      Docs, Sheets, PDFs, menus.
+                                      [Connect]
+
+[icon] OneDrive
+      Word, Excel, PDFs from Microsoft 365.
+                                      [Connect]
+
+[icon] Dropbox
+      Shared folders with policies and price lists.
+                                      [Connect]
+
+[icon] SharePoint
+      Team document libraries.
+                                      [Connect]
+
+[icon] Box
+      Secure document folders.
+                                      [Connect]
+
+Visual requirements:
+1. Compact rows.
+2. No bulky cards.
+3. One provider per row.
+4. Row height around 56 to 72px.
+5. Subtle divider between rows.
+6. Small icon.
+7. Provider name bold enough.
+8. Description smaller and muted.
+9. Connect button small and aligned right.
+10. If connected later, row should support:
+   - Connected badge
+   - Folder name
+   - Last synced
+   - Sync button
+   - Disconnect option
+11. Mobile should stack cleanly:
+   - provider text left
+   - connect button still visible
+   - no horizontal overflow
+
+Preferred design:
+- One white panel/card containing the provider list.
+- Subtle border around the list.
+- Rows separated by thin border.
+- Hover state on row.
+- Connect button:
+  small blue button or subtle outline button.
+- Not too much blue.
+- Premium SaaS settings style.
+
+Do not remove providers:
+- Google Drive
+- OneDrive
+- Dropbox
+- SharePoint
+- Box
+
+Do not claim real connection works unless backend confirms.
+If clicked and backend is missing, keep existing placeholder behavior:
+“Cloud connections will be connected by the Unboks team.”
+
+Likely files:
+- artifacts/unboks/src/pages/Settings.tsx
+Possibly:
+- artifacts/unboks/src/components/settings/CloudKnowledgeConnections.tsx
+- artifacts/unboks/src/components/settings/YourAIKnowledgePanel.tsx
+
+Do not touch:
+- artifacts/api-server
+- Inbox.tsx
+- Tasks.tsx
+- DashboardShell
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Cloud storage providers are displayed as a compact list.
+- Large bulky cards are gone.
+- Section uses less vertical space.
+- Connect buttons remain available.
+- All five providers remain visible.
+- Mobile layout works.
+- Existing placeholder/connect behavior remains safe.
+- Build/typecheck clean.
+- Report exact files changed.
+- Report whether Refero/Repro was connected and what references were used.
+- Do not commit.
+- Do not publish.

@@ -1,0 +1,79 @@
+Project 2 dashboard frontend bugfix — Appointments sidebar count missing.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python backend assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch backend.
+- Do not commit.
+- Do not publish until reviewed.
+
+Bug:
+Workspace → Appointments shows appointment rows in the main pane, but the sidebar does not show a count badge.
+
+Current screenshot:
+- Appointments page shows 2 appointments.
+- Sidebar Appointments item shows no count.
+- It should show 2.
+
+Required behavior:
+1. Sidebar Appointments item must show a count badge when there are appointments.
+2. If Appointments page has 2 visible appointments, sidebar must show 2.
+3. Count should update when appointment data changes.
+4. Count should use the same source as the Appointments page, not a separate stale source.
+5. If Appointments page uses detected appointments from conversations, count those detected appointments too.
+6. Do not count duplicates.
+7. Do not count hidden/deleted/cancelled appointments unless product logic says to show them.
+8. Prefer counting active appointment rows:
+   - detected
+   - pending_team_confirmation
+   - confirmed
+9. Do not count completed or cancelled appointments if those statuses exist.
+10. If no appointments, hide the badge or show nothing, consistent with other sidebar counts.
+
+Visual:
+- Badge should match existing sidebar count badges.
+- Same style as Escalations / WhatsApp / Email count.
+- Appointments badge should sit at the right side of the Appointments nav item.
+
+Likely cause:
+The sidebar count logic currently only handles:
+- Escalations
+- WhatsApp
+- Email
+and does not include Appointments.
+
+Investigation:
+- Inspect sidebar count logic in:
+  artifacts/unboks/src/components/inbox/Drawer.tsx
+  artifacts/unboks/src/components/inbox/DashboardShell.tsx
+- Inspect Appointments page data source:
+  artifacts/unboks/src/pages/Appointments.tsx
+  or artifacts/unboks/src/pages/Bookings.tsx if Appointments reused the old page
+- Find where appointment rows are created/detected.
+- Reuse the same normalized appointments array for sidebar count if possible.
+- Avoid duplicate appointment detection logic in sidebar if possible.
+
+Preferred implementation:
+- Centralize appointment count in DashboardShell or a shared hook.
+- If there is a useAppointments hook, expose appointmentCount.
+- Pass appointmentCount to Drawer.
+- Drawer renders badge for Appointments when appointmentCount > 0.
+
+Acceptance:
+- Appointments page shows 2 rows.
+- Sidebar Appointments shows badge “2”.
+- If appointment rows change to 1, badge shows “1”.
+- If appointment rows are 0, badge disappears or shows no count.
+- No duplicate counting.
+- Existing Escalations / WhatsApp / Email counts still work.
+- Sidebar order remains Escalations first, Inbox second.
+- Appointments navigation still opens the Appointments page.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.
