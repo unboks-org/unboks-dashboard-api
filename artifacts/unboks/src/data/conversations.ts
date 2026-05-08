@@ -20,6 +20,14 @@ export interface Conversation {
    * Optional only because legacy mock rows in this file don't set it.
    */
   conversationKey?: string;
+  /**
+   * When the row originated from `/escalations`, this is the source
+   * escalation id. Used as a fallback hide key when the row has no
+   * routable `conversationKey` (e.g. an Email escalation whose
+   * conversation never made it into `/messages/conversations`).
+   * Optional only because plain inbox rows don't have one.
+   */
+  escalationId?: string;
   channel: Channel;
   sender: string;
   subject: string;

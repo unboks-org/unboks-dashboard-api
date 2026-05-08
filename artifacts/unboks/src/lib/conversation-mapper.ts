@@ -463,8 +463,18 @@ export function escalationToConversationRow(
     (tsMs > 0
       ? formatConversationTimestamp(new Date(tsMs).toISOString())
       : formatConversationTimestamp(n.createdAt));
+  // Routable backend key for write actions (Email Reply / Forward /
+  // Delete). When the escalation has been enriched against a live
+  // /messages/conversations row, prefer that row's `conversationKey`
+  // (the strongest server-supplied identifier). Otherwise fall back
+  // to the escalation's own phone if present, or the synthesized
+  // `esc:<id>` last (which won't route to the backend, but lets the
+  // local-hide fallback still drop the row).
+  const conversationKey = enrich?.conversationKey ?? n.phone ?? id;
   return {
     id,
+    conversationKey,
+    escalationId: n.id,
     channel,
     sender,
     subject,

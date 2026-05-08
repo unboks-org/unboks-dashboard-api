@@ -8,6 +8,10 @@ import { mapApiConversation, normalizeEscalation } from "@/lib/conversation-mapp
 import { dedupeEscalations } from "@/lib/dedupe-escalations";
 import { useAppointments } from "@/hooks/use-appointments";
 import { useAuth } from "@/components/auth/useAuth";
+import {
+  useHiddenConversations,
+  collectConversationHideKeys,
+} from "@/hooks/use-hidden-conversations";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
@@ -60,13 +64,19 @@ export function DashboardShell({
 
   const { data: apiConversations, isLoading: convLoading, isError } = useConversations();
   const { data: apiEscalations, isLoading: escLoading } = useEscalations();
+  // Sidebar counts must respect locally-hidden rows so the badges
+  // never disagree with the lists rendered in Inbox / Escalations.
+  // Same hook + same key-collection helper used by the page filters.
+  const { isHidden: isRowHidden } = useHiddenConversations();
 
   // Never fall back to MOCK on the live dashboard — that flashes fake names
   // and counts on every refresh. Use [] until the API returns real data.
   const allConversations: Conversation[] = useMemo(() => {
     if (!apiConversations || isError) return [];
-    return apiConversations.map(mapApiConversation);
-  }, [apiConversations, isError]);
+    return apiConversations
+      .map(mapApiConversation)
+      .filter((c) => !isRowHidden(collectConversationHideKeys(c)));
+  }, [apiConversations, isError, isRowHidden]);
 
   const hasConvData = !convLoading && !isError && Boolean(apiConversations);
   const hasEscData = !escLoading && Boolean(apiEscalations);
@@ -98,8 +108,19 @@ export function DashboardShell({
       const e = normalizeEscalation(raw);
       if (e && !e.resolved) active.push(e);
     }
-    return dedupeEscalations(active).length;
-  }, [apiEscalations, hasEscData]);
+    // Apply the same hide filter the Escalations page uses, so the
+    // badge can never claim more rows than the list actually shows.
+    // We mirror `escalationToConversationRow`'s key derivation:
+    // routable phone (or synthesized `esc:<id>`), plus the escalation
+    // id itself.
+    const convoByPhone = new Map(allConversations.map((c) => [c.id, c]));
+    return dedupeEscalations(active).filter((n) => {
+      const enrich = n.phone ? convoByPhone.get(n.phone) ?? null : null;
+      const conversationKey = enrich?.conversationKey ?? n.phone ?? `esc:${n.id}`;
+      const id = n.phone || `esc:${n.id}`;
+      return !isRowHidden([conversationKey, id, n.id]);
+    }).length;
+  }, [apiEscalations, hasEscData, allConversations, isRowHidden]);
 
   // Appointments sidebar count must use the same merged + de-duplicated
   // list the Appointments page renders, so the badge can never disagree

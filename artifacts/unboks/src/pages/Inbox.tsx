@@ -18,6 +18,10 @@ import { dedupeEscalations } from "@/lib/dedupe-escalations";
 import { CHANNEL_BADGE_COLORS } from "@/lib/channel-map";
 import type { NavId } from "@/components/inbox/Drawer";
 import { useEnabledChannels } from "@/hooks/use-enabled-channels";
+import {
+  useHiddenConversations,
+  collectConversationHideKeys,
+} from "@/hooks/use-hidden-conversations";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -684,6 +688,13 @@ export default function Inbox() {
     setSelectedConv((cur) => (cur?.id === deletedId ? null : cur));
   }, []);
 
+  // Locally-hidden conversation ids (Email/Escalation rows that were
+  // removed from the UI either via successful backend delete or via
+  // the local-hide fallback for 404/405/501). The hook subscribes to
+  // both `storage` and a custom in-tab event, so any list and the
+  // sidebar counts re-render the moment the hidden set changes.
+  const { isHidden: isRowHidden } = useHiddenConversations();
+
   const { data: apiConversations, isLoading, isError } = useConversations();
   // Escalations list is the source of truth for the Escalations tab AND for
   // the sidebar count. Same normalizer as DashboardShell, so they always
@@ -697,8 +708,10 @@ export default function Inbox() {
 
   const allConversations: Conversation[] = useMemo(() => {
     if (isError || !apiConversations) return [];
-    return apiConversations.map(mapApiConversation);
-  }, [apiConversations, isError]);
+    return apiConversations
+      .map(mapApiConversation)
+      .filter((c) => !isRowHidden(collectConversationHideKeys(c)));
+  }, [apiConversations, isError, isRowHidden]);
 
   // Convert the live /escalations response into Conversation-shaped rows the
   // existing MessageRow + ConversationDetailPane already know how to render.
@@ -718,11 +731,13 @@ export default function Inbox() {
       active.push(n);
     }
     const deduped = dedupeEscalations(active);
-    return deduped.map((n) => {
-      const enrich = n.phone ? convoById.get(n.phone) ?? null : null;
-      return escalationToConversationRow(n, enrich);
-    });
-  }, [rawEscalations, allConversations]);
+    return deduped
+      .map((n) => {
+        const enrich = n.phone ? convoById.get(n.phone) ?? null : null;
+        return escalationToConversationRow(n, enrich);
+      })
+      .filter((c) => !isRowHidden(collectConversationHideKeys(c)));
+  }, [rawEscalations, allConversations, isRowHidden]);
 
   // Stable handler. Always updates local filter state for inbox-context ids,
   // even when the route is already "/" (channel ↔ channel switches, or

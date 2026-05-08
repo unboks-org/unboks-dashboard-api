@@ -1,0 +1,124 @@
+Project 2 dashboard frontend bugfix — make trash/delete work for Email escalation rows.
+
+Important:
+- Project 2 Replit is frontend only.
+- Canonical backend is api.unboks.org.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch Appointments.
+- Do not touch sidebar unless needed for count update.
+- Do not commit.
+- Do not publish until reviewed.
+
+Bug:
+There are old Email escalation rows in the Escalations list that the user wants to delete/hide.
+
+Visible examples:
+1. Unknown · Email · Escalation · Yesterday
+2. Calvin Adamus · Email · Escalation · Yesterday
+3. Calvin · Email · Escalation · 11:09 PM
+
+They show a trash icon, but the user cannot remove them.
+
+If the trash icon is visible, it must work.
+
+Required behavior:
+1. Clicking trash on an Email escalation row opens a confirmation dialog.
+2. Confirmation title:
+   Remove this conversation?
+3. Confirmation body:
+   This will hide it from the active inbox and escalation list.
+4. Buttons:
+   Cancel
+   Remove
+5. On confirm, call the backend delete/hide endpoint.
+6. If backend succeeds:
+   - remove the row from Escalations immediately
+   - remove it from Email inbox if present
+   - close detail pane if that row is open
+   - update sidebar counts
+7. If backend endpoint fails with 404 / 405 / 501:
+   - use a local hide fallback
+   - persist the hidden conversation id in localStorage
+   - show calm notice:
+     Hidden locally. Backend delete is not connected for this row yet.
+8. If backend fails with another error:
+   - show the backend error
+   - do not pretend it was removed
+9. Refresh should not bring locally hidden rows back in this browser.
+10. Do not delete unrelated rows.
+11. Do not break WhatsApp conversations.
+12. Do not break Reply / Forward / Star.
+
+Important:
+These rows may come from GET /escalations, not only GET /messages/conversations.
+So the delete/hide logic must work for escalation rows too.
+
+Use the best stable key available:
+- conversationKey
+- conversationId
+- phone
+- thread_key
+- id
+
+Do not use display name like “Unknown” or “Calvin” as the key.
+
+Current frontend endpoint candidates:
+DELETE /api/{client}/dashboard/api/messages/conversations/{conversation_id}/email?deleteMode=trash
+
+Fallback:
+POST /api/{client}/dashboard/api/messages/conversations/{conversation_id}/email/delete
+
+Body:
+{
+  "deleteMode": "trash"
+}
+
+If those fail, local hide fallback is acceptable for frontend v1.
+
+Local hide fallback:
+Add a localStorage set of hidden conversation keys.
+
+Suggested key:
+unboks_hidden_conversations
+
+When rendering:
+- conversations list must filter out hidden keys
+- escalations list must filter out hidden keys
+- Email list must filter out hidden keys
+
+If a row has both escalation id and conversation id:
+- hide by conversation key first
+- also hide by escalation id as fallback
+
+Likely files:
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/components/inbox/MessageRow.tsx
+- artifacts/unboks/src/components/inbox/EmailActionsModal.tsx
+- artifacts/unboks/src/lib/api.ts
+- artifacts/unboks/src/hooks/use-client-api.ts
+
+Possibly create:
+- artifacts/unboks/src/hooks/use-hidden-conversations.ts
+
+Acceptance:
+- Trash icon on Unknown Email escalation opens confirmation.
+- Confirm removes/hides Unknown row.
+- Trash icon on Calvin Adamus Email escalation opens confirmation.
+- Confirm removes/hides Calvin Adamus row.
+- Trash icon on Calvin 11:09 PM Email escalation opens confirmation.
+- Confirm removes/hides Calvin row.
+- Rows disappear from Escalations immediately.
+- Rows do not come back after refresh in this browser.
+- Escalations count updates.
+- Email count updates if applicable.
+- If backend succeeds, delete persists normally.
+- If backend does not support the endpoint, local hide fallback works.
+- No fake success on real backend errors.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

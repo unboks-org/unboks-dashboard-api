@@ -13,6 +13,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError } from "@/lib/error";
 import { useEmailReply, useEmailForward, useEmailDelete } from "@/hooks/use-client-api";
+import {
+  useHiddenConversations,
+  collectConversationHideKeys,
+} from "@/hooks/use-hidden-conversations";
+import { toast } from "sonner";
 import type { Conversation } from "@/data/conversations";
 
 /**
@@ -244,30 +249,80 @@ interface EmailDeleteConfirmProps {
   open: boolean;
   conversation: Conversation | null;
   onClose: () => void;
+  /** Called once the row has been removed (backend success OR local
+   *  hide fallback). Used by the page to close the detail pane if it
+   *  was open on this row. */
   onDeleted?: (conversationId: string) => void;
 }
 
+/**
+ * "Remove this conversation?" confirm dialog (per Brief 213).
+ *
+ * Behaviour matrix:
+ *
+ *   Backend success                → react-query invalidates the list,
+ *                                    we also persist the row's keys to
+ *                                    the local hidden set so a stale
+ *                                    backend (or escalation re-emit)
+ *                                    can never bring the row back in
+ *                                    this browser. No toast (silent
+ *                                    success — the row just disappears).
+ *   ApiError 404 / 405 / 501       → backend delete not deployed for
+ *                                    this row. Persist the keys to the
+ *                                    local hidden set and show a calm
+ *                                    notice. Treated as success from
+ *                                    the operator's point of view.
+ *   Any other error (0/4xx/5xx)    → show the backend message
+ *                                    verbatim (`describeError`). Do
+ *                                    NOT pretend the row was removed.
+ *
+ * The hide keys are collected from the row's `conversationKey`, `id`
+ * and `escalationId` (escalation rows have all three). Display names
+ * are never used as keys.
+ */
 export function EmailDeleteConfirm({ open, conversation, onClose, onDeleted }: EmailDeleteConfirmProps) {
   const [error, setError] = useState<string | null>(null);
   const del = useEmailDelete();
+  const { hide } = useHiddenConversations();
 
   useEffect(() => {
     if (open) setError(null);
   }, [open, conversation?.id]);
 
+  const finishHidden = (keys: string[]) => {
+    if (keys.length > 0) hide(keys);
+    // Always pass the display id so the page can close an open detail
+    // pane keyed on `id`.
+    if (conversation) onDeleted?.(conversation.id);
+    onClose();
+  };
+
   const onConfirm = async () => {
     if (!conversation) return;
     setError(null);
+    const keys = collectConversationHideKeys(conversation);
     try {
       await del.mutateAsync({
         conversationId: conversation.conversationKey || conversation.id,
         payload: { deleteMode: "trash" },
       });
-      // Pass the display id back so the page can close the open detail
-      // pane (which is keyed on `id`, not `conversationKey`).
-      onDeleted?.(conversation.id);
-      onClose();
+      finishHidden(keys);
     } catch (err) {
+      // Local-hide fallback path: backend really doesn't have the
+      // delete endpoint deployed for this row (or the row's id isn't
+      // routable, e.g. a synthesized `esc:<id>`). Treat as success
+      // for the operator and tell them honestly.
+      if (
+        err instanceof ApiError &&
+        (err.status === 404 || err.status === 405 || err.status === 501)
+      ) {
+        finishHidden(keys);
+        toast(
+          "Hidden locally. Backend delete is not connected for this row yet.",
+        );
+        return;
+      }
+      // Anything else: show the real error, don't fake removal.
       setError(describeError(err));
     }
   };
@@ -276,9 +331,9 @@ export function EmailDeleteConfirm({ open, conversation, onClose, onDeleted }: E
     <Dialog open={open} onOpenChange={(v) => { if (!v && !del.isPending) onClose(); }}>
       <DialogContent className="box-border w-[calc(100vw-32px)] max-w-[420px] overflow-hidden">
         <DialogHeader className="min-w-0">
-          <DialogTitle className="break-words">Delete this email conversation?</DialogTitle>
+          <DialogTitle className="break-words">Remove this conversation?</DialogTitle>
           <DialogDescription className="break-words">
-            This will remove it from the inbox.
+            This will hide it from the active inbox and escalation list.
           </DialogDescription>
         </DialogHeader>
         {error && (
@@ -291,7 +346,7 @@ export function EmailDeleteConfirm({ open, conversation, onClose, onDeleted }: E
             disabled={del.isPending}
             className="bg-[#c5221f] text-white hover:bg-[#a50e0e]"
           >
-            {del.isPending ? "Deleting…" : "Delete"}
+            {del.isPending ? "Removing…" : "Remove"}
           </Button>
         </DialogFooter>
       </DialogContent>
