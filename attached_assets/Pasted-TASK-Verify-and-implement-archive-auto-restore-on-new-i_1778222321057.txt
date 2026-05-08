@@ -1,0 +1,123 @@
+TASK: Verify and implement archive auto-restore on new inbound customer message.
+
+PROJECT SCOPE:
+Project 2 customer dashboard/backend only.
+Do NOT touch Project 1 public website.
+Do NOT touch pricing.
+
+Product rule:
+Archive is not a block.
+Archive is not permanent silence.
+Archive only removes a conversation from the active inbox until something new happens.
+
+Required behavior:
+When a conversation is archived and the customer later sends a new inbound message in that same conversation, Unboks must automatically restore the conversation to Active.
+
+Expected flow:
+1. Operator archives conversation.
+2. Conversation disappears from Active inbox/channel/escalations lists.
+3. Conversation remains available in Archived view/history.
+4. Customer sends a new inbound message later.
+5. Conversation is automatically restored to Active.
+6. archived status / archivedAt is cleared.
+7. Conversation appears again in:
+   - Inbox Active
+   - correct channel filter, such as WhatsApp or Email
+   - Escalations if the new message creates/continues an unresolved escalation
+8. Sidebar counts update.
+9. Full conversation history remains intact.
+10. Notes/escalation history remain intact.
+11. Agent can handle the conversation again.
+
+Exception:
+Blocked conversations must NOT auto-restore.
+
+Rule:
+- Archived + new inbound message = restore to Active.
+- Blocked + new inbound message = stay blocked/hidden.
+
+Investigation:
+First inspect whether this behavior already exists.
+Trace all inbound message paths:
+- WhatsApp webhook/poller
+- Email poller/webhook
+- Instagram/Facebook/Messenger inbound handlers
+- any mock/demo inbound message code
+- conversation mapper
+- archive state storage
+- frontend query/cache refresh
+
+Implement where appropriate:
+Preferred backend behavior:
+- On every new inbound customer message, identify the stable conversation key.
+- Check if conversation is archived.
+- If archived and not blocked, clear archivedAt / archived status.
+- Persist restored state.
+- Return/update the conversation as active.
+- Frontend should receive/refetch active state and show it.
+
+If archive is currently localStorage-backed:
+- implement the best available frontend restoration logic for mock/demo/dev data
+- when a new inbound message arrives in frontend data, remove the stable archive key from localStorage
+- re-filter lists/counts immediately
+- report clearly that backend-backed restore is required for production
+
+Stable key requirement:
+Use the same stable archive key already used for archive persistence.
+
+Examples:
+- whatsapp:+5999xxxxxxx
+- email:thread_key_here
+- instagram:conversation_id_here
+
+Do not use unstable customer display name only.
+
+Frontend behavior:
+- Active lists must update after restore.
+- Archived view should no longer show restored conversation as archived.
+- Sidebar counts must include the restored active conversation.
+- No manual refresh should be required if the app receives/polls new data.
+- After browser refresh, restored state must remain correct.
+
+Do not:
+- delete conversation history
+- delete notes
+- delete escalation history
+- restore blocked conversations
+- create duplicate conversations
+- create duplicate sidebar counts
+- hardcode specific names like Calvin or Anne-Sophie
+- fake backend behavior without reporting it
+
+Acceptance tests:
+1. Archive a WhatsApp conversation.
+2. Confirm it disappears from Active and appears in Archived.
+3. Simulate or receive a new inbound WhatsApp message for the same stable conversation key.
+4. Confirm it returns to Active.
+5. Confirm it is no longer in Archived.
+6. Confirm WhatsApp/sidebar count increases.
+7. Block a conversation.
+8. Simulate or receive new inbound message.
+9. Confirm blocked conversation does NOT return to Active.
+10. Refresh page.
+11. Confirm restored/blocked states remain correct.
+
+Acceptance criteria:
+- Archive auto-restore behavior is verified or implemented.
+- Archived conversations return to Active on new inbound customer messages.
+- Blocked conversations do not return.
+- Sidebar counts update correctly.
+- Archive view updates correctly.
+- Stable conversation key is used.
+- No duplicate conversations are created.
+- Existing archive/delete/block/resolve/reply behavior still works.
+- Build passes.
+
+Report back:
+1. Whether archive auto-restore already existed.
+2. If implemented, where the restore logic was added.
+3. Whether the fix is backend-backed or localStorage/mock-backed.
+4. Stable key format used.
+5. How blocked conversations are protected.
+6. Changed files.
+7. Any production backend follow-up required.
