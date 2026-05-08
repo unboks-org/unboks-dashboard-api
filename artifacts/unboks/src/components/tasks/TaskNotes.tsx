@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Paperclip, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   blobToDataUrl,
@@ -200,34 +200,38 @@ export function TaskNotes({ note, onSave, onOpenImage, disabled = false }: TaskN
     scheduleSave(text, nextImages);
   };
 
-  const stateLabel: Record<SaveState, { text: string; cls: string; spin?: boolean }> = {
-    idle: { text: "Saved", cls: "text-[#6b7280]" },
-    dirty: { text: "Unsaved", cls: "text-[#9aa0a6]" },
-    saving: { text: "Saving…", cls: "text-[#1a73e8]", spin: true },
-    saved: { text: "Saved", cls: "text-[#137333]" },
-    error: { text: "Save failed", cls: "text-[#a50e0e]" },
+  // Save-state chip mirrors the Linear / Notion autosave indicator: a tiny
+  // colored dot + label, no border, no background. Quiet by default,
+  // distinct only when the operator needs to notice (Saving / Save failed).
+  const stateLabel: Record<SaveState, { text: string; dot: string; cls: string; spin?: boolean }> = {
+    idle:   { text: "Saved",       dot: "bg-[#cbd5e1]", cls: "text-[#94a3b8]" },
+    dirty:  { text: "Unsaved",     dot: "bg-[#cbd5e1]", cls: "text-[#94a3b8]" },
+    saving: { text: "Saving…",     dot: "bg-[#1a73e8]", cls: "text-[#1a73e8]", spin: true },
+    saved:  { text: "Saved",       dot: "bg-[#34a853]", cls: "text-[#137333]" },
+    error:  { text: "Save failed", dot: "bg-[#ea4335]", cls: "text-[#a50e0e]" },
   };
   const initialEmpty = initialText.length === 0 && initialImages.length === 0;
   const status = state === "idle" && initialEmpty ? null : stateLabel[state];
 
   return (
-    <section className="mt-3 rounded-xl border border-[#e6eaf0] bg-[#fafbfd] px-3 pt-2.5 pb-2 sm:px-3.5">
-      <header className="mb-1.5 flex items-center justify-between gap-2">
+    <section className="mt-4 rounded-xl border border-[#e6eaf0] bg-white px-3.5 pt-3 pb-3 sm:px-4">
+      <header className="mb-2 flex items-center justify-between gap-2">
         <h3
           id="task-notes-label"
-          className="text-[12px] font-semibold uppercase tracking-wide text-[#6b7280]"
+          className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#6b7280]"
         >
           Notes
         </h3>
         {status && (
           <span
-            className={cn(
-              "inline-flex items-center gap-1 text-[11px]",
-              status.cls,
-            )}
+            className={cn("inline-flex items-center gap-1.5 text-[11px]", status.cls)}
             aria-live="polite"
           >
-            {status.spin && <Loader2 className="h-3 w-3 animate-spin" />}
+            {status.spin ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <span className={cn("h-1.5 w-1.5 rounded-full", status.dot)} aria-hidden />
+            )}
             {status.text}
           </span>
         )}
@@ -244,23 +248,23 @@ export function TaskNotes({ note, onSave, onOpenImage, disabled = false }: TaskN
         aria-labelledby="task-notes-label"
         placeholder="Add notes, screenshots, links, or extra context for this task…"
         className={cn(
-          "block w-full resize-none border-0 bg-transparent p-0 text-[13.5px] leading-relaxed text-[#1f2937] outline-none placeholder:text-[#9aa0a6]",
-          "min-h-[2.5em]",
+          "block w-full resize-none border-0 bg-transparent p-0 text-[14px] leading-[1.55] text-[#1f2937] outline-none placeholder:text-[#9aa0a6]",
+          "min-h-[2.75em]",
           disabled && "opacity-60",
         )}
       />
 
       {images.length > 0 && (
-        <div className="mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+        <div className="mt-2.5 grid grid-cols-3 gap-2 sm:grid-cols-4">
           {images.map((img) => (
             <div
               key={img.id}
-              className="group relative aspect-square overflow-hidden rounded-md border border-[#e2e8f0] bg-white"
+              className="group relative aspect-square overflow-hidden rounded-lg border border-[#e2e8f0] bg-[#f6f8fc]"
             >
               <button
                 type="button"
                 onClick={() => onOpenImage(img.dataUrl)}
-                className="block h-full w-full"
+                className="block h-full w-full transition-opacity hover:opacity-95"
                 aria-label="Open note image"
               >
                 <img
@@ -274,7 +278,7 @@ export function TaskNotes({ note, onSave, onOpenImage, disabled = false }: TaskN
                 type="button"
                 onClick={() => removeImage(img.id)}
                 aria-label="Remove image"
-                className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-black/55 text-white opacity-0 transition-opacity hover:bg-black/75 group-hover:opacity-100 focus:opacity-100"
+                className="absolute right-1.5 top-1.5 grid h-5 w-5 place-items-center rounded-full bg-black/55 text-white opacity-0 shadow-sm transition-opacity hover:bg-black/75 group-hover:opacity-100 focus:opacity-100"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -283,8 +287,7 @@ export function TaskNotes({ note, onSave, onOpenImage, disabled = false }: TaskN
         </div>
       )}
 
-      <p className="mt-1.5 inline-flex items-center gap-1 text-[10.5px] text-[#9aa0a6]">
-        <Paperclip className="h-2.5 w-2.5" />
+      <p className="mt-2 text-[10.5px] leading-snug text-[#9aa0a6]">
         Paste text or images. Saved on this device until shared notes ship.
       </p>
     </section>

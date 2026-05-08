@@ -22,6 +22,8 @@ import {
   useHiddenConversations,
   collectConversationHideKeys,
 } from "@/hooks/use-hidden-conversations";
+import { useArchivedConversations } from "@/hooks/use-archived-conversations";
+import { canDeleteChannel } from "@/lib/channel-rules";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -33,7 +35,10 @@ import {
   Reply,
   Forward,
   Trash2,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
+import { toast } from "sonner";
 import type { ApiMessage, ConversationDetail } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { EscalationReplyComposer } from "@/components/inbox/EscalationReplyComposer";
@@ -270,6 +275,14 @@ interface ConversationDetailPaneProps {
   onEmailReply?: (conv: Conversation) => void;
   onEmailForward?: (conv: Conversation) => void;
   onEmailDelete?: (conv: Conversation) => void;
+  /**
+   * Channel-agnostic archive / restore. Always wired from the parent so
+   * the header surfaces the right action regardless of view; `archived`
+   * flips the icon between Archive and ArchiveRestore.
+   */
+  onArchive?: (conv: Conversation) => void;
+  onRestore?: (conv: Conversation) => void;
+  archived?: boolean;
 }
 
 function ConversationDetailPane({
@@ -278,6 +291,9 @@ function ConversationDetailPane({
   onEmailReply,
   onEmailForward,
   onEmailDelete,
+  onArchive,
+  onRestore,
+  archived = false,
 }: ConversationDetailPaneProps) {
   const { data: detail, isLoading, isError, error } = useConversation(conversation.id);
   const badgeColor = CHANNEL_BADGE_COLORS[conversation.channel] ?? "#9aa0a6";
@@ -430,6 +446,32 @@ function ConversationDetailPane({
               selectedMode={selectedMode}
               onChange={setSelectedMode}
             />
+          </div>
+        )}
+        {(onArchive || onRestore) && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {!archived && onArchive && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onArchive(conversation); }}
+                aria-label="Archive conversation"
+                title="Archive"
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#eef1f6] text-[#5f6368] hover:text-[#1f2937]"
+              >
+                <Archive className="w-4 h-4" />
+              </button>
+            )}
+            {archived && onRestore && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onRestore(conversation); }}
+                aria-label="Restore to inbox"
+                title="Restore to inbox"
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#e8f0fe] text-[#5f6368] hover:text-[#1a73e8]"
+              >
+                <ArchiveRestore className="w-4 h-4" />
+              </button>
+            )}
           </div>
         )}
         {conversation.channel === "Email" && (onEmailReply || onEmailForward || onEmailDelete) && (
@@ -695,6 +737,43 @@ export default function Inbox() {
   // sidebar counts re-render the moment the hidden set changes.
   const { isHidden: isRowHidden } = useHiddenConversations();
 
+  // Local archive overlay (channel-agnostic). See
+  // `useArchivedConversations` for the honest local-only contract +
+  // auto-restore-on-new-inbound semantics. The "Active vs Archived"
+  // view below is the single read site for `isArchived`; everything
+  // else (escalations sub-filter, channel sub-filter, search) layers
+  // on top of the same filtered list.
+  const {
+    isArchived: isRowArchived,
+    archive: archiveRow,
+    unarchive: unarchiveRow,
+  } = useArchivedConversations();
+  const [inboxView, setInboxView] = useState<"active" | "archived">("active");
+
+  const handleArchive = useCallback(
+    (conv: Conversation) => {
+      const keys = collectConversationHideKeys(conv);
+      if (keys.length === 0) {
+        toast.error("Couldn't archive — no stable identifier on this row.");
+        return;
+      }
+      archiveRow(keys);
+      setSelectedConv((cur) => (cur?.id === conv.id ? null : cur));
+      toast.success("Archived — local on this device", {
+        description: "Returns to Active when the customer replies.",
+      });
+    },
+    [archiveRow],
+  );
+  const handleRestore = useCallback(
+    (conv: Conversation) => {
+      const keys = collectConversationHideKeys(conv);
+      unarchiveRow(keys);
+      toast.success("Restored to Active");
+    },
+    [unarchiveRow],
+  );
+
   const { data: apiConversations, isLoading, isError } = useConversations();
   // Escalations list is the source of truth for the Escalations tab AND for
   // the sidebar count. Same normalizer as DashboardShell, so they always
@@ -834,6 +913,24 @@ export default function Inbox() {
         list = list.filter((c) => c.channel === ch);
       }
     }
+    // Active vs Archived split — applied AFTER channel filtering so an
+    // Archived row is reachable from the same channel surface it was
+    // archived from. We deliberately SKIP this filter on the
+    // Escalations tab: that view has no Active/Archived toggle in the
+    // header (it shows All / Agent-needs-help / Human-takeover
+    // instead), so applying the archive filter there would silently
+    // hide an escalated row with no visible way to restore it. Per
+    // the brief, escalations remain visible regardless of archive
+    // state and operators archive/restore them from the row or detail
+    // header. `isRowArchived` consults the row's raw last-message
+    // timestamp so a fresh inbound auto-restores without operator
+    // action (mirroring the backend behaviour we'd build).
+    if (activeNav !== "escalations") {
+      list = list.filter((c) => {
+        const arch = isRowArchived(collectConversationHideKeys(c), c.timestampMs);
+        return inboxView === "archived" ? arch : !arch;
+      });
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(
@@ -847,7 +944,16 @@ export default function Inbox() {
     // we never mutate the React Query cached array. Invalid/missing
     // timestamps (timestampMs === 0) naturally land at the bottom.
     return [...list].sort((a, b) => (b.timestampMs ?? 0) - (a.timestampMs ?? 0));
-  }, [allConversations, escalationRows, activeNav, searchQuery, isChannelEnabled, escalationFilter]);
+  }, [
+    allConversations,
+    escalationRows,
+    activeNav,
+    searchQuery,
+    isChannelEnabled,
+    escalationFilter,
+    isRowArchived,
+    inboxView,
+  ]);
 
   const subtitle: React.ReactNode = (() => {
     if (activeNav === "escalations") {
@@ -914,7 +1020,43 @@ export default function Inbox() {
                 </button>
               ))}
             </div>
-          ) : null}
+          ) : (
+            // Active vs Archived view toggle. Local-only today (the
+            // honest caption sits next to the toggle so operators know
+            // archive doesn't sync to teammates yet) — see
+            // `useArchivedConversations`. The same toggle also drives
+            // the per-channel views (channel:Email etc.) since it
+            // filters AFTER the channel selector.
+            <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-[#f1f3f4] bg-white sticky top-0 z-10">
+              <div className="flex items-center gap-1">
+                {(["active", "archived"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => { setInboxView(v); setSelectedConv(null); }}
+                    className={cn(
+                      "px-3 py-1 text-[12px] rounded-full inline-flex items-center gap-1.5",
+                      inboxView === v
+                        ? "bg-[#e8f0fe] text-[#1a73e8] font-medium"
+                        : "text-[#5f6368] hover:bg-[#f1f3f4]",
+                    )}
+                    aria-pressed={inboxView === v}
+                  >
+                    {v === "archived" && <Archive className="h-3 w-3" />}
+                    {v === "active" ? "Active" : "Archived"}
+                  </button>
+                ))}
+              </div>
+              {inboxView === "archived" && (
+                <span
+                  className="text-[10.5px] text-[#9aa0a6] truncate"
+                  title="Archive is stored on this device until backend support ships."
+                >
+                  Local on this device
+                </span>
+              )}
+            </div>
+          )}
           {(activeNav === "escalations" ? escIsLoading : isLoading) && filtered.length === 0 ? (
             <div className="divide-y divide-[#f1f3f4]" aria-busy="true" aria-label="Loading conversations">
               {[0, 1, 2].map((i) => (
@@ -935,9 +1077,12 @@ export default function Inbox() {
                 isSelected={selectedConv?.id === conv.id}
                 hideChannel={Boolean(activeChannel)}
                 onSelect={setSelectedConv}
-                onReply={conv.channel === "Email" ? handleEmailReply : undefined}
-                onForward={conv.channel === "Email" ? handleEmailForward : undefined}
-                onDelete={conv.channel === "Email" ? handleEmailDelete : undefined}
+                onReply={canDeleteChannel(conv.channel) ? handleEmailReply : undefined}
+                onForward={canDeleteChannel(conv.channel) ? handleEmailForward : undefined}
+                onDelete={canDeleteChannel(conv.channel) ? handleEmailDelete : undefined}
+                onArchive={handleArchive}
+                onRestore={handleRestore}
+                archived={inboxView === "archived"}
               />
             ))
           ) : (
@@ -964,9 +1109,12 @@ export default function Inbox() {
           <ConversationDetailPane
             conversation={selectedConv}
             onClose={() => setSelectedConv(null)}
-            onEmailReply={selectedConv.channel === "Email" ? handleEmailReply : undefined}
-            onEmailForward={selectedConv.channel === "Email" ? handleEmailForward : undefined}
-            onEmailDelete={selectedConv.channel === "Email" ? handleEmailDelete : undefined}
+            onEmailReply={canDeleteChannel(selectedConv.channel) ? handleEmailReply : undefined}
+            onEmailForward={canDeleteChannel(selectedConv.channel) ? handleEmailForward : undefined}
+            onEmailDelete={canDeleteChannel(selectedConv.channel) ? handleEmailDelete : undefined}
+            onArchive={handleArchive}
+            onRestore={handleRestore}
+            archived={inboxView === "archived"}
           />
         )}
       </div>

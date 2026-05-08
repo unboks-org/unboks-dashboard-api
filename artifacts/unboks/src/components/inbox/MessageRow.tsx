@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Conversation } from "@/data/conversations";
 import { cn } from "@/lib/utils";
 import { CHANNEL_BADGE_COLORS } from "@/lib/channel-map";
-import { Star, Reply, Forward, Trash2 } from "lucide-react";
+import { Star, Reply, Forward, Trash2, Archive, ArchiveRestore } from "lucide-react";
 
 const AVATAR_COLORS = [
   "#f9a825", "#1a73e8", "#34a853", "#ea4335",
@@ -35,6 +35,15 @@ interface MessageRowProps {
   onReply?: (conv: Conversation) => void;
   onForward?: (conv: Conversation) => void;
   onDelete?: (conv: Conversation) => void;
+  /**
+   * Archive / restore are channel-agnostic. Archive moves the row out of
+   * the active inbox (with auto-restore on new inbound). Restore is shown
+   * in place of Archive when `archived` is true (Archived view). Both are
+   * local-only today — see `useArchivedConversations` for the contract.
+   */
+  onArchive?: (conv: Conversation) => void;
+  onRestore?: (conv: Conversation) => void;
+  archived?: boolean;
 }
 
 export function MessageRow({
@@ -45,6 +54,9 @@ export function MessageRow({
   onReply,
   onForward,
   onDelete,
+  onArchive,
+  onRestore,
+  archived = false,
 }: MessageRowProps) {
   const [starred, setStarred] = useState(false);
   const color = avatarColor(conversation.sender);
@@ -138,7 +150,7 @@ export function MessageRow({
                 <Forward className="w-4 h-4" strokeWidth={1.5} />
               </button>
             )}
-            {conversation.channel === "Email" && onDelete && (
+            {conversation.channel === "Email" && onDelete && !archived && (
               <button
                 type="button"
                 aria-label="Delete"
@@ -150,6 +162,34 @@ export function MessageRow({
                 className="grid h-7 w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#fce8e6] hover:text-[#c5221f]"
               >
                 <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+              </button>
+            )}
+            {!archived && onArchive && (
+              <button
+                type="button"
+                aria-label="Archive"
+                title="Archive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onArchive(conversation);
+                }}
+                className="grid h-7 w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#eef1f6] hover:text-[#1f2937]"
+              >
+                <Archive className="w-4 h-4" strokeWidth={1.5} />
+              </button>
+            )}
+            {archived && onRestore && (
+              <button
+                type="button"
+                aria-label="Restore to inbox"
+                title="Restore to inbox"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRestore(conversation);
+                }}
+                className="grid h-7 w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#e8f0fe] hover:text-[#1a73e8]"
+              >
+                <ArchiveRestore className="w-4 h-4" strokeWidth={1.5} />
               </button>
             )}
             <button

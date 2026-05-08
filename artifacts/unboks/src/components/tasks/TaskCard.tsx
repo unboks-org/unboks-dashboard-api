@@ -384,9 +384,9 @@ export function TaskCard({
                 type="button"
                 onClick={() => setExpanded((v) => !v)}
                 aria-expanded={expanded}
-                aria-label={expanded ? "Show less" : "Show more"}
+                aria-label={expanded ? "Collapse details" : "Expand details"}
                 title={expanded ? "Show less" : "Show more"}
-                className="inline-flex items-center gap-1 rounded-full border border-[#dadce0] bg-white px-2 py-0.5 text-[11px] font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4]"
+                className="inline-flex items-center gap-1 rounded-full border border-[#d9dee7] bg-white px-2 py-0.5 text-[11px] font-medium text-[#475569] transition-colors hover:bg-[#eef1f6] hover:text-[#1f2937]"
               >
                 {expanded ? (
                   <>
