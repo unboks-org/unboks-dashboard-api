@@ -1,0 +1,201 @@
+TASK: Redesign escalation detail panel and composer hierarchy using Refero.
+
+PROJECT SCOPE:
+Project 2 customer dashboard only.
+Do NOT touch Project 1 public website.
+Do NOT touch pricing.
+Do NOT change backend logic unless required for existing actions to keep working.
+
+MANDATORY:
+Use Refero before designing.
+Do not guess the UI.
+Use Refero to inspect premium SaaS support/inbox/operator interfaces and apply the best patterns for:
+- escalation detail panels
+- decision-first support workflows
+- support inbox action cards
+- composer footer actions
+- premium button hierarchy
+- clean status indicators
+
+Reference direction:
+Look for patterns similar to premium support tools and clean SaaS dashboards:
+- Linear-level spacing and restraint
+- Intercom/Zendesk-style support clarity
+- Notion/Apple Notes calm surfaces
+- GitHub-style clear action hierarchy
+- modern inbox/operator tools with decision panels
+
+Current problem:
+The escalation detail panel still looks messy and low-quality.
+The UI technically works, but it does not feel premium, calm, or operator-friendly.
+
+Main issues:
+- Too many pills/chips competing for attention.
+- “Agent needs help” appears multiple times.
+- The escalation reason card feels like a raw debug panel, not a decision panel.
+- The OPTIONS chips feel random and weak.
+- “Guide your Agent” section is disconnected from the escalation reason.
+- The layout wastes space but still feels cramped.
+- Button styling is inconsistent.
+- The operator does not get a clean “what happened / what to do / action” flow.
+
+Goal:
+Make this panel feel like a premium decision-first operator interface.
+
+Required UX structure:
+
+1. Top conversation header
+Keep compact:
+- close icon
+- customer name
+- channel badge
+- time
+- status controls
+- archive icon
+
+Remove duplicate visual noise:
+- Do not show “Agent needs help” in multiple places.
+- Keep one clear status indicator in the header.
+- Human takeover can remain as a secondary toggle/action if needed.
+
+2. Replace current “Escalation Reason” card with a cleaner “Decision needed” card
+
+Card title:
+“Decision needed”
+
+Layout inside card:
+
+A. What happened
+Example:
+“Calvin sent a message your Agent is unsure how to answer.”
+
+B. Customer wants
+Example:
+“A reply to their last message.”
+
+C. Suggested next step
+Example:
+“Tell your Agent what to answer, ask it to collect more details, or take over yourself.”
+
+Use generated backend summary if available:
+- escalationSummary
+- customerWants
+- operatorNeedsToDecide
+- recommendedOptions
+- extractedDetails
+
+If backend summary is missing:
+Use existing fallback summary, but render it in the same premium structure.
+
+3. Replace “OPTIONS” chip row with real action buttons
+
+Use these action labels:
+- Guide Agent
+- Ask for more details
+- Take over
+- Resolve
+
+Button hierarchy:
+- Guide Agent = primary soft accent
+- Ask for more details = secondary
+- Take over = secondary/danger-neutral
+- Resolve = quiet secondary
+
+Do not render these as tiny tag-like chips.
+These are actions, not tags.
+
+4. Composer section
+
+Title:
+“Guide your Agent”
+
+Remove unnecessary repeated badge if status is already shown in the header.
+
+Subtitle:
+“Write what the Agent should say or do next.”
+
+Textarea placeholder:
+“Example: Tell the customer we are available tomorrow at 10:00 or 14:00, and ask which time works best.”
+
+The composer must feel connected to the decision card above.
+
+5. Footer action buttons
+
+Order exactly:
+1. Send
+2. Resolve
+3. Send & Resolve
+
+Labels exactly:
+- Send
+- Resolve
+- Send & Resolve
+
+Meaning:
+- Send = send guidance/reply only
+- Resolve = mark resolved only
+- Send & Resolve = send and close the escalation
+
+Design:
+- all three buttons consistent
+- no tiny text links
+- no ugly grey disabled pills
+- disabled state clear but premium
+- Send & Resolve can be strongest/final action
+
+6. Visual direction
+
+Premium, calm, functional:
+- soft white/off-white cards
+- subtle borders
+- deep navy/charcoal text
+- one premium accent color
+- clean section labels
+- balanced spacing
+- readable line-height
+- no heavy shadows
+- no neon
+- no black-heavy styling
+- no cramped pills everywhere
+
+7. Mobile behavior
+
+On mobile:
+- header wraps cleanly
+- decision card remains readable
+- action buttons wrap or stack cleanly
+- composer remains usable
+- footer buttons do not overflow
+
+Important:
+Do not invent new backend data.
+Use existing fields and existing handlers.
+Preserve existing behavior.
+
+Existing actions that must still work:
+- guide Agent
+- ask for more details
+- human takeover
+- resolve
+- send
+- send and resolve
+- archive
+- close panel
+
+Acceptance criteria:
+- Refero was used before the redesign.
+- Report which UI patterns/references from Refero influenced the result.
+- Escalation detail panel looks premium and calmer.
+- “Decision needed” card replaces the messy debug-like panel.
+- Duplicate “Agent needs help” / “Soft escalation” visual noise is reduced.
+- Operator can quickly understand:
+  1. what happened
+  2. what the customer wants
+  3. what action to take
+- Options are real action buttons, not random chips.
+- Composer copy is clearer.
+- Footer buttons are ordered: Send, Resolve, Send & Resolve.
+- Existing actions still work.
+- Mobile layout works cleanly.
+- Build passes.
+- Report changed files and confirm which existing handler each action uses.
