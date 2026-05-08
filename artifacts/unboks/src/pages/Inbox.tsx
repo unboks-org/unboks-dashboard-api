@@ -742,6 +742,36 @@ export default function Inbox() {
     setSelectedConv(() => null);
   }, [navigate]);
 
+  // Deep-link support for the Appointments page (and any future surface
+  // that wants to open a specific conversation). Reading `?c=<key>` once
+  // the conversation list has loaded so we can resolve the key to a
+  // Conversation object the existing detail pane already knows how to
+  // render. The query string is then stripped so a refresh doesn't
+  // re-trigger the open. Runs only when allConversations becomes
+  // populated.
+  useEffect(() => {
+    if (allConversations.length === 0) return;
+    let key: string | null = null;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      key = params.get("c");
+    } catch {
+      key = null;
+    }
+    if (!key) return;
+    const match = allConversations.find((c) => c.id === key);
+    if (match) {
+      setSelectedConv(match);
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("c");
+        window.history.replaceState({}, "", url.toString());
+      } catch {
+        // ignore — query strip is best-effort
+      }
+    }
+  }, [allConversations]);
+
   // Consume any cross-route nav intent parked by DashboardShell when the user
   // clicked a channel/escalations item from Bookings/Analytics/Settings.
   useEffect(() => {

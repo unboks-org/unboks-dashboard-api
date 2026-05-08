@@ -2,7 +2,11 @@ import { useState, useEffect, useCallback } from "react";
 
 const STORAGE_KEY = "unboks_bookings_label";
 const EVENT_NAME = "unboks_bookings_label_changed";
-const DEFAULT_LABEL = "Bookings";
+// Renamed from "Bookings" to "Appointments" so the workspace nav and
+// page header surface the new product label by default. The storage key
+// and event name stay unchanged so previously-customised labels are
+// preserved verbatim. Settings continues to call this hook to override.
+const DEFAULT_LABEL = "Appointments";
 
 function readFromStorage(): string {
   try {

@@ -76,6 +76,11 @@ function Router() {
       <Route path="/bookings">
         <ProtectedRoute><Bookings /></ProtectedRoute>
       </Route>
+      {/* Renamed surface: /appointments is the new canonical path; the
+          /bookings route stays so existing bookmarks keep working. */}
+      <Route path="/appointments">
+        <ProtectedRoute><Bookings /></ProtectedRoute>
+      </Route>
       <Route path="/settings">
         <ProtectedRoute>
           <SettingsErrorBoundary>

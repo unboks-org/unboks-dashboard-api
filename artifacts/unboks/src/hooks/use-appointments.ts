@@ -1,0 +1,154 @@
+/**
+ * `useAppointments` — combines two data sources for the Appointments page:
+ *
+ *   1. Backend appointments (GET /appointments). When the endpoint is
+ *      live, those rows are authoritative. When it isn't connected
+ *      (404 / 501 / 503 / network), `fetchAppointments` resolves to an
+ *      empty list, so this hook falls back to the detection layer
+ *      below without throwing.
+ *
+ *   2. Detection from existing conversations. We scan the conversation
+ *      list for scheduling signals (cheap, reads only the preview
+ *      strings the list endpoint already shipped) and only fetch full
+ *      detail for candidates. The detector then decides whether each
+ *      candidate has a concrete day + time + (optional) location.
+ *
+ * The two sources are merged and de-duplicated by the conversation key
+ * + dateTimeLabel pair so a backend row and a detected row for the same
+ * meeting collapse into one card. Backend rows always win the dedup so
+ * their `confirmed` status takes precedence over a `detected` row.
+ *
+ * The hook returns a `backendAvailable` flag so the page can show a
+ * subtle "Pending sync" hint when the only rows on screen come from
+ * detection — operators should never be misled into thinking the
+ * backend has stored these appointments.
+ */
+
+import { useMemo } from "react";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import {
+  fetchAppointments,
+  fetchConversation,
+  type Appointment,
+  type ApiConversation,
+  type ConversationDetail,
+} from "@/lib/api";
+import { useConversations } from "@/hooks/use-client-api";
+import { detectAppointment, hasSchedulingSignals } from "@/lib/appointment-detector";
+import { mapApiConversation } from "@/lib/conversation-mapper";
+
+const APPOINTMENTS_KEY = ["appointments"] as const;
+
+export interface UseAppointmentsResult {
+  appointments: Appointment[];
+  isLoading: boolean;
+  /**
+   * True when the backend appointments endpoint returned a real list
+   * (even if empty). False when the endpoint returned nothing usable
+   * and the rows on screen are detection-only.
+   */
+  backendAvailable: boolean;
+}
+
+export function useAppointments(): UseAppointmentsResult {
+  const backend = useQuery({
+    queryKey: APPOINTMENTS_KEY,
+    queryFn: fetchAppointments,
+    staleTime: 60_000,
+    retry: 0,
+  });
+
+  const conversations = useConversations();
+
+  // Filter candidates by the cheap preview-string signal so we only
+  // fetch full detail for conversations that plausibly contain an
+  // appointment.
+  const candidates = useMemo(() => {
+    const list = conversations.data ?? [];
+    return list.filter((c) => hasSchedulingSignals(previewText(c)));
+  }, [conversations.data]);
+
+  const detailQueries = useQueries({
+    queries: candidates.map((c) => ({
+      queryKey: ["conversation", c.phone],
+      queryFn: () => fetchConversation(c.phone),
+      enabled: Boolean(c.phone),
+      staleTime: 30_000,
+      retry: 0,
+    })),
+  });
+
+  const detected = useMemo<Appointment[]>(() => {
+    const out: Appointment[] = [];
+    for (let i = 0; i < candidates.length; i++) {
+      const q = detailQueries[i];
+      const detail = q?.data as ConversationDetail | undefined;
+      if (!detail) continue;
+      const c = candidates[i];
+      const mapped = mapApiConversation(c);
+      const apt = detectAppointment({
+        detail,
+        conversationId: c.phone,
+        channel: (mapped.channel ?? "Unknown").toLowerCase(),
+        customerName: mapped.sender,
+      });
+      if (apt) out.push(apt);
+    }
+    return out;
+    // detailQueries identities change every render; we rely on the
+    // candidates array + each query's data for memoisation. Keeping the
+    // dep list explicit so React lints it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [candidates, ...detailQueries.map((q) => q.data)]);
+
+  const merged = useMemo<Appointment[]>(() => {
+    const backendList = backend.data?.items ?? [];
+    const seen = new Set<string>();
+    const key = (a: Appointment) => `${a.conversationId}|${a.dateTimeLabel}`;
+    const result: Appointment[] = [];
+    // Backend rows first so they take precedence on dedup.
+    for (const a of backendList) {
+      const k = key(a);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      result.push(a);
+    }
+    for (const a of detected) {
+      const k = key(a);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      result.push(a);
+    }
+    // Newest first by createdAt.
+    result.sort((a, b) => {
+      const da = Date.parse(a.createdAt) || 0;
+      const db = Date.parse(b.createdAt) || 0;
+      return db - da;
+    });
+    return result;
+  }, [backend.data, detected]);
+
+  return {
+    appointments: merged,
+    isLoading:
+      conversations.isLoading || detailQueries.some((q) => q.isLoading),
+    // True when /appointments returned a real response — even an empty
+    // one. Empty-but-connected must NOT be reported as unavailable, or
+    // the page would mislabel itself as in fallback mode.
+    backendAvailable: backend.isSuccess && backend.data?.connected === true,
+  };
+}
+
+function previewText(c: ApiConversation): string {
+  return [
+    c.lastMessage,
+    c.latestMessage,
+    c.last_message,
+    c.preview,
+    c.snippet,
+    c.body,
+    c.text,
+  ]
+    .filter((s): s is string => typeof s === "string" && s.length > 0)
+    .join(" \n ");
+}

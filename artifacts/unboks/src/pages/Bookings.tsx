@@ -1,11 +1,43 @@
-import { useState } from "react";
+/**
+ * Appointments page (mounted at /bookings and /appointments).
+ *
+ * The route filename stays `Bookings.tsx` to keep the wouter route key
+ * stable for any deep links / bookmarks operators already have. The
+ * page itself is the new Appointments view.
+ *
+ * Sourcing
+ * ========
+ * Rows come from `useAppointments`, which merges:
+ *   - GET /appointments (when the backend endpoint is connected), and
+ *   - frontend detection over the existing conversation list.
+ *
+ * Backend rows take precedence on dedup so a `confirmed` backend row
+ * never gets shadowed by a `detected` row for the same conversation +
+ * dateTimeLabel. When the only rows on screen come from detection, a
+ * subtle "Pending sync" hint reminds the operator that the backend
+ * hasn't stored these yet — we never pretend an appointment was saved.
+ *
+ * Layout
+ * ======
+ * Premium SaaS workspace list:
+ *   left   — customer name + topic
+ *   middle — date/time + location
+ *   right  — status pill + Open conversation
+ *
+ * Strict copy rule: no em dashes anywhere in this file's user-facing
+ * text. Em dash is freely allowed in code comments.
+ */
+
+import { useLocation } from "wouter";
+import { Calendar, MapPin, MessageCircle, ArrowRight } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
+import { useAppointments } from "@/hooks/use-appointments";
 import { cn } from "@/lib/utils";
-import { X, CheckCircle, MessageCircle, Clock, User, AlertCircle } from "lucide-react";
+import type { Appointment, AppointmentStatus } from "@/lib/api";
 
 function avatarColor(name: string) {
-  const colors = ["#f9a825","#1a73e8","#34a853","#ea4335","#7e57c2","#ec407a","#26a69a"];
+  const colors = ["#f9a825", "#1a73e8", "#34a853", "#ea4335", "#7e57c2", "#ec407a", "#26a69a"];
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
   return colors[h % colors.length];
@@ -15,177 +47,187 @@ function initial(name: string) {
   return name.trim().charAt(0).toUpperCase() || "?";
 }
 
-interface OrderRow {
-  id: string;
-  customerName: string;
-  contact: string;
-  service: string;
-  channel: string;
-  date: string;
-  resolved: boolean;
-  summary: string;
+function channelLabel(slug: string): string {
+  switch (slug.toLowerCase()) {
+    case "whatsapp":
+      return "WhatsApp";
+    case "email":
+      return "Email";
+    case "instagram":
+      return "Instagram";
+    case "facebook":
+      return "Facebook";
+    case "messenger":
+      return "Messenger";
+    case "tiktok":
+      return "TikTok";
+    case "x":
+    case "twitter":
+      return "X";
+    default:
+      return slug ? slug.charAt(0).toUpperCase() + slug.slice(1) : "Unknown";
+  }
 }
 
-function DetailPanel({ order, onClose, onResolve, resolving }: {
-  order: OrderRow;
-  onClose: () => void;
-  onResolve: () => void;
-  resolving: boolean;
-}) {
-  const color = avatarColor(order.customerName);
-  return (
-    <div className="fixed inset-0 z-30 flex md:relative md:inset-auto md:w-[420px] md:border-l md:border-[#f1f3f4]">
-      <div className="absolute inset-0 bg-black/40 md:hidden" onClick={onClose} aria-hidden="true" />
-      <div className="relative bg-white w-full max-w-[420px] ml-auto h-full flex flex-col shadow-xl md:shadow-none overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#f1f3f4] flex-shrink-0">
-          <h3 className="text-[15px] font-medium text-[#202124]">Order Detail</h3>
-          <button onClick={onClose} aria-label="Close" className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368]">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="flex-1 px-5 py-5 space-y-5">
-          <section>
-            <p className="text-[11px] uppercase tracking-wider text-[#5f6368] mb-3">Customer</p>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[15px] font-medium flex-shrink-0" style={{ backgroundColor: color }}>
-                {initial(order.customerName)}
-              </div>
-              <div>
-                <p className="text-[14px] font-medium text-[#202124]">{order.customerName}</p>
-                <p className="text-[13px] text-[#5f6368]">{order.contact}</p>
-              </div>
-            </div>
-          </section>
-          <section className="space-y-2">
-            <p className="text-[11px] uppercase tracking-wider text-[#5f6368]">Order / Service</p>
-            <div className="bg-[#f6f8fc] rounded-lg p-3">
-              <p className="text-[13px] text-[#202124]">{order.service}</p>
-            </div>
-          </section>
-          <section className="space-y-2">
-            <p className="text-[11px] uppercase tracking-wider text-[#5f6368]">Details</p>
-            <div className="space-y-1.5">
-              <Row icon={MessageCircle} label="Channel" value={order.channel} />
-              <Row icon={Clock} label="Date" value={order.date} />
-              <Row icon={User} label="Contact" value={order.contact} />
-              <Row icon={AlertCircle} label="Status" value={order.resolved ? "Resolved" : "Pending handoff"} />
-            </div>
-          </section>
-          <section>
-            <p className="text-[11px] uppercase tracking-wider text-[#5f6368] mb-2">AI Summary</p>
-            <div className="bg-[#e8f0fe] rounded-lg p-3">
-              <p className="text-[13px] text-[#3c4043] leading-relaxed">{order.summary}</p>
-            </div>
-          </section>
-          <section>
-            <p className="text-[11px] uppercase tracking-wider text-[#5f6368] mb-2">Next Action</p>
-            <p className="text-[13px] text-[#202124]">
-              {order.resolved
-                ? "This order has been handled."
-                : "Review the order details and confirm onboarding steps with the customer."}
-            </p>
-          </section>
-        </div>
-        <div className="px-5 py-4 border-t border-[#f1f3f4] flex gap-3 flex-shrink-0">
-          <button
-            onClick={onResolve}
-            disabled={order.resolved || resolving}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[14px] font-medium transition-colors",
-              order.resolved
-                ? "bg-[#f6f8fc] text-[#5f6368] cursor-default"
-                : "bg-[#1a73e8] hover:bg-[#1557b0] text-white",
-            )}
-          >
-            <CheckCircle className="w-4 h-4" />
-            {order.resolved ? "Resolved" : resolving ? "Resolving…" : "Mark as handled"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Row({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <Icon className="w-4 h-4 text-[#5f6368] flex-shrink-0" />
-      <span className="text-[13px] text-[#5f6368] w-20 flex-shrink-0">{label}</span>
-      <span className="text-[13px] text-[#202124]">{value}</span>
-    </div>
-  );
+function statusPill(
+  status: AppointmentStatus,
+  source: Appointment["source"],
+  backendAvailable: boolean,
+) {
+  if (status === "confirmed") {
+    return {
+      label: "Confirmed",
+      className: "bg-[#e6f4ea] text-[#137333] border border-[#ceead6]",
+    };
+  }
+  if (status === "pending") {
+    return {
+      label: "Pending team confirmation",
+      className: "bg-[#fef7e0] text-[#5f3e00] border border-[#feefc3]",
+    };
+  }
+  // detected — only flag as "pending sync" when the row came from
+  // detection AND the backend appointments endpoint isn't connected. If
+  // the backend is connected and simply hasn't stored a row for this
+  // detection yet, we still show plain "Detected" so we don't mislead.
+  const showPendingSync = source === "conversation" && !backendAvailable;
+  return {
+    label: showPendingSync ? "Detected, pending sync" : "Detected",
+    className: "bg-[#f1f3f4] text-[#3c4043] border border-[#e8eaed]",
+  };
 }
 
 export default function Bookings() {
   const { label } = useBookingsLabel();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { appointments, isLoading, backendAvailable } = useAppointments();
+  const [, navigate] = useLocation();
 
-  // Bookings/Orders are intentionally NOT inferred from conversation/escalation
-  // text. They will only appear here when the Python backend exposes a real
-  // bookings/orders endpoint (or escalations gain an explicit booking/order
-  // marker). No keyword/regex matching — that produced false positives where
-  // ordinary WhatsApp chats containing words like "booking", "paid", "service"
-  // were misclassified as bookings.
-  const orders: OrderRow[] = [];
+  const openConversation = (conversationId: string) => {
+    // Inbox reads `?c=<phone>` to auto-open a conversation. The phone
+    // value can contain `+` and `:` so encode it.
+    navigate(`/?c=${encodeURIComponent(conversationId)}`);
+  };
 
-  const selected = orders.find((o) => o.id === selectedId) ?? null;
+  const showPendingSyncHint = !backendAvailable && appointments.length > 0;
 
   return (
     <DashboardShell
       activeNav="bookings"
       pageTitle={label}
-      pageSubtitle="Customer bookings and orders"
+      pageSubtitle="Scheduled customer appointments and confirmed follow-ups."
     >
-      <div className="flex h-full">
-        <div className={cn("flex-1 overflow-y-auto", selected && "hidden md:block")}>
-          {orders.length === 0 ? (
+      <div className="flex h-full flex-col">
+        {showPendingSyncHint && (
+          <div className="border-b border-[#e8eaed] bg-[#fbfbfd] px-4 py-2 text-[12px] text-[#5f6368]">
+            Showing detected appointments from your conversations. They will
+            sync once the appointments service is connected.
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto">
+          {isLoading && appointments.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center px-6">
-              <p className="text-[14px] text-[#5f6368]">No bookings yet.</p>
+              <p className="text-[14px] text-[#5f6368]">Loading appointments...</p>
+            </div>
+          ) : appointments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+              <Calendar className="w-8 h-8 text-[#9aa0a6] mb-3" />
+              <p className="text-[14px] text-[#5f6368]">No appointments yet.</p>
               <p className="text-[12px] text-[#9aa0a6] mt-1 max-w-[360px]">
-                Bookings will appear here when they are created or escalated by your connected setup.
+                Appointments will appear here when a customer schedules a
+                meeting and a date, time, and location are confirmed.
               </p>
             </div>
           ) : (
-            orders.map((order) => (
-              <div
-                key={order.id}
-                onClick={() => setSelectedId(order.id)}
-                className={cn(
-                  "flex items-start gap-3 px-4 py-3 border-b border-[#f1f3f4] cursor-pointer hover:bg-[#f6f8fc] active:bg-[#eef1f6]",
-                  selectedId === order.id && "bg-[#e8f0fe]",
-                )}
-              >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[15px] font-medium flex-shrink-0" style={{ backgroundColor: avatarColor(order.customerName) }}>
-                  {initial(order.customerName)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-[15px] font-semibold text-[#202124] truncate">{order.customerName}</span>
-                    <span className="text-[12px] text-[#5f6368] flex-shrink-0">{order.date}</span>
-                  </div>
-                  <p className="text-[14px] text-[#202124] truncate mt-0.5">{order.service}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={cn(
-                      "text-[11px] px-2 py-0.5 rounded-full",
-                      order.resolved ? "bg-[#e6f4ea] text-[#137333]" : "bg-[#fce8e6] text-[#c5221f]",
-                    )}>
-                      {order.resolved ? "Handled" : "Pending"}
-                    </span>
-                    <span className="text-[12px] text-[#5f6368]">{order.channel}</span>
-                  </div>
-                </div>
-              </div>
-            ))
+            <ul className="divide-y divide-[#f1f3f4]">
+              {appointments.map((apt) => {
+                const pill = statusPill(apt.status, apt.source, backendAvailable);
+                return (
+                  <li
+                    key={apt.id}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-[#fbfbfd] transition-colors"
+                  >
+                    {/* Customer + topic */}
+                    <div className="flex items-center gap-3 min-w-0 flex-[1.2]">
+                      <div
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[14px] font-medium flex-shrink-0"
+                        style={{ backgroundColor: avatarColor(apt.customerName) }}
+                        aria-hidden="true"
+                      >
+                        {initial(apt.customerName)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-medium text-[#202124] truncate">
+                          {apt.customerName}
+                        </p>
+                        <p className="text-[12px] text-[#5f6368] truncate">
+                          {apt.title}
+                          <span className="text-[#9aa0a6]">
+                            {" \u00B7 "}
+                            {channelLabel(apt.channel)}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Date / time + location */}
+                    <div className="hidden sm:flex flex-col min-w-0 flex-[1.1]">
+                      <div className="flex items-center gap-1.5 text-[13px] text-[#202124]">
+                        <Calendar className="w-3.5 h-3.5 text-[#5f6368] flex-shrink-0" />
+                        <span className="truncate">{apt.dateTimeLabel}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[12px] text-[#5f6368] mt-0.5">
+                        <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="truncate">
+                          {apt.location ?? "Location not set"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Status + open. On mobile the date/time stack hides,
+                        so duplicate the essentials into the trailing block
+                        compactly. */}
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
+                      <div className="sm:hidden flex flex-col items-end mr-1">
+                        <span className="text-[12px] text-[#202124]">
+                          {apt.dateTimeLabel}
+                        </span>
+                        {apt.location && (
+                          <span className="text-[11px] text-[#5f6368] max-w-[140px] truncate">
+                            {apt.location}
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        className={cn(
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium",
+                          pill.className,
+                        )}
+                        title={
+                          apt.source === "conversation"
+                            ? "Detected from this conversation. Will sync when the appointments service is connected."
+                            : "From the appointments service."
+                        }
+                      >
+                        {pill.label}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => openConversation(apt.conversationId)}
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] text-[#1a73e8] hover:bg-[#f0f6ff] transition-colors"
+                        title="Open the source conversation in the inbox."
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        Open
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
-        {selected && (
-          <DetailPanel
-            order={selected}
-            onClose={() => setSelectedId(null)}
-            onResolve={() => setSelectedId(null)}
-            resolving={false}
-          />
-        )}
       </div>
     </DashboardShell>
   );

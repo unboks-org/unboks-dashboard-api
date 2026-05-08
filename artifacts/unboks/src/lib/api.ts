@@ -161,6 +161,123 @@ export interface LearningEntry {
   updatedAt: string | null;
 }
 
+// ---------------------------------------------------------------------------
+// Appointments
+// ---------------------------------------------------------------------------
+//
+// Appointments are surfaced in Workspace → Appointments. The product
+// rule is:
+//
+//   When a customer asks to meet/book/activate, gives availability, and
+//   the operator (or Marina) confirms a specific date/time (and ideally
+//   a location), the system shows it as an appointment.
+//
+// The backend will expose the canonical appointments collection at
+// `/appointments` (see GET/POST/PATCH/DELETE in the spec). Until that
+// endpoint is live the frontend falls back to a detection layer that
+// reads the same conversations the operator already sees and renders
+// rows as "Pending sync" / "Detected" so nothing slips between the
+// cracks. The status field below carries that distinction so backend
+// rows can land alongside detected ones without losing fidelity.
+
+export type AppointmentStatus = "confirmed" | "pending" | "detected";
+export type AppointmentSource = "conversation" | "backend";
+
+export interface Appointment {
+  id: string;
+  customerName: string;
+  /** Lower-cased channel slug (e.g. "whatsapp", "email"). */
+  channel: string;
+  /** Conversation key (phone / email key) used to deep-link back. */
+  conversationId: string;
+  title: string;
+  dateTimeLabel: string;
+  location?: string | null;
+  status: AppointmentStatus;
+  source: AppointmentSource;
+  createdAt: string;
+}
+
+export interface AppointmentsResponse {
+  /**
+   * True when `/appointments` returned a real response (even an empty
+   * list). False when the endpoint isn't connected yet (404 / 501 /
+   * 503 / network). Drives the "Pending sync" copy on the page so an
+   * empty-but-connected backend never gets mislabelled as not connected.
+   */
+  connected: boolean;
+  items: Appointment[];
+}
+
+/**
+ * Try to fetch appointments from the canonical backend endpoint. If the
+ * endpoint isn't connected yet (404 / 501 / 503 / network), resolve to
+ * `{ connected: false, items: [] }` so the frontend detection layer can
+ * still render rows.
+ *
+ * We deliberately do NOT throw on missing endpoint: the page should
+ * render normally and the detected rows will fill the void. A real auth
+ * failure (401/403) still propagates and triggers the global handler.
+ */
+export async function fetchAppointments(): Promise<AppointmentsResponse> {
+  try {
+    const raw = await apiFetch<unknown>("/appointments");
+    return { connected: true, items: normalizeAppointmentList(raw) };
+  } catch (err) {
+    if (err instanceof ApiError && APPOINTMENTS_NOT_CONNECTED.has(err.status)) {
+      return { connected: false, items: [] };
+    }
+    if (err instanceof Error && (err.name === "TypeError" || err.message === "Failed to fetch")) {
+      return { connected: false, items: [] };
+    }
+    throw err;
+  }
+}
+
+const APPOINTMENTS_NOT_CONNECTED = new Set([0, 404, 501, 503]);
+
+function normalizeAppointmentList(raw: unknown): Appointment[] {
+  // Accept both `[ ... ]` and `{ items: [...] }` envelope shapes.
+  let items: unknown[] = [];
+  if (Array.isArray(raw)) items = raw;
+  else if (raw && typeof raw === "object") {
+    const maybe = (raw as Record<string, unknown>).items ?? (raw as Record<string, unknown>).appointments;
+    if (Array.isArray(maybe)) items = maybe;
+  }
+  const out: Appointment[] = [];
+  for (const it of items) {
+    if (!it || typeof it !== "object") continue;
+    const o = it as Record<string, unknown>;
+    const id = pickStr(o, "id", "_id", "appointmentId");
+    const customerName = pickStr(o, "customerName", "customer_name", "name");
+    const channel = pickStr(o, "channel", "platform") ?? "unknown";
+    const conversationId = pickStr(o, "conversationId", "conversation_id", "phone") ?? "";
+    const title = pickStr(o, "title", "topic", "subject") ?? "Appointment";
+    const dateTimeLabel = pickStr(o, "dateTimeLabel", "date_time_label", "when", "date", "time") ?? "";
+    const location = pickStr(o, "location", "place");
+    const statusRaw = (pickStr(o, "status") ?? "").toLowerCase();
+    const status: AppointmentStatus =
+      statusRaw === "confirmed" || statusRaw === "pending" || statusRaw === "detected"
+        ? statusRaw
+        : "confirmed";
+    const createdAt = pickStr(o, "createdAt", "created_at") ?? new Date().toISOString();
+    if (!id || !customerName || !dateTimeLabel || !conversationId) continue;
+    out.push({
+      id,
+      customerName,
+      channel: channel.toLowerCase(),
+      conversationId,
+      title,
+      dateTimeLabel,
+      location: location ?? null,
+      status,
+      source: "backend",
+      createdAt,
+    });
+  }
+  return out;
+}
+
 export interface AvailabilitySlot {
   date: string;
   capacity: number;
