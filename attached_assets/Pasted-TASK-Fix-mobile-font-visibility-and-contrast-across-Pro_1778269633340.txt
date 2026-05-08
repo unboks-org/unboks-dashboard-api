@@ -1,0 +1,102 @@
+TASK: Fix mobile font visibility and contrast across Project 2 dashboard.
+
+PROJECT SCOPE:
+Project 2 customer dashboard only.
+Do NOT touch Project 1 public website.
+Do NOT touch pricing.
+Do NOT touch backend/API/data logic.
+Do NOT change product logic.
+This is visual/responsive only.
+
+BUG:
+Mobile text is hard to read.
+Fonts are too faint, too small, and background/text contrast is poor.
+
+Required result:
+The mobile dashboard must be clearly readable on phone screens.
+
+This must be fixed globally, not only on one screen.
+
+Audit and fix these areas:
+- mobile header/top bar
+- hamburger menu/drawer
+- sidebar/mobile nav labels
+- Inbox
+- Escalations
+- message rows
+- conversation detail
+- escalation reason/decision card
+- composer
+- buttons
+- badges/pills
+- Settings
+- Appointments
+- Analytics
+- Tasks/cards
+- modals/toasts/empty states
+
+Contrast requirements:
+- Main text must use a strong readable color, not faint grey.
+- Secondary text must still be readable.
+- Labels must not be tiny pale grey.
+- Button text must be readable.
+- Badge/pill text must be readable.
+- Input placeholder text must be readable enough, not invisible.
+- Active states must be obvious.
+- Background and card colors must not be too close to text colors.
+
+Typography requirements:
+- Body text on mobile should generally be at least 14px.
+- Important row text/customer names/buttons should be 14–16px.
+- Page titles/section titles should be 18–22px where appropriate.
+- Avoid ultra-light font weights for important text.
+- Use stronger font weight for labels and headings.
+- Keep line-height comfortable.
+
+Suggested color direction:
+Use a premium high-contrast neutral palette:
+- Primary text: deep navy/charcoal, for example #111827 / #172033 / #1E293B
+- Secondary text: stronger slate, for example #475569 / #4B5563
+- Muted text: do not go lighter than roughly #64748B for important UI
+- Borders: #D8DEE8 / #E2E8F0
+- Background: clean off-white/white
+- Active accents: existing premium blue/teal accent, but readable
+
+Do NOT:
+- use pale grey text for important info
+- use grey-on-grey low contrast
+- use pure black everywhere
+- use neon colors
+- change functionality
+- hide information
+- make fonts huge and clumsy
+- create horizontal overflow
+
+Mobile viewport checks:
+Test visual readability at:
+- 320px
+- 375px
+- 390px
+- 414px
+- 430px
+
+Acceptance criteria:
+- Text is clearly readable on mobile.
+- Contrast is visibly improved.
+- No important UI uses faint grey text.
+- Buttons and badges are readable.
+- Inputs/placeholders are readable.
+- Mobile drawer text is readable.
+- Inbox and Escalation rows are readable.
+- Settings and Appointments are readable.
+- No horizontal overflow introduced.
+- Desktop remains visually acceptable.
+- No backend/API/business logic changed.
+- Build passes.
+
+REPORT BACK:
+1. Files changed.
+2. Global text/contrast tokens or classes changed.
+3. Screens/components improved.
+4. Confirmation that no backend/API/data logic changed.
+5. Mobile viewport test notes for 320/375/390/414/430px.

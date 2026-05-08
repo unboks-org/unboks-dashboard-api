@@ -1,0 +1,102 @@
+TASK: Fix missing hamburger menu on mobile immediately.
+
+PROJECT SCOPE:
+Project 2 customer dashboard only.
+Do NOT touch Project 1 public website.
+Do NOT touch pricing.
+Do NOT touch backend/API/data logic.
+
+BUG:
+The mobile version still has NO hamburger menu.
+
+This is not acceptable. The previous mobile audit/redesign task did not satisfy the basic requirement.
+
+Required result:
+On mobile screen widths, the dashboard must show a visible hamburger menu button in the top bar/header.
+
+The hamburger menu must open the dashboard navigation.
+
+Mobile nav must include:
+- Escalations
+- Inbox
+- WhatsApp
+- Email
+- Appointments
+- Analytics
+- Settings
+
+Required behavior:
+1. At mobile widths, desktop sidebar should not be the only navigation.
+2. A hamburger button must be visible in the mobile top/header area.
+3. Tapping hamburger opens a mobile nav drawer/sheet/overlay.
+4. Drawer must be closable by:
+   - close X
+   - clicking outside overlay
+   - selecting a nav item
+5. Active nav item should be visually clear.
+6. Desktop sidebar behavior must remain unchanged.
+7. Mobile nav must work on 320px, 375px, 390px, 414px, and 430px widths.
+
+Important:
+Do not claim this is done unless you verify it in mobile viewport.
+Do not hide the hamburger behind another component.
+Do not make it white-on-white or low contrast.
+Do not rely on browser back or hidden side swipe.
+Do not make the user scroll to find it.
+Do not change routing logic.
+Do not change data logic.
+Do not touch backend.
+
+Implementation guidance:
+Inspect the dashboard shell/layout component first.
+Find where the desktop sidebar is rendered.
+Find the mobile header/top bar.
+If no mobile header exists, add one visually.
+Add a hamburger button using the existing icon library if available.
+Use existing nav config if possible so nav items stay consistent.
+Use CSS/Tailwind responsive classes:
+- show hamburger/header nav on mobile
+- hide it on desktop
+- keep desktop sidebar on desktop
+- hide/collapse desktop sidebar on mobile if needed
+
+Visual requirements:
+- Hamburger button should be clearly visible.
+- Minimum tap target around 40–44px.
+- Use premium styling consistent with dashboard.
+- Drawer should feel clean and premium, not rough.
+- No horizontal overflow.
+- No broken overlay.
+
+Acceptance test:
+Run the app and check these viewport widths:
+- 320px
+- 375px
+- 390px
+- 414px
+- 430px
+
+For each width confirm:
+- hamburger menu is visible
+- tap opens nav
+- nav items are visible
+- selecting Inbox/Escalations/Settings navigates and closes drawer
+- close X works
+- outside click closes drawer
+- no horizontal overflow
+
+Acceptance criteria:
+- Hamburger menu exists and is visible on mobile.
+- Mobile nav opens and closes correctly.
+- All dashboard nav items are accessible from mobile.
+- Desktop sidebar remains normal on desktop.
+- No backend/API/business logic changed.
+- Build passes.
+
+REPORT BACK:
+1. Which layout/header/sidebar files were changed.
+2. Where the hamburger button was added.
+3. What breakpoint controls mobile vs desktop.
+4. How the drawer opens/closes.
+5. Confirmation screenshots or viewport test notes for 320/375/390/414/430px.
+6. Confirmation that no backend/API/data logic was changed.
