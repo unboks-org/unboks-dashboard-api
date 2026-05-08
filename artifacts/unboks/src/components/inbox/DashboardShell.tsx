@@ -12,6 +12,7 @@ import {
   useHiddenConversations,
   collectConversationHideKeys,
 } from "@/hooks/use-hidden-conversations";
+import { useArchivedConversations } from "@/hooks/use-archived-conversations";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
@@ -64,13 +65,18 @@ export function DashboardShell({
 
   const { data: apiConversations, isLoading: convLoading, isError } = useConversations();
   const { data: apiEscalations, isLoading: escLoading } = useEscalations();
-  // Sidebar counts must respect locally-hidden rows so the badges
-  // never disagree with the lists rendered in Inbox / Escalations.
-  // Same hook + same key-collection helper used by the page filters.
+  // Sidebar counts must respect locally-hidden AND locally-archived
+  // rows so the badges never disagree with the lists rendered in
+  // Inbox / Escalations. Same hooks + key-collection helper used by
+  // the page filters in `pages/Inbox.tsx`.
   const { isHidden: isRowHidden } = useHiddenConversations();
+  const { isArchived: isRowArchived } = useArchivedConversations();
 
   // Never fall back to MOCK on the live dashboard — that flashes fake names
   // and counts on every refresh. Use [] until the API returns real data.
+  // `allConversations` is the post-delete (hidden) set; we still keep
+  // archived rows in here so the Escalations badge — which intentionally
+  // bypasses archive in `pages/Inbox.tsx` — can resolve its convo lookup.
   const allConversations: Conversation[] = useMemo(() => {
     if (!apiConversations || isError) return [];
     return apiConversations
@@ -81,21 +87,35 @@ export function DashboardShell({
   const hasConvData = !convLoading && !isError && Boolean(apiConversations);
   const hasEscData = !escLoading && Boolean(apiEscalations);
 
+  // Active inbox subset = not deleted AND not archived. Mirrors the
+  // exact predicate the Inbox active view uses (line ~930 of Inbox.tsx),
+  // including the `c.timestampMs` arg so a fresh inbound auto-restores
+  // an archived row in both the list and the badge simultaneously.
+  // This is the source for every channel + inbox sidebar count, so the
+  // badge can never claim more rows than the active inbox actually shows.
+  const activeConversations = useMemo(
+    () =>
+      allConversations.filter(
+        (c) => !isRowArchived(collectConversationHideKeys(c), c.timestampMs),
+      ),
+    [allConversations, isRowArchived],
+  );
+
   const channelCounts = useMemo(() => {
     const counts: Record<Channel, number> = {
-      All: hasConvData ? allConversations.length : 0,
+      All: hasConvData ? activeConversations.length : 0,
       WhatsApp: 0, Email: 0, Instagram: 0, Facebook: 0,
       X: 0, TikTok: 0, Messenger: 0, Unknown: 0,
     };
     if (hasConvData) {
-      allConversations.forEach((c) => { counts[c.channel] = (counts[c.channel] || 0) + 1; });
+      activeConversations.forEach((c) => { counts[c.channel] = (counts[c.channel] || 0) + 1; });
     }
     return counts;
-  }, [allConversations, hasConvData]);
+  }, [activeConversations, hasConvData]);
 
   const inboxCount = useMemo(
-    () => (hasConvData ? allConversations.filter((c) => c.unread).length : 0),
-    [allConversations, hasConvData],
+    () => (hasConvData ? activeConversations.filter((c) => c.unread).length : 0),
+    [activeConversations, hasConvData],
   );
   // Use the same normalizer AND the same dedup pass as the Escalations
   // list so the sidebar count and the rendered list can never disagree

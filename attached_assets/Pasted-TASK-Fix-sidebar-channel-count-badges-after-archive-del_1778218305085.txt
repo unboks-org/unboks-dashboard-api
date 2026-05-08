@@ -1,0 +1,110 @@
+TASK: Fix sidebar channel/count badges after archive/delete.
+
+PROJECT SCOPE:
+Project 2 customer dashboard only.
+Do NOT touch Project 1 public website.
+Do NOT touch pricing.
+
+Bug:
+Messages/conversations have been deleted and/or archived, but the sidebar counts still show old numbers.
+
+Example:
+- WhatsApp still shows 5
+- Email still shows 1
+- Escalations still shows 3
+even after messages were removed from active inbox by archive/delete.
+
+Expected behavior:
+Sidebar counts must reflect the active inbox state, not stale total/history counts.
+
+Product rule:
+The sidebar count should only count conversations/messages that are currently active and visible/relevant in the active inbox.
+
+Do not count:
+- archived conversations
+- deleted emails
+- blocked conversations
+- resolved/archived escalations
+- old inactive conversations that have been auto-archived
+- anything hidden from the active inbox
+
+Count:
+- active conversations
+- unread active conversations, if the current UI intends the badge to mean unread
+- unresolved active escalations for Escalations
+- active channel conversations for WhatsApp/Email/etc.
+
+First inspect the current meaning of each sidebar badge:
+- Escalations badge
+- Inbox badge if any
+- WhatsApp badge
+- Email badge
+- Appointments badge
+
+Do not guess. Trace where the counts come from:
+- frontend derived state
+- API response
+- mock/demo seed data
+- local cached state
+- backend query
+- store selector
+- static fallback numbers
+
+Then fix the source properly.
+
+Required behavior by sidebar item:
+1. Escalations:
+   Count only unresolved active escalations.
+   Do not count resolved, archived, deleted, or blocked conversations.
+
+2. WhatsApp:
+   Count only active WhatsApp conversations/messages that should appear in the active inbox.
+   Do not count archived/deleted/blocked conversations.
+
+3. Email:
+   Count only active Email conversations/messages that should appear in the active inbox.
+   Do not count archived emails or deleted emails.
+
+4. Appointments:
+   Count only active/current appointment items if this badge is connected to real data.
+   If it is placeholder/static/demo data, make it consistent with the active data source or remove/hide the badge until real.
+
+5. Inbox:
+   If Inbox has a count, count only active inbox items.
+
+Important:
+If a user archives or deletes a conversation:
+- the active list should update
+- sidebar count should update immediately
+- no refresh should be required
+
+If backend is involved:
+- update backend count queries to exclude archived/deleted/blocked items
+- update response shape if needed
+- update frontend to consume corrected counts
+
+If frontend derives counts:
+- derive counts from the same filtered active conversations used for the visible list
+- avoid separate stale count logic
+- avoid static hardcoded counts
+
+If there is caching:
+- invalidate/refetch counts after archive/delete/resolve/block
+- update optimistic state safely
+- avoid stale localStorage/session data causing old badges
+
+Acceptance criteria:
+- After archiving a WhatsApp conversation, WhatsApp sidebar count decreases immediately.
+- After deleting or archiving an Email conversation, Email sidebar count decreases immediately.
+- After resolving/archiving an escalation, Escalations count decreases immediately.
+- Counts are correct after page refresh.
+- Counts match the active inbox/filter results.
+- Archived/deleted/blocked items are not counted.
+- No hardcoded/demo counts remain unless clearly marked and not shown in production.
+- Existing inbox, archive, delete, block, resolve, and channel filters still work.
+- Build passes.
+- Report:
+  1. where counts were coming from
+  2. why they were stale
+  3. changed files
+  4. how the fix updates counts after archive/delete
