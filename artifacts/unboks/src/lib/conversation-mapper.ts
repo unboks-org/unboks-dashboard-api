@@ -510,8 +510,30 @@ export function mapApiConversation(c: ApiConversation): Conversation {
       ? new Date(timestampMs).toISOString()
       : (c.last_message_at ?? c.timestamp);
 
+  // Backend-routable conversation key. Tried in priority order so the
+  // strongest server-supplied identifier wins. For email threads the
+  // Python backend mints a stable `email::subj:…` key and surfaces it
+  // under `conversationId` / `conversation_id` / `thread_key` — we MUST
+  // use that for Reply / Forward / Delete, never `phone` (which on
+  // email rows is often a Mongo ObjectId, not a routable thread key).
+  const conversationKey =
+    validStr(c.conversationId) ??
+    validStr(c.conversation_id) ??
+    validStr(c.threadKey) ??
+    validStr(c.thread_key) ??
+    validStr(c.phone) ??
+    validStr(c.external_id) ??
+    validStr(c.externalId) ??
+    validStr(c._id) ??
+    "unknown";
+
   return {
-    id: c.phone || c._id || "unknown",
+    // `id` is kept identical to the routable key so existing call sites
+    // (detail fetch, escalation lookup, deep-link `?c=` param) keep
+    // working. New / write-action call sites should explicitly read
+    // `conversationKey` to make intent obvious.
+    id: conversationKey,
+    conversationKey,
     channel: inferChannel(c, prefix),
     sender: safeDisplayName(c, prefix?.sender ?? null),
     subject,

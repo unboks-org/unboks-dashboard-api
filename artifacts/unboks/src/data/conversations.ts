@@ -5,6 +5,21 @@ export type LearningStatus = "none" | "suggested" | "approved" | "saved";
 
 export interface Conversation {
   id: string;
+  /**
+   * Backend-routable conversation key for write actions
+   * (email Reply / Forward / Delete, future per-channel mutations).
+   *
+   * For most rows this equals `id` — `mapApiConversation` picks the
+   * strongest available backend identifier (`conversationId` →
+   * `conversation_id` → `threadKey` → `thread_key` → `phone` →
+   * `external_id` → `externalId` → `_id`) and writes the same value
+   * to both fields. Keeping a separate field lets call sites be
+   * explicit about which one they want and lets us evolve `id`
+   * (display key) independently of the routable key in future.
+   *
+   * Optional only because legacy mock rows in this file don't set it.
+   */
+  conversationKey?: string;
   channel: Channel;
   sender: string;
   subject: string;

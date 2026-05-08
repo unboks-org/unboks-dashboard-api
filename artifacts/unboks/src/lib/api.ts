@@ -24,6 +24,21 @@ export type LearningStatus = "none" | "suggested" | "approved" | "saved";
 
 export interface ApiConversation {
   phone: string;
+  /**
+   * Backend-routable conversation key. Email threads in particular do
+   * NOT use `phone` as the addressable key — the Python backend mints
+   * a stable thread id (e.g. `email::subj:from@x.com:subject…`) and
+   * exposes it under one of these aliases. The mapper picks the first
+   * non-empty value and surfaces it as `Conversation.conversationKey`
+   * so email Reply / Forward / Delete can target the correct thread
+   * even when `phone` happens to be a Mongo ObjectId or a display id.
+   */
+  conversationId?: string;
+  conversation_id?: string;
+  threadKey?: string;
+  thread_key?: string;
+  external_id?: string;
+  externalId?: string;
   name?: string;
   lastMessage?: string;
   timestamp?: string;

@@ -18,22 +18,29 @@ import type { Conversation } from "@/data/conversations";
 /**
  * Translate any error from the email mutation hooks into calm operator copy.
  *
- * - 0 / 404 / 501 / 503 → "endpoint not deployed yet" copy (Jr's fallback,
- *   never silently succeeds).
- * - 401 / 403 are handled globally by the auth-failure latch so we just
- *   surface short copy here as a safety net.
- * - 400 / 409 / 500 / anything else with a message → show the backend
- *   message verbatim.
+ * Per the bugfix brief: do NOT show a placeholder unless the backend
+ * returns 404 or 501. Every other error path shows the backend message
+ * verbatim so operators see the real failure reason instead of canned
+ * copy hiding it.
+ *
+ * - 404 / 501 → "endpoint not deployed yet" placeholder (the only case).
+ * - 0 (network) / 503 / 401 / 403 / 400 / 409 / 500 / anything else
+ *   → show `err.message` (the backend body or fetch failure text);
+ *   fall back to a `Request failed (status).` line only if the message
+ *   is genuinely empty.
  */
 function describeError(err: unknown): string {
   if (err instanceof ApiError) {
-    if (err.status === 0) return "Couldn't reach the server. Check your connection and try again.";
-    if (err.status === 404 || err.status === 501) return "This email action is not available yet.";
-    if (err.status === 503) return "Service unavailable. Try again in a moment.";
-    if (err.status === 401 || err.status === 403) return "Your session expired. Please sign in again.";
-    return err.message || `Request failed (${err.status}).`;
+    if (err.status === 404 || err.status === 501) {
+      return "This email action is not available yet.";
+    }
+    if (err.message && err.message.trim().length > 0) return err.message;
+    if (err.status === 0) {
+      return "Couldn't reach the server. Check your connection and try again.";
+    }
+    return `Request failed (${err.status}).`;
   }
-  if (err instanceof Error) return err.message;
+  if (err instanceof Error && err.message.trim().length > 0) return err.message;
   return "Unknown error.";
 }
 
@@ -71,7 +78,7 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
     setError(null);
     try {
       await reply.mutateAsync({
-        conversationId: conversation.id,
+        conversationId: conversation.conversationKey || conversation.id,
         payload: { body: body.trim(), mode: "direct", attachments: [] },
       });
       onClose();
@@ -158,7 +165,7 @@ export function EmailForwardModal({ open, conversation, onClose }: EmailForwardM
     }
     try {
       await forward.mutateAsync({
-        conversationId: conversation.id,
+        conversationId: conversation.conversationKey || conversation.id,
         payload: { to: recipients, note: note.trim() || undefined, includeAttachments: true },
       });
       onClose();
@@ -245,7 +252,12 @@ export function EmailDeleteConfirm({ open, conversation, onClose, onDeleted }: E
     if (!conversation) return;
     setError(null);
     try {
-      await del.mutateAsync({ conversationId: conversation.id, payload: { deleteMode: "trash" } });
+      await del.mutateAsync({
+        conversationId: conversation.conversationKey || conversation.id,
+        payload: { deleteMode: "trash" },
+      });
+      // Pass the display id back so the page can close the open detail
+      // pane (which is keyed on `id`, not `conversationKey`).
       onDeleted?.(conversation.id);
       onClose();
     } catch (err) {

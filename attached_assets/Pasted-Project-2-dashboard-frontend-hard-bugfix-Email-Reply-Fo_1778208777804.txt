@@ -1,0 +1,128 @@
+Project 2 dashboard frontend hard bugfix — Email Reply / Forward / Delete use wrong conversation key.
+
+Important:
+- Project 2 Replit is frontend only.
+- Canonical backend is api.unboks.org.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch sidebar unless absolutely required.
+- Do not commit.
+- Do not publish until reviewed.
+
+Bug:
+Email Reply, Forward, and Delete buttons exist but do not work correctly.
+
+Investigation already done:
+- Frontend has real API functions:
+  POST /messages/conversations/:id/email/reply
+  POST /messages/conversations/:id/email/forward
+  DELETE /messages/conversations/:id/email
+  fallback POST /messages/conversations/:id/email/delete
+- Frontend uses encodeConversationKey.
+- But EmailActionsModal calls these actions with conversation.id.
+- Conversation type only has id.
+- mapApiConversation currently sets:
+  id: c.phone || c._id || "unknown"
+- ApiConversation type does not preserve conversationId / conversation_id / thread_key / threadKey.
+- Backend may require a routable email thread key, not the frontend normalized id.
+
+Required fix:
+Preserve the backend routable conversation key on every Conversation object and use it for email actions.
+
+Add field to Conversation type:
+backendKey?: string
+
+or:
+conversationKey?: string
+
+Use one name consistently. Preferred:
+conversationKey
+
+Update artifacts/unboks/src/data/conversations.ts:
+
+Conversation should include:
+conversationKey?: string
+
+Update ApiConversation type in artifacts/unboks/src/lib/api.ts to include:
+conversationId?: string
+conversation_id?: string
+threadKey?: string
+thread_key?: string
+external_id?: string
+externalId?: string
+
+Update mapApiConversation in artifacts/unboks/src/lib/conversation-mapper.ts.
+
+Build the key like this:
+const conversationKey =
+  c.conversationId ||
+  c.conversation_id ||
+  c.threadKey ||
+  c.thread_key ||
+  c.phone ||
+  c.external_id ||
+  c.externalId ||
+  c._id ||
+  "unknown";
+
+Return:
+id: conversationKey
+conversationKey
+
+Important:
+If id is already used everywhere as the routable key, keep id = conversationKey.
+But still add conversationKey so email actions can explicitly use it.
+
+Update EmailActionsModal:
+Use:
+conversation.conversationKey || conversation.id
+
+for:
+- reply
+- forward
+- delete
+- onDeleted callback if needed
+
+Do not use a display-only id if a backend conversation key exists.
+
+Update Inbox detail fetch only if needed:
+useConversation should also use conversation.conversationKey || conversation.id
+if detail fetch currently uses conversation.id and email detail fails.
+
+Encoding:
+Continue using encodeConversationKey inside api.ts.
+Do not double encode.
+Do not pre-encode before passing to api functions.
+
+Error visibility:
+If backend returns an error, show the backend error.
+Do not show placeholder unless backend returns 404 or 501.
+
+Required test:
+1. Click Email row.
+2. Open Reply.
+3. Send a test reply.
+4. Confirm Network request path contains encoded real email conversation key.
+5. Click Forward.
+6. Confirm Network request path contains encoded real email conversation key.
+7. Click Delete.
+8. Confirm Network request path contains encoded real email conversation key.
+9. If backend errors, show exact backend error.
+10. WhatsApp behavior must not break.
+
+Acceptance:
+- Conversation type preserves backend conversation key.
+- Email Reply uses conversationKey.
+- Email Forward uses conversationKey.
+- Email Delete uses conversationKey.
+- Email detail fetch uses conversationKey if needed.
+- encodeConversationKey is still the only encoding point.
+- No fake success.
+- No placeholder if backend endpoint exists.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.
