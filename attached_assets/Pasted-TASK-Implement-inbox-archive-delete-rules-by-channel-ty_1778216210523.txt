@@ -1,0 +1,114 @@
+TASK: Implement inbox archive/delete rules by channel type.
+
+Goal:
+Unboks inbox should behave like a working queue, not permanent storage.
+
+Core product rule:
+- Archive is the default cleanup action.
+- WhatsApp conversations cannot be deleted from Unboks as a normal user action.
+- Email conversations can be archived and may be deleted if the email provider/backend supports deletion.
+- Archived conversations should leave the active inbox but remain searchable/viewable in archive.
+- If a customer sends a new message after archive, the conversation should automatically return to the active inbox.
+
+Important:
+Do not pretend WhatsApp messages can be deleted.
+Do not show a normal Delete action for WhatsApp conversations.
+Do not silently lose data.
+Do not break existing inbox, escalation, reply, forward, block, or resolve behavior.
+
+Required behavior:
+
+1. Active inbox
+Active inbox should show conversations that:
+- are not archived
+- are not deleted
+- are not blocked
+- have recent customer activity, unresolved escalation, Agent needs help, or human takeover
+
+2. Archive
+Add/verify archive behavior for conversations:
+- Archive removes conversation from active inbox.
+- Archive keeps conversation history available.
+- Archived conversations can be searched or viewed in an Archive filter/view.
+- Archived conversations reopen automatically when a new incoming customer message arrives.
+- Archive should work for WhatsApp, Instagram, Facebook, email, and other supported channels.
+
+3. Delete
+Delete behavior must be channel-specific:
+- Email: show Delete only if backend/provider supports delete/trash.
+- WhatsApp: do not show Delete as a normal action.
+- Instagram/Facebook/TikTok/X: do not show Delete unless provider/backend truly supports it.
+- For non-deletable channels, use Archive instead.
+
+4. UI rules
+In inbox row/card actions:
+- Show Archive for all conversations.
+- Show Delete only for email conversations where deletion is supported.
+- If there is currently a Delete button for WhatsApp or other non-email channels, remove it or hide it.
+- If needed, replace with Archive.
+- Do not confuse users with disabled delete buttons unless there is a short explanation.
+
+5. Email delete
+If existing email delete functionality exists:
+- Keep it for email only.
+- Confirm delete moves email to trash or deletes according to the provider behavior.
+- After delete, remove from active inbox.
+- Deleted emails should not appear in normal inbox.
+- If backend does not support email delete yet, do not fake it. Report what is missing.
+
+6. Auto-archive defaults
+Add default cleanup rules if backend supports it, otherwise report missing backend work:
+- Resolved escalations auto-archive after 7 days.
+- Inactive conversations auto-archive after 30 days.
+- Archived conversation reopens when a new incoming message arrives.
+
+7. Settings
+If a data retention or inbox cleanup settings area already exists, add or verify these defaults:
+- Archive resolved escalations after 7 days
+- Archive inactive conversations after 30 days
+- Keep archived conversations searchable
+- Restore archived conversations when customer replies
+
+If the settings backend is not ready, add the UI only if it does not pretend the setting is active. Otherwise report the gap.
+
+8. Search / filters
+Add or verify:
+- Active inbox filter
+- Archived conversations filter/view
+- Deleted email should not show in Active
+- Blocked conversations remain separate from archive/delete
+
+9. Backend/data model
+Inspect current backend/data model before changing.
+If archive fields already exist, use them.
+If not, add clean support such as:
+- archivedAt
+- archivedBy
+- archiveReason optional
+- deletedAt only where true deletion/trash behavior is supported
+- restoredAt optional when new message reopens archived conversation
+
+Do not use local-only storage for archive state unless explicitly marked temporary and reported.
+
+10. Channel detection
+Use existing channel/source fields.
+Make sure WhatsApp detection is robust:
+- whatsapp
+- WhatsApp
+- WhatsApp Business
+- wa
+- any existing internal enum used in the app
+
+Acceptance criteria:
+- WhatsApp conversations show Archive, not Delete.
+- Email conversations can show Archive and Delete if delete is supported.
+- Archive removes conversation from active inbox.
+- Archived conversations can be found again.
+- New incoming message restores archived conversation to active inbox.
+- Resolved escalations can auto-archive after 7 days if supported.
+- Inactive conversations can auto-archive after 30 days if supported.
+- No fake delete on WhatsApp.
+- No data loss.
+- Existing inbox, escalation, reply, forward, block, and resolve behavior still works.
+- Build passes.
+- Provide a report of changed files, backend/data changes, and anything not implemented because provider/backend support is missing.
