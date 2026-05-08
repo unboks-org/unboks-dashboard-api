@@ -78,11 +78,31 @@ export default defineConfig(async ({ command }) => {
       fs: {
         strict: true,
       },
+      // Dev / Replit-preview proxy. When VITE_API_BASE_URL is unset (the
+      // dev default so production builds don't carry a hardcoded host),
+      // `lib/tenant.ts:getApiBase()` returns a relative /api/... path.
+      // Forward that to the real backend so the Replit dev preview can
+      // sign in and load conversations without an env var. No-op in
+      // production: vite serve isn't used to serve the built bundle.
+      proxy: {
+        "/api": {
+          target: "https://api.unboks.org",
+          changeOrigin: true,
+          secure: true,
+        },
+      },
     },
     preview: {
       port,
       host: "0.0.0.0",
       allowedHosts: true,
+      proxy: {
+        "/api": {
+          target: "https://api.unboks.org",
+          changeOrigin: true,
+          secure: true,
+        },
+      },
     },
   };
 });
