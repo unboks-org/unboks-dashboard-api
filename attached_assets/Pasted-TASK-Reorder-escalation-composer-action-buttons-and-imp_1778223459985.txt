@@ -1,0 +1,103 @@
+TASK: Reorder escalation composer action buttons and improve styling.
+
+PROJECT SCOPE:
+Project 2 customer dashboard only.
+Do NOT touch Project 1 public website.
+Do NOT touch pricing.
+Do NOT change backend logic unless required for button actions to keep working.
+
+Current issue:
+The escalation composer action buttons currently show in this order:
+- Send + resolve
+- Send only
+- Mark resolved
+
+This order is wrong and visually weak.
+
+Required new order:
+1. Send
+2. Resolve
+3. Send & Resolve
+
+Use these exact labels:
+- Send
+- Resolve
+- Send & Resolve
+
+Meaning:
+- Send = send the current reply/guidance only, do not resolve escalation.
+- Resolve = mark escalation resolved without sending a reply/guidance.
+- Send & Resolve = send the current reply/guidance and mark escalation resolved.
+
+Design goal:
+Use Refero to make these action buttons feel premium, calm, and clear.
+This is an operator decision area, so it must be visually obvious but not aggressive.
+
+UX priority:
+The safest order is:
+Send → Resolve → Send & Resolve
+
+Reason:
+- Send is the normal action.
+- Resolve is separate.
+- Send & Resolve is the combined final action.
+
+Button styling:
+All three actions should look like part of the same action group.
+Do not make them feel like random mismatched links.
+
+Suggested visual hierarchy:
+1. Send
+   - primary or strong secondary action
+   - enabled when there is text/guidance to send
+
+2. Resolve
+   - secondary/outline action
+   - should be clearly clickable
+   - not a tiny text link
+
+3. Send & Resolve
+   - strongest/final action
+   - use premium accent color
+   - disabled when there is no text/guidance to send, if that is the current logic
+   - should visually communicate this is the combined final action
+
+Important:
+Do not use ugly grey disabled pills unless the action is actually disabled.
+Do not use tiny text-only links for important actions.
+Do not use confusing labels like “Send only.”
+Do not use “Mark resolved” in this row; use “Resolve.”
+Do not use “Send + resolve”; use “Send & Resolve.”
+
+Disabled states:
+- If Send requires text, disable Send when composer is empty.
+- If Send & Resolve requires text, disable it when composer is empty.
+- Resolve can remain enabled if marking resolved without text is allowed by current product logic.
+- Preserve existing validation behavior.
+- Show clear hover/focus/disabled states.
+
+Layout:
+- Keep buttons in the composer footer/action row.
+- Buttons should align cleanly.
+- On desktop: horizontal row.
+- On mobile: stack or wrap cleanly without overflow.
+- Keep spacing tight and premium.
+- No unnecessary vertical whitespace.
+
+Accessibility:
+- Buttons must be real buttons.
+- Keyboard focus visible.
+- aria labels if needed.
+- Disabled state must be clear.
+
+Acceptance criteria:
+- Button order is exactly: Send, Resolve, Send & Resolve.
+- Labels are exactly updated.
+- Existing send-only behavior still works.
+- Existing resolve-only behavior still works.
+- Existing send-and-resolve behavior still works.
+- Buttons have consistent premium styling.
+- No tiny text links for Resolve.
+- Mobile layout works.
+- Build passes.
+- Report changed files and confirm which handler each button uses.

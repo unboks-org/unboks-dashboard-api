@@ -598,31 +598,91 @@ export const EscalationReplyComposer = forwardRef<
         </div>
       )}
 
-      {/* Primary + secondary actions.
+      {/* Composer action group — single visual row, three peer buttons.
        *
-       * Layout (Gmail-style send group):
+       * Order (locked by spec): Send → Resolve → Send & Resolve.
        *
-       *   [ Send + resolve ]    Send only · Mark resolved        Switch to human takeover
+       *   [ Send ] [ Resolve ] [ Send & Resolve ]      Switch to human takeover
        *
-       * The primary blue pill is the recommended path for most operator
-       * answers: every operator answer counts as approved learning, so
-       * sending and resolving in one click is the efficient default.
+       * Visual hierarchy:
+       *   - Send and Resolve are outline secondaries: equal weight,
+       *     clearly tappable pills (no tiny text links).
+       *   - Send & Resolve is the strongest, premium accent action —
+       *     filled blue pill — placed last as the combined final action.
        *
-       * Secondary text-buttons preserve the original two actions
-       * unchanged (send-only and resolve-only), so an operator who wants
-       * to keep an escalation open after replying, or to resolve without
-       * sending anything new, still can.
+       * Disabled contract:
+       *   - Send / Send & Resolve disable when the composer is empty.
+       *   - Resolve stays enabled even with an empty composer (resolving
+       *     without a reply is a supported product flow).
+       *   - All three disable while another action is in flight to avoid
+       *     racing the same escalation.
        *
-       * The takeover / handback link stays on the right where it was, so
-       * operators don't have to re-learn its position.
+       * Takeover / handback stays on the right, untouched, so operators
+       * don't have to re-learn its position.
        */}
-      <div className="flex items-center gap-2 pt-0.5 flex-wrap">
-        {/* Primary combined action — premium blue pill */}
+      <div
+        className="flex flex-wrap items-center gap-2 pt-0.5"
+        role="group"
+        aria-label={isSoft ? "Escalation guidance actions" : "Escalation reply actions"}
+      >
+        {/* 1) Send — outline secondary */}
+        <button
+          type="button"
+          onClick={onSend}
+          disabled={empty || sendPending || anyPending}
+          aria-label={
+            isSoft
+              ? "Send guidance to your Agent without resolving"
+              : "Reply to customer without resolving"
+          }
+          title={
+            isSoft
+              ? "Send guidance to your Agent without resolving."
+              : "Reply to the customer without resolving."
+          }
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13px] font-medium",
+            "border-[#dadce0] bg-white text-[#3c4043]",
+            "hover:bg-[#f8f9fa] hover:border-[#bdc1c6] active:bg-[#f1f3f4]",
+            "transition-colors shadow-sm",
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-1",
+            "disabled:bg-white disabled:text-[#9aa0a6] disabled:border-[#e8eaed] disabled:shadow-none disabled:cursor-not-allowed",
+          )}
+        >
+          <Send className="h-3.5 w-3.5" />
+          {sendPending && !combinedPending ? "Sending..." : "Send"}
+        </button>
+
+        {/* 2) Resolve — outline secondary */}
+        <button
+          type="button"
+          onClick={onMarkResolved}
+          disabled={anyPending}
+          aria-label="Mark this escalation resolved without sending anything"
+          title="Mark this escalation resolved without sending anything."
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13px] font-medium",
+            "border-[#dadce0] bg-white text-[#3c4043]",
+            "hover:bg-[#f8f9fa] hover:border-[#bdc1c6] active:bg-[#f1f3f4]",
+            "transition-colors shadow-sm",
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-1",
+            "disabled:bg-white disabled:text-[#9aa0a6] disabled:border-[#e8eaed] disabled:shadow-none disabled:cursor-not-allowed",
+          )}
+        >
+          <Check className="h-3.5 w-3.5" />
+          {resolve.isPending && !combinedPending ? "Resolving..." : "Resolve"}
+        </button>
+
+        {/* 3) Send & Resolve — premium combined action */}
         <button
           type="button"
           onClick={onSendAndResolve}
           disabled={empty || anyPending}
-          aria-label={isSoft ? "Send guidance and mark resolved" : "Reply to customer and mark resolved"}
+          aria-label={
+            isSoft
+              ? "Send guidance and mark resolved"
+              : "Reply to customer and mark resolved"
+          }
           title={
             isSoft
               ? "Send guidance to your Agent and mark this escalation resolved."
@@ -649,47 +709,10 @@ export const EscalationReplyComposer = forwardRef<
           ) : (
             <>
               <Send className="h-3.5 w-3.5" />
-              {isSoft ? "Send + resolve" : "Reply + resolve"}
+              Send &amp; Resolve
               <Check className="h-3.5 w-3.5 opacity-90" />
             </>
           )}
-        </button>
-
-        {/* Secondary: send-only and resolve-only. Quiet, text-style so
-            they read as alternatives to the primary pill rather than
-            competing primary actions. */}
-        <button
-          type="button"
-          onClick={onSend}
-          disabled={empty || sendPending || anyPending}
-          className={cn(
-            "rounded-md px-2.5 py-1.5 text-[12.5px] text-[#3c4043]",
-            "hover:bg-[#f1f3f4] transition-colors",
-            "disabled:text-[#9aa0a6] disabled:hover:bg-transparent disabled:cursor-not-allowed",
-          )}
-          title={isSoft ? "Send guidance to your Agent without resolving." : "Reply to customer without resolving."}
-        >
-          {sendPending && !combinedPending
-            ? "Sending..."
-            : isSoft
-              ? "Send only"
-              : "Reply only"}
-        </button>
-        <span aria-hidden="true" className="text-[#dadce0] text-[12px] select-none">
-          ·
-        </span>
-        <button
-          type="button"
-          onClick={onMarkResolved}
-          disabled={anyPending}
-          className={cn(
-            "rounded-md px-2.5 py-1.5 text-[12.5px] text-[#3c4043]",
-            "hover:bg-[#f1f3f4] transition-colors",
-            "disabled:text-[#9aa0a6] disabled:hover:bg-transparent disabled:cursor-not-allowed",
-          )}
-          title="Mark this escalation resolved without sending anything."
-        >
-          {resolve.isPending && !combinedPending ? "Saving..." : "Mark resolved"}
         </button>
 
         {isSoft ? (
