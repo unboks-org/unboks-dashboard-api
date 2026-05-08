@@ -89,14 +89,17 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && !reply.isPending) onClose(); }}>
-      <DialogContent className="max-w-[480px]">
-        <DialogHeader>
-          <DialogTitle>Reply to email</DialogTitle>
-          <DialogDescription className="truncate" title={subject}>
+      <DialogContent className="box-border w-[calc(100vw-32px)] max-w-[520px] overflow-hidden">
+        <DialogHeader className="min-w-0">
+          <DialogTitle className="break-words">Reply to email</DialogTitle>
+          <DialogDescription
+            className="min-w-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap"
+            title={subject}
+          >
             {subject}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <Label htmlFor="email-reply-body" className="sr-only">Reply</Label>
           <Textarea
             id="email-reply-body"
@@ -104,14 +107,14 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="Write your reply…"
-            className="min-h-[140px] resize-none text-[14px]"
+            className="box-border block min-h-[140px] w-full max-w-full min-w-0 resize-none text-[14px]"
             disabled={reply.isPending}
           />
           {error && (
-            <p role="alert" className="text-[12px] text-[#c5221f]">{error}</p>
+            <p role="alert" className="break-words text-[12px] text-[#c5221f]">{error}</p>
           )}
         </div>
-        <DialogFooter className="gap-2">
+        <DialogFooter className="flex flex-wrap justify-end gap-2">
           <Button variant="ghost" onClick={onClose} disabled={reply.isPending}>Cancel</Button>
           <Button onClick={onSend} disabled={!canSend}>
             {reply.isPending ? "Sending…" : "Send reply"}
@@ -176,15 +179,18 @@ export function EmailForwardModal({ open, conversation, onClose }: EmailForwardM
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && !forward.isPending) onClose(); }}>
-      <DialogContent className="max-w-[480px]">
-        <DialogHeader>
-          <DialogTitle>Forward email</DialogTitle>
-          <DialogDescription className="truncate" title={subject}>
+      <DialogContent className="box-border w-[calc(100vw-32px)] max-w-[520px] overflow-hidden">
+        <DialogHeader className="min-w-0">
+          <DialogTitle className="break-words">Forward email</DialogTitle>
+          <DialogDescription
+            className="min-w-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap"
+            title={subject}
+          >
             {subject}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
-          <div className="space-y-1.5">
+        <div className="min-w-0 space-y-3">
+          <div className="min-w-0 space-y-1.5">
             <Label htmlFor="email-forward-to" className="text-[12px] font-medium text-[#5f6368]">
               To
             </Label>
@@ -196,12 +202,13 @@ export function EmailForwardModal({ open, conversation, onClose }: EmailForwardM
               onChange={(e) => setTo(e.target.value)}
               placeholder="recipient@example.com"
               disabled={forward.isPending}
+              className="box-border block w-full max-w-full min-w-0"
             />
             <p className="text-[11px] text-[#9aa0a6]">
               Separate multiple addresses with commas.
             </p>
           </div>
-          <div className="space-y-1.5">
+          <div className="min-w-0 space-y-1.5">
             <Label htmlFor="email-forward-note" className="text-[12px] font-medium text-[#5f6368]">
               Note <span className="text-[#9aa0a6] font-normal">(optional)</span>
             </Label>
@@ -210,15 +217,15 @@ export function EmailForwardModal({ open, conversation, onClose }: EmailForwardM
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Add a short note for the recipient…"
-              className="min-h-[88px] resize-none text-[14px]"
+              className="box-border block min-h-[88px] w-full max-w-full min-w-0 resize-none text-[14px]"
               disabled={forward.isPending}
             />
           </div>
           {error && (
-            <p role="alert" className="text-[12px] text-[#c5221f]">{error}</p>
+            <p role="alert" className="break-words text-[12px] text-[#c5221f]">{error}</p>
           )}
         </div>
-        <DialogFooter className="gap-2">
+        <DialogFooter className="flex flex-wrap justify-end gap-2">
           <Button variant="ghost" onClick={onClose} disabled={forward.isPending}>Cancel</Button>
           <Button onClick={onSend} disabled={!canSend}>
             {forward.isPending ? "Forwarding…" : "Forward"}
@@ -267,17 +274,17 @@ export function EmailDeleteConfirm({ open, conversation, onClose, onDeleted }: E
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && !del.isPending) onClose(); }}>
-      <DialogContent className="max-w-[400px]">
-        <DialogHeader>
-          <DialogTitle>Delete this email conversation?</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="box-border w-[calc(100vw-32px)] max-w-[420px] overflow-hidden">
+        <DialogHeader className="min-w-0">
+          <DialogTitle className="break-words">Delete this email conversation?</DialogTitle>
+          <DialogDescription className="break-words">
             This will remove it from the inbox.
           </DialogDescription>
         </DialogHeader>
         {error && (
-          <p role="alert" className="text-[12px] text-[#c5221f]">{error}</p>
+          <p role="alert" className="break-words text-[12px] text-[#c5221f]">{error}</p>
         )}
-        <DialogFooter className="gap-2">
+        <DialogFooter className="flex flex-wrap justify-end gap-2">
           <Button variant="ghost" onClick={onClose} disabled={del.isPending}>Cancel</Button>
           <Button
             onClick={onConfirm}
