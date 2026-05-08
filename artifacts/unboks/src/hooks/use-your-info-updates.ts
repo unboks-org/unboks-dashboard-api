@@ -9,6 +9,7 @@ export type YourInfoUpdateType =
   | "holiday"
   | "hours"
   | "pricing"
+  | "policy"
   | "other";
 
 export interface YourInfoUpdate {
@@ -22,11 +23,12 @@ export interface YourInfoUpdate {
 }
 
 export const UPDATE_TYPES: { value: YourInfoUpdateType; label: string }[] = [
-  { value: "general", label: "General note" },
-  { value: "offer", label: "Special offer" },
+  { value: "general", label: "General" },
+  { value: "offer", label: "Offer" },
   { value: "holiday", label: "Holiday" },
-  { value: "hours", label: "Opening hours" },
+  { value: "hours", label: "Hours" },
   { value: "pricing", label: "Pricing" },
+  { value: "policy", label: "Policy" },
   { value: "other", label: "Other" },
 ];
 

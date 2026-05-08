@@ -16,6 +16,8 @@ import { useEscalationNotificationPrefs, type NotifyChannelKey } from "@/hooks/u
 import { useEnabledChannels, TOGGLEABLE_CHANNELS } from "@/hooks/use-enabled-channels";
 import { useAccountSettings, type AccountSettings } from "@/hooks/use-account-settings";
 import { useYourInfoUpdates, UPDATE_TYPES, type YourInfoUpdateType } from "@/hooks/use-your-info-updates";
+import { KnowledgeFileUploader } from "@/components/settings/KnowledgeFileUploader";
+import { CloudKnowledgeConnections } from "@/components/settings/CloudKnowledgeConnections";
 import { loadSot, type SotBlock } from "@/data/sot";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -39,8 +41,9 @@ const CATEGORIES: {
   },
   {
     id: "your-info",
-    label: "Your Info",
-    description: "Add information your AI should know when replying to customers.",
+    label: "Your AI knowledge",
+    description:
+      "Add business information, files, policies, offers, and cloud folders your AI can use when answering customers.",
     icon: Sparkles,
   },
   {
@@ -483,8 +486,8 @@ export default function Settings() {
               {active === "your-info" && (
                 <div className="space-y-5">
                   <Card
-                    title="Add an update"
-                    description="Temporary notes, offers, holidays, opening hours or seasonal info. Saved for setup — AI usage will be connected by the Unboks team."
+                    title="Add knowledge"
+                    description="Quickly add business information your AI can use when replying to customers. Examples: holiday hours, offers, pricing rules, policies."
                   >
                     <div className="space-y-4">
                       <div>
@@ -560,13 +563,16 @@ export default function Settings() {
                             toast.success("Update added.");
                           }}
                         >
-                          Add update
+                          Save knowledge
                         </PrimaryButton>
                       </div>
                     </div>
                   </Card>
 
-                  <Card title="Active updates" description="Updates currently in your dashboard.">
+                  <Card
+                    title="Saved knowledge updates"
+                    description="Notes you've added. Your AI can use this information when replying to customers."
+                  >
                     {updates.length === 0 ? (
                       <p className="text-[13px] text-[#9aa0a6]">No updates yet.</p>
                     ) : (
@@ -632,6 +638,20 @@ export default function Settings() {
                         })}
                       </ul>
                     )}
+                  </Card>
+
+                  <Card
+                    title="Upload knowledge files"
+                    description="Documents, menus, price lists, FAQs, screenshots, and policies your AI can use when replying."
+                  >
+                    <KnowledgeFileUploader />
+                  </Card>
+
+                  <Card
+                    title="Connect cloud storage"
+                    description="Link folders from Google Drive, OneDrive, Dropbox, SharePoint, or Box so your AI can use the documents inside."
+                  >
+                    <CloudKnowledgeConnections />
                   </Card>
 
                   <YourInfoKnowledge blocks={sotBlocks} />
@@ -830,9 +850,11 @@ function YourInfoKnowledge({ blocks }: { blocks: SotBlock[] }) {
         className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left sm:px-6"
       >
         <div className="min-w-0">
-          <h3 className="text-[14px] font-semibold text-[#202124]">Your AI knowledge</h3>
+          <h3 className="text-[14px] font-semibold text-[#202124]">
+            What your AI already knows
+          </h3>
           <p className="mt-0.5 text-[13px] text-[#5f6368]">
-            What your AI already knows about your business.
+            A snapshot of the business details your AI is already using.
           </p>
         </div>
         <ChevronDown

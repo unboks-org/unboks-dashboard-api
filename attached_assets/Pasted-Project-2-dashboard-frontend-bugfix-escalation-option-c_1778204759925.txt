@@ -1,0 +1,158 @@
+Project 2 dashboard frontend bugfix — escalation option chips must be clickable and fill composer.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python backend assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch sidebar unless absolutely required.
+- Do not commit.
+- Do not publish until reviewed.
+
+BUG:
+The option chips in the Escalation Reason panel are not clickable.
+
+Current examples:
+- Confirm Thursday at 09:00
+- Suggest another time
+- Ask Marina to collect more availability
+- Switch to human takeover
+- Mark resolved
+
+They look like buttons/chips, but clicking them does nothing.
+
+This is bad UX.
+
+Required behavior:
+Option chips must be real actions.
+
+Soft escalation behavior:
+The chips should help the operator quickly reply to Marina.
+
+When clicking a guidance option, fill the “Reply to Marina” composer with clear guidance text.
+
+Examples:
+
+Chip:
+Confirm Thursday at 09:00
+
+Composer text:
+Please confirm Thursday at 09:00 with Calvin.
+
+Chip:
+Suggest another time
+
+Composer text:
+Please let Calvin know that Thursday at 09:00 does not work and ask him to suggest another time.
+
+Chip:
+Ask Marina to collect more availability
+
+Composer text:
+Please ask Calvin to send 2 or 3 other times that work for him this week.
+
+Hard escalation behavior:
+If current mode is hard, chips should fill the “Reply to customer” composer with customer-facing text.
+
+Examples:
+
+Chip:
+Confirm Thursday at 09:00
+
+Composer text:
+Thursday at 09:00 works for us. We’ll confirm the activation meeting for that time.
+
+Chip:
+Suggest another time
+
+Composer text:
+Thursday at 09:00 does not work for us. Could you send 2 or 3 other times that work for you this week?
+
+Chip:
+Ask for more availability
+
+Composer text:
+Could you send 2 or 3 times that work for you this week? Then we can confirm the activation call.
+
+Special chips:
+1. Switch to human takeover
+- Should switch mode to hard / Human takeover.
+- It should use the existing mode switch logic.
+- It should not only fill text.
+- After switching, composer should become “Reply to customer”.
+
+2. Mark resolved
+- Should trigger the existing mark resolved behavior if available.
+- If backend endpoint is not connected, show current safe placeholder/error behavior.
+- Do not silently fail.
+
+Required interaction rules:
+1. Chips must be buttons, not static spans.
+2. They must have cursor pointer.
+3. They must be keyboard accessible.
+4. They must have hover/focus states.
+5. Clicking a chip should update the composer immediately.
+6. If composer already has text, ask/handle safely:
+   - Preferred simple v1: append the suggestion below existing text.
+   - Or replace only if composer is empty.
+7. Do not erase operator text without warning.
+8. Do not send automatically.
+9. Operator must still click Send to Marina or Reply to customer.
+10. Do not claim anything was sent just because a chip was clicked.
+
+Preferred v1 behavior:
+- If composer is empty: insert suggestion.
+- If composer has text: append suggestion on a new line.
+- Keep focus in the composer after clicking.
+
+Visual:
+- Chips should look clickable.
+- Add subtle hover background.
+- Add active/focus state.
+- Keep premium style.
+- No loud colors.
+
+Data:
+If backend returns recommendedOptions:
+- Render all options.
+- Each option should produce a useful draft.
+- For options that start with “Confirm ...”, generate confirmation wording.
+- For “Suggest another time”, generate alternative-time wording.
+- For “Ask Marina to collect more availability”, generate availability request wording.
+- For “Switch to human takeover”, call mode switch.
+- For “Mark resolved”, call resolve handler.
+
+Likely files:
+- artifacts/unboks/src/components/inbox/EscalationReasonPanel.tsx
+- artifacts/unboks/src/components/inbox/EscalationReplyComposer.tsx
+- artifacts/unboks/src/pages/Inbox.tsx
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Tasks.tsx
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Clicking “Confirm Thursday at 09:00” fills Reply to Marina with guidance.
+- Clicking “Suggest another time” fills/appends useful guidance.
+- Clicking “Ask Marina to collect more availability” fills/appends useful guidance.
+- Clicking “Switch to human takeover” switches to hard mode.
+- Clicking “Mark resolved” triggers resolve behavior.
+- Chips visibly behave like clickable buttons.
+- Composer text is not lost.
+- Nothing is sent automatically.
+- Send to Marina still requires manual click.
+- Reply to customer still requires manual click.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.
