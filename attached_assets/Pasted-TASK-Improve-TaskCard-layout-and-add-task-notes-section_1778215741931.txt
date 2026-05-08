@@ -1,0 +1,117 @@
+TASK: Improve TaskCard layout and add task notes section.
+
+Context:
+In the task cards, the “Show more” button currently appears at the bottom of the visible task text. I want the expand/collapse control moved to the top area of the task card, so the user sees immediately that the task can be expanded.
+
+Also add a notes section inside each task, similar to Apple Notes:
+- simple
+- clean
+- text-first
+- supports pasted text
+- supports pasted images if possible with the current stack
+- no over-designed UI
+- no unnecessary vertical whitespace
+- functional and premium
+
+Important:
+Do not break existing task functionality.
+Do not remove Copy text, Edit, Park, Mark done.
+Do not change task status logic.
+Do not change backend unless required.
+Do not invent fake image upload if the backend cannot support it yet.
+If image paste needs backend/storage work, implement the UI cleanly and clearly mark backend support as required in the report.
+
+Part 1: Move “Show more” control
+
+Current issue:
+The “Show more” button is low in the card and visually disconnected.
+
+Required:
+- Move the Show more / Show less control to the top-right or top header area of the task card.
+- It should sit near the title/meta/status area, not below the message body.
+- Keep it small and clean.
+- If the task text is collapsed, show a short preview.
+- If expanded, show the full task.
+- The card should not gain unnecessary height.
+- The layout must still work on mobile.
+
+Preferred behavior:
+Header row:
+Left: avatar / task number / title / assigned person / created date
+Right: Show more / Show less control
+
+If there is no overflow / no collapsed content, do not show the button.
+
+Part 2: Add Notes section to each task
+
+Goal:
+Each task should have an internal notes area where I can quickly paste notes, instructions, screenshots, images, or context for Jr/myself.
+
+This should feel like Apple Notes:
+- clean white/light note area
+- simple editor
+- no heavy formatting toolbar unless already available
+- paste text naturally
+- paste images naturally if possible
+- autosave or clear save state
+- editable anytime
+- notes stay attached to the task
+- notes should be visible when the task is opened/expanded, not cluttering collapsed cards
+
+Required UX:
+Inside expanded task view, add a section:
+
+Title:
+“Notes”
+
+Placeholder:
+“Add notes, screenshots, links, or extra context for this task…”
+
+Controls:
+- editable note area
+- save state: “Saved” / “Saving…” / “Unsaved”
+- if manual save is easier, use a simple “Save notes” button
+- if images are supported, pasted images should appear inline in the note area
+- if images are not yet supported, pasted text must still work and the UI should not pretend images are saved
+
+Data requirements:
+- Notes must persist per task.
+- Notes must not be global.
+- Notes must remain after refresh.
+- Notes should be included when opening/editing a task later.
+
+Implementation options:
+1. If backend already has task notes fields, use them.
+2. If backend does not have task notes fields, add proper backend support:
+   - task_notes field/table, or equivalent clean implementation
+   - GET task includes notes
+   - PUT/PATCH task notes endpoint
+   - persist notes per task
+3. If image paste requires new storage support, add a clean TODO/report and implement text notes first without breaking anything.
+
+Important:
+Do not store pasted images as fake broken links.
+Do not silently lose notes.
+Do not use local-only storage unless this is explicitly marked as temporary and reported.
+Prefer backend persistence.
+
+Design requirements:
+- Keep the task card compact.
+- No unnecessary vertical whitespace.
+- Notes area only appears in expanded task detail/card.
+- It should look premium, calm, and practical.
+- Match the current dashboard style.
+- Mobile must work cleanly.
+
+Acceptance criteria:
+- Show more / Show less appears in the top/header area of the task card.
+- Expand/collapse still works.
+- Existing task actions still work.
+- Expanded task shows a Notes section.
+- I can paste text into Notes.
+- Notes persist after refresh.
+- Save state is clear.
+- If image paste is supported, pasted images show and persist.
+- If image paste is not supported yet, report exactly what backend/storage work remains.
+- Build passes.
+- Provide a summary of changed files and any backend/data migration changes.

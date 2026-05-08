@@ -3,6 +3,8 @@ import { toast } from "sonner";
 import { Check, RotateCcw, Loader2, Pencil, X, Copy, Pause, Play, ChevronDown, ChevronUp } from "lucide-react";
 import { formatTaskNumber, type Task, type TaskUser } from "@/lib/tasks-api";
 import { cn } from "@/lib/utils";
+import { TaskNotes } from "./TaskNotes";
+import type { NoteImage, TaskNote } from "@/hooks/use-task-notes";
 
 /** Convert HTML to plain text while preserving paragraph/line breaks.
  *  Used as a fallback when a task only carries `bodyHtml`. */
@@ -152,6 +154,11 @@ interface TaskCardProps {
   onUnpark: (task: Task) => void;
   onOpenImage: (url: string) => void;
   onEdit?: (task: Task, patch: { bodyText: string; assignedTo: TaskUser }) => void;
+  /** Existing notes for this task (or undefined if none). */
+  note?: TaskNote;
+  /** Persist a notes update. Returns false on quota errors so the editor
+   *  can surface "Save failed" to the operator. */
+  onSaveNote?: (task: Task, next: { text: string; images: NoteImage[] }) => boolean;
 }
 
 export function TaskCard({
@@ -165,6 +172,8 @@ export function TaskCard({
   onUnpark,
   onOpenImage,
   onEdit,
+  note,
+  onSaveNote,
 }: TaskCardProps) {
   const body = useMemo(() => renderBody(task.bodyText || ""), [task.bodyText]);
   const isDone = task.status === "done";
@@ -186,6 +195,15 @@ export function TaskCard({
   const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const collapsed = isLong && !expanded;
+  // The expand toggle now lives in the header and controls BOTH the
+  // long-body reveal AND the Notes panel. We always render it so the
+  // operator can always reach the notes editor — even on a short task
+  // with no body overflow yet. When the card has no expandable affordance
+  // at all (no long body, no existing note) the button still shows because
+  // the user might want to *add* a note; the icon makes the affordance
+  // obvious without adding extra UI weight.
+  const hasNote = !!note && (note.text.length > 0 || note.images.length > 0);
+  const showToggle = !editing;
   const [draftText, setDraftText] = useState(task.bodyText || "");
   const [draftAssignee, setDraftAssignee] = useState<TaskUser>(task.assignedTo);
   const [copied, setCopied] = useState(false);
@@ -312,8 +330,14 @@ export function TaskCard({
             </div>
           </div>
 
-          {/* Right: status pills (sync / done). */}
-          <div className="flex flex-shrink-0 items-center gap-2 pt-0.5">
+          {/* Right: status pills (sync / done) + the expand/collapse
+              control. The toggle sits at the top of the card so the
+              operator sees immediately that the task has more to reveal
+              (long body, notes), and so collapsing/expanding doesn't
+              require scrolling past the body to find the button.
+              `flex-wrap` keeps multiple pills + the toggle from
+              overflowing on narrow phones. */}
+          <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-1.5 pt-0.5">
             {task.syncStatus === "pending" && (
               <span
                 title="Saved locally — will sync when backend is connected."
@@ -354,6 +378,35 @@ export function TaskCard({
                 <Pencil className="h-3 w-3" />
                 Edited locally
               </span>
+            )}
+            {showToggle && (
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                aria-expanded={expanded}
+                aria-label={expanded ? "Show less" : "Show more"}
+                title={expanded ? "Show less" : "Show more"}
+                className="inline-flex items-center gap-1 rounded-full border border-[#dadce0] bg-white px-2 py-0.5 text-[11px] font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4]"
+              >
+                {expanded ? (
+                  <>
+                    <ChevronUp className="h-3 w-3" />
+                    <span className="hidden sm:inline">Show less</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-3 w-3" />
+                    <span className="hidden sm:inline">Show more</span>
+                    {hasNote && (
+                      <span
+                        title="Has notes"
+                        aria-label="Has notes"
+                        className="ml-0.5 h-1.5 w-1.5 rounded-full bg-[#1a73e8]"
+                      />
+                    )}
+                  </>
+                )}
+              </button>
             )}
           </div>
         </header>
@@ -404,25 +457,16 @@ export function TaskCard({
             >
               {body || <span className="text-[#9aa0a6]">(no description)</span>}
             </div>
-            {isLong && (
-              <button
-                type="button"
-                onClick={() => setExpanded((v) => !v)}
-                aria-expanded={expanded}
-                className="mt-2 inline-flex items-center gap-1 rounded-full border border-[#dadce0] bg-white px-2.5 py-0.5 text-[11.5px] font-medium text-[#3c4043] transition-colors hover:bg-[#f1f3f4]"
-              >
-                {expanded ? (
-                  <>
-                    <ChevronUp className="h-3 w-3" />
-                    Show less
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="h-3 w-3" />
-                    Show more
-                  </>
-                )}
-              </button>
+            {/* Notes panel — only shown when the card is expanded so
+                collapsed cards stay compact. The header toggle is the
+                single entry point. */}
+            {expanded && onSaveNote && (
+              <TaskNotes
+                note={note}
+                onSave={(next) => onSaveNote(task, next)}
+                onOpenImage={onOpenImage}
+                disabled={busy}
+              />
             )}
           </>
         )}

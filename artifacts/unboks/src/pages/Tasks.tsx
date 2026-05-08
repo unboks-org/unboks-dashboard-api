@@ -31,6 +31,7 @@ import { useParkedTasks } from "@/hooks/use-parked-tasks";
 import { useTaskAuthorOverlay } from "@/hooks/use-task-author-overlay";
 import { useTaskNumberOverlay } from "@/hooks/use-task-number-overlay";
 import { useLocalTaskEdits } from "@/hooks/use-local-task-edits";
+import { useTaskNotes } from "@/hooks/use-task-notes";
 import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 
@@ -183,6 +184,12 @@ export default function Tasks() {
   // persisted server-side.
   const { edits: localTaskEdits, setEdit: setLocalTaskEdit } =
     useLocalTaskEdits();
+  // Per-task notes overlay. Notes are device-local until the backend
+  // exposes a notes endpoint; see `use-task-notes.ts` for the contract.
+  // `migrateNote` is invoked from `syncPendingTasks` so notes typed
+  // against `local:<localId>` follow the task to its new server uuid.
+  const { notes: taskNotes, save: saveTaskNote, migrateKey: migrateNote } =
+    useTaskNotes();
 
   const { data: backendTasks, isLoading, isError, error } = useQuery({
     queryKey: ["tasks"],
@@ -455,6 +462,13 @@ export default function Tasks() {
           }
         }
 
+        // Migrate any locally-attached notes from the `local:<id>` key
+        // onto the server uuid so the operator's notes survive the sync.
+        // Runs unconditionally (not just on first-create) so notes added
+        // *after* a previous failed sync attempt also follow the task.
+        // No-op when there are no notes.
+        migrateNote(`local:${local.localId}`, serverTaskId);
+
         removeLocal(local.localId);
         okCount += 1;
       } catch (err) {
@@ -478,7 +492,7 @@ export default function Tasks() {
     }
     if (okCount > 0) toast.success(`Synced ${okCount} task${okCount === 1 ? "" : "s"}.`);
     if (failCount > 0) toast.error(`${failCount} task${failCount === 1 ? "" : "s"} failed to sync — try again.`);
-  }, [addParked, localTasks, markSyncStatus, queryClient, removeLocal, setAuthorOverride, setServerId]);
+  }, [addParked, localTasks, markSyncStatus, migrateNote, queryClient, removeLocal, setAuthorOverride, setServerId, setTaskNumber]);
 
   const allTasks = useMemo<Task[]>(() => {
     // Apply two per-user overlays to every backend task:
@@ -730,6 +744,8 @@ export default function Tasks() {
               onPark={(task) => setStatus(task, "parked")}
               onUnpark={(task) => setStatus(task, "open")}
               onOpenImage={(url) => setLightboxUrl(url)}
+              note={taskNotes[t.id]}
+              onSaveNote={(task, next) => saveTaskNote(task.id, next)}
               onEdit={(task, patch) => {
                 if (task.localId) {
                   // Local-pending task: mutate the canonical record so the
