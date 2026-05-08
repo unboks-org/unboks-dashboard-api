@@ -54,7 +54,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Sparkles, VolumeX, User, Bot, Undo2 } from "lucide-react";
+import { Sparkles, VolumeX, User, Bot, Undo2, Send, Check } from "lucide-react";
 import { useEscalationMutations } from "@/hooks/use-client-api";
 import { ApiError } from "@/lib/error";
 import type { Channel } from "@/data/conversations";
@@ -108,6 +108,14 @@ export const EscalationReplyComposer = forwardRef<
     tone: "info" | "warning" | "error";
     text: string;
   } | null>(null);
+  // Tracks the combined "Send + resolve" / "Reply + resolve" flow so the
+  // primary button can show step-aware loading copy ("Sending..." then
+  // "Resolving...") and so we can disable the secondary actions while the
+  // two-step sequence is in flight. We can't rely solely on the
+  // individual mutation `isPending` flags because resolve's pending state
+  // is also true when the operator clicks the standalone Mark resolved
+  // button.
+  const [combinedStep, setCombinedStep] = useState<null | "sending" | "resolving">(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Mirror the latest draft into a ref so the imperative handle exposed
@@ -139,6 +147,15 @@ export const EscalationReplyComposer = forwardRef<
   }, [mode]);
   const empty = draft.trim().length === 0;
   const sendPending = isSoft ? guidance.isPending : reply.isPending;
+  const combinedPending = combinedStep !== null;
+  // While a combined flow is running, every action button is disabled to
+  // avoid double-submits and racing mutations against each other.
+  const anyPending =
+    sendPending ||
+    resolve.isPending ||
+    takeover.isPending ||
+    handback.isPending ||
+    combinedPending;
 
   const onApplyEdit = (next: string) => {
     setPrevDraft(draft);
@@ -211,6 +228,129 @@ export const EscalationReplyComposer = forwardRef<
             text:
               "Couldn't send reply: " +
               (err instanceof Error ? err.message : "Unknown error"),
+          });
+        },
+      },
+    );
+  };
+
+  /**
+   * Combined Send + resolve flow.
+   *
+   * Two sequential mutations: first the send (guidance in soft / reply in
+   * hard), then resolve. Strict rules from product:
+   *
+   *   - If send fails: do NOT call resolve. Show "Could not send.
+   *     Escalation was not resolved." (or the calm fallback when the
+   *     endpoint is not connected).
+   *   - If send succeeds but resolve fails: show "Message sent, but
+   *     escalation was not marked resolved." We do not lie about the
+   *     resolved state.
+   *   - Only on full success do we clear the draft and call onDone.
+   *
+   * The resolve payload always carries the learning fields the spec
+   * requires (saveAsLearning + autoUseNextTime + category). In hard mode
+   * we also pass the operator's reply as the resolutionNote so the
+   * resolution record reflects what the customer was told.
+   */
+  const onSendAndResolve = () => {
+    if (empty || anyPending) return;
+    setNotice(null);
+    const trimmed = draft.trim();
+
+    const runResolve = () => {
+      setCombinedStep("resolving");
+      resolve.mutate(
+        {
+          id: conversationDbId,
+          payload: {
+            saveAsLearning: true,
+            autoUseNextTime: true,
+            category: "escalation_reply",
+            resolutionNote: isSoft ? undefined : trimmed,
+          },
+        },
+        {
+          onSuccess: () => {
+            setCombinedStep(null);
+            setDraft("");
+            setPrevDraft(null);
+            onDone();
+          },
+          onError: (err) => {
+            setCombinedStep(null);
+            // Send already succeeded; we must not pretend resolve also
+            // worked. Clear the draft anyway since the message did go
+            // out, then surface a partial-success warning.
+            setDraft("");
+            setPrevDraft(null);
+            if (isNotConnected(err)) {
+              setNotice({
+                tone: "warning",
+                text:
+                  "Message sent. Mark resolved will be connected by the Unboks team.",
+              });
+              return;
+            }
+            setNotice({
+              tone: "warning",
+              text:
+                "Message sent, but escalation was not marked resolved: " +
+                (err instanceof Error ? err.message : "Unknown error"),
+            });
+          },
+        },
+      );
+    };
+
+    setCombinedStep("sending");
+    if (isSoft) {
+      guidance.mutate(
+        { id: conversationDbId, payload: { guidance: trimmed } },
+        {
+          onSuccess: runResolve,
+          onError: (err) => {
+            setCombinedStep(null);
+            if (isNotConnected(err)) {
+              // Send endpoint not connected. Per product spec, we keep
+              // the calm placeholder wording for missing endpoints, but
+              // for the combined action we also state explicitly that
+              // the escalation was not resolved so the operator isn't
+              // misled into thinking the second step ran.
+              setNotice({
+                tone: "info",
+                text:
+                  "Saved. Marina connection will be completed by the Unboks team. Escalation was not resolved.",
+              });
+              return;
+            }
+            setNotice({
+              tone: "error",
+              text: "Could not send. Escalation was not resolved.",
+            });
+          },
+        },
+      );
+      return;
+    }
+
+    reply.mutate(
+      { id: conversationDbId, message: trimmed },
+      {
+        onSuccess: runResolve,
+        onError: (err) => {
+          setCombinedStep(null);
+          if (isNotConnected(err)) {
+            setNotice({
+              tone: "info",
+              text:
+                "Direct customer reply will be connected by the Unboks team. Escalation was not resolved.",
+            });
+            return;
+          }
+          setNotice({
+            tone: "error",
+            text: "Could not send. Escalation was not resolved.",
           });
         },
       },
@@ -458,36 +598,106 @@ export const EscalationReplyComposer = forwardRef<
         </div>
       )}
 
-      {/* Primary actions */}
+      {/* Primary + secondary actions.
+       *
+       * Layout (Gmail-style send group):
+       *
+       *   [ Send + resolve ]    Send only · Mark resolved        Switch to human takeover
+       *
+       * The primary blue pill is the recommended path for most operator
+       * answers: every operator answer counts as approved learning, so
+       * sending and resolving in one click is the efficient default.
+       *
+       * Secondary text-buttons preserve the original two actions
+       * unchanged (send-only and resolve-only), so an operator who wants
+       * to keep an escalation open after replying, or to resolve without
+       * sending anything new, still can.
+       *
+       * The takeover / handback link stays on the right where it was, so
+       * operators don't have to re-learn its position.
+       */}
       <div className="flex items-center gap-2 pt-0.5 flex-wrap">
+        {/* Primary combined action — premium blue pill */}
+        <button
+          type="button"
+          onClick={onSendAndResolve}
+          disabled={empty || anyPending}
+          aria-label={isSoft ? "Send guidance and mark resolved" : "Reply to customer and mark resolved"}
+          title={
+            isSoft
+              ? "Send guidance to Marina and mark this escalation resolved."
+              : "Reply directly to the customer and mark this escalation resolved."
+          }
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-medium text-white",
+            "shadow-sm transition-colors",
+            "bg-[#1a73e8] hover:bg-[#1765cc] active:bg-[#185abc]",
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-1",
+            "disabled:bg-[#dadce0] disabled:text-white disabled:shadow-none disabled:cursor-not-allowed",
+          )}
+        >
+          {combinedStep === "sending" ? (
+            <>
+              <Send className="h-3.5 w-3.5" />
+              Sending...
+            </>
+          ) : combinedStep === "resolving" ? (
+            <>
+              <Check className="h-3.5 w-3.5" />
+              Resolving...
+            </>
+          ) : (
+            <>
+              <Send className="h-3.5 w-3.5" />
+              {isSoft ? "Send + resolve" : "Reply + resolve"}
+              <Check className="h-3.5 w-3.5 opacity-90" />
+            </>
+          )}
+        </button>
+
+        {/* Secondary: send-only and resolve-only. Quiet, text-style so
+            they read as alternatives to the primary pill rather than
+            competing primary actions. */}
         <button
           type="button"
           onClick={onSend}
-          disabled={empty || sendPending}
+          disabled={empty || sendPending || anyPending}
           className={cn(
-            "px-3 py-1.5 text-[13px] font-medium text-white rounded-md transition-colors",
-            "disabled:bg-[#dadce0] disabled:cursor-not-allowed",
-            isSoft
-              ? "bg-[#1a73e8] hover:bg-[#1765cc]"
-              : "bg-[#c5221f] hover:bg-[#a50e0e]",
+            "rounded-md px-2.5 py-1.5 text-[12.5px] text-[#3c4043]",
+            "hover:bg-[#f1f3f4] transition-colors",
+            "disabled:text-[#9aa0a6] disabled:hover:bg-transparent disabled:cursor-not-allowed",
           )}
+          title={isSoft ? "Send guidance to Marina without resolving." : "Reply to customer without resolving."}
         >
-          {sendPending ? "Sending..." : sendLabel}
+          {sendPending && !combinedPending
+            ? "Sending..."
+            : isSoft
+              ? "Send only"
+              : "Reply only"}
         </button>
+        <span aria-hidden="true" className="text-[#dadce0] text-[12px] select-none">
+          ·
+        </span>
         <button
           type="button"
           onClick={onMarkResolved}
-          disabled={resolve.isPending}
-          className="px-3 py-1.5 text-[13px] text-[#5f6368] hover:bg-[#f1f3f4] rounded-md"
+          disabled={anyPending}
+          className={cn(
+            "rounded-md px-2.5 py-1.5 text-[12.5px] text-[#3c4043]",
+            "hover:bg-[#f1f3f4] transition-colors",
+            "disabled:text-[#9aa0a6] disabled:hover:bg-transparent disabled:cursor-not-allowed",
+          )}
+          title="Mark this escalation resolved without sending anything."
         >
-          {resolve.isPending ? "Saving..." : "Mark resolved"}
+          {resolve.isPending && !combinedPending ? "Saving..." : "Mark resolved"}
         </button>
+
         {isSoft ? (
           <button
             type="button"
             onClick={onTakeover}
-            disabled={takeover.isPending}
-            className="ml-auto text-[12px] text-[#c5221f] hover:underline"
+            disabled={takeover.isPending || combinedPending}
+            className="ml-auto text-[12px] text-[#c5221f] hover:underline disabled:opacity-50 disabled:no-underline"
           >
             Switch to human takeover
           </button>
@@ -495,8 +705,8 @@ export const EscalationReplyComposer = forwardRef<
           <button
             type="button"
             onClick={onHandback}
-            disabled={handback.isPending}
-            className="ml-auto text-[12px] text-[#1a73e8] hover:underline"
+            disabled={handback.isPending || combinedPending}
+            className="ml-auto text-[12px] text-[#1a73e8] hover:underline disabled:opacity-50 disabled:no-underline"
           >
             Hand back to AI
           </button>
