@@ -1,12 +1,12 @@
 /**
  * EscalationReasonPanel — "Decision needed" card.
  *
- * Premium decision-first surface that replaces the previous debug-style
- * "Escalation reason" card. Inspired by Mercury approval cards, Linear
- * issue detail action panels, and Intercom/Front ticket summaries seen
- * via Refero: a calm white card on a near-white surface with one
- * single section title, three clearly labelled answer rows, and a
- * single horizontal row of real action buttons (not chips).
+ * Premium decision-first surface. Inspired by Mercury approval cards
+ * and Intercom/Front ticket summaries (via Refero): a calm white card
+ * with three labelled answer rows and no competing action surface —
+ * the operator's actions live in the Instructions to Agent composer
+ * directly below this card, so the whole escalation reads as a single
+ * decision flow.
  *
  * Sourcing
  * ========
@@ -15,26 +15,23 @@
  *   - Customer wants      → briefing.customerWants
  *   - Suggested next step → briefing.marinaNeeds
  *
- * `briefing.options` is intentionally NOT rendered as chips anymore.
- * Operators told us those chips read as "tags" rather than actions; the
- * new design replaces them with four real, fixed action buttons that
- * map cleanly to the existing `ChipAction` contract so no parent /
- * composer wiring needs to change.
- *
- * Action buttons (the only four, always in this order):
- *   1. Guide Agent          → { kind: "focus" }     (jumps to composer)
- *   2. Ask for more details → { kind: "draft", … }  (mode-appropriate scaffold)
- *   3. Take over / Hand back → { kind: "takeover" } in soft
- *                              { kind: "handback" } in hard
- *   4. Resolve              → { kind: "resolve" }
+ * Previously this card hosted four chip-style action buttons (Guide
+ * Agent / Ask for more details / Take over / Resolve). They've been
+ * removed: the composer below is now the single primary action
+ * surface (Send / Resolve / Send & Resolve), and Take over / Hand
+ * back already lives in that composer too. This avoids two competing
+ * action rows in the same flow.
  *
  * No backend handlers change. No new data is invented.
  */
 
 import type { ApiMessage } from "@/lib/api";
 import { buildEscalationBriefing } from "@/lib/escalation-summary";
-import { cn } from "@/lib/utils";
 
+/**
+ * Kept exported for compatibility with parent code that still imports
+ * the type. The panel no longer dispatches actions itself.
+ */
 export type ChipAction =
   | { kind: "draft"; text: string }
   | { kind: "focus" }
@@ -52,8 +49,8 @@ interface EscalationReasonPanelProps {
   recommendedOptions?: string[] | null;
   proposedTimes?: string[] | null;
   /**
-   * Dispatched when an action button is clicked. Inbox forwards this to
-   * the EscalationReplyComposer's imperative handle.
+   * Retained for backward compatibility with the parent's wiring.
+   * Currently unused — the action surface lives in the composer.
    */
   onChipAction?: (action: ChipAction) => void;
 }
@@ -62,12 +59,10 @@ export function EscalationReasonPanel({
   mode,
   summary,
   reason,
-  aiMuted = false,
   messages,
   customerName,
   recommendedOptions,
   proposedTimes,
-  onChipAction,
 }: EscalationReasonPanelProps) {
   const isSoft = mode === "soft";
   const briefing = buildEscalationBriefing({
@@ -80,29 +75,10 @@ export function EscalationReasonPanel({
     proposedTimes,
   });
 
-  const firstName = pickFirstName(customerName);
-
-  const dispatch = (action: ChipAction) => {
-    if (onChipAction) onChipAction(action);
-  };
-
-  // "Ask for more details" — uses the same scaffolds the chip mapping
-  // shipped, so the wording stays consistent with anything operators
-  // already learned.
-  const askForMoreDetailsAction: ChipAction = isSoft
-    ? {
-        kind: "draft",
-        text: `Please ask ${firstName} for more details so we can help properly.`,
-      }
-    : {
-        kind: "draft",
-        text: "Could you share a few more details so I can help properly?",
-      };
-
   return (
     <section
       aria-label="Decision needed"
-      className="border-b border-[#e8eaed] bg-white px-3 sm:px-4 py-3 flex-shrink-0"
+      className="bg-white px-3 sm:px-4 pt-3 pb-2 flex-shrink-0"
     >
       <article
         className="rounded-xl border border-[#e6e8eb] bg-[#fbfbfd] px-3.5 py-3 sm:px-5 sm:py-4"
@@ -135,86 +111,6 @@ export function EscalationReasonPanel({
           </Section>
           <Section label="Suggested next step">{briefing.marinaNeeds}</Section>
         </dl>
-
-        {/* Action row — four real buttons, never chips. Order is locked.
-            Hierarchy:
-              1) Guide Agent          → primary soft accent
-              2) Ask for more details → secondary outline
-              3) Take over / Hand back → secondary outline (neutral)
-              4) Resolve              → quiet ghost
-            All buttons share the same height/padding so they read as a
-            single grouped row, never as random tags. They wrap cleanly
-            on mobile. */}
-        <div
-          role="group"
-          aria-label="Escalation actions"
-          className="mt-4 flex flex-wrap items-center gap-2 border-t border-[#eef0f2] pt-3"
-        >
-          {/* Guide Agent — primary soft accent */}
-          <button
-            type="button"
-            onClick={() => dispatch({ kind: "focus" })}
-            title={
-              isSoft
-                ? "Write guidance for your Agent."
-                : "Write a reply to the customer."
-            }
-            className={cn(
-              "inline-flex items-center justify-center rounded-full px-3.5 py-1.5 text-[12.5px] font-medium",
-              "bg-[#1a73e8] text-white shadow-sm transition-colors",
-              "hover:bg-[#1765cc] active:bg-[#185abc]",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-1",
-            )}
-          >
-            Guide Agent
-          </button>
-
-          {/* Ask for more details — outline secondary */}
-          <ActionButton
-            onClick={() => dispatch(askForMoreDetailsAction)}
-            title={
-              isSoft
-                ? "Ask your Agent to collect more details from the customer."
-                : "Ask the customer for more details."
-            }
-          >
-            Ask for more details
-          </ActionButton>
-
-          {/* Take over (soft) / Hand back to Agent (hard) — outline */}
-          {isSoft ? (
-            <ActionButton
-              onClick={() => dispatch({ kind: "takeover" })}
-              title="Switch to human takeover and reply to the customer yourself."
-            >
-              Take over
-            </ActionButton>
-          ) : (
-            <ActionButton
-              onClick={() => dispatch({ kind: "handback" })}
-              title="Hand the conversation back to your Agent."
-            >
-              Hand back to Agent
-            </ActionButton>
-          )}
-
-          {/* Resolve — quiet outline, sits inline with the others so it
-              never floats alone on the far right (the previous ml-auto
-              made it read as disconnected on mobile). */}
-          <button
-            type="button"
-            onClick={() => dispatch({ kind: "resolve" })}
-            title="Mark this escalation as resolved."
-            className={cn(
-              "inline-flex items-center justify-center rounded-full border px-3.5 py-1.5 text-[12.5px] font-medium",
-              "border-[#e2e6ec] bg-white text-[#5f6368] shadow-sm transition-colors",
-              "hover:bg-[#f1f3f4] hover:text-[#202124] hover:border-[#d2d6dc] active:bg-[#e8eaed]",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-1",
-            )}
-          >
-            Resolve
-          </button>
-        </div>
       </article>
     </section>
   );
@@ -243,42 +139,4 @@ function Section({
       </dd>
     </div>
   );
-}
-
-function ActionButton({
-  onClick,
-  title,
-  children,
-}: {
-  onClick: () => void;
-  title?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      className={cn(
-        "inline-flex items-center justify-center rounded-full border px-3.5 py-1.5 text-[12.5px] font-medium",
-        "border-[#dadce0] bg-white text-[#3c4043] shadow-sm transition-colors",
-        "hover:bg-[#f8f9fa] hover:border-[#bdc1c6] active:bg-[#f1f3f4]",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-1",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function pickFirstName(name?: string | null): string {
-  if (!name) return "the customer";
-  const n = name.trim();
-  if (!n || n.toLowerCase() === "unknown contact") return "the customer";
-  const first = n.split(/\s+/)[0].replace(/[^\p{L}\p{N}'-]/gu, "");
-  return first || "the customer";
 }

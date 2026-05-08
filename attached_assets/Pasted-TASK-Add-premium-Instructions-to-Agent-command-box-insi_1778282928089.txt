@@ -1,0 +1,258 @@
+TASK: Add premium “Instructions to Agent” command box inside escalation decision flow.
+
+PROJECT SCOPE:
+Project 2 customer dashboard only.
+Do NOT touch Project 1 public website.
+Do NOT touch pricing.
+Do NOT touch backend/API/data logic.
+Do NOT change escalation business logic.
+This is frontend UX/layout/visual only.
+
+MANDATORY:
+Use Refero before designing.
+This must look premium, not like a basic textarea dropped into a card.
+
+PROBLEM:
+The escalation decision panel is missing the main operator action:
+a clear custom instruction field where the operator tells the Agent what to say or do.
+
+Also, under “Conversation trail” there is too much unused white space.
+That space should show the last customer message by default, with the rest of the conversation expandable.
+
+GOAL:
+Make the escalation view one clean decision workflow:
+
+1. See what happened.
+2. See the latest customer message.
+3. Type instructions to the Agent.
+4. Send / Resolve / Send & Resolve.
+5. Review the full conversation only if needed.
+
+REQUIRED STRUCTURE:
+
+Decision card should contain:
+
+1. Decision summary
+2. Latest customer message
+3. Instructions to Agent command box
+4. Send / Resolve / Send & Resolve buttons
+5. Full conversation trail below
+
+CUSTOM INSTRUCTION FIELD:
+
+Add a premium command-box area.
+
+Label:
+“Instructions to Agent”
+
+Helper text:
+“Tell the Agent exactly what to say or do next.”
+
+Placeholder:
+“Example: Confirm Sunday at 08:00 and ask the customer to confirm their phone number.”
+
+Behavior:
+- Use the existing guidance/composer state.
+- Reuse existing send/resolve handlers.
+- Do not create a second disconnected textarea state.
+- If there is already a composer textarea elsewhere, move it into this decision flow or visually merge it.
+- Do not leave two competing instruction fields.
+- The operator must type in this field and then choose Send, Resolve, or Send & Resolve.
+
+ACTION BUTTONS:
+
+Place action buttons directly under the instruction field.
+
+Order exactly:
+1. Send
+2. Resolve
+3. Send & Resolve
+
+Labels exactly:
+- Send
+- Resolve
+- Send & Resolve
+
+Meaning:
+- Send = send guidance only
+- Resolve = mark escalation resolved only
+- Send & Resolve = send guidance and resolve escalation
+
+Use existing handlers:
+- Send must use the existing send guidance behavior.
+- Resolve must use the existing mark resolved behavior.
+- Send & Resolve must use the existing combined send-and-resolve behavior.
+- Do not create new backend/API behavior.
+- Do not fake success.
+- Do not change existing send/resolve logic.
+
+SOFT VS HARD MODE SAFETY:
+
+Do not break escalation mode meaning.
+
+Soft escalation:
+- “Instructions to Agent” means guidance for the Agent.
+- Send sends guidance to the Agent.
+- The Agent replies to the customer.
+
+Hard escalation:
+- The operator is replying directly to the customer.
+- If the same command box is reused in hard mode, the UI must clearly say “Reply to customer”, not “Instructions to Agent”.
+- Send sends directly to the customer.
+- AI Editor remains available only in hard mode.
+
+Do not blur these two flows.
+
+LATEST CUSTOMER MESSAGE:
+
+Under/inside the decision flow, show the latest customer message by default.
+
+Suggested layout:
+
+Latest customer message
+“[latest inbound customer message]”
+
+Then below:
+Conversation trail (4) — Show full conversation
+
+Rules:
+- Use existing conversation/message data.
+- Prefer the latest inbound/customer-authored message.
+- Latest customer message means latest inbound/customer-authored message, not latest Marina/operator message.
+- If no inbound/customer-authored message is available, show the latest message in the conversation.
+- Do not invent or hardcode message content.
+- Full conversation can stay collapsed.
+- Change “Show conversation” to “Show full conversation”.
+- When expanded, use “Hide conversation”.
+- The latest message must be selected by timestamp, newest first.
+- Do not require scrolling down to understand the latest customer context.
+
+PREMIUM DESIGN REQUIREMENT:
+
+This must feel like a premium operator command interface.
+
+The screen should communicate:
+“Here is the situation. Here is the latest customer message. Now tell your Agent exactly what to do.”
+
+Use:
+- clean white/off-white surfaces
+- subtle borders
+- deep navy/charcoal text
+- strong readable contrast
+- elegant textarea styling
+- proper spacing
+- consistent buttons
+- calm accent color
+- compact layout
+- no unnecessary vertical whitespace
+
+Avoid:
+- basic ugly textarea
+- random floating buttons
+- oversized empty boxes
+- weak grey labels
+- disconnected composer
+- duplicate textareas
+- cheap grey disabled pills
+- cramped chip rows
+- washed-out UI
+- giant blank space under Conversation trail
+
+CONVERSATION TRAIL:
+
+The full conversation trail remains available, but it is secondary.
+
+Required:
+- Show latest customer message by default.
+- Keep full conversation collapsed unless opened.
+- Conversation trail label should be compact.
+- Use “Show full conversation”.
+- Use “Hide conversation” when expanded.
+- Reduce empty whitespace when collapsed.
+- When expanded, existing translation and message rendering must still work.
+- Do not remove the conversation trail completely.
+
+MOBILE:
+Must look excellent on mobile:
+- no overlapping
+- textarea readable
+- latest message readable
+- buttons easy to tap
+- actions stack/wrap cleanly
+- enough safe-area bottom spacing
+- no horizontal overflow
+
+STRICT LIMITS:
+
+Allowed:
+- move existing composer visually
+- reuse existing guidance state
+- reuse existing send/resolve handlers
+- improve layout/styling
+- show existing latest customer message data
+- collapse/expand the existing conversation trail
+
+Not allowed:
+- backend changes
+- API changes
+- new endpoints
+- changing escalation logic
+- changing send/resolve behavior
+- fake generated replies
+- invented message content
+- duplicate instruction state
+- touching Project 1 public website
+- touching pricing
+
+LIKELY FILES:
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/components/inbox/EscalationReasonPanel.tsx
+- artifacts/unboks/src/components/inbox/EscalationReplyComposer.tsx
+- artifacts/unboks/src/components/inbox/ConversationTrailPreview.tsx if it exists
+- artifacts/unboks/src/components/inbox/MessageBubble.tsx if needed
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Tasks.tsx
+- Appointments.tsx
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+ACCEPTANCE CRITERIA:
+- “Instructions to Agent” field is directly inside the decision flow.
+- Operator can type custom instructions there.
+- Existing send guidance behavior still works.
+- Buttons are ordered exactly: Send, Resolve, Send & Resolve.
+- No second competing composer remains elsewhere.
+- Latest customer message is visible by default.
+- Latest customer message is the latest inbound/customer-authored message, not Marina’s latest outgoing message.
+- Full conversation can expand/collapse.
+- “Show conversation” is changed to “Show full conversation”.
+- Empty white space under Conversation trail is reduced.
+- UI looks premium and intentional.
+- Mobile layout works.
+- Existing escalation actions still work.
+- Soft mode still means guidance to Agent.
+- Hard mode still means direct reply to customer.
+- AI Editor remains available only in hard mode.
+- Build passes.
+
+REPORT BACK:
+1. Refero references/patterns used.
+2. Files changed.
+3. Where the instruction field now lives.
+4. Whether old composer was moved or merged.
+5. How guidance state is reused.
+6. How latest customer message is selected.
+7. How full conversation expands/collapses.
+8. Confirmation no backend/API/data logic changed.
+9. Confirmation Project 1 public website was not touched.
+10. Confirmation pricing was not touched.
+
+Do not commit.
+Do not publish until reviewed.

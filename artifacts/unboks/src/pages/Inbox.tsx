@@ -578,6 +578,13 @@ function ConversationDetailPane({
             onChipAction={onChipAction}
           />
 
+          {/* Latest customer message preview — picks the newest inbound
+              message (role === "user"), falling back to the newest
+              message overall if no inbound message exists yet. Renders
+              as a calm quoted card so the operator can read the
+              latest customer context without expanding the trail. */}
+          <LatestCustomerMessagePreview messages={messages} />
+
           {dbId && (
             <EscalationReplyComposer
               // Do NOT key on selectedMode. Remounting would wipe the
@@ -594,7 +601,8 @@ function ConversationDetailPane({
 
           {/* Conversation trail — collapsed by default. The translation
               provider lives inside so its bar appears only when the
-              operator opens the trail. */}
+              operator opens the trail. The latest customer message is
+              already shown above, so the trail is purely secondary. */}
           <ConversationTranslationProvider
             conversationId={conversation.id}
             channel={conversation.channel}
@@ -620,7 +628,7 @@ function ConversationDetailPane({
                   </span>
                 )}
                 <span className="ml-auto text-[11px] font-normal text-[#9aa0a6]">
-                  {trailOpen ? "Hide conversation" : "Show conversation"}
+                  {trailOpen ? "Hide conversation" : "Show full conversation"}
                 </span>
               </button>
               {trailOpen && (
@@ -656,6 +664,49 @@ function ConversationDetailPane({
         </ConversationTranslationProvider>
       )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// LatestCustomerMessagePreview — quoted card showing the newest inbound
+// (role === "user") message so the operator has the latest customer
+// context inline with the decision flow, without needing to expand the
+// full conversation trail. `messages` is already sorted newest-first
+// by ConversationDetailPane, so we take the first match.
+// ---------------------------------------------------------------------------
+function LatestCustomerMessagePreview({ messages }: { messages: ApiMessage[] }) {
+  const latest = useMemo(() => {
+    if (!messages || messages.length === 0) return null;
+    // Newest inbound first; fall back to the newest message overall if
+    // we haven't received an inbound yet (e.g. agent-initiated thread).
+    return messages.find((m) => m.role === "user") ?? messages[0];
+  }, [messages]);
+
+  if (!latest || !latest.content) return null;
+
+  const isInbound = latest.role === "user";
+
+  return (
+    <section
+      aria-label="Latest customer message"
+      className="bg-white px-3 sm:px-4 pb-3 flex-shrink-0"
+    >
+      <div className="rounded-xl border border-[#e6e8eb] bg-white px-3.5 py-3 sm:px-4 sm:py-3.5">
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#5f6368]">
+            {isInbound ? "Latest customer message" : "Latest message"}
+          </p>
+          {latest.timestamp && (
+            <span className="text-[11px] text-[#9aa0a6] flex-shrink-0">
+              {latest.timestamp}
+            </span>
+          )}
+        </div>
+        <p className="text-[13.5px] leading-[1.55] text-[#1f2937] whitespace-pre-wrap break-words">
+          {latest.content}
+        </p>
+      </div>
+    </section>
   );
 }
 

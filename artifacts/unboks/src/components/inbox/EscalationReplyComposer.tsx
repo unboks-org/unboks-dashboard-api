@@ -490,12 +490,12 @@ export const EscalationReplyComposer = forwardRef<
     [conversationDbId, mode, resolve, takeover, handback],
   );
 
-  const headingText = isSoft ? "Guide your Agent" : "Reply to customer";
+  const headingText = isSoft ? "Instructions to Agent" : "Reply to customer";
   const helperText = isSoft
-    ? "Write what the Agent should say or do next."
+    ? "Tell the Agent exactly what to say or do next."
     : "This reply will be sent directly to the customer.";
   const placeholder = isSoft
-    ? "Example: Tell the customer we are available tomorrow at 10:00 or 14:00, and ask which time works best."
+    ? "Example: Confirm Sunday at 08:00 and ask the customer to confirm their phone number."
     : "Write your reply...";
   const sendLabel = isSoft ? "Send to Agent" : "Reply to customer";
 
