@@ -295,7 +295,7 @@ export function TaskCard({
           <div className="flex min-w-0 items-start gap-2.5">
             <Avatar name={task.assignedTo} dim={muted} size="md" />
             <div className="min-w-0 leading-tight">
-              <div className="flex min-w-0 items-center gap-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                 {/* TASK-### badge — ALWAYS rendered. The Tasks page guarantees
                     every task reaches this component with a numeric
                     `taskNumber` (local: assigned at creation; backend:
@@ -315,14 +315,50 @@ export function TaskCard({
                     ? formatTaskNumber(task.taskNumber)
                     : "TASK-—"}
                 </span>
-                <div
+                <span
                   className={cn(
-                    "truncate text-[13px] font-medium sm:text-[13.5px]",
+                    "min-w-0 truncate text-[13px] font-medium sm:text-[13.5px]",
                     muted ? "text-[#4b5563]" : "text-[#1f2937]",
                   )}
                 >
                   Assigned to {task.assignedTo}
-                </div>
+                </span>
+                {/* Show more / Show less — inline alongside the assignee
+                    text so it reads as a small textual control rather
+                    than a floating right-aligned pill. Only rendered
+                    when the body is long enough to actually be
+                    collapsed (showToggle). On narrow viewports the
+                    flex-wrap on the parent lets it drop to the next
+                    line while staying near the header text. */}
+                {showToggle && (
+                  <button
+                    type="button"
+                    onClick={() => setExpanded((v) => !v)}
+                    aria-expanded={expanded}
+                    aria-label={expanded ? "Collapse details" : "Expand details"}
+                    title={expanded ? "Show less" : "Show more"}
+                    className="inline-flex flex-shrink-0 items-center gap-0.5 rounded text-[11.5px] font-medium text-[#1a73e8] transition-colors hover:text-[#174ea6] hover:underline focus:outline-none focus-visible:underline"
+                  >
+                    {expanded ? (
+                      <>
+                        <ChevronUp className="h-3 w-3" />
+                        Show less
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-3 w-3" />
+                        Show more
+                        {hasNote && (
+                          <span
+                            title="Has notes"
+                            aria-label="Has notes"
+                            className="ml-0.5 h-1.5 w-1.5 rounded-full bg-[#1a73e8]"
+                          />
+                        )}
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
               <div className="mt-0.5 truncate text-[11.5px] text-[#6b7280] sm:text-[12px]">
                 Created by {task.createdBy} · {formatTaskDate(task.createdAt)}
@@ -330,13 +366,12 @@ export function TaskCard({
             </div>
           </div>
 
-          {/* Right: status pills (sync / done) + the expand/collapse
-              control. The toggle sits at the top of the card so the
-              operator sees immediately that the task has more to reveal
-              (long body, notes), and so collapsing/expanding doesn't
-              require scrolling past the body to find the button.
-              `flex-wrap` keeps multiple pills + the toggle from
-              overflowing on narrow phones. */}
+          {/* Right: status pills only (sync / parked / done / edited).
+              The expand/collapse toggle now lives inline in the
+              header text row above so it reads as a small textual
+              action next to "Assigned to …" rather than a floating
+              right-aligned pill. `flex-wrap` keeps multiple pills
+              from overflowing on narrow phones. */}
           <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-1.5 pt-0.5">
             {task.syncStatus === "pending" && (
               <span
@@ -378,35 +413,6 @@ export function TaskCard({
                 <Pencil className="h-3 w-3" />
                 Edited locally
               </span>
-            )}
-            {showToggle && (
-              <button
-                type="button"
-                onClick={() => setExpanded((v) => !v)}
-                aria-expanded={expanded}
-                aria-label={expanded ? "Collapse details" : "Expand details"}
-                title={expanded ? "Show less" : "Show more"}
-                className="inline-flex items-center gap-1 rounded-full border border-[#d9dee7] bg-white px-2 py-0.5 text-[11px] font-medium text-[#475569] transition-colors hover:bg-[#eef1f6] hover:text-[#1f2937]"
-              >
-                {expanded ? (
-                  <>
-                    <ChevronUp className="h-3 w-3" />
-                    <span className="hidden sm:inline">Show less</span>
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="h-3 w-3" />
-                    <span className="hidden sm:inline">Show more</span>
-                    {hasNote && (
-                      <span
-                        title="Has notes"
-                        aria-label="Has notes"
-                        className="ml-0.5 h-1.5 w-1.5 rounded-full bg-[#1a73e8]"
-                      />
-                    )}
-                  </>
-                )}
-              </button>
             )}
           </div>
         </header>
