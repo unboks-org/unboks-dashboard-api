@@ -13,6 +13,8 @@ import {
   collectConversationHideKeys,
 } from "@/hooks/use-hidden-conversations";
 import { useArchivedConversations } from "@/hooks/use-archived-conversations";
+import { useActiveConversationKeys } from "@/hooks/use-active-conversation-keys";
+import { filterActiveAppointments } from "@/lib/active-appointments";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
@@ -153,14 +155,22 @@ export function DashboardShell({
   // list the Appointments page renders, so the badge can never disagree
   // with the visible rows. `useAppointments` already merges backend rows
   // with detected ones and dedups by `${conversationId}|${dateTimeLabel}`
-  // (backend wins). All current statuses (`confirmed`, `pending`,
-  // `detected`) are active and visible on the page, so the count is
-  // simply the array length. If a `cancelled` / `completed` status is
-  // ever added, exclude it here so the count still matches the page.
+  // (backend wins). On top of that we apply `filterActiveAppointments`
+  // — the same shared predicate `pages/Bookings.tsx` runs on its list —
+  // so an appointment whose owning conversation has been archived or
+  // deleted is dropped from the badge in the same render tick that it
+  // disappears from the page. Without this filter, archiving the only
+  // conversation tied to a detected appointment leaves the badge stuck
+  // at "1" while the page shows "No appointments yet" (the bug this
+  // change fixes).
   const { appointments } = useAppointments();
+  const { keys: activeConversationKeys, ready: convKeysReady } =
+    useActiveConversationKeys();
   const appointmentsCount = useMemo(
-    () => appointments.filter((a) => a.status !== ("cancelled" as typeof a.status) && a.status !== ("completed" as typeof a.status)).length,
-    [appointments],
+    () =>
+      filterActiveAppointments(appointments, activeConversationKeys, convKeysReady)
+        .length,
+    [appointments, activeConversationKeys, convKeysReady],
   );
 
   const handleNavSelect = useCallback(

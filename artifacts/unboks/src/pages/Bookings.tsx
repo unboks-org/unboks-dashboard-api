@@ -33,6 +33,9 @@ import { Calendar, MapPin, MessageCircle, ArrowRight } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import { useAppointments } from "@/hooks/use-appointments";
+import { useActiveConversationKeys } from "@/hooks/use-active-conversation-keys";
+import { filterActiveAppointments } from "@/lib/active-appointments";
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import type { Appointment, AppointmentStatus } from "@/lib/api";
 
@@ -99,7 +102,22 @@ function statusPill(
 
 export default function Bookings() {
   const { label } = useBookingsLabel();
-  const { appointments, isLoading, backendAvailable } = useAppointments();
+  const { appointments: rawAppointments, isLoading, backendAvailable } =
+    useAppointments();
+  // Hide appointments whose owning conversation was archived or deleted
+  // on this device. Same predicate the sidebar Appointments badge uses,
+  // so the page and the badge can never disagree.
+  const { keys: activeConversationKeys, ready: convKeysReady } =
+    useActiveConversationKeys();
+  const appointments = useMemo(
+    () =>
+      filterActiveAppointments(
+        rawAppointments,
+        activeConversationKeys,
+        convKeysReady,
+      ),
+    [rawAppointments, activeConversationKeys, convKeysReady],
+  );
   const [, navigate] = useLocation();
 
   const openConversation = (conversationId: string) => {

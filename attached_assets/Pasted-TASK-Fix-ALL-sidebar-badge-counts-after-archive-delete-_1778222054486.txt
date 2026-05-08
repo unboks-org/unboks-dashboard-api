@@ -1,0 +1,169 @@
+TASK: Fix ALL sidebar badge counts after archive/delete/resolve. Appointments badge is stale.
+
+PROJECT SCOPE:
+Project 2 customer dashboard only.
+Do NOT touch Project 1 public website.
+Do NOT touch pricing.
+
+BUG:
+After archiving/deleting the last visible item, the main list correctly shows:
+“No conversations to show.”
+
+But the sidebar still shows stale badge counts.
+
+Example from screenshot:
+- Inbox Active is empty
+- WhatsApp and Email counts are gone
+- Appointments still shows badge “1”
+This is wrong if the appointment-linked conversation/item was archived or no longer active.
+
+GOAL:
+All sidebar badges must reflect the same active filtered data as the main content.
+If the active list is empty, no related sidebar badge should still show stale counts.
+
+IMPORTANT:
+Do not fix only Appointments.
+Check every sidebar badge and make them all use correct active-state logic.
+
+Sidebar items to inspect:
+- Escalations
+- Inbox
+- WhatsApp
+- Email
+- Appointments
+- Analytics if it has any count
+- Any other sidebar/nav badges
+
+PRODUCT RULE:
+Sidebar badges should count active actionable items only.
+They should not count archived, deleted, blocked, resolved, or hidden records.
+
+Required count rules:
+
+1. Escalations badge
+Count only active unresolved escalations.
+Exclude:
+- archived conversations
+- resolved escalations
+- deleted email conversations
+- blocked conversations
+- hidden/demo stale records
+
+2. Inbox badge, if shown
+Count only active inbox conversations/items.
+Exclude archived/deleted/blocked.
+
+3. WhatsApp badge
+Count only active WhatsApp conversations visible/relevant in active inbox.
+Exclude archived/deleted/blocked.
+
+4. Email badge
+Count only active email conversations visible/relevant in active inbox.
+Exclude archived/deleted/blocked.
+
+5. Appointments badge
+Count only active appointment items that are still actionable/visible.
+If the appointment item is tied to an archived conversation, it must not count in the active sidebar badge.
+If appointments are currently demo/static data, remove the static badge or derive it from the same active filtered source.
+Do not leave a hardcoded “1”.
+
+6. Analytics badge
+If any analytics badge exists, verify it is not stale/demo/hardcoded.
+
+INVESTIGATION REQUIRED:
+Trace where every badge count comes from:
+- frontend derived state
+- route/nav config
+- static/demo constants
+- API response
+- task/appointment store
+- conversation mapper
+- localStorage archive state
+- backend query
+- cached query result
+
+Find and remove stale count logic:
+- hardcoded numbers
+- seed/demo counts
+- counts from unfiltered raw arrays
+- counts that ignore archived IDs
+- counts that ignore deleted/blocked state
+- counts that do not update after archive/delete/resolve
+
+REQUIRED IMPLEMENTATION:
+Use one shared active-count source or helper where possible.
+
+The count logic must apply these filters consistently:
+- not archived
+- not deleted
+- not blocked
+- not resolved if counting active escalations
+- matches channel/type if channel badge
+- matches active appointment status if Appointments badge
+
+If archive state is localStorage-backed:
+- load archived keys before calculating badges
+- recalculate badges immediately after archive/delete
+- recalculate badges after refresh
+- use the same stable archive key as the list filtering
+
+If archive state is backend-backed:
+- backend count queries must exclude archived/deleted/blocked
+- frontend must invalidate/refetch counts after archive/delete/resolve/block
+- optimistic updates should reduce badges instantly
+
+IMMEDIATE UI UPDATE:
+After the user archives/deletes/resolves the last item:
+- active list updates immediately
+- sidebar badge disappears or becomes 0 immediately
+- no refresh required
+
+AFTER REFRESH:
+Counts must still be correct.
+Archived items must not come back into active badge totals.
+
+BADGE DISPLAY RULE:
+If count is 0:
+- hide the badge entirely, or
+- show no badge
+Do not show a “0” pill unless current UI already intentionally does that.
+
+SPECIFIC TEST CASE:
+Use the current visible bug:
+1. Active inbox shows “No conversations to show.”
+2. Appointments still shows “1.”
+3. After fix, Appointments must not show “1” unless there is a real active appointment visible/actionable.
+4. Refresh page.
+5. Appointments badge must still be gone/correct.
+
+FULL REGRESSION TEST:
+- Archive WhatsApp conversation → WhatsApp count decreases.
+- Archive Email conversation → Email count decreases.
+- Resolve/archive escalation → Escalations count decreases.
+- Archive appointment-linked conversation/item → Appointments count decreases.
+- Refresh → all counts remain correct.
+- Switch Active/Archived filters → active sidebar badges do not count archived items.
+- Archived view can still show archived items where appropriate.
+
+IMPORTANT:
+Do not delete data.
+Do not remove appointment functionality.
+Do not hide a real active appointment.
+Do not break Inbox, Escalations, WhatsApp, Email, Appointments, Archive view, delete email, block, reply, resolve, or detail loading.
+
+ACCEPTANCE CRITERIA:
+- Appointments badge no longer shows stale “1” when no active appointment exists.
+- All sidebar badges are derived from active filtered data.
+- Archived/deleted/blocked/resolved hidden items are excluded from counts.
+- Counts update immediately after archive/delete/resolve/block.
+- Counts remain correct after refresh.
+- No hardcoded/demo badge counts remain in production UI.
+- Build passes.
+
+REPORT BACK:
+1. Where each sidebar count was coming from.
+2. Which count was stale and why.
+3. Whether Appointments badge was hardcoded/demo/unfiltered.
+4. Changed files.
+5. Shared active-count logic used.
+6. Confirmation that all badges now match active visible data.
