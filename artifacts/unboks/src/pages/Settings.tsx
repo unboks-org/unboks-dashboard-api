@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, ChangeEvent } from "react";
 import {
+  Archive,
   Bell,
   Building2,
   ChevronDown,
@@ -23,6 +24,7 @@ import { useAccountSettings, type AccountSettings } from "@/hooks/use-account-se
 import { useYourInfoUpdates, UPDATE_TYPES, type YourInfoUpdateType } from "@/hooks/use-your-info-updates";
 import { KnowledgeFileUploader } from "@/components/settings/KnowledgeFileUploader";
 import { CloudKnowledgeConnections } from "@/components/settings/CloudKnowledgeConnections";
+import { DataRetentionSettings } from "@/components/settings/DataRetentionSettings";
 import { loadSot, type SotBlock } from "@/data/sot";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -34,7 +36,13 @@ const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2 MB
 // is consistent across the app.
 const ALT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-type CategoryId = "workspace" | "your-info" | "channels" | "escalation" | "preferences";
+type CategoryId =
+  | "workspace"
+  | "your-info"
+  | "channels"
+  | "escalation"
+  | "data-retention"
+  | "preferences";
 
 const CATEGORIES: {
   id: CategoryId;
@@ -66,6 +74,12 @@ const CATEGORIES: {
     label: "Escalation Alerts",
     description: "Choose where urgent escalation alerts should be sent.",
     icon: Bell,
+  },
+  {
+    id: "data-retention",
+    label: "Data retention & archive",
+    description: "Control how long conversations stay active, archived, and searchable.",
+    icon: Archive,
   },
   {
     id: "preferences",
@@ -919,6 +933,12 @@ export default function Settings() {
                     Escalation delivery uses the channels connected by your Unboks setup.
                   </p>
                 </Card>
+              )}
+
+              {active === "data-retention" && (
+                <div className="space-y-5">
+                  <DataRetentionSettings />
+                </div>
               )}
 
               {active === "preferences" && (

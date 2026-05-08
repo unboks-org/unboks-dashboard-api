@@ -1,0 +1,302 @@
+Project 2 dashboard frontend — add Data Retention & Archive settings with compact premium design using Refero/Repro.
+
+Important:
+- Project 2 Replit is frontend only.
+- Canonical backend is api.unboks.org.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Do not modify backend logic, DNS, secrets, auth, or deployment config.
+- Work only in artifacts/unboks frontend.
+- Do not touch Inbox, Tasks, Appointments, or sidebar unless required to add links/actions later.
+- Do not commit.
+- Do not publish until reviewed.
+
+Feature:
+Add a Data Retention & Archive settings area.
+
+Product reason:
+Clients may stay with Unboks for years and receive thousands or millions of messages.
+We cannot keep every old message in the active inbox forever.
+
+Best practice:
+- Active inbox stays clean.
+- Old inactive conversations are archived.
+- Very old archived messages can be deleted or anonymized based on a retention policy.
+- Approved AI learnings can remain even if the original raw messages are archived/deleted.
+
+Use Refero/Repro:
+Use compact premium SaaS settings references before designing.
+References should include:
+- Google Workspace retention settings
+- Slack retention settings
+- Intercom data retention/admin settings
+- Front shared inbox archive settings
+- Zendesk data retention settings
+- Linear compact settings UI
+
+If Refero/Repro is not connected, stop and report clearly before editing.
+
+Location:
+Settings page.
+
+Add a new settings card/section called:
+
+Data retention & archive
+
+Subtitle:
+Control how long conversations stay active, archived, and searchable.
+
+Design requirement:
+Keep it compact and functional.
+No unnecessary vertical whitespace.
+No huge cards.
+No bulky two-column marketing blocks.
+Use dense, clear rows.
+Premium SaaS settings style.
+
+Preferred layout:
+One compact card with rows.
+
+Example:
+
+Data retention & archive
+Control how long conversations stay active, archived, and searchable.
+
+Active inbox
+Archive inactive conversations after        [90 days ▼]
+
+Archive
+Keep archived conversations for             [24 months ▼]
+
+Deletion
+After archive period                         [Anonymize customer data ▼]
+
+AI learning
+[✓] Keep approved learnings after messages are archived or deleted
+
+Manual actions
+[Archive old conversations now] [Export data] [Delete customer data…]
+
+Status
+Next cleanup: Not scheduled yet
+
+Required controls:
+
+1. Active inbox retention
+Label:
+Archive inactive conversations after
+
+Dropdown options:
+- 30 days
+- 60 days
+- 90 days
+- 180 days
+- Never automatically archive
+
+Default:
+90 days
+
+Explanation, small muted text:
+Inactive conversations leave the daily inbox but remain searchable in the archive.
+
+2. Archive retention
+Label:
+Keep archived conversations for
+
+Dropdown options:
+- 12 months
+- 24 months
+- 36 months
+- 5 years
+- Never delete automatically
+
+Default:
+24 months
+
+Explanation:
+Archived conversations stay available for history, disputes, and customer context.
+
+3. End-of-retention action
+Label:
+After the archive period
+
+Dropdown options:
+- Anonymize customer data
+- Delete messages permanently
+- Keep forever
+
+Default:
+Anonymize customer data
+
+Explanation:
+Anonymizing keeps useful statistics while removing personal customer details.
+
+4. AI learning rule
+Checkbox:
+Keep approved AI learnings after original messages are archived or deleted
+
+Default:
+On
+
+Explanation:
+Approved answers and business knowledge can remain available to the AI without keeping the full private conversation forever.
+
+5. Escalation and audit logs
+Compact row:
+Keep escalation and audit logs for
+
+Dropdown options:
+- 12 months
+- 24 months
+- 36 months
+- 5 years
+
+Default:
+24 months
+
+Explanation:
+Useful for quality control and accountability.
+
+6. Manual actions
+Show compact buttons:
+- Archive old conversations now
+- Export conversation data
+- Delete customer data
+
+For now, if backend is not connected, clicking these should show calm placeholder:
+“Data retention actions will be connected by the Unboks team.”
+
+Do not pretend the action ran.
+
+7. Status row
+Show:
+Retention policy: Active
+Next cleanup: Not scheduled yet
+
+If backend later returns status, display it.
+
+Important product language:
+Use customer-friendly terms:
+- Active inbox
+- Archive
+- Delete
+- Anonymize
+- Approved AI learnings
+- Export data
+
+Do not use:
+- cron
+- backend
+- API
+- database
+- vector DB
+- embeddings
+- raw storage
+- retention job internals
+
+Required save behavior:
+Add Save changes for this section or reuse existing settings save pattern.
+
+If backend endpoint is not connected:
+- Save locally as fallback.
+- Show:
+  “Saved locally. Backend retention automation will be connected by the Unboks team.”
+- Do not claim automation is active unless backend confirms.
+
+Preferred backend endpoints later:
+GET /api/{client}/dashboard/api/settings/data-retention
+PUT /api/{client}/dashboard/api/settings/data-retention
+
+Request/response shape:
+
+{
+  "activeInboxArchiveAfterDays": 90,
+  "archiveRetentionMonths": 24,
+  "endOfRetentionAction": "anonymize",
+  "keepApprovedLearnings": true,
+  "auditLogRetentionMonths": 24,
+  "status": {
+    "policyActive": true,
+    "nextCleanupAt": "ISO timestamp optional"
+  }
+}
+
+Allowed values:
+activeInboxArchiveAfterDays:
+30 | 60 | 90 | 180 | null
+
+archiveRetentionMonths:
+12 | 24 | 36 | 60 | null
+
+endOfRetentionAction:
+"anonymize" | "delete" | "keep"
+
+auditLogRetentionMonths:
+12 | 24 | 36 | 60
+
+keepApprovedLearnings:
+boolean
+
+Manual action endpoints later:
+POST /api/{client}/dashboard/api/data-retention/archive-now
+POST /api/{client}/dashboard/api/data-retention/export
+POST /api/{client}/dashboard/api/data-retention/delete-customer-data
+
+But do not build backend.
+
+UI details:
+- Use compact rows, not giant cards.
+- Keep row height around 56 to 72px.
+- Use subtle dividers.
+- Dropdowns aligned right.
+- Helper text small and muted.
+- Buttons small and functional.
+- No excessive vertical padding.
+- Mobile layout stacks cleanly.
+- No horizontal overflow.
+
+Likely files:
+- artifacts/unboks/src/pages/Settings.tsx
+- artifacts/unboks/src/lib/api.ts
+Possibly create:
+- artifacts/unboks/src/components/settings/DataRetentionSettings.tsx
+- artifacts/unboks/src/hooks/use-data-retention-settings.ts
+
+Do not touch:
+- artifacts/api-server
+- Inbox.tsx
+- Tasks.tsx
+- Appointments.tsx
+- DashboardShell
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Settings contains Data retention & archive section.
+- Section is compact and functional.
+- No unnecessary vertical whitespace.
+- Active inbox archive dropdown exists.
+- Archive retention dropdown exists.
+- End-of-retention action dropdown exists.
+- Approved AI learnings checkbox exists.
+- Audit log retention dropdown exists.
+- Manual action buttons exist.
+- UI clearly explains archive vs delete vs anonymize.
+- Defaults are:
+  Active inbox archive after 90 days
+  Archive retention 24 months
+  End action anonymize
+  Keep approved learnings on
+  Audit logs 24 months
+- Save works locally or via backend if available.
+- No fake claim that automation ran.
+- Mobile layout works.
+- Build/typecheck clean.
+- Report exact files changed.
+- Report whether Refero/Repro was connected and what references were used.
+- Do not commit.
+- Do not publish.
