@@ -1,0 +1,84 @@
+Project 2 dashboard frontend bugfix — Email Reply modal textarea overflows outside modal.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not modify backend.
+- Work only on email action modal UI.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch Appointments.
+- Do not touch sidebar.
+- Do not commit.
+- Do not publish until reviewed.
+
+Bug:
+The Email Reply modal layout is broken.
+
+Screenshot shows:
+- Modal width is normal.
+- Textarea extends outside the modal to the right.
+- Send reply button is also visually pushed/overlapping outside the modal area.
+
+This is not acceptable.
+
+Required behavior:
+1. Textarea must stay fully inside the modal.
+2. Modal content must not overflow horizontally.
+3. Buttons must stay inside the modal footer.
+4. Modal must work on desktop and mobile.
+5. Long preview text at the top must wrap or truncate correctly.
+6. No horizontal overflow.
+7. No elements should extend beyond the white modal card.
+
+Likely file:
+- artifacts/unboks/src/components/inbox/EmailActionsModal.tsx
+
+Likely cause:
+- Textarea or wrapper has fixed width / min-width too large.
+- DialogContent max width conflicts with textarea width.
+- Footer button row is not wrapping or is positioned incorrectly.
+- Some class uses w-screen, min-w, or negative margin.
+
+Required fix:
+- Ensure DialogContent has a sensible width:
+  max-w-[520px] w-[calc(100vw-32px)]
+- Ensure all inner elements use:
+  w-full
+  max-w-full
+  min-w-0
+  box-border
+- Textarea must use:
+  w-full
+  max-w-full
+  min-h-[140px]
+  resize-none
+- Header preview text must use:
+  break-words
+  overflow-hidden
+  line-clamp if needed
+- Footer must use:
+  flex justify-end gap-2 flex-wrap
+- Buttons must not overflow.
+
+Design:
+- Premium clean modal.
+- Keep title: Reply to email.
+- Show a short preview of the email being replied to, but do not let it break layout.
+- Textarea should feel spacious but contained.
+- Send button disabled when empty.
+- Cancel button remains visible.
+
+Acceptance:
+- Open Reply to email modal.
+- Textarea stays inside modal.
+- Send reply button stays inside modal.
+- Long email preview does not break layout.
+- No horizontal overflow.
+- Mobile layout works.
+- Forward modal still works.
+- Delete modal still works.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

@@ -29,6 +29,10 @@ import { cn } from "@/lib/utils";
 
 const ALLOWED_LOGO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
 const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2 MB
+// Lightweight email shape check for the optional alternative email field.
+// Matches the same shape used elsewhere (EmailForwardModal) so behaviour
+// is consistent across the app.
+const ALT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type CategoryId = "workspace" | "your-info" | "channels" | "escalation" | "preferences";
 
@@ -372,6 +376,9 @@ export default function Settings() {
 
   // Validate the draft: any enabled channel must have a non-empty
   // destination, otherwise the backend would reject the save anyway.
+  // The alternative email is optional; when filled it must look like an
+  // email address, but it never blocks WhatsApp/Telegram/Messenger saves
+  // when left empty.
   const notifyValidationError = useMemo(() => {
     const labels: Record<NotifyChannelKey, string> = {
       whatsapp: "WhatsApp",
@@ -383,6 +390,10 @@ export default function Settings() {
       if (p.enabled && p.destination.trim().length === 0) {
         return `Add a ${labels[key]} destination, or turn ${labels[key]} off.`;
       }
+    }
+    const alt = notifyDraft.alternativeEmail.trim();
+    if (alt.length > 0 && !ALT_EMAIL_RE.test(alt)) {
+      return "Enter a valid email address.";
     }
     return null;
   }, [notifyDraft]);
@@ -820,8 +831,42 @@ export default function Settings() {
                             ? `Always on, sent to ${notifyDefaultEmail}`
                             : "Always on, uses your default account email"}
                         </p>
+                        {notifyPrefs.alternativeEmail.trim().length > 0 && (
+                          <p
+                            className="mt-0.5 truncate text-[12px] text-[#5f6368]"
+                            title={notifyPrefs.alternativeEmail.trim()}
+                          >
+                            Alternative: {notifyPrefs.alternativeEmail.trim()}
+                          </p>
+                        )}
                       </div>
                       <DeliveryBadge status={notifyDeliveryStatuses.email ?? "default"} />
+                    </div>
+
+                    {/* Alternative email input — optional secondary recipient */}
+                    <div className="py-3">
+                      <label
+                        htmlFor="escalation-alt-email"
+                        className="block text-[12px] font-medium text-[#5f6368]"
+                      >
+                        Alternative email
+                      </label>
+                      <input
+                        id="escalation-alt-email"
+                        type="email"
+                        autoComplete="email"
+                        inputMode="email"
+                        value={notifyDraft.alternativeEmail}
+                        onChange={(e) =>
+                          setNotifyDraft((d) => ({ ...d, alternativeEmail: e.target.value }))
+                        }
+                        placeholder="second@example.com"
+                        disabled={notifyLoading || notifySaving}
+                        className="mt-1 h-9 w-full rounded-md border border-[#dadce0] bg-white px-3 text-[14px] text-[#202124] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] disabled:bg-[#f8f9fa] disabled:text-[#9aa0a6]"
+                      />
+                      <p className="mt-1 text-[11px] text-[#5f6368]">
+                        Send escalation alerts to an additional email address. Leave empty to use only the default.
+                      </p>
                     </div>
 
                     {([

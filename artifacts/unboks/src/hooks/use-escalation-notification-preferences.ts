@@ -9,12 +9,22 @@ import { ApiError } from "@/lib/error";
 
 export type NotifyChannelKey = "whatsapp" | "messenger" | "telegram";
 
+const CHANNEL_KEYS: readonly NotifyChannelKey[] = ["whatsapp", "messenger", "telegram"];
+
 export interface NotifyChannelPref {
   enabled: boolean;
   destination: string;
 }
 
-export type EscalationNotificationPrefs = Record<NotifyChannelKey, NotifyChannelPref>;
+/**
+ * Editable escalation alert preferences. Email isn't a channel toggle
+ * (it's always on, the backend owns the primary address) but operators
+ * can supply an `alternativeEmail` so the backend fans alerts out to a
+ * second mailbox in addition to the default.
+ */
+export type EscalationNotificationPrefs = Record<NotifyChannelKey, NotifyChannelPref> & {
+  alternativeEmail: string;
+};
 
 /**
  * Per-channel delivery status surfaced to the UI as a small badge.
@@ -49,6 +59,7 @@ const DEFAULT_PREFS: EscalationNotificationPrefs = {
   whatsapp: { enabled: false, destination: "" },
   messenger: { enabled: false, destination: "" },
   telegram: { enabled: false, destination: "" },
+  alternativeEmail: "",
 };
 
 // -------- localStorage cache --------
@@ -60,8 +71,9 @@ function readFromStorage(): EscalationNotificationPrefs | null {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
     const merged: EscalationNotificationPrefs = { ...DEFAULT_PREFS };
-    for (const key of Object.keys(DEFAULT_PREFS) as NotifyChannelKey[]) {
-      const v = (parsed as Record<string, unknown>)[key];
+    const root = parsed as Record<string, unknown>;
+    for (const key of CHANNEL_KEYS) {
+      const v = root[key];
       if (v && typeof v === "object") {
         const o = v as Record<string, unknown>;
         merged[key] = {
@@ -69,6 +81,9 @@ function readFromStorage(): EscalationNotificationPrefs | null {
           destination: typeof o.destination === "string" ? o.destination : "",
         };
       }
+    }
+    if (typeof root.alternativeEmail === "string") {
+      merged.alternativeEmail = root.alternativeEmail;
     }
     return merged;
   } catch {
@@ -88,22 +103,30 @@ function writeToStorage(prefs: EscalationNotificationPrefs) {
 
 function fromBackend(s: EscalationAlertSettings): EscalationNotificationPrefs {
   const next: EscalationNotificationPrefs = { ...DEFAULT_PREFS };
-  for (const key of Object.keys(DEFAULT_PREFS) as NotifyChannelKey[]) {
+  for (const key of CHANNEL_KEYS) {
     const ch = s.channels[key];
     if (ch) {
       next[key] = { enabled: Boolean(ch.enabled), destination: ch.destination ?? "" };
     }
   }
+  next.alternativeEmail = s.channels.email?.alternativeDestination?.trim() ?? "";
   return next;
 }
 
 function toBackend(prefs: EscalationNotificationPrefs): EscalationAlertSettings {
   // Email is always-on with the default account address; the backend
-  // owns the actual destination so we send `enabled: true` and an
-  // empty destination string (treated as "use default").
+  // owns the primary destination so we send `enabled: true` and an
+  // empty `destination` string (treated as "use default"). The optional
+  // alternative address goes alongside as `alternativeDestination` —
+  // empty string means "no alternative".
+  const alt = prefs.alternativeEmail.trim();
   return {
     channels: {
-      email: { enabled: true, destination: "" },
+      email: {
+        enabled: true,
+        destination: "",
+        alternativeDestination: alt.length > 0 ? alt : "",
+      },
       whatsapp: { enabled: prefs.whatsapp.enabled, destination: prefs.whatsapp.destination.trim() },
       messenger: { enabled: prefs.messenger.enabled, destination: prefs.messenger.destination.trim() },
       telegram: { enabled: prefs.telegram.enabled, destination: prefs.telegram.destination.trim() },
@@ -309,6 +332,12 @@ export function useEscalationNotificationPrefs(): UseEscalationNotificationPrefs
         whatsapp: mergeChannel("whatsapp"),
         messenger: mergeChannel("messenger"),
         telegram: mergeChannel("telegram"),
+        // Trust the backend's echo of the alternative address when
+        // present, otherwise keep what the operator just submitted so a
+        // partial PUT response doesn't silently wipe their input.
+        alternativeEmail:
+          remote.channels.email?.alternativeDestination?.trim() ??
+          next.alternativeEmail,
       };
       const statuses = computeStatuses(remote, merged);
       writeToStorage(merged);

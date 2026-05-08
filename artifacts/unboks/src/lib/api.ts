@@ -1058,6 +1058,13 @@ export interface EscalationAlertChannelPref {
   enabled: boolean;
   destination: string;
   /**
+   * Optional second destination. For email this is the operator-supplied
+   * "alternative email" — when set, the backend fans out escalation
+   * alerts to BOTH `destination` (or its resolved form) AND this address.
+   * Empty string / null means "no alternative".
+   */
+  alternativeDestination?: string | null;
+  /**
    * Backend-resolved real address when `destination` is a sentinel like
    * `"default"`. For email this is the actual `support_email` from the
    * client config, so the UI can show "Always on, sent to
@@ -1114,7 +1121,28 @@ function pickChannelPref(raw: unknown): EscalationAlertChannelPref | null {
     typeof resolvedRaw === "string" && resolvedRaw.trim().length > 0
       ? resolvedRaw.trim()
       : null;
-  return { enabled, destination, resolvedDestination, deliveryStatus: status };
+  // Backend may surface the second/alt address under several aliases.
+  // `alternativeDestination` is the canonical wire name; the rest are
+  // tolerated so older payload shapes don't silently lose the value.
+  const altRaw =
+    o.alternativeDestination ??
+    o.alternative_destination ??
+    o.alternativeEmail ??
+    o.alternative_email ??
+    o.secondaryEmail ??
+    o.secondary_email ??
+    o.backupEmail ??
+    o.backup_email ??
+    null;
+  const alternativeDestination =
+    typeof altRaw === "string" && altRaw.trim().length > 0 ? altRaw.trim() : null;
+  return {
+    enabled,
+    destination,
+    alternativeDestination,
+    resolvedDestination,
+    deliveryStatus: status,
+  };
 }
 
 /**

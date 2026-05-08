@@ -1,0 +1,130 @@
+Project 2 dashboard frontend — add alternative email for Escalation Alerts.
+
+Important:
+- Project 2 Replit is frontend only.
+- Canonical backend is api.unboks.org.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Work only on Settings → Escalation Alerts frontend.
+- Do not touch Inbox.
+- Do not touch Tasks.
+- Do not touch Appointments.
+- Do not touch sidebar.
+- Do not commit.
+- Do not publish until reviewed.
+
+Feature:
+Settings → Escalation Alerts currently shows the default email:
+
+Email
+Always on, sent to butlerbensonagent@gmail.com
+Default
+
+We need an option to add a second alternative email address.
+
+Product requirement:
+Both email addresses should receive escalation notifications:
+1. Default account/support email
+2. Alternative email if provided and enabled
+
+Required UI:
+In the Email row/section, show:
+
+Email
+Always on, sent to butlerbensonagent@gmail.com
+
+Then add:
+
+Alternative email
+[ input field ]
+
+Helper:
+Send escalation alerts to an additional email address.
+
+Optional toggle:
+Alternative email alerts [on/off]
+
+Preferred simple v1:
+- Show an input field for Alternative email.
+- If the field is filled, backend sends alerts to both default email and alternative email.
+- If empty, only default email receives alerts.
+
+Save behavior:
+- Save alternative email together with the existing escalation alert settings.
+- Do not save only to localStorage.
+- Use the real backend settings endpoint.
+
+Backend endpoint already used:
+GET /api/{client}/dashboard/api/settings/escalation-alerts
+PUT /api/{client}/dashboard/api/settings/escalation-alerts
+
+Suggested request shape:
+{
+  "channels": {
+    "email": {
+      "enabled": true,
+      "destination": "butlerbensonagent@gmail.com",
+      "alternativeDestination": "second@example.com"
+    },
+    "whatsapp": {
+      "enabled": true,
+      "destination": "+351963618003"
+    },
+    "messenger": {
+      "enabled": false,
+      "destination": ""
+    },
+    "telegram": {
+      "enabled": false,
+      "destination": ""
+    }
+  }
+}
+
+Also support:
+alternativeEmail
+secondaryEmail
+backupEmail
+
+But prefer:
+alternativeDestination
+
+Validation:
+- Alternative email can be empty.
+- If filled, validate it looks like an email address.
+- If invalid, show:
+  “Enter a valid email address.”
+- Do not block saving WhatsApp/Telegram settings because alternative email is empty.
+
+Display:
+If alternative email exists:
+Email
+Always on, sent to butlerbensonagent@gmail.com
+Alternative: second@example.com
+
+Badge:
+Default
+
+Do not remove default email.
+Do not allow disabling default email.
+
+Important:
+Do not claim alerts are sent to the alternative email unless backend saves it successfully.
+
+Likely files:
+- artifacts/unboks/src/pages/Settings.tsx
+- artifacts/unboks/src/hooks/use-escalation-notification-preferences.ts
+- artifacts/unboks/src/lib/api.ts
+
+Acceptance:
+- Email section shows default email address.
+- Email section has Alternative email input.
+- Save sends alternative email to backend.
+- Refresh loads alternative email from backend.
+- Empty alternative email is allowed.
+- Invalid email shows validation error.
+- Default email remains always on.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.
