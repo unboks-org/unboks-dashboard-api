@@ -1,0 +1,123 @@
+TASK: Client-facing terminology audit only. Do not change code yet.
+
+Goal:
+We are changing the client-facing language from “AI” to “Agent” across the Unboks customer-facing product.
+
+Important:
+This is an AUDIT task only.
+Do NOT edit files.
+Do NOT replace text yet.
+Do NOT refactor.
+Do NOT touch backend logic, variable names, database fields, API names, function names, comments, or internal developer-only text unless they are visibly shown to the client.
+Do NOT change anything until I give green light after reviewing your list.
+
+Context:
+The product still uses AI internally, but client-facing language should say “Agent” because it feels more human, practical, and less technical.
+
+What to search:
+Search the full codebase deeply for every client-facing occurrence of:
+- AI
+- ai
+- artificial intelligence
+- automation, if used as a synonym for AI in visible client copy
+- assistant, if used as “AI assistant”
+- bot, if used in visible client copy
+- Marina AI
+- AI replies
+- AI editor
+- AI support
+- AI automation
+- AI-generated
+- AI-powered
+- AI learns
+- AI model
+- AI agent, if visible to clients
+- any translation/localization files containing these terms
+- any pricing, landing page, dashboard, onboarding, settings, escalation, inbox, Source of Truth / Your Info, demo, email template, metadata, title, tooltip, button, empty state, modal, toast, placeholder, or help text using these words
+
+Scope:
+Only client-facing text/copy:
+- website pages
+- dashboard UI
+- buttons
+- labels
+- tooltips
+- modals
+- onboarding screens
+- empty states
+- pricing section
+- settings pages
+- inbox/escalations UI
+- toast notifications
+- help text
+- demo text
+- email templates if shown/sent to clients
+- metadata titles/descriptions if public-facing
+
+Out of scope:
+Do NOT propose changing:
+- API route names
+- database columns
+- schema names
+- internal variables
+- function names
+- internal comments
+- logs
+- tests, unless test text appears in rendered UI
+- backend prompt internals unless the exact text is exposed to clients
+- technical docs not visible to customers
+
+Required output:
+Make a clear audit report with a table.
+
+For every finding, include:
+1. File path
+2. Line number
+3. Current text
+4. Where it appears in the product, if you can infer it
+5. Recommended replacement
+6. Risk level:
+   - LOW = simple copy replacement
+   - MEDIUM = could affect UX meaning
+   - HIGH = may affect product logic, route, API, prompt behavior, or legal meaning
+7. Whether it should be changed now:
+   - YES
+   - NO
+   - REVIEW
+
+Replacement rules:
+Use these defaults unless context requires review:
+
+- “AI replies” → “Agent replies”
+- “AI automation” → “Agent support”
+- “AI assistant” → “Unboks Agent”
+- “AI handles your messages” → “Your Unboks Agent handles your messages”
+- “AI escalation” → “Agent escalation”
+- “AI support” → “Agent support”
+- “AI-generated reply” → “Agent draft”
+- “AI draft” → “Agent draft”
+- “AI editor” → “Agent Editor”
+- “AI-powered” → “Agent-powered” or rewrite naturally
+- “AI learns from your answers” → “Your Agent improves from approved answers”
+- “AI knowledge base” → “Company knowledge” or “Your Info”
+- “AI model” → REVIEW, do not replace blindly
+- “bot” → “Agent” only if it is client-facing and refers to Unboks
+- “automation” → keep if it means workflow automation, replace only if it is being used as visible AI marketing language
+
+Tone rules:
+Client-facing copy should be simple, premium, and practical.
+Avoid overusing “Agent” in every sentence.
+Use “Unboks Agent” the first time on a page, then “Agent” after that.
+Do not make it sound like a chatbot toy.
+Do not make exaggerated claims.
+Do not use “AI” in customer-facing pricing, onboarding, dashboard, or landing-page text unless there is a legal/technical reason to keep it.
+
+Acceptance criteria for this audit:
+- Full repo searched.
+- All client-facing “AI” references identified.
+- No files edited.
+- No automatic replacements.
+- Clear table delivered.
+- Final section: “Recommended safe changes after approval”
+- Final section: “Items requiring human review”
+- Wait for my green light before changing anything.
