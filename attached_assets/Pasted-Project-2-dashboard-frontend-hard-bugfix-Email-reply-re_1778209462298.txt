@@ -1,0 +1,105 @@
+Project 2 dashboard frontend hard bugfix — Email reply returns HTTP 405.
+
+Important:
+- Project 2 Replit is frontend only.
+- Canonical backend is api.unboks.org.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch Appointments.
+- Do not touch sidebar.
+- Do not commit.
+- Do not publish until reviewed.
+
+Bug:
+Email Reply modal opens, but sending returns:
+
+HTTP 405
+
+This means the frontend is calling an endpoint path/method that the backend does not allow.
+
+Current likely frontend call:
+POST /api/{client}/dashboard/api/messages/conversations/{conversation_id}/email/reply
+
+Need to verify exact network request.
+
+Required investigation:
+1. Inspect replyToEmail() in artifacts/unboks/src/lib/api.ts.
+2. Confirm exact method and path.
+3. Inspect EmailActionsModal.tsx and confirm which conversation key is passed.
+4. Confirm whether frontend uses:
+   conversation.id
+   conversation.conversationKey
+   phone
+   thread_key
+5. Add temporary console/network debug only if needed, then remove.
+6. Check if 405 response has response body with allowed method or error message.
+7. Do not hide the backend error.
+
+Required frontend behavior:
+1. Email reply must call the exact backend method/path Jr implemented.
+2. If backend returns 405, show a useful error:
+   “Email reply endpoint method mismatch. Backend returned HTTP 405.”
+3. Do not show generic placeholder.
+4. Do not pretend reply was sent.
+5. Keep the draft text in the modal after the error.
+6. Do not close the modal after failure.
+
+Known backend context from Jr:
+Jr said email reply shipped in Brief 210.
+However, the frontend is receiving HTTP 405, so either:
+- frontend path is wrong
+- frontend method is wrong
+- backend route name differs
+- backend expects escalation reply endpoint instead of email reply endpoint
+- backend expects POST /email/reply but frontend is hitting DELETE/GET or another route because of URL mismatch
+- conversation id is wrong and resolves to another route
+
+Possible endpoint variants to support only after confirming:
+A:
+POST /messages/conversations/{conversation_id}/email/reply
+
+B:
+POST /messages/conversations/{conversation_id}/reply
+
+C:
+POST /email/conversations/{conversation_id}/reply
+
+D:
+POST /escalations/{id}/reply
+Only for hard escalation customer reply, not normal email reply.
+
+Do not guess silently.
+Add one small compatibility fallback only if safe:
+- If POST /email/reply returns 404 or 405, try the confirmed alternate endpoint.
+- Do not add many random endpoint attempts.
+- Log/report which endpoint was used.
+
+Important:
+Email reply action and hard escalation reply are related but not identical.
+
+If this email is inside an escalation and the operator is replying directly to the customer, the correct endpoint may be:
+POST /escalations/{id}/reply
+
+If this is a normal email conversation reply, the correct endpoint should be an email reply endpoint.
+
+So the frontend must know:
+- is this an escalation hard reply?
+- or a normal email reply action?
+
+Acceptance:
+- Click Reply on an email.
+- Send reply.
+- Network request uses the backend-supported method/path.
+- No HTTP 405.
+- If backend still returns 405, UI shows exact error and keeps draft.
+- Modal does not close on failure.
+- Conversation key is encoded once.
+- Build/typecheck clean.
+- Report exact files changed.
+- Report exact endpoint path currently used.
+- Report exact endpoint path after fix.
+- Do not commit.
+- Do not publish.

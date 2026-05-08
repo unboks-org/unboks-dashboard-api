@@ -1,0 +1,157 @@
+Project 2 dashboard frontend hard bugfix — Escalation Alerts settings are localStorage only, must save to backend.
+
+Important:
+- Project 2 Replit is frontend only.
+- Canonical backend is api.unboks.org.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Work only in artifacts/unboks frontend.
+- Do not touch Inbox.
+- Do not touch Tasks.
+- Do not touch Appointments.
+- Do not touch sidebar.
+- Do not commit.
+- Do not publish until reviewed.
+
+BUG:
+Settings → Escalation Alerts currently saves only to browser localStorage.
+
+Investigation confirmed:
+artifacts/unboks/src/hooks/use-escalation-notification-preferences.ts uses:
+
+const STORAGE_KEY = "unboks_escalation_notify_prefs"
+
+and save() only does:
+
+localStorage.setItem(...)
+
+This means alert destinations never reach the backend.
+So backend cannot send escalation alerts to the configured WhatsApp / Telegram / Messenger destinations.
+
+Jr has shipped backend endpoints:
+GET /api/{client}/dashboard/api/settings/escalation-alerts
+PUT /api/{client}/dashboard/api/settings/escalation-alerts
+
+Frontend must wire to these real endpoints.
+
+Required behavior:
+1. On Settings load, fetch escalation alert settings from backend.
+2. Populate the UI from backend settings.
+3. When user clicks Save changes, PUT settings to backend.
+4. Keep localStorage only as a fallback/cache, not the source of truth.
+5. If backend fetch fails because endpoint missing/unavailable, use localStorage fallback and show calm note.
+6. If backend save succeeds, show Saved.
+7. If backend save fails, show backend error and do not pretend backend saved it.
+8. Do not silently fail.
+9. Keep existing UI fields:
+   - Email always on
+   - WhatsApp toggle + destination
+   - Messenger toggle + destination
+   - Telegram toggle + destination
+
+Backend request shape:
+PUT /settings/escalation-alerts
+
+Body:
+{
+  "channels": {
+    "email": {
+      "enabled": true,
+      "destination": "default"
+    },
+    "whatsapp": {
+      "enabled": true,
+      "destination": "+351963618003"
+    },
+    "messenger": {
+      "enabled": false,
+      "destination": ""
+    },
+    "telegram": {
+      "enabled": true,
+      "destination": "@calvinadamus"
+    }
+  }
+}
+
+Expected GET response shape:
+{
+  "channels": {
+    "email": {
+      "enabled": true,
+      "destination": "default"
+    },
+    "whatsapp": {
+      "enabled": true,
+      "destination": "+351963618003"
+    },
+    "messenger": {
+      "enabled": false,
+      "destination": ""
+    },
+    "telegram": {
+      "enabled": true,
+      "destination": "@calvinadamus"
+    }
+  }
+}
+
+Also support if backend returns a flat shape, but preferred is channels.
+
+Important delivery truth:
+Jr said:
+- Email + WhatsApp have real delivery
+- Telegram + Messenger currently record skipped/provider not configured until providers are connected
+
+So UI should not imply Telegram/Messenger are actively delivering if backend reports skipped/provider_not_configured.
+
+If backend returns deliveryStatus per channel, show a small badge:
+- Active
+- Saved only
+- Provider not connected
+- Failed
+
+If backend does not return deliveryStatus yet:
+- Email: Default
+- WhatsApp: Active if enabled
+- Telegram: Saved only / Provider not connected
+- Messenger: Saved only / Provider not connected
+
+Required code changes:
+1. Replace local-only hook behavior in:
+   artifacts/unboks/src/hooks/use-escalation-notification-preferences.ts
+
+2. Add API helpers in:
+   artifacts/unboks/src/lib/api.ts
+
+Suggested helpers:
+getEscalationAlertSettings()
+updateEscalationAlertSettings(payload)
+
+3. Update Settings page save/load behavior:
+   artifacts/unboks/src/pages/Settings.tsx
+
+4. Preserve localStorage fallback:
+   - read localStorage only if backend GET fails
+   - write localStorage after successful backend save as cache
+   - do not rely on localStorage as main source
+
+Validation:
+- If WhatsApp enabled, destination must not be empty.
+- If Telegram enabled, destination must not be empty.
+- If Messenger enabled, destination must not be empty.
+
+Acceptance:
+- Settings load calls GET /settings/escalation-alerts.
+- Save changes calls PUT /settings/escalation-alerts.
+- WhatsApp number is saved to backend.
+- Telegram username is saved to backend.
+- Messenger destination is saved to backend.
+- Reload page and settings are still loaded from backend.
+- localStorage is not the primary source anymore.
+- If backend is down, UI shows fallback/local note.
+- No fake success.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

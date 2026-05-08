@@ -12,7 +12,12 @@ import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { Switch } from "@/components/ui/switch";
 import { useEmailSettings } from "@/hooks/use-email-settings";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
-import { useEscalationNotificationPrefs, type NotifyChannelKey } from "@/hooks/use-escalation-notification-preferences";
+import {
+  useEscalationNotificationPrefs,
+  type NotifyChannelKey,
+  type DeliveryStatus,
+} from "@/hooks/use-escalation-notification-preferences";
+import { ApiError } from "@/lib/error";
 import { useEnabledChannels, TOGGLEABLE_CHANNELS } from "@/hooks/use-enabled-channels";
 import { useAccountSettings, type AccountSettings } from "@/hooks/use-account-settings";
 import { useYourInfoUpdates, UPDATE_TYPES, type YourInfoUpdateType } from "@/hooks/use-your-info-updates";
@@ -172,6 +177,46 @@ function SavedFlash({ visible }: { visible: boolean }) {
   );
 }
 
+/**
+ * Small status pill rendered next to each escalation alert channel so the
+ * operator knows whether a saved destination is actually being delivered.
+ */
+function DeliveryBadge({ status }: { status: DeliveryStatus }) {
+  const map: Record<DeliveryStatus, { label: string; className: string }> = {
+    active: {
+      label: "Active",
+      className: "bg-[#e6f4ea] text-[#137333]",
+    },
+    saved_only: {
+      label: "Saved only",
+      className: "bg-[#f1f3f4] text-[#5f6368]",
+    },
+    provider_not_configured: {
+      label: "Provider not connected",
+      className: "bg-[#fef7e0] text-[#7a5a00]",
+    },
+    failed: {
+      label: "Failed",
+      className: "bg-[#fce8e6] text-[#a50e0e]",
+    },
+    default: {
+      label: "Default",
+      className: "bg-[#f1f3f4] text-[#5f6368]",
+    },
+  };
+  const { label, className } = map[status];
+  return (
+    <span
+      className={cn(
+        "flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
+        className,
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
 function ToggleRow({
   label,
   description,
@@ -258,7 +303,15 @@ export default function Settings() {
   // Hooks (unchanged behaviour) -------------------------
   const { emailClient, setEmailClient } = useEmailSettings();
   const { label: bookingsLabel, setLabel: setBookingsLabel } = useBookingsLabel();
-  const { prefs: notifyPrefs, save: saveNotifyPrefs } = useEscalationNotificationPrefs();
+  const {
+    prefs: notifyPrefs,
+    save: saveNotifyPrefs,
+    isLoading: notifyLoading,
+    isSaving: notifySaving,
+    source: notifySource,
+    loadError: notifyLoadError,
+    deliveryStatuses: notifyDeliveryStatuses,
+  } = useEscalationNotificationPrefs();
   const { isChannelEnabled, toggleChannel } = useEnabledChannels();
   const { settings: account, save: saveAccount } = useAccountSettings();
   const { updates, addUpdate, setActive: setUpdateActive, removeUpdate } = useYourInfoUpdates();
@@ -304,10 +357,59 @@ export default function Settings() {
   // Escalation Alerts draft -----------------------------
   const [notifyDraft, setNotifyDraft] = useState(notifyPrefs);
   const [notifySaved, setNotifySaved] = useState(false);
+  // Re-sync the draft whenever the backend-loaded prefs change (initial
+  // GET, after a successful PUT, or after a refetch). Without this the
+  // form would keep showing whatever was in localStorage even after the
+  // backend's true settings arrived.
+  useEffect(() => {
+    setNotifyDraft(notifyPrefs);
+  }, [notifyPrefs]);
   const notifyDirty = useMemo(
     () => JSON.stringify(notifyPrefs) !== JSON.stringify(notifyDraft),
     [notifyPrefs, notifyDraft],
   );
+
+  // Validate the draft: any enabled channel must have a non-empty
+  // destination, otherwise the backend would reject the save anyway.
+  const notifyValidationError = useMemo(() => {
+    const labels: Record<NotifyChannelKey, string> = {
+      whatsapp: "WhatsApp",
+      messenger: "Messenger",
+      telegram: "Telegram",
+    };
+    for (const key of Object.keys(labels) as NotifyChannelKey[]) {
+      const p = notifyDraft[key];
+      if (p.enabled && p.destination.trim().length === 0) {
+        return `Add a ${labels[key]} destination, or turn ${labels[key]} off.`;
+      }
+    }
+    return null;
+  }, [notifyDraft]);
+
+  const handleSaveNotifyPrefs = async () => {
+    if (notifyValidationError) {
+      toast.error(notifyValidationError);
+      return;
+    }
+    try {
+      await saveNotifyPrefs(notifyDraft);
+      setNotifySaved(true);
+    } catch (err) {
+      // Surface the backend message verbatim, never pretend it saved.
+      // Fallback copy is only used when the error has no usable message.
+      let msg = "Couldn't save escalation alerts. Please try again.";
+      if (err instanceof ApiError) {
+        if (err.message && err.message.trim().length > 0) {
+          msg = err.message;
+        } else {
+          msg = `Save failed (${err.status}).`;
+        }
+      } else if (err instanceof Error && err.message) {
+        msg = err.message;
+      }
+      toast.error(msg);
+    }
+  };
 
   // Labels & Preferences --------------------------------
   const [customLabel, setCustomLabel] = useState(bookingsLabel);
@@ -686,29 +788,34 @@ export default function Settings() {
                       <SavedFlash visible={notifySaved} />
                       <PrimaryButton
                         type="button"
-                        disabled={!notifyDirty}
-                        onClick={() => {
-                          saveNotifyPrefs(notifyDraft);
-                          setNotifySaved(true);
-                        }}
+                        disabled={!notifyDirty || notifySaving || notifyLoading}
+                        onClick={handleSaveNotifyPrefs}
                       >
-                        Save changes
+                        {notifySaving ? "Saving…" : "Save changes"}
                       </PrimaryButton>
                     </>
                   }
                 >
+                  {notifySource === "local" && notifyLoadError && (
+                    <div className="mb-3 rounded-lg border border-[#fde293] bg-[#fef7e0] px-3 py-2 text-[12px] text-[#5f6368]">
+                      {notifyLoadError}
+                    </div>
+                  )}
+                  {notifyValidationError && (
+                    <div className="mb-3 rounded-lg border border-[#f4c7c3] bg-[#fce8e6] px-3 py-2 text-[12px] text-[#a50e0e]">
+                      {notifyValidationError}
+                    </div>
+                  )}
                   <div className="divide-y divide-[#f1f3f4]">
                     {/* Email row — mandatory */}
                     <div className="flex items-center justify-between gap-4 py-3">
                       <div className="min-w-0">
                         <p className="text-[14px] text-[#202124]">Email</p>
                         <p className="mt-0.5 text-[12px] text-[#5f6368]">
-                          Always on · uses your default account email
+                          Always on, uses your default account email
                         </p>
                       </div>
-                      <span className="flex-shrink-0 rounded-full bg-[#f1f3f4] px-2 py-0.5 text-[11px] font-medium text-[#5f6368]">
-                        Default
-                      </span>
+                      <DeliveryBadge status={notifyDeliveryStatuses.email ?? "default"} />
                     </div>
 
                     {([
@@ -718,18 +825,27 @@ export default function Settings() {
                     ] as { key: NotifyChannelKey; label: string; placeholder: string }[]).map(
                       (row) => {
                         const pref = notifyDraft[row.key];
+                        const status = notifyDeliveryStatuses[row.key];
                         return (
                           <div key={row.key} className="py-3">
-                            <ToggleRow
-                              label={row.label}
-                              checked={pref.enabled}
-                              onChange={(v) =>
-                                setNotifyDraft({
-                                  ...notifyDraft,
-                                  [row.key]: { ...pref, enabled: v },
-                                })
-                              }
-                            />
+                            <div className="flex items-center justify-between gap-4 py-3">
+                              <div className="min-w-0">
+                                <p className="text-[14px] text-[#202124]">{row.label}</p>
+                              </div>
+                              <div className="flex flex-shrink-0 items-center gap-2">
+                                {pref.enabled && status && <DeliveryBadge status={status} />}
+                                <Switch
+                                  checked={pref.enabled}
+                                  onCheckedChange={(v) =>
+                                    setNotifyDraft({
+                                      ...notifyDraft,
+                                      [row.key]: { ...pref, enabled: v },
+                                    })
+                                  }
+                                  className="data-[state=checked]:bg-[#1a73e8] data-[state=unchecked]:bg-[#dadce0]"
+                                />
+                              </div>
+                            </div>
                             {pref.enabled && (
                               <TextInput
                                 type="text"

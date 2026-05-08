@@ -988,3 +988,99 @@ export async function setDryRun(enabled: boolean): Promise<void> {
     body: JSON.stringify({ enabled }),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Escalation alert settings
+// ---------------------------------------------------------------------------
+//
+// Backend (Python) endpoints:
+//   GET  /api/{client}/dashboard/api/settings/escalation-alerts
+//   PUT  /api/{client}/dashboard/api/settings/escalation-alerts
+//
+// Canonical response shape:
+//   { "channels": { "email": { enabled, destination, deliveryStatus? },
+//                   "whatsapp": {...}, "messenger": {...}, "telegram": {...} } }
+//
+// We also accept a flat shape `{ email: {...}, whatsapp: {...}, ... }`
+// because Jr's first cut may not nest under `channels` consistently.
+
+export type EscalationAlertChannelKey =
+  | "email"
+  | "whatsapp"
+  | "messenger"
+  | "telegram";
+
+export interface EscalationAlertChannelPref {
+  enabled: boolean;
+  destination: string;
+  /**
+   * Optional backend-supplied delivery status. Free-form so we can render
+   * any future status the backend introduces. Common values today:
+   *   "active" | "saved_only" | "provider_not_configured" | "failed"
+   *   | "default" | "skipped"
+   */
+  deliveryStatus?: string | null;
+}
+
+export interface EscalationAlertSettings {
+  channels: Partial<Record<EscalationAlertChannelKey, EscalationAlertChannelPref>>;
+}
+
+function pickChannelPref(raw: unknown): EscalationAlertChannelPref | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const enabledRaw = o.enabled;
+  const enabled =
+    typeof enabledRaw === "boolean"
+      ? enabledRaw
+      : enabledRaw === "true"
+        ? true
+        : false;
+  const destRaw = o.destination ?? o.address ?? o.value ?? "";
+  const destination = typeof destRaw === "string" ? destRaw : "";
+  const status =
+    typeof o.deliveryStatus === "string"
+      ? o.deliveryStatus
+      : typeof o.delivery_status === "string"
+        ? o.delivery_status
+        : typeof o.status === "string"
+          ? o.status
+          : null;
+  return { enabled, destination, deliveryStatus: status };
+}
+
+/**
+ * Normalize whatever the backend returned into our canonical
+ * `{ channels: { email, whatsapp, messenger, telegram } }` shape. Accepts
+ * either nested-under-`channels` or flat root-level keys.
+ */
+export function normalizeEscalationAlertSettings(raw: unknown): EscalationAlertSettings {
+  const empty: EscalationAlertSettings = { channels: {} };
+  if (!raw || typeof raw !== "object") return empty;
+  const o = raw as Record<string, unknown>;
+  const src =
+    o.channels && typeof o.channels === "object"
+      ? (o.channels as Record<string, unknown>)
+      : o;
+  const out: EscalationAlertSettings = { channels: {} };
+  for (const key of ["email", "whatsapp", "messenger", "telegram"] as EscalationAlertChannelKey[]) {
+    const pref = pickChannelPref(src[key]);
+    if (pref) out.channels[key] = pref;
+  }
+  return out;
+}
+
+export async function getEscalationAlertSettings(): Promise<EscalationAlertSettings> {
+  const raw = await apiFetch<unknown>("/settings/escalation-alerts");
+  return normalizeEscalationAlertSettings(raw);
+}
+
+export async function updateEscalationAlertSettings(
+  payload: EscalationAlertSettings,
+): Promise<EscalationAlertSettings> {
+  const raw = await apiFetch<unknown>("/settings/escalation-alerts", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+  return normalizeEscalationAlertSettings(raw);
+}
