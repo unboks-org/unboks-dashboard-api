@@ -1,0 +1,160 @@
+TASK: Fix archive persistence. Archived conversations return after refresh.
+
+PROJECT SCOPE:
+Project 2 customer dashboard only.
+Do NOT touch Project 1 public website.
+Do NOT touch pricing.
+
+Bug:
+Conversations are archived, but after browser refresh they come back into the active Escalations/Inbox list.
+
+Current behavior:
+- User archives conversation.
+- It may disappear or show archive toast.
+- After page refresh, the same conversation appears again in Active/All.
+- This means archive state is not being persisted correctly or not being applied when loading conversations.
+
+Expected behavior:
+Archived conversations must stay archived after refresh.
+
+Product rule:
+Archive is not temporary UI state.
+Archive is persistent conversation state.
+
+Required behavior:
+1. Archive a conversation.
+2. Conversation disappears from active list immediately.
+3. Refresh the browser.
+4. Conversation must still be hidden from Active/All active lists.
+5. Conversation should only appear in Archive view/filter.
+6. If a new customer message arrives later, the conversation can be restored to Active.
+
+Investigate first:
+Trace the archive implementation fully:
+- archive button handler
+- archive storage location
+- localStorage/sessionStorage if used
+- backend archive endpoint if used
+- conversation mapper
+- conversation filters
+- escalation filters
+- sidebar count calculation
+- page load / initial fetch logic
+- any demo/mock seed data resetting state
+- any fallback data overwriting archive state after refresh
+
+Likely causes to check:
+- archive state only stored in component state
+- archive state stored locally but not reloaded on page init
+- archive state stored under wrong key/id
+- conversation ID changes after refresh
+- escalation ID used for archive but conversation ID used for display
+- local archive state not applied to escalation list
+- backend returns archived conversations but frontend fails to filter them
+- demo seed data resets archived status
+- archive mutation is local-only but active list comes from backend after refresh
+
+Fix requirements:
+Use a stable persistent archive key.
+
+Important:
+Do not rely on unstable display names like customer name only.
+Use stable identifiers such as:
+- conversation_id
+- thread_key
+- phone number for WhatsApp if that is the stable conversation key
+- email thread key for email
+- backend conversation id if available
+
+If there are different channel identifiers, normalize them into one stable archive key:
+channel + ":" + stableConversationId
+
+Examples:
+- whatsapp:+5999xxxxxxx
+- email:thread_key_here
+- instagram:conversation_id_here
+
+Persistence options:
+Preferred:
+- backend-backed archive field, such as archivedAt / archivedBy / archiveReason
+- backend excludes archived conversations from active queries
+- frontend gets archived state from backend
+
+Acceptable temporary fallback if backend is not ready:
+- localStorage archive state using stable conversation keys
+- loaded on app startup
+- applied to every active inbox/escalation/channel filter
+- survives browser refresh
+- sidebar counts also use the filtered active list
+
+If using localStorage:
+- make it clear in the report that archive is local to this device only
+- use stable keys
+- do not lose archived state on refresh
+- do not let seed/demo data override it
+
+If using backend:
+- add/verify archive endpoint
+- persist archive status
+- active queries exclude archived records
+- archive filter/view includes archived records
+- archive state survives refresh and different devices
+
+Required filtering:
+Archived conversations must be excluded from:
+- Escalations “All”
+- Escalations “Agent needs help”
+- Escalations “Human takeover”
+- Inbox active list
+- WhatsApp active filter
+- Email active filter
+- sidebar active counts
+
+Archived conversations may be included only in:
+- Archive view/filter/search, if available
+
+Restore behavior:
+If a new incoming customer message arrives for an archived conversation:
+- archived state should be cleared, or conversation should be marked active again
+- conversation returns to Active
+- sidebar counts update
+
+Do not implement fake restore if there is no incoming message event available. Report backend requirement if needed.
+
+Acceptance test:
+Use the currently visible archived conversations:
+- Calvin
+- Anne-Sophie
+
+After fix:
+1. Archive Calvin.
+2. Archive Anne-Sophie.
+3. Confirm they disappear immediately.
+4. Refresh page.
+5. Confirm they do NOT return to Escalations active list.
+6. Switch filters All / Agent needs help / Human takeover.
+7. Confirm they do NOT appear in active filters.
+8. Confirm sidebar counts do not include them.
+9. If Archive view exists, confirm they appear there.
+
+Important:
+No data loss.
+Do not delete conversations.
+Do not break reply, resolve, block, delete email, or escalation detail loading.
+Do not hardcode Calvin or Anne-Sophie; use this only as a test case.
+
+Acceptance criteria:
+- Archived conversations persist after refresh.
+- Archived conversations do not reappear in active inbox/escalations.
+- Archive state uses stable conversation keys.
+- Sidebar counts exclude archived conversations after refresh.
+- Archive state does not get overwritten by demo/seed data.
+- Existing inbox/escalation/channel filters still work.
+- Build passes.
+- Report:
+  1. root cause
+  2. where archive state is stored now
+  3. whether fix is backend-backed or localStorage-backed
+  4. stable archive key format used
+  5. changed files
+  6. confirmation that Calvin/Anne-Sophie-style conversations stay archived after refresh
