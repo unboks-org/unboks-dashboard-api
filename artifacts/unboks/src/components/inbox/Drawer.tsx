@@ -42,6 +42,12 @@ interface DrawerProps {
   inboxCount: number;
   escalationsCount: number;
   channelCounts: Record<Channel, number>;
+  /**
+   * Active appointment count (confirmed + pending team confirmation +
+   * detected). Same source the Appointments page uses, so the badge and
+   * the rendered list can never disagree. 0 hides the badge.
+   */
+  appointmentsCount?: number;
 }
 
 interface NavItem {
@@ -60,6 +66,7 @@ export function Drawer({
   inboxCount,
   escalationsCount,
   channelCounts,
+  appointmentsCount = 0,
 }: DrawerProps) {
   // Close on Escape
   useEffect(() => {
@@ -95,7 +102,7 @@ export function Drawer({
   });
 
   const WORKSPACE: NavItem[] = [
-    { id: "bookings", icon: Calendar, label: bookingsLabel },
+    { id: "bookings", icon: Calendar, label: bookingsLabel, count: appointmentsCount },
     { id: "analytics", icon: BarChart2, label: "Analytics" },
     { id: "settings", icon: SettingsIcon, label: "Settings" },
   ];

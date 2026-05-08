@@ -6,6 +6,7 @@ import type { Channel, Conversation } from "@/data/conversations";
 import { useConversations, useEscalations } from "@/hooks/use-client-api";
 import { mapApiConversation, normalizeEscalation } from "@/lib/conversation-mapper";
 import { dedupeEscalations } from "@/lib/dedupe-escalations";
+import { useAppointments } from "@/hooks/use-appointments";
 import { useAuth } from "@/components/auth/useAuth";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
@@ -100,6 +101,20 @@ export function DashboardShell({
     return dedupeEscalations(active).length;
   }, [apiEscalations, hasEscData]);
 
+  // Appointments sidebar count must use the same merged + de-duplicated
+  // list the Appointments page renders, so the badge can never disagree
+  // with the visible rows. `useAppointments` already merges backend rows
+  // with detected ones and dedups by `${conversationId}|${dateTimeLabel}`
+  // (backend wins). All current statuses (`confirmed`, `pending`,
+  // `detected`) are active and visible on the page, so the count is
+  // simply the array length. If a `cancelled` / `completed` status is
+  // ever added, exclude it here so the count still matches the page.
+  const { appointments } = useAppointments();
+  const appointmentsCount = useMemo(
+    () => appointments.filter((a) => a.status !== ("cancelled" as typeof a.status) && a.status !== ("completed" as typeof a.status)).length,
+    [appointments],
+  );
+
   const handleNavSelect = useCallback(
     (id: NavId) => {
       // Always close the mobile drawer first — independent of routing.
@@ -151,6 +166,7 @@ export function DashboardShell({
         inboxCount={inboxCount}
         escalationsCount={escalationsCount}
         channelCounts={channelCounts}
+        appointmentsCount={appointmentsCount}
       />
 
       <div className="flex flex-col flex-1 min-w-0 mx-auto max-w-[480px] sm:max-w-[560px] sm:shadow-xl md:max-w-none md:mx-0 md:shadow-none relative">
