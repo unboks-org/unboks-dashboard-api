@@ -46,6 +46,16 @@ interface EscalationReasonPanelProps {
   aiMuted?: boolean;
   messages?: ApiMessage[];
   customerName?: string | null;
+  /**
+   * Backend-supplied recommended options. If present and non-empty,
+   * EVERY entry is rendered as its own chip in order — no slicing.
+   */
+  recommendedOptions?: string[] | null;
+  /**
+   * Backend-supplied scheduling slots. Each entry becomes its own
+   * "Confirm <time>" chip; multiple times are never collapsed into one.
+   */
+  proposedTimes?: string[] | null;
 }
 
 export function EscalationReasonPanel({
@@ -55,6 +65,8 @@ export function EscalationReasonPanel({
   aiMuted = false,
   messages,
   customerName,
+  recommendedOptions,
+  proposedTimes,
 }: EscalationReasonPanelProps) {
   const isSoft = mode === "soft";
   const briefing = buildEscalationBriefing({
@@ -63,6 +75,8 @@ export function EscalationReasonPanel({
     reason,
     messages,
     customerName,
+    recommendedOptions,
+    proposedTimes,
   });
 
   return (

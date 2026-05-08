@@ -1,0 +1,181 @@
+Project 2 dashboard frontend — add combined Send + Mark resolved escalation action.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python backend assumptions.
+- Work only on escalation reply composer frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch sidebar.
+- Do not commit.
+- Do not publish until reviewed.
+
+Issue:
+Escalation composer currently has separate actions:
+- Send to Marina
+- Mark resolved
+
+This is not ideal UX.
+
+In many cases, the operator wants to send guidance/reply and resolve the escalation at the same time.
+
+Task:
+Add a premium combined action button similar to Gmail-style send controls.
+
+Required behavior:
+1. Add a primary combined button:
+   - Soft mode: “Send + resolve”
+   - Hard mode: “Reply + resolve”
+2. This button should:
+   - send the message/guidance
+   - then mark the escalation resolved
+3. Keep a secondary option for sending without resolving.
+4. Keep a secondary option for marking resolved without sending.
+5. Do not remove existing functionality.
+6. Do not silently fail.
+7. Do not pretend resolved if either action fails.
+
+Soft escalation behavior:
+Primary combined action:
+“Send + resolve”
+
+Flow:
+1. Send guidance to Marina using existing soft endpoint.
+2. If send succeeds, call resolve endpoint.
+3. Show success only if both succeed.
+
+Secondary actions:
+- “Send to Marina”
+- “Mark resolved”
+
+Hard escalation behavior:
+Primary combined action:
+“Reply + resolve”
+
+Flow:
+1. Send direct reply to customer using existing hard endpoint.
+2. If send succeeds, call resolve endpoint.
+3. Show success only if both succeed.
+
+Secondary actions:
+- “Reply to customer”
+- “Mark resolved”
+
+Design:
+Use a premium blue pill-style button inspired by Gmail send action.
+
+Preferred layout:
+Primary button:
+[ Send + resolve ]
+
+Secondary actions nearby:
+Send only
+Mark resolved
+
+or:
+Primary:
+[Send + resolve]
+Small secondary text/buttons:
+Send only · Mark resolved
+
+Visual requirements:
+- Primary button should be blue.
+- Rounded pill.
+- Clear icon if available:
+  - send icon
+  - check icon
+  - archive/check style icon
+- Not too large.
+- Looks premium and operational.
+- Disabled state when composer is empty.
+- Loading state:
+  “Sending…”
+  or:
+  “Resolving…”
+- Works on mobile.
+
+Important:
+The button must not be enabled if the textarea is empty.
+Unless the action is only Mark resolved.
+
+Error behavior:
+If send fails:
+- Do not call resolve.
+- Show:
+  “Could not send. Escalation was not resolved.”
+
+If send succeeds but resolve fails:
+- Show:
+  “Message sent, but escalation was not marked resolved.”
+- Do not lie.
+
+If backend endpoint missing:
+- Keep current placeholder behavior.
+- Do not fake success.
+
+Backend endpoints already expected:
+Soft send:
+POST /api/{client}/dashboard/api/escalations/{id}/guidance
+
+Hard send:
+POST /api/{client}/dashboard/api/escalations/{id}/reply
+
+Resolve:
+POST /api/{client}/dashboard/api/escalations/{id}/resolve
+
+Resolve body may include:
+{
+  "resolutionNote": "Resolved after operator reply.",
+  "saveAsLearning": true,
+  "autoUseNextTime": true,
+  "category": "escalation_reply"
+}
+
+Product rule:
+Every operator answer in soft or hard escalation is approved learning.
+So when using Send + resolve, pass resolve fields if supported:
+- saveAsLearning: true
+- autoUseNextTime: true
+
+Do not break:
+- AI Editor only in hard mode
+- soft mode Reply to Marina
+- hard mode Reply to customer
+- mode switch
+- option chips
+- translation
+- conversation trail
+- escalation reason panel
+
+Likely files:
+- artifacts/unboks/src/components/inbox/EscalationReplyComposer.tsx
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/lib/api.ts
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Tasks.tsx
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Soft escalation composer shows primary “Send + resolve”.
+- Hard escalation composer shows primary “Reply + resolve”.
+- Primary button disabled when draft is empty.
+- Clicking Send + resolve sends first, then resolves.
+- If send fails, resolve is not called.
+- If resolve fails after send, UI shows partial-success warning.
+- Send-only still exists.
+- Mark-resolved-only still exists.
+- Mobile layout works.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

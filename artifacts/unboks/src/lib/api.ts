@@ -101,6 +101,21 @@ export interface ConversationDetail {
   humanTakeoverAt?: string | null;
   aiMuted?: boolean;
   learningStatus?: LearningStatus;
+  /**
+   * Backend-supplied recommended options for the operator. When present,
+   * EVERY entry must be rendered as its own chip in the briefing panel,
+   * in order, with no slicing and no collapsing of duplicates.
+   */
+  recommendedOptions?: string[] | null;
+  /**
+   * Structured details extracted from the conversation by the backend.
+   * `proposedTimes` is the canonical source for scheduling chips: each
+   * entry becomes its own "Confirm <time>" option. Multiple times must
+   * never be collapsed into a single generic chip.
+   */
+  extractedDetails?: {
+    proposedTimes?: string[] | null;
+  } | null;
 }
 
 export interface Escalation {
@@ -422,7 +437,60 @@ export async function fetchConversation(phone: string): Promise<ConversationDeta
         ? (env.ai_muted as boolean)
         : undefined,
     learningStatus: (pickStr(env, "learningStatus", "learning_status") ?? undefined) as ConversationDetail["learningStatus"],
+    recommendedOptions: pickStringArray(
+      env,
+      "recommendedOptions",
+      "recommended_options",
+    ),
+    extractedDetails: pickExtractedDetails(env),
   };
+}
+
+/**
+ * Read a string array from the response envelope under any of the given
+ * keys. Returns null if no key holds an array of strings, otherwise an
+ * array containing every non-empty string entry in original order. We
+ * NEVER slice this list — every recommended option must reach the UI
+ * so the operator sees all backend recommendations as chips.
+ */
+function pickStringArray(
+  o: Record<string, unknown>,
+  ...keys: string[]
+): string[] | null {
+  for (const k of keys) {
+    const v = o[k];
+    if (Array.isArray(v)) {
+      const cleaned = v
+        .filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+        .map((x) => x.trim());
+      if (cleaned.length > 0) return cleaned;
+    }
+  }
+  return null;
+}
+
+/**
+ * Read structured `extractedDetails` (camelCase or snake_case) and pull
+ * out `proposedTimes` (camelCase or snake_case) as a string array. The
+ * full list is preserved — multiple proposed times are never collapsed
+ * here, since the briefing builder turns each entry into its own chip.
+ */
+function pickExtractedDetails(
+  o: Record<string, unknown>,
+): { proposedTimes?: string[] | null } | null {
+  const raw =
+    (o["extractedDetails"] as unknown) ??
+    (o["extracted_details"] as unknown) ??
+    null;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const inner = raw as Record<string, unknown>;
+  const proposedTimes = pickStringArray(
+    inner,
+    "proposedTimes",
+    "proposed_times",
+  );
+  if (!proposedTimes) return null;
+  return { proposedTimes };
 }
 
 export async function deleteConversation(phone: string): Promise<void> {

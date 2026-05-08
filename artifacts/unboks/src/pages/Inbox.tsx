@@ -450,6 +450,8 @@ function ConversationDetailPane({
             aiMuted={detail?.aiMuted}
             messages={messages}
             customerName={conversation.sender}
+            recommendedOptions={detail?.recommendedOptions}
+            proposedTimes={detail?.extractedDetails?.proposedTimes}
           />
 
           {dbId && (

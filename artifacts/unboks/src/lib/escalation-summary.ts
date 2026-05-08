@@ -48,6 +48,20 @@ interface BuildArgs {
   reason?: string | null;
   messages?: ApiMessage[];
   customerName?: string | null;
+  /**
+   * Backend-supplied recommended options. When provided non-empty, EVERY
+   * entry MUST be rendered as its own chip in order — no slicing, no
+   * collapsing. Local heuristic chips are skipped in this case so the
+   * backend stays the source of truth.
+   */
+  recommendedOptions?: string[] | null;
+  /**
+   * Backend-extracted scheduling slots, e.g. ["Thursday at 09:00",
+   * "Thursday at 12:00"]. Each entry becomes its own "Confirm <time>"
+   * option chip. Multiple times are NEVER collapsed into a single chip,
+   * and the second/third/etc. entry is NEVER dropped.
+   */
+  proposedTimes?: string[] | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -204,7 +218,48 @@ export function extractTimeSlots(text: string): TimeSlot[] {
     const connector = /^[A-Z]/.test(day) ? " at " : " ";
     const pretty = `${day}${connector}${time}`;
     out.push({ day, time, pretty });
-    if (out.length >= 4) break; // hard cap so chips never explode
+    if (out.length >= 8) break; // safety cap so a noisy thread can't explode chips
+  }
+  return out;
+}
+
+/**
+ * Parse a backend `proposedTimes` entry into a TimeSlot. Backend strings
+ * arrive in many shapes ("Thursday at 09:00", "tomorrow 3 pm", "Mon
+ * 14:30", an ISO timestamp, ...). We try the slot regex first; if that
+ * fails, fall back to a TimeSlot whose `pretty` is just the trimmed
+ * original string so the chip still appears verbatim — never dropped.
+ */
+function parseProposedTime(raw: string): TimeSlot {
+  const trimmed = raw.trim();
+  if (trimmed) {
+    SLOT_RE.lastIndex = 0;
+    const m = SLOT_RE.exec(trimmed);
+    if (m) {
+      const dayKey = m[1].toLowerCase();
+      const day = DAY_TOKENS[dayKey] ?? m[1];
+      const time = normalizeTime(m[2]);
+      const connector = /^[A-Z]/.test(day) ? " at " : " ";
+      return { day, time, pretty: `${day}${connector}${time}` };
+    }
+  }
+  return { day: "", time: "", pretty: trimmed || raw };
+}
+
+/**
+ * Materialise backend-supplied proposedTimes into TimeSlot[] preserving
+ * order and EVERY entry. No dedupe, no slicing — the spec requires that
+ * each backend-supplied time produces its own chip, even if two entries
+ * happen to normalise to the same pretty text. Empty/non-string entries
+ * are the only ones skipped.
+ */
+function slotsFromProposed(times: string[]): TimeSlot[] {
+  const out: TimeSlot[] = [];
+  for (const t of times) {
+    if (typeof t !== "string") continue;
+    const slot = parseProposedTime(t);
+    if (!slot.pretty) continue;
+    out.push(slot);
   }
   return out;
 }
@@ -499,6 +554,8 @@ export function buildEscalationBriefing({
   reason,
   messages = [],
   customerName,
+  recommendedOptions,
+  proposedTimes,
 }: BuildArgs): EscalationBriefing {
   const name = firstName(customerName);
   const trimmedSummary = summary?.trim() ?? "";
@@ -519,8 +576,22 @@ export function buildEscalationBriefing({
 
   const hasMessageData = corpus.length > 0;
   const topics = hasMessageData ? detectTopics(corpus) : new Set<Topic>();
-  const slots = hasMessageData ? extractTimeSlots(corpus) : [];
-  const hasTimeHint = hasMessageData && TIME_HINT.test(corpus);
+  // Slot priority: backend-supplied proposedTimes WIN over local heuristic
+  // extraction. Each backend entry must surface as its own chip with no
+  // collapsing and no dropping of the second/third time, so we hand the
+  // raw list straight to slotsFromProposed (order preserved, no cap).
+  const backendSlots =
+    Array.isArray(proposedTimes) && proposedTimes.length > 0
+      ? slotsFromProposed(proposedTimes)
+      : [];
+  const localSlots = hasMessageData ? extractTimeSlots(corpus) : [];
+  const slots = backendSlots.length > 0 ? backendSlots : localSlots;
+  // If we have backend slots, treat the meeting/scheduling topic as
+  // active even when message heuristics didn't flag it — the backend has
+  // already done the classifying.
+  if (backendSlots.length > 0) topics.add("meeting");
+  const hasTimeHint =
+    backendSlots.length > 0 || (hasMessageData && TIME_HINT.test(corpus));
   const hasWeekHint = hasMessageData && WEEK_HINT.test(corpus);
 
   // Reason: backend-supplied summary wins; otherwise our heuristic; only
@@ -549,7 +620,22 @@ export function buildEscalationBriefing({
       ? "Send a direct reply, request more information, or hand back to Marina."
       : "Tell Marina what to answer, ask her to collect more details, or take over yourself.";
 
-  const options = optionsList(mode, topics, slots);
+  // Options precedence:
+  //  1. Backend-supplied `recommendedOptions` — render EVERY entry as a
+  //     chip, in order, with no slicing and no collapsing. The backend
+  //     is authoritative when it speaks.
+  //  2. Otherwise, derive chips from topics + slots (local heuristic).
+  //     When `proposedTimes` was supplied, each entry already became its
+  //     own "Confirm <time>" chip via the slots pipeline above.
+  const cleanedRecommended = Array.isArray(recommendedOptions)
+    ? recommendedOptions
+        .filter((o): o is string => typeof o === "string" && o.trim().length > 0)
+        .map((o) => o.trim())
+    : [];
+  const options =
+    cleanedRecommended.length > 0
+      ? cleanedRecommended
+      : optionsList(mode, topics, slots);
 
   // Append the backend `reason` when it's truly distinct extra signal.
   if (
