@@ -1,0 +1,254 @@
+Project 2 dashboard frontend — expand Your AI Knowledge into upload + cloud knowledge hub.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python backend assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Inbox.
+- Do not touch Tasks.
+- Do not touch sidebar unless absolutely required.
+- Do not commit.
+- Do not publish until reviewed.
+
+Product requirement:
+Settings currently has a section called “Your AI knowledge”.
+
+This section must become the customer-facing knowledge hub for everything the AI can use when replying to customers.
+
+The customer must be able to:
+1. Add manual knowledge updates.
+2. Upload documents and images.
+3. Connect cloud storage sources like Google Drive and OneDrive.
+
+This is the customer-facing version of Source of Truth.
+Do not call it “SOT” in the UI.
+Use “Your AI knowledge”.
+
+Goal:
+Make it clear that this is where the customer gives the AI business knowledge.
+
+Section title:
+Your AI knowledge
+
+Subtitle:
+What your AI already knows about your business.
+
+Better expanded description:
+Add business information, files, policies, offers, and cloud folders your AI can use when answering customers.
+
+Required layout:
+Inside “Your AI knowledge”, create a premium knowledge hub with 3 main cards/areas:
+
+1. Add update
+Purpose:
+Quickly add text information the AI should know.
+
+Examples:
+- “We are closed on Christmas Day.”
+- “Valentine’s Day offer: 10% discount.”
+- “We are fully booked this Saturday.”
+- “For pricing questions, ask for number of channels first.”
+
+UI:
+- Textarea
+- Category selector:
+  General
+  Offer
+  Holiday
+  Hours
+  Pricing
+  Policy
+  Other
+- Optional active dates:
+  Start date
+  End date
+- Save button
+
+This should connect to the existing Your Info Updates logic if already present.
+
+2. Upload knowledge files
+Purpose:
+Upload files the AI can use as knowledge.
+
+Supported file types in UI:
+- PDF
+- DOC / DOCX
+- TXT
+- CSV
+- XLS / XLSX
+- PNG
+- JPG / JPEG
+- WebP
+
+UI:
+- Upload area / drag and drop zone
+- Button: Upload files
+- Helper:
+  Upload documents, menus, price lists, FAQs, screenshots, and policies.
+- Show file list:
+  filename
+  type
+  upload date
+  status
+  remove button
+
+Statuses:
+- Pending
+- Processing
+- Ready
+- Failed
+
+Important:
+If backend upload is not connected yet, show calm placeholder:
+“File upload will be connected by the Unboks team.”
+Do not pretend the file is available to the AI if backend did not confirm.
+
+3. Connect cloud storage
+Purpose:
+Connect external cloud folders where business knowledge lives.
+
+Cloud providers:
+- Google Drive
+- OneDrive
+- Dropbox
+- SharePoint
+- Box
+
+UI:
+Show provider cards/buttons:
+- Google Drive
+- OneDrive
+- Dropbox
+- SharePoint
+- Box
+
+Each provider should show:
+- Connect button if not connected
+- Connected state if connected
+- Choose folder button if connected
+- Sync status
+- Last synced date if available
+
+Helper copy:
+Connect folders with documents, price lists, FAQs, menus, and policies your AI should use.
+
+If backend is not connected:
+Clicking Connect should show:
+“Cloud connections will be connected by the Unboks team.”
+
+Do not fake connection success.
+
+Design requirements:
+- Premium SaaS settings design.
+- Clear cards.
+- Good spacing.
+- Not too technical.
+- No mention of backend/API to the customer.
+- No “will be connected by the Unboks team” unless user clicks a feature that is not wired yet.
+- Main page should not look cluttered.
+- Cloud provider cards should be compact.
+- Mobile must work.
+- No horizontal overflow.
+
+Important product copy:
+Use:
+“Your AI knowledge”
+“Add knowledge”
+“Upload knowledge files”
+“Connect cloud storage”
+“Your AI can use this information when replying to customers.”
+
+Do not use:
+“SOT”
+“Source of Truth”
+“RAG”
+“vector database”
+“backend”
+“API”
+“embedding”
+“not connected”
+
+Backend/API expected later:
+Frontend should be structured so Jr can connect these endpoints:
+
+GET /api/{client}/dashboard/api/settings/your-info
+PUT /api/{client}/dashboard/api/settings/your-info
+
+GET /api/{client}/dashboard/api/info-updates
+POST /api/{client}/dashboard/api/info-updates
+PUT /api/{client}/dashboard/api/info-updates/{id}
+DELETE /api/{client}/dashboard/api/info-updates/{id}
+
+POST /api/{client}/dashboard/api/knowledge/files
+GET /api/{client}/dashboard/api/knowledge/files
+DELETE /api/{client}/dashboard/api/knowledge/files/{id}
+
+GET /api/{client}/dashboard/api/knowledge/cloud-connections
+POST /api/{client}/dashboard/api/knowledge/cloud-connections/{provider}/connect
+POST /api/{client}/dashboard/api/knowledge/cloud-connections/{provider}/sync
+DELETE /api/{client}/dashboard/api/knowledge/cloud-connections/{provider}
+
+Do not implement backend.
+Just create clean frontend structure and placeholder API client methods where appropriate.
+
+Data shapes:
+
+Knowledge file:
+{
+  "id": "string",
+  "filename": "menu.pdf",
+  "mimeType": "application/pdf",
+  "sizeBytes": 123456,
+  "status": "pending | processing | ready | failed",
+  "uploadedAt": "ISO timestamp",
+  "lastUsedAt": "optional ISO timestamp"
+}
+
+Cloud connection:
+{
+  "provider": "google_drive | onedrive | dropbox | sharepoint | box",
+  "connected": true,
+  "folderName": "Business Docs",
+  "lastSyncedAt": "ISO timestamp",
+  "status": "connected | needs_reconnect | syncing | failed"
+}
+
+Likely files:
+- artifacts/unboks/src/pages/Settings.tsx
+- artifacts/unboks/src/lib/api.ts
+Possibly create:
+- artifacts/unboks/src/components/settings/YourAIKnowledgePanel.tsx
+- artifacts/unboks/src/components/settings/KnowledgeFileUploader.tsx
+- artifacts/unboks/src/components/settings/CloudKnowledgeConnections.tsx
+- artifacts/unboks/src/hooks/use-knowledge-files.ts
+- artifacts/unboks/src/hooks/use-cloud-knowledge-connections.ts
+
+Do not touch:
+- artifacts/api-server
+- Inbox.tsx
+- Tasks.tsx
+- DashboardShell unless required
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- “Your AI knowledge” section includes:
+  - Add update
+  - Upload knowledge files
+  - Connect cloud storage
+- Upload UI supports documents and images in the UI.
+- Cloud provider cards exist for Google Drive, OneDrive, Dropbox, SharePoint, Box.
+- UI does not claim files/cloud are active unless backend confirms.
+- Existing Your Info Updates still work.
+- Existing business identity/settings still work.
+- Mobile layout clean.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.
