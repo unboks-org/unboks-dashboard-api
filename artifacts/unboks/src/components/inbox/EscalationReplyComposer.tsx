@@ -500,7 +500,15 @@ export const EscalationReplyComposer = forwardRef<
   const sendLabel = isSoft ? "Send to Agent" : "Reply to customer";
 
   return (
-    <div className="border-t border-[#e8eaed] bg-white px-4 py-2.5 space-y-2 flex-shrink-0">
+    <div
+      className="border-t border-[#e8eaed] bg-white px-3 sm:px-4 pt-2.5 space-y-2 flex-shrink-0"
+      style={{
+        // iOS Safari safe-area: keep the action row above the browser
+        // chrome / home indicator. Falls back to a comfortable 14px on
+        // platforms without safe-area-inset support.
+        paddingBottom: "max(0.875rem, env(safe-area-inset-bottom))",
+      }}
+    >
       {/* Compact heading. The mode/status indicator already lives in the
           Decision Needed card above and in the conversation header, so we
           deliberately do NOT repeat "Soft escalation" / "Agent needs help"
@@ -611,8 +619,36 @@ export const EscalationReplyComposer = forwardRef<
        * Takeover / handback stays on the right, untouched, so operators
        * don't have to re-learn its position.
        */}
+      {/* Mobile-only takeover/handback link, placed ABOVE the action
+          buttons so it never sits next to the browser chrome where it
+          could be mis-tapped. On sm+ the link stays in its original
+          position to the right of the button row (below). */}
+      {isSoft ? (
+        <div className="sm:hidden pt-1">
+          <button
+            type="button"
+            onClick={onTakeover}
+            disabled={takeover.isPending || combinedPending}
+            className="text-[13px] font-medium text-[#c5221f] hover:underline disabled:opacity-50 disabled:no-underline"
+          >
+            Switch to human takeover
+          </button>
+        </div>
+      ) : (
+        <div className="sm:hidden pt-1">
+          <button
+            type="button"
+            onClick={onHandback}
+            disabled={handback.isPending || combinedPending}
+            className="text-[13px] font-medium text-[#1a73e8] hover:underline disabled:opacity-50 disabled:no-underline"
+          >
+            Hand back to Agent
+          </button>
+        </div>
+      )}
+
       <div
-        className="flex flex-wrap items-center gap-2 pt-0.5"
+        className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2 pt-0.5"
         role="group"
         aria-label={isSoft ? "Escalation guidance actions" : "Escalation reply actions"}
       >
@@ -632,7 +668,7 @@ export const EscalationReplyComposer = forwardRef<
               : "Reply to the customer without resolving."
           }
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13px] font-medium",
+            "inline-flex items-center justify-center gap-1.5 rounded-full border px-3.5 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-[13px] font-medium",
             "border-[#dadce0] bg-white text-[#3c4043]",
             "hover:bg-[#f8f9fa] hover:border-[#bdc1c6] active:bg-[#f1f3f4]",
             "transition-colors shadow-sm",
@@ -652,7 +688,7 @@ export const EscalationReplyComposer = forwardRef<
           aria-label="Mark this escalation resolved without sending anything"
           title="Mark this escalation resolved without sending anything."
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13px] font-medium",
+            "inline-flex items-center justify-center gap-1.5 rounded-full border px-3.5 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-[13px] font-medium",
             "border-[#dadce0] bg-white text-[#3c4043]",
             "hover:bg-[#f8f9fa] hover:border-[#bdc1c6] active:bg-[#f1f3f4]",
             "transition-colors shadow-sm",
@@ -664,7 +700,10 @@ export const EscalationReplyComposer = forwardRef<
           {resolve.isPending && !combinedPending ? "Resolving..." : "Resolve"}
         </button>
 
-        {/* 3) Send & Resolve — premium combined action */}
+        {/* 3) Send & Resolve — premium combined action.
+            On mobile this spans both grid columns so it sits as a
+            full-width row beneath Send + Resolve, matching the spec's
+            preferred 2-row mobile layout. */}
         <button
           type="button"
           onClick={onSendAndResolve}
@@ -680,11 +719,11 @@ export const EscalationReplyComposer = forwardRef<
               : "Reply directly to the customer and mark this escalation resolved."
           }
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-medium text-white",
+            "col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-1.5 rounded-full px-3.5 py-2 sm:py-1.5 min-h-[44px] sm:min-h-0 text-[13.5px] sm:text-[13px] font-semibold sm:font-medium text-white",
             "shadow-sm transition-colors",
             "bg-[#1a73e8] hover:bg-[#1765cc] active:bg-[#185abc]",
             "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-1",
-            "disabled:bg-[#dadce0] disabled:text-white disabled:shadow-none disabled:cursor-not-allowed",
+            "disabled:bg-[#c4c8cf] disabled:text-white disabled:shadow-none disabled:cursor-not-allowed",
           )}
         >
           {combinedStep === "sending" ? (
@@ -706,12 +745,14 @@ export const EscalationReplyComposer = forwardRef<
           )}
         </button>
 
+        {/* Desktop-only takeover/handback link — mobile renders it
+            above the button group instead. */}
         {isSoft ? (
           <button
             type="button"
             onClick={onTakeover}
             disabled={takeover.isPending || combinedPending}
-            className="ml-auto text-[12px] text-[#c5221f] hover:underline disabled:opacity-50 disabled:no-underline"
+            className="hidden sm:inline ml-auto text-[12px] text-[#c5221f] hover:underline disabled:opacity-50 disabled:no-underline"
           >
             Switch to human takeover
           </button>
@@ -720,7 +761,7 @@ export const EscalationReplyComposer = forwardRef<
             type="button"
             onClick={onHandback}
             disabled={handback.isPending || combinedPending}
-            className="ml-auto text-[12px] text-[#1a73e8] hover:underline disabled:opacity-50 disabled:no-underline"
+            className="hidden sm:inline ml-auto text-[12px] text-[#1a73e8] hover:underline disabled:opacity-50 disabled:no-underline"
           >
             Hand back to Agent
           </button>

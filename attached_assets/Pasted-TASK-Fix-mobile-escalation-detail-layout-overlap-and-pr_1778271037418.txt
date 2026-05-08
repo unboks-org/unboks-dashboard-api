@@ -1,0 +1,296 @@
+TASK: Fix mobile escalation detail layout overlap and premium clarity.
+
+PROJECT SCOPE:
+Project 2 customer dashboard only.
+Do NOT touch Project 1 public website.
+Do NOT touch pricing.
+Do NOT touch backend/API/data logic.
+Do NOT change product logic.
+This is VISUAL + RESPONSIVE UX only.
+
+MANDATORY:
+Use Refero before changing the UI.
+Use Refero to inspect premium mobile support/inbox/operator interfaces and apply best mobile layout patterns.
+This screen must look premium, clear, and usable on a phone.
+
+CURRENT BUG / PROBLEM:
+The mobile escalation detail screen looks bad:
+- Boxes overlap visually.
+- Header/status area is cramped.
+- Customer name is cut off badly.
+- WhatsApp badge overlaps the status pills.
+- Status pills take too much horizontal space.
+- Decision card feels too large and heavy.
+- Action buttons do not align cleanly.
+- “Resolve” inside the decision card floats awkwardly on the right.
+- Composer and footer action buttons feel disconnected.
+- Bottom browser bar cuts into the UI / bottom spacing feels unsafe.
+- Overall screen looks crowded, not premium, and not clear.
+
+IMPORTANT:
+Do not change what the buttons do.
+Do not change escalation logic.
+Do not change send/resolve/takeover behavior.
+Only improve the mobile layout, spacing, visual hierarchy, and responsive behavior.
+
+TARGET:
+On mobile, the escalation detail view should be clean, readable, and calm.
+
+The operator should immediately understand:
+1. Who the customer is
+2. What channel they came from
+3. What status the conversation is in
+4. What decision is needed
+5. Where to write guidance
+6. Which action button to press
+
+PHASE 1 — AUDIT THIS SCREEN FIRST
+
+Test the escalation detail screen at:
+- 320px
+- 375px
+- 390px
+- 414px
+- 430px
+
+Audit:
+- header layout
+- customer name truncation
+- channel badge placement
+- status pills
+- archive icon
+- decision card spacing
+- action buttons inside decision card
+- composer
+- footer action buttons
+- bottom safe-area spacing
+- horizontal overflow
+- text readability
+
+Report confirmed visual problems before/while fixing.
+
+PHASE 2 — REQUIRED MOBILE LAYOUT FIXES
+
+1. Mobile conversation header
+
+Current header is cramped and overlapping.
+
+Required mobile layout:
+- Use a clean stacked header.
+- Row 1:
+  - back arrow
+  - customer name, readable and truncated only if needed
+  - archive icon or menu icon aligned right
+- Row 2:
+  - channel badge, e.g. WhatsApp
+  - status indicator(s)
+
+Do not place the WhatsApp badge underneath or inside the customer name where it overlaps.
+Do not force all badges into one crowded horizontal row.
+
+Status pills:
+- Keep one primary status visible: “Agent needs help”
+- Human takeover should be secondary and may wrap to next line if needed.
+- Pills must not overlap.
+- Pills must not squeeze the name.
+- On narrow screens, status pills should wrap naturally or become compact.
+
+2. Decision card
+
+Current card is too bulky and feels like a box inside a box.
+
+Required:
+- Keep title: “Decision needed”
+- Make card spacing tighter but readable.
+- Section labels should be readable and not too pale.
+- Body text should have comfortable line-height.
+- Card should not look oversized.
+- No visual overlap with header.
+- Use subtle border and soft background.
+
+Suggested mobile structure:
+Decision needed
+
+What happened
+[summary]
+
+Customer wants
+[summary]
+
+Suggested next step
+[summary]
+
+Actions:
+[Guide Agent]
+[Ask for more details]
+[Take over]
+[Resolve]
+
+3. Decision action buttons
+
+Current buttons are awkward, and Resolve floats separately.
+
+Required:
+- Put all decision actions in a clean button grid/wrap.
+- Do not let Resolve float alone on the far right.
+- Use consistent button sizes.
+- On mobile, use 2-column wrap or stacked layout depending on width.
+- Buttons should be easy to tap.
+- Minimum height around 40–44px where practical.
+
+Preferred mobile order:
+1. Guide Agent
+2. Ask for more details
+3. Take over
+4. Resolve
+
+Visual hierarchy:
+- Guide Agent = primary soft accent
+- Ask for more details = secondary
+- Take over = secondary
+- Resolve = secondary/quiet, but still a real button
+
+4. Composer section
+
+Current composer is okay but needs better spacing and connection.
+
+Required:
+- Keep title: “Guide your Agent”
+- Keep helper text: “Write what the Agent should say or do next.”
+- Textarea must be readable and not too tall on mobile.
+- Placeholder text must be readable but not overpowering.
+- Give composer enough bottom margin so browser bottom bar does not block footer actions.
+
+5. Footer action buttons
+
+Current bottom action row is cramped and not premium.
+
+Required button order:
+1. Send
+2. Resolve
+3. Send & Resolve
+
+Labels exactly:
+- Send
+- Resolve
+- Send & Resolve
+
+Mobile layout:
+- Buttons must not overlap or squeeze.
+- If three buttons do not fit cleanly, use a 2-row layout:
+  Row 1: Send + Resolve
+  Row 2: Send & Resolve full width
+- Or use stacked full-width buttons if that looks better at 320px.
+- Maintain clear disabled states.
+- No ugly grey pills.
+- Disabled buttons should still be readable.
+- Send & Resolve should be visually strongest when enabled.
+
+6. Human takeover link
+
+Current “Switch to human takeover” is awkward near browser bottom.
+
+Required:
+- Place it above the footer actions or as a clean secondary option in the composer area.
+- Do not let it sit too close to the mobile browser bar.
+- Make it visually intentional.
+- Keep red/danger color if appropriate, but make it premium and readable.
+
+7. Bottom safe area
+
+Important for iPhone/Safari:
+- Add mobile bottom padding / safe-area support so action buttons are not blocked by browser UI.
+- Use env(safe-area-inset-bottom) where appropriate.
+- Ensure the last action is reachable without being covered.
+
+8. Global mobile spacing
+
+Required:
+- No horizontal overflow.
+- No clipped buttons.
+- No overlapping badges.
+- No stacked boxes visually colliding.
+- Consistent 16px-ish side padding on mobile.
+- Cards should align cleanly.
+- Text should remain readable.
+
+PHASE 3 — VISUAL DIRECTION
+
+Make it feel:
+- premium
+- calm
+- functional
+- high-contrast
+- operator-friendly
+- like a serious support tool
+
+Use:
+- clean white/off-white background
+- subtle borders
+- deep navy/charcoal text
+- stronger readable secondary text
+- one accent color
+- soft card radius
+- clean action hierarchy
+
+Avoid:
+- overlapping chips
+- cramped badges
+- floating random text links
+- pale grey labels
+- huge empty boxes
+- heavy shadows
+- neon colors
+- pure black-heavy styling
+- cheap mobile web-app look
+
+PHASE 4 — STRICT LIMITS
+
+Allowed:
+- CSS/Tailwind class changes
+- responsive layout changes
+- mobile-only restructuring
+- spacing/padding/margin changes
+- typography/contrast improvements
+- button visual improvements
+- moving existing UI elements visually
+- wrapping/stacking existing buttons differently on mobile
+
+Not allowed:
+- backend/API changes
+- data model changes
+- changing action handlers
+- changing escalation state logic
+- changing send/resolve behavior
+- removing existing actions
+- inventing new backend data
+- changing product rules
+
+ACCEPTANCE CRITERIA:
+- No overlapping boxes/badges/buttons on mobile.
+- Customer header is readable.
+- WhatsApp badge no longer overlaps.
+- Status pills wrap cleanly or are compact.
+- Decision card is clear and premium.
+- Decision actions are clean buttons, not awkward floating chips.
+- Resolve does not float alone awkwardly.
+- Composer is readable and usable.
+- Footer buttons are ordered: Send, Resolve, Send & Resolve.
+- Footer buttons do not overlap or get blocked by browser UI.
+- Bottom safe-area spacing works on iPhone/mobile Safari.
+- Text contrast is strong.
+- Works at 320px, 375px, 390px, 414px, and 430px.
+- Desktop layout is not damaged.
+- Existing actions still work.
+- No backend/API/business logic changed.
+- Build passes.
+
+REPORT BACK:
+1. Refero references/patterns used.
+2. Files changed.
+3. What caused the overlap/cramped layout.
+4. Exact mobile layout changes made.
+5. How the header now behaves on narrow screens.
+6. How the action buttons wrap/stack on mobile.
+7. Confirmation no backend/API/data logic changed.
+8. Mobile viewport test notes for 320/375/390/414/430px.

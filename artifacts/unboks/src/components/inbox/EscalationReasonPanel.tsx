@@ -102,10 +102,10 @@ export function EscalationReasonPanel({
   return (
     <section
       aria-label="Decision needed"
-      className="border-b border-[#e8eaed] bg-white px-4 py-3 flex-shrink-0"
+      className="border-b border-[#e8eaed] bg-white px-3 sm:px-4 py-3 flex-shrink-0"
     >
       <article
-        className="rounded-xl border border-[#e6e8eb] bg-[#fbfbfd] px-4 py-3.5 sm:px-5 sm:py-4"
+        className="rounded-xl border border-[#e6e8eb] bg-[#fbfbfd] px-3.5 py-3 sm:px-5 sm:py-4"
         aria-labelledby="decision-needed-title"
       >
         {/* Card title row.
@@ -198,14 +198,17 @@ export function EscalationReasonPanel({
             </ActionButton>
           )}
 
-          {/* Resolve — quiet ghost on the right */}
+          {/* Resolve — quiet outline, sits inline with the others so it
+              never floats alone on the far right (the previous ml-auto
+              made it read as disconnected on mobile). */}
           <button
             type="button"
             onClick={() => dispatch({ kind: "resolve" })}
             title="Mark this escalation as resolved."
             className={cn(
-              "ml-auto inline-flex items-center justify-center rounded-full px-3 py-1.5 text-[12.5px] font-medium text-[#5f6368]",
-              "transition-colors hover:bg-[#f1f3f4] hover:text-[#202124]",
+              "inline-flex items-center justify-center rounded-full border px-3.5 py-1.5 text-[12.5px] font-medium",
+              "border-[#e2e6ec] bg-white text-[#5f6368] shadow-sm transition-colors",
+              "hover:bg-[#f1f3f4] hover:text-[#202124] hover:border-[#d2d6dc] active:bg-[#e8eaed]",
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-1",
             )}
           >
@@ -232,10 +235,10 @@ function Section({
 }) {
   return (
     <div className={className}>
-      <dt className="text-[10.5px] font-semibold uppercase tracking-[0.04em] text-[#9aa0a6]">
+      <dt className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#5f6368]">
         {label}
       </dt>
-      <dd className="mt-0.5 text-[13px] leading-[1.55] text-[#202124]">
+      <dd className="mt-1 text-[13.5px] leading-[1.55] text-[#1f2937]">
         {children}
       </dd>
     </div>

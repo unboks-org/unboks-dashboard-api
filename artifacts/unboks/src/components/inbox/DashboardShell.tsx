@@ -243,7 +243,14 @@ export function DashboardShell({
           onOpenDrawer={() => setDrawerOpen(true)}
         />
 
-        <main className="flex-1 overflow-y-auto bg-white">
+        {/* Main content scroll region.
+            Bottom padding respects the iOS Safari safe-area inset so
+            content (and any sticky footer like the composer) is never
+            hidden under the browser chrome / home indicator. */}
+        <main
+          className="flex-1 overflow-y-auto bg-white"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
           {children}
         </main>
       </div>

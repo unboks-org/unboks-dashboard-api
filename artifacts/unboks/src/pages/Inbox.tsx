@@ -402,118 +402,158 @@ function ConversationDetailPane({
 
   return (
     <div className="flex-1 flex flex-col bg-white overflow-hidden border-l border-[#f1f3f4]">
-      {/* Header — compact: identity on the left, escalation mode pill on the
-          right. The previous full-width yellow/red banner was retired so the
-          message thread starts higher and the pane reads as premium.
-          Mobile: allow the right-side cluster (mode toggle + actions) to
-          wrap to its own line on narrow widths so the sender + channel
-          never get clipped. Close button is a 40px touch target on
-          mobile and shrinks back to 28px at md. */}
-      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 border-b border-[#f1f3f4] flex-shrink-0 flex-wrap">
-        <button
-          onClick={onClose}
-          aria-label="Close conversation"
-          className="w-10 h-10 -ml-1 flex items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368] md:hidden flex-shrink-0"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <button
-          onClick={onClose}
-          aria-label="Close conversation"
-          className="hidden md:flex w-7 h-7 items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368] flex-shrink-0"
-        >
-          <X className="w-4 h-4" />
-        </button>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 min-w-0 flex-wrap">
-            <p className="text-[15px] sm:text-[14px] font-semibold text-[#1f2937] truncate">{conversation.sender}</p>
-            <span
-              className="text-[11px] font-medium px-1.5 py-0.5 rounded-full text-white flex-shrink-0"
-              style={{ backgroundColor: badgeColor }}
-            >
-              {conversation.channel}
-            </span>
-            {conversation.timestamp && (
-              <span className="hidden sm:inline text-[11.5px] text-[#5f6368] flex-shrink-0">{conversation.timestamp}</span>
-            )}
-          </div>
-          {showBanner && detail?.escalationSummary && (
-            <p className="text-[12px] text-[#5f6368] mt-0.5 truncate" title={detail.escalationSummary}>
-              {detail.escalationSummary}
+      {/* Header — premium two-row mobile/tablet layout, single row on md+.
+          Mobile + tablet (<md):
+            Row 1 — back arrow · customer name (truncates) · action icons (right)
+            Row 2 — channel badge · status pill (mode toggle) · timestamp
+                    (wraps cleanly so pills can never collide with the name)
+          Desktop (md+): a single inline row — close · name+timestamp ·
+          mode toggle · channel pill+summary · action icons. */}
+      <div className="border-b border-[#e8eaed] bg-white px-3 md:px-4 py-2 flex-shrink-0">
+        {/* Row 1 — identity + actions */}
+        <div className="flex items-center gap-2 md:gap-3">
+          <button
+            onClick={onClose}
+            aria-label="Close conversation"
+            className="w-10 h-10 -ml-1 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#5f6368] md:hidden flex-shrink-0"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <button
+            onClick={onClose}
+            aria-label="Close conversation"
+            className="hidden md:flex w-7 h-7 items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368] flex-shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-[16px] md:text-[14px] font-semibold text-[#111827] truncate leading-tight">
+              {conversation.sender}
             </p>
+            {/* md+ inline meta: channel pill + timestamp + summary on one line */}
+            <div className="hidden md:flex items-center gap-2 mt-0.5 min-w-0">
+              <span
+                className="text-[11px] font-medium px-1.5 py-0.5 rounded-full text-white flex-shrink-0"
+                style={{ backgroundColor: badgeColor }}
+              >
+                {conversation.channel}
+              </span>
+              {conversation.timestamp && (
+                <span className="text-[11.5px] text-[#5f6368] flex-shrink-0">
+                  {conversation.timestamp}
+                </span>
+              )}
+              {showBanner && detail?.escalationSummary && (
+                <p className="text-[12px] text-[#5f6368] truncate min-w-0" title={detail.escalationSummary}>
+                  {detail.escalationSummary}
+                </p>
+              )}
+            </div>
+          </div>
+          {/* Mode toggle: stays in row 1 on md+, moves to row 2 on mobile/tablet */}
+          {showBanner && dbId && (
+            <div className="hidden md:block flex-shrink-0">
+              <EscalationModeToggle
+                conversationDbId={dbId}
+                selectedMode={selectedMode}
+                onChange={setSelectedMode}
+              />
+            </div>
+          )}
+          {(onArchive || onRestore) && (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {!archived && onArchive && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onArchive(conversation); }}
+                  aria-label="Archive conversation"
+                  title="Archive"
+                  className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full hover:bg-[#eef1f6] text-[#5f6368] hover:text-[#1f2937]"
+                >
+                  <Archive className="w-5 h-5 md:w-4 md:h-4" />
+                </button>
+              )}
+              {archived && onRestore && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onRestore(conversation); }}
+                  aria-label="Restore to inbox"
+                  title="Restore to inbox"
+                  className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full hover:bg-[#e8f0fe] text-[#5f6368] hover:text-[#1a73e8]"
+                >
+                  <ArchiveRestore className="w-5 h-5 md:w-4 md:h-4" />
+                </button>
+              )}
+            </div>
+          )}
+          {conversation.channel === "Email" && (onEmailReply || onEmailForward || onEmailDelete) && (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {onEmailReply && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onEmailReply(conversation); }}
+                  aria-label="Reply"
+                  title="Reply"
+                  className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368]"
+                >
+                  <Reply className="w-5 h-5 md:w-4 md:h-4" />
+                </button>
+              )}
+              {onEmailForward && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onEmailForward(conversation); }}
+                  aria-label="Forward"
+                  title="Forward"
+                  className="hidden md:flex w-8 h-8 items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368]"
+                >
+                  <Forward className="w-4 h-4" />
+                </button>
+              )}
+              {onEmailDelete && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onEmailDelete(conversation); }}
+                  aria-label="Delete"
+                  title="Delete"
+                  className="hidden md:flex w-8 h-8 items-center justify-center rounded-full hover:bg-[#fce8e6] text-[#5f6368] hover:text-[#c5221f]"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           )}
         </div>
-        {showBanner && dbId && (
-          <div className="flex-shrink-0">
+
+        {/* Row 2 — channel + status (mobile + tablet only, below md). The
+            channel pill never shares a line with the customer name on
+            narrow screens, so it can never overlap. */}
+        <div className="mt-1.5 flex items-center gap-2 flex-wrap md:hidden">
+          <span
+            className="text-[11px] font-medium px-2 py-0.5 rounded-full text-white flex-shrink-0"
+            style={{ backgroundColor: badgeColor }}
+          >
+            {conversation.channel}
+          </span>
+          {showBanner && dbId && (
             <EscalationModeToggle
               conversationDbId={dbId}
               selectedMode={selectedMode}
               onChange={setSelectedMode}
             />
-          </div>
-        )}
-        {(onArchive || onRestore) && (
-          <div className="flex items-center gap-1 flex-shrink-0">
-            {!archived && onArchive && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onArchive(conversation); }}
-                aria-label="Archive conversation"
-                title="Archive"
-                className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-full hover:bg-[#eef1f6] text-[#5f6368] hover:text-[#1f2937]"
-              >
-                <Archive className="w-4 h-4" />
-              </button>
-            )}
-            {archived && onRestore && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onRestore(conversation); }}
-                aria-label="Restore to inbox"
-                title="Restore to inbox"
-                className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-full hover:bg-[#e8f0fe] text-[#5f6368] hover:text-[#1a73e8]"
-              >
-                <ArchiveRestore className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        )}
-        {conversation.channel === "Email" && (onEmailReply || onEmailForward || onEmailDelete) && (
-          <div className="flex items-center gap-1 flex-shrink-0">
-            {onEmailReply && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onEmailReply(conversation); }}
-                aria-label="Reply"
-                title="Reply"
-                className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368]"
-              >
-                <Reply className="w-4 h-4" />
-              </button>
-            )}
-            {onEmailForward && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onEmailForward(conversation); }}
-                aria-label="Forward"
-                title="Forward"
-                className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368]"
-              >
-                <Forward className="w-4 h-4" />
-              </button>
-            )}
-            {onEmailDelete && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onEmailDelete(conversation); }}
-                aria-label="Delete"
-                title="Delete"
-                className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-full hover:bg-[#fce8e6] text-[#5f6368] hover:text-[#c5221f]"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+          )}
+          {conversation.timestamp && (
+            <span className="text-[11.5px] text-[#5f6368] truncate">
+              {conversation.timestamp}
+            </span>
+          )}
+        </div>
+
+        {/* Mobile/tablet: escalation summary on its own line */}
+        {showBanner && detail?.escalationSummary && (
+          <p className="md:hidden text-[12.5px] text-[#5f6368] mt-1.5 leading-snug" title={detail.escalationSummary}>
+            {detail.escalationSummary}
+          </p>
         )}
       </div>
 
