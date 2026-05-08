@@ -227,7 +227,14 @@ export function DashboardShell({
         appointmentsCount={appointmentsCount}
       />
 
-      <div className="flex flex-col flex-1 min-w-0 mx-auto max-w-[480px] sm:max-w-[560px] sm:shadow-xl md:max-w-none md:mx-0 md:shadow-none relative">
+      {/* Main column.
+          Previously capped to max-w-[480px] / sm:max-w-[560px] with a
+          drop shadow, which on real mobile + small-tablet widths
+          (375–767px) made the app render as a centered phone-frame
+          demo with side gutters instead of a full-bleed app. The cap
+          and shadow are removed below md so the app fills the device
+          width naturally; the desktop layout is unchanged. */}
+      <div className="flex flex-col flex-1 min-w-0 relative">
         <Header
           title={pageTitle}
           subtitle={pageSubtitle ?? titleSuffix}

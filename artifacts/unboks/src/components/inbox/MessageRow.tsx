@@ -97,7 +97,7 @@ export function MessageRow({
             {conversation.escalated && (
               <span
                 className={cn(
-                  "text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0",
+                  "text-[11px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0",
                   conversation.escalationMode === "soft"
                     ? "bg-[#fef7e0] text-[#a06800]"
                     : conversation.escalationMode === "hard"
@@ -122,6 +122,14 @@ export function MessageRow({
             >
               {conversation.timestamp}
             </span>
+            {/* Mobile crowding fix:
+                Reply / Forward / Delete are duplicated by the detail-
+                pane header (which is the natural surface for them on
+                touch — you tap the row to open the conversation, then
+                act). On mobile we hide them and keep only Archive /
+                Restore + Star, which are the two row-level affordances
+                an operator actually wants without opening the row. The
+                full set returns at sm and up. */}
             {conversation.channel === "Email" && onReply && (
               <button
                 type="button"
@@ -131,7 +139,7 @@ export function MessageRow({
                   e.stopPropagation();
                   onReply(conversation);
                 }}
-                className="grid h-7 w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#e8f0fe] hover:text-[#1a73e8]"
+                className="hidden sm:grid h-10 w-10 sm:h-7 sm:w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#e8f0fe] hover:text-[#1a73e8]"
               >
                 <Reply className="w-4 h-4" strokeWidth={1.5} />
               </button>
@@ -145,7 +153,7 @@ export function MessageRow({
                   e.stopPropagation();
                   onForward(conversation);
                 }}
-                className="grid h-7 w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#e8f0fe] hover:text-[#1a73e8]"
+                className="hidden sm:grid h-10 w-10 sm:h-7 sm:w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#e8f0fe] hover:text-[#1a73e8]"
               >
                 <Forward className="w-4 h-4" strokeWidth={1.5} />
               </button>
@@ -159,7 +167,7 @@ export function MessageRow({
                   e.stopPropagation();
                   onDelete(conversation);
                 }}
-                className="grid h-7 w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#fce8e6] hover:text-[#c5221f]"
+                className="hidden sm:grid h-10 w-10 sm:h-7 sm:w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#fce8e6] hover:text-[#c5221f]"
               >
                 <Trash2 className="w-4 h-4" strokeWidth={1.5} />
               </button>
@@ -173,7 +181,7 @@ export function MessageRow({
                   e.stopPropagation();
                   onArchive(conversation);
                 }}
-                className="grid h-7 w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#eef1f6] hover:text-[#1f2937]"
+                className="grid h-10 w-10 sm:h-7 sm:w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#eef1f6] hover:text-[#1f2937]"
               >
                 <Archive className="w-4 h-4" strokeWidth={1.5} />
               </button>
@@ -187,7 +195,7 @@ export function MessageRow({
                   e.stopPropagation();
                   onRestore(conversation);
                 }}
-                className="grid h-7 w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#e8f0fe] hover:text-[#1a73e8]"
+                className="grid h-10 w-10 sm:h-7 sm:w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#e8f0fe] hover:text-[#1a73e8]"
               >
                 <ArchiveRestore className="w-4 h-4" strokeWidth={1.5} />
               </button>
@@ -200,7 +208,7 @@ export function MessageRow({
                 e.stopPropagation();
                 setStarred((s) => !s);
               }}
-              className="-mr-1 grid h-7 w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:text-[#202124]"
+              className="-mr-1 grid h-10 w-10 sm:h-7 sm:w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:text-[#202124]"
             >
               <Star
                 className={cn("w-4 h-4", starred && "text-[#f9a825]")}
@@ -223,7 +231,7 @@ export function MessageRow({
           </p>
           {!hideChannel && (
             <span
-              className="inline-flex items-center gap-1 flex-shrink-0 rounded-full border border-[#e8eaed] bg-white px-1.5 py-0.5 text-[10px] font-medium text-[#5f6368]"
+              className="inline-flex items-center gap-1 flex-shrink-0 rounded-full border border-[#e8eaed] bg-white px-1.5 py-0.5 text-[11px] font-medium text-[#5f6368]"
               aria-label={`Channel: ${conversation.channel}`}
             >
               <span

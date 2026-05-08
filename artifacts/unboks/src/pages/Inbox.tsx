@@ -404,37 +404,41 @@ function ConversationDetailPane({
     <div className="flex-1 flex flex-col bg-white overflow-hidden border-l border-[#f1f3f4]">
       {/* Header — compact: identity on the left, escalation mode pill on the
           right. The previous full-width yellow/red banner was retired so the
-          message thread starts higher and the pane reads as premium. */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-[#f1f3f4] flex-shrink-0">
+          message thread starts higher and the pane reads as premium.
+          Mobile: allow the right-side cluster (mode toggle + actions) to
+          wrap to its own line on narrow widths so the sender + channel
+          never get clipped. Close button is a 40px touch target on
+          mobile and shrinks back to 28px at md. */}
+      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 border-b border-[#f1f3f4] flex-shrink-0 flex-wrap">
         <button
           onClick={onClose}
           aria-label="Close conversation"
-          className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368] md:hidden"
+          className="w-10 h-10 -ml-1 flex items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368] md:hidden flex-shrink-0"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-5 h-5" />
         </button>
         <button
           onClick={onClose}
           aria-label="Close conversation"
-          className="hidden md:flex w-7 h-7 items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368]"
+          className="hidden md:flex w-7 h-7 items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368] flex-shrink-0"
         >
           <X className="w-4 h-4" />
         </button>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <p className="text-[14px] font-semibold text-[#202124] truncate">{conversation.sender}</p>
+          <div className="flex items-center gap-2 min-w-0 flex-wrap">
+            <p className="text-[15px] sm:text-[14px] font-semibold text-[#1f2937] truncate">{conversation.sender}</p>
             <span
-              className="text-[10.5px] font-medium px-1.5 py-0.5 rounded-full text-white flex-shrink-0"
+              className="text-[11px] font-medium px-1.5 py-0.5 rounded-full text-white flex-shrink-0"
               style={{ backgroundColor: badgeColor }}
             >
               {conversation.channel}
             </span>
             {conversation.timestamp && (
-              <span className="text-[11px] text-[#9aa0a6] flex-shrink-0">{conversation.timestamp}</span>
+              <span className="hidden sm:inline text-[11.5px] text-[#5f6368] flex-shrink-0">{conversation.timestamp}</span>
             )}
           </div>
           {showBanner && detail?.escalationSummary && (
-            <p className="text-[11px] text-[#5f6368] mt-0.5 truncate" title={detail.escalationSummary}>
+            <p className="text-[12px] text-[#5f6368] mt-0.5 truncate" title={detail.escalationSummary}>
               {detail.escalationSummary}
             </p>
           )}
@@ -456,7 +460,7 @@ function ConversationDetailPane({
                 onClick={(e) => { e.stopPropagation(); onArchive(conversation); }}
                 aria-label="Archive conversation"
                 title="Archive"
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#eef1f6] text-[#5f6368] hover:text-[#1f2937]"
+                className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-full hover:bg-[#eef1f6] text-[#5f6368] hover:text-[#1f2937]"
               >
                 <Archive className="w-4 h-4" />
               </button>
@@ -467,7 +471,7 @@ function ConversationDetailPane({
                 onClick={(e) => { e.stopPropagation(); onRestore(conversation); }}
                 aria-label="Restore to inbox"
                 title="Restore to inbox"
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#e8f0fe] text-[#5f6368] hover:text-[#1a73e8]"
+                className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-full hover:bg-[#e8f0fe] text-[#5f6368] hover:text-[#1a73e8]"
               >
                 <ArchiveRestore className="w-4 h-4" />
               </button>
@@ -482,7 +486,7 @@ function ConversationDetailPane({
                 onClick={(e) => { e.stopPropagation(); onEmailReply(conversation); }}
                 aria-label="Reply"
                 title="Reply"
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368]"
+                className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368]"
               >
                 <Reply className="w-4 h-4" />
               </button>
@@ -493,7 +497,7 @@ function ConversationDetailPane({
                 onClick={(e) => { e.stopPropagation(); onEmailForward(conversation); }}
                 aria-label="Forward"
                 title="Forward"
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368]"
+                className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368]"
               >
                 <Forward className="w-4 h-4" />
               </button>
@@ -504,7 +508,7 @@ function ConversationDetailPane({
                 onClick={(e) => { e.stopPropagation(); onEmailDelete(conversation); }}
                 aria-label="Delete"
                 title="Delete"
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#fce8e6] text-[#5f6368] hover:text-[#c5221f]"
+                className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-full hover:bg-[#fce8e6] text-[#5f6368] hover:text-[#c5221f]"
               >
                 <Trash2 className="w-4 h-4" />
               </button>

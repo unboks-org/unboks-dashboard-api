@@ -1,0 +1,364 @@
+TASK: Deep mobile visual audit + premium mobile redesign for Project 2 dashboard.
+
+PROJECT SCOPE:
+Project 2 customer dashboard only.
+Do NOT touch Project 1 public website.
+Do NOT touch pricing.
+Do NOT touch backend.
+Do NOT change product logic.
+Do NOT change API calls.
+Do NOT change data flow.
+Do NOT change routing behavior unless required only for visual mobile navigation.
+Do NOT change business rules.
+Do NOT change archive/delete/escalation/message behavior.
+This is a VISUAL + RESPONSIVE UX task only.
+
+MANDATORY:
+Use Refero before making design changes.
+Use Refero deeply.
+This mobile version currently looks broken and unprofessional.
+Refero must inspect premium mobile SaaS/dashboard/support inbox patterns and apply best practices.
+
+Reference quality bar:
+- billion-dollar SaaS mobile quality
+- premium operator console
+- clean inbox mobile UX
+- excellent contrast
+- readable typography
+- proper mobile navigation
+- calm, functional, professional aesthetic
+- no cheap mobile web-app look
+
+Current problems:
+- Mobile layout is crooked.
+- There is no hamburger menu.
+- Sidebar/navigation is not usable on mobile.
+- Fonts are barely readable.
+- Background and text contrast is weak.
+- Layout feels broken and unpolished.
+- Spacing and alignment are poor.
+- The interface does not feel premium.
+- Mobile is currently not acceptable for clients.
+
+IMPORTANT:
+This must be audit-first, then fix.
+Do not blindly patch one screen.
+Audit the full mobile dashboard experience and then implement visual/responsive fixes.
+
+PHASE 1 — MOBILE VISUAL AUDIT
+
+Inspect the dashboard at realistic mobile widths:
+- 320px
+- 375px
+- 390px
+- 414px
+- 430px
+- 768px tablet width if relevant
+
+Audit these areas:
+1. Login screen
+2. Main dashboard shell/layout
+3. Sidebar/navigation
+4. Header/top bar
+5. Inbox
+6. Escalations
+7. Conversation detail panel
+8. Message rows
+9. Reply/composer area
+10. Channel filters
+11. Appointments
+12. Analytics
+13. Settings
+14. Task cards if visible in dashboard
+15. Modals/drawers/toasts
+16. Buttons, badges, pills, icons
+17. Empty states
+
+Audit for:
+- readability
+- contrast
+- font sizes
+- spacing
+- tap target sizes
+- overflow
+- horizontal scrolling
+- broken alignment
+- cramped text
+- clipped buttons
+- hidden actions
+- unusable navigation
+- poor hierarchy
+- tiny grey text
+- bad dark/light contrast
+- inconsistent card styling
+- poor mobile safe-area behavior
+- bottom actions obstructing content
+- composer usability
+- modal usability
+
+Before fixing, produce a concise audit report:
+- list the confirmed mobile visual problems
+- list affected files/components
+- list the planned visual-only fixes
+- confirm no backend/product logic changes are needed
+
+Then implement the approved visual fixes in the same task if the problems are obvious and clearly visual.
+
+PHASE 2 — REQUIRED MOBILE FIXES
+
+1. Mobile navigation / hamburger menu
+
+Add a proper mobile navigation pattern.
+
+Required:
+- On mobile, show a hamburger/menu button in the top bar.
+- Tapping it opens the navigation.
+- Navigation can be a slide-in drawer or overlay.
+- Drawer must include:
+  - Escalations
+  - Inbox
+  - Channels: WhatsApp, Email
+  - Workspace: Appointments, Analytics, Settings
+- Drawer must be easy to close:
+  - close X
+  - tap outside
+  - selecting nav item closes drawer
+- Desktop sidebar must remain unchanged.
+- Mobile nav must not cover content permanently.
+- No broken sideways sidebar on mobile.
+
+Visual style:
+- premium drawer
+- clean spacing
+- readable labels
+- proper active state
+- good contrast
+- no clutter
+
+2. Mobile typography
+
+Fix readability.
+
+Minimum targets:
+- Body text should not be tiny.
+- Main text should be at least 14px where practical.
+- Important labels/buttons should be 14–16px.
+- Page titles should be readable, around 18–22px depending on layout.
+- Avoid faint grey text on light grey backgrounds.
+- Increase contrast for secondary text.
+- Use consistent font weights.
+
+3. Contrast and colors
+
+Fix poor contrast.
+
+Required:
+- Text must be readable against background.
+- Secondary text still readable.
+- Active nav states visible.
+- Badges/pills legible.
+- Buttons clearly clickable.
+- Do not use ultra-light grey text for important information.
+- Keep premium calm palette, but improve contrast.
+
+Do not:
+- use pure black everywhere
+- use neon colors
+- use cheap gradients
+- use random colors
+- make it look playful
+
+4. Layout and spacing
+
+Fix crooked layouts.
+
+Required:
+- No horizontal overflow on mobile.
+- No components clipped off-screen.
+- Cards align cleanly.
+- Content has consistent side padding.
+- Lists use clean row spacing.
+- Headers do not collide with buttons.
+- Footer action bars do not block content.
+- Composer remains usable.
+- Modals fit within viewport.
+
+5. Inbox and escalation list mobile
+
+Make message lists readable and usable.
+
+Required:
+- Rows should stack naturally.
+- Customer name, channel, time, status should be readable.
+- Preview text should not be crushed.
+- Icons/actions should not crowd the row.
+- Tap targets should be large enough.
+- Active/Archived filters must fit cleanly.
+- Channel badges must not wrap awkwardly.
+
+6. Conversation detail mobile
+
+Make the detail panel usable on mobile.
+
+Required:
+- Detail view should fit mobile width.
+- Header readable and not overcrowded.
+- Decision/summary card readable.
+- Composer textarea usable.
+- Action buttons readable and tappable.
+- Send / Resolve / Send & Resolve buttons should stack or wrap cleanly.
+- No tiny icon-only controls unless obvious.
+- No horizontal scrolling.
+
+7. Settings mobile
+
+Settings must not look broken.
+
+Required:
+- Cards stack cleanly.
+- Forms are readable.
+- Inputs/buttons fit width.
+- Danger zone cards, notes, Source of Truth / Company knowledge sections must be readable.
+- No tiny labels.
+
+8. Appointments / Analytics mobile
+
+Required:
+- Cards/tables must adapt to mobile.
+- If tables exist, convert visually to stacked cards on mobile or make overflow controlled and polished.
+- No broken columns.
+
+9. Modals and drawers
+
+Required:
+- Modals fit mobile screen.
+- Padding is reduced appropriately.
+- Buttons remain reachable.
+- Overlay has good contrast.
+- Close buttons visible.
+
+10. Touch targets
+
+Required:
+- Buttons and important controls should be around 40–44px minimum height where practical.
+- Links/buttons should not be too close together.
+- Hamburger menu must be easy to tap.
+
+PHASE 3 — STRICT LIMITS
+
+This task is visual/responsive only.
+
+Allowed:
+- CSS/Tailwind class changes
+- layout adjustments
+- responsive breakpoints
+- mobile drawer/menu UI
+- typography sizing
+- color/contrast changes
+- spacing/padding/margin changes
+- button/card visual improvements
+- visual component restructuring if it does not change behavior
+
+Not allowed:
+- backend changes
+- API changes
+- database changes
+- business logic changes
+- archive/delete logic changes
+- escalation logic changes
+- appointment logic changes
+- message handling changes
+- changing what data is loaded
+- changing when data is saved
+- changing feature flags
+- changing authentication logic
+- changing route semantics
+- deleting functionality
+
+If a visual fix appears to require logic/data changes:
+STOP and report it instead of changing logic.
+
+PHASE 4 — DESIGN DIRECTION
+
+Make mobile feel:
+- premium
+- clean
+- calm
+- sharp
+- modern
+- businesslike
+- high contrast
+- easy to operate with one hand
+- not cluttered
+- not childish
+- not cheap
+
+Use:
+- soft off-white backgrounds
+- clean white cards
+- subtle borders
+- deep navy/charcoal text
+- clear accent color
+- consistent badge styling
+- readable font sizes
+- proper vertical rhythm
+- premium drawer/nav pattern
+
+Avoid:
+- washed-out grey-on-grey
+- tiny text
+- cramped pills
+- random borders
+- loud colors
+- heavy shadows
+- cheap gradients
+- overlapping panels
+- clipped buttons
+- broken tables
+
+PHASE 5 — ACCEPTANCE CRITERIA
+
+Mobile navigation:
+- Hamburger menu exists on mobile.
+- Mobile nav opens/closes cleanly.
+- Desktop sidebar remains unchanged.
+- Selecting a nav item closes the mobile drawer.
+
+Readability:
+- Fonts are readable on 320px, 375px, 390px, 414px, and 430px widths.
+- Contrast is visibly improved.
+- No important text is faint or unreadable.
+
+Layout:
+- No horizontal overflow.
+- No crooked layout.
+- No clipped buttons.
+- No broken rows.
+- No huge unnecessary whitespace.
+- Main views fit mobile viewport cleanly.
+
+Dashboard areas:
+- Inbox mobile looks clean.
+- Escalations mobile looks clean.
+- Conversation detail mobile is usable.
+- Composer mobile is usable.
+- Settings mobile is readable.
+- Appointments mobile is readable.
+- Modals/drawers mobile are usable.
+
+Safety:
+- No backend changes.
+- No API changes.
+- No product logic changes.
+- Existing behavior still works.
+- Build passes.
+
+REPORT BACK:
+After completion, report:
+1. Refero references/patterns used.
+2. Mobile audit findings.
+3. Files changed.
+4. Exact visual/responsive fixes applied.
+5. Confirmation that no backend/API/business logic was changed.
+6. Confirmation that desktop layout was not damaged.
+7. Screenshots or viewport notes for 320/375/390/414/430px if possible.
