@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Archive, Download, Trash2, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -409,8 +409,6 @@ export function DataRetentionSettings() {
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
-
-import { useEffect, useRef } from "react";
 
 /** Sync the draft back to the latest persisted settings whenever the
  *  saved value changes AND the user has no unsaved edits in flight. This
