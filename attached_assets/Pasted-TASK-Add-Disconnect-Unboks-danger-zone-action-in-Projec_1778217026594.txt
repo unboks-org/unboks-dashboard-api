@@ -1,0 +1,185 @@
+TASK: Add “Disconnect Unboks” danger-zone action in Project 2 customer dashboard Settings.
+
+PROJECT SCOPE:
+This task is for Project 2 — the customer dashboard.
+Do NOT edit Project 1 public website.
+Do NOT edit pricing.
+Do NOT touch unrelated dashboard functionality.
+
+Goal:
+In Settings, add a clear operator/admin option to disconnect Unboks from the client’s connected channels/services.
+
+This is a serious destructive action.
+It must have failsafes so the operator cannot do it by accident.
+
+Feature name:
+“Disconnect Unboks”
+
+Client-facing purpose:
+The operator can stop Unboks from handling messages for their business and disconnect the service from connected channels such as WhatsApp, Instagram, Facebook Messenger, email, or other connected sources.
+
+Placement:
+Add this in Settings, in the right section / lower-right area if that matches the existing Settings layout.
+It should be visually separated as a danger-zone style card.
+Do not put it near normal everyday settings.
+
+Suggested card title:
+“Disconnect Unboks”
+
+Suggested description:
+“Stop Unboks from handling customer messages and disconnect the connected channels for this workspace.”
+
+Suggested secondary warning:
+“Your dashboard history will remain available unless deleted separately, but Unboks will stop receiving or handling new messages for the disconnected channels.”
+
+Primary button:
+“Disconnect Unboks”
+
+Button style:
+Destructive / danger style.
+Not too large.
+Not visually mixed with normal save buttons.
+
+Failsafe flow:
+Use a multi-step confirmation similar to GitHub danger-zone actions.
+
+Step 1:
+User clicks “Disconnect Unboks”.
+
+Open modal.
+
+Modal title:
+“Disconnect Unboks?”
+
+Modal copy:
+“This will stop Unboks from handling new customer messages for this workspace. Connected channels may need to be reconnected before Unboks can be used again.”
+
+Show impacted channels if the data is available:
+- WhatsApp number
+- Instagram account
+- Facebook page / Messenger
+- Email inbox
+- Other connected sources
+
+If the backend does not expose connected channels yet, show:
+“Connected channels for this workspace”
+
+Step 2:
+Require typed confirmation.
+
+Confirmation text:
+DISCONNECT
+
+Instruction:
+“To confirm, type DISCONNECT.”
+
+The destructive button remains disabled until the typed text exactly matches:
+DISCONNECT
+
+Step 3:
+Final button:
+“Disconnect Unboks”
+
+After success:
+Show success toast:
+“Unboks has been disconnected for this workspace.”
+
+The UI should show a disconnected state if possible:
+- Status: Disconnected
+- Message: “Unboks is not currently handling customer messages.”
+- Optional button: “Contact Unboks to reconnect” or “Reconnect” if backend supports reconnect.
+
+Backend behavior:
+Inspect current backend/API before implementing.
+
+Preferred backend endpoint:
+POST /settings/disconnect-unboks
+
+If an equivalent endpoint already exists, use it.
+
+The backend action should:
+- mark workspace/client as disconnected or paused
+- stop Agent handling for incoming messages
+- stop auto-replies
+- stop new channel polling/webhook processing where supported
+- preserve dashboard history
+- preserve archived messages
+- preserve settings
+- not delete client data
+- not delete message history
+- not delete Source of Truth / Company knowledge
+- not permanently remove provider credentials unless that is the intended architecture and confirmed
+
+If true provider disconnect is not fully supported yet:
+Implement the frontend danger-zone UI only if it connects to a real backend pause/disconnect flag.
+Do not fake successful provider disconnection.
+If the backend can only pause/mute Unboks but cannot revoke provider/channel connections yet, label backend behavior accurately:
+- “Unboks handling paused”
+not
+- “Provider accounts removed”
+
+Important product distinction:
+There are two possible levels:
+1. Pause/disable Unboks handling:
+   - stops Agent replies and handling
+   - keeps channel connection details
+   - easy to reactivate
+
+2. Full channel disconnect:
+   - revokes/removes provider connections/tokens
+   - requires reconnect later
+
+If both are supported, expose only the safer main action first:
+“Disconnect Unboks”
+and make backend behavior clear in report.
+
+If only pause is supported, use the UI label:
+“Disconnect Unboks”
+but in the success detail say:
+“Unboks handling has been stopped. Connected channels may require the Unboks team to fully remove provider access.”
+
+Permissions:
+Only workspace owner/admin/operator with settings permission should see this.
+If role/permissions are not implemented yet, follow existing Settings access behavior and report the limitation.
+
+Audit/logging:
+If audit logging exists, log:
+- user
+- workspace/client
+- timestamp
+- action: disconnect_unboks
+- affected channels if known
+
+If audit logging does not exist, report it as recommended backend follow-up.
+
+Reversal/reconnect:
+Do not build a fake reconnect if backend does not support it.
+Show a safe message:
+“Contact Unboks to reconnect this workspace.”
+If backend supports reconnect/reactivate, add a secondary non-destructive action:
+“Reactivate Unboks”
+with confirmation.
+
+Design requirements:
+- Premium, calm, serious.
+- Similar spirit to GitHub danger zone.
+- Clear warning.
+- No accidental click risk.
+- Typed confirmation required.
+- Destructive button disabled until confirmation matches.
+- Mobile-safe modal.
+- No unnecessary vertical whitespace.
+- Do not scare clients with technical language.
+
+Acceptance criteria:
+- Settings includes a separated danger-zone card for Disconnect Unboks.
+- Clicking the button opens a confirmation modal.
+- User must type DISCONNECT exactly.
+- Final destructive action is disabled until confirmation matches.
+- Action calls a real backend endpoint or clearly reports missing backend support.
+- Unboks handling is stopped/paused/disconnected according to available backend capability.
+- Dashboard history is not deleted.
+- Company knowledge / Your Info is not deleted.
+- Existing inbox, escalation, settings, and channel behavior are not broken.
+- Build passes.
+- Provide changed files, backend endpoint used/added, and exact behavior implemented.

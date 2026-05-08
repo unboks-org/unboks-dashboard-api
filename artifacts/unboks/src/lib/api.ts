@@ -784,6 +784,70 @@ export async function deleteEmail(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Workspace lifecycle: disconnect Unboks (danger zone)
+// ---------------------------------------------------------------------------
+
+/**
+ * Discriminated outcome of `disconnectUnboks`. The danger-zone UI uses
+ * this to decide between a true "Disconnected" state (`"confirmed"`)
+ * and an honest "Disconnect requested locally" state (`"requested"`)
+ * when the backend hasn't yet shipped a real endpoint.
+ */
+export type DisconnectUnboksOutcome =
+  | { kind: "confirmed"; status: number; message?: string }
+  | { kind: "missing-backend"; status: number; message: string };
+
+/**
+ * Attempt to stop Unboks from handling new messages for the current
+ * workspace. Tries the preferred endpoint first, then a legacy
+ * fallback. On any "missing endpoint" response (404 / 405 / 501) we
+ * resolve with `kind: "missing-backend"` instead of throwing — the
+ * caller (Settings danger zone) is responsible for surfacing that
+ * honestly to the operator (per the brief: "Do not fake successful
+ * provider disconnection"). Any other error (auth, network, 5xx)
+ * propagates as an `ApiError` so the modal can show the real failure.
+ */
+export async function disconnectUnboks(
+  reason?: string,
+): Promise<DisconnectUnboksOutcome> {
+  const body = JSON.stringify({ reason: reason ?? null });
+  const primary = "/settings/disconnect-unboks";
+  const fallback = "/disconnect-unboks";
+  const isMissing = (s: number) => s === 404 || s === 405 || s === 501;
+
+  try {
+    await apiFetch<unknown>(primary, { method: "POST", body });
+    // eslint-disable-next-line no-console
+    console.info(`[unboks] disconnect via ${primary}`);
+    return { kind: "confirmed", status: 200 };
+  } catch (err) {
+    if (err instanceof ApiError && isMissing(err.status)) {
+      try {
+        await apiFetch<unknown>(fallback, { method: "POST", body });
+        // eslint-disable-next-line no-console
+        console.info(
+          `[unboks] disconnect via ${fallback} (fell back from ${primary} → HTTP ${err.status})`,
+        );
+        return { kind: "confirmed", status: 200 };
+      } catch (fbErr) {
+        if (fbErr instanceof ApiError && isMissing(fbErr.status)) {
+          return {
+            kind: "missing-backend",
+            status: fbErr.status,
+            message:
+              "Unboks backend doesn't yet expose a disconnect endpoint. " +
+              "Your request has been recorded on this device — contact " +
+              "the Unboks team to complete the disconnect.",
+          };
+        }
+        throw fbErr;
+      }
+    }
+    throw err;
+  }
+}
+
 export async function suggestReply(phone: string): Promise<{ suggestion: string }> {
   return apiFetch<{ suggestion: string }>("/messages/suggest-reply", {
     method: "POST",

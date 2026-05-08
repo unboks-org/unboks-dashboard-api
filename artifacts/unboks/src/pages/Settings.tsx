@@ -25,6 +25,7 @@ import { useYourInfoUpdates, UPDATE_TYPES, type YourInfoUpdateType } from "@/hoo
 import { KnowledgeFileUploader } from "@/components/settings/KnowledgeFileUploader";
 import { CloudKnowledgeConnections } from "@/components/settings/CloudKnowledgeConnections";
 import { DataRetentionSettings } from "@/components/settings/DataRetentionSettings";
+import { DisconnectUnboksDanger } from "@/components/settings/DisconnectUnboksDanger";
 import { loadSot, type SotBlock } from "@/data/sot";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -518,6 +519,7 @@ export default function Settings() {
               />
 
               {active === "workspace" && (
+                <div className="space-y-5">
                 <Card
                   title="Business identity"
                   description="Used inside this dashboard. Public website and Agent usage will be connected by the Unboks team."
@@ -609,6 +611,14 @@ export default function Settings() {
                     </div>
                   </div>
                 </Card>
+
+                {/* Danger zone — visually separated from everyday workspace
+                    settings. Multi-step typed-confirmation modal lives
+                    inside this component; backend-honest about whether
+                    the disconnect was actually executed or just recorded
+                    locally. See `DisconnectUnboksDanger` + `disconnectUnboks`. */}
+                <DisconnectUnboksDanger />
+                </div>
               )}
 
               {active === "your-info" && (
