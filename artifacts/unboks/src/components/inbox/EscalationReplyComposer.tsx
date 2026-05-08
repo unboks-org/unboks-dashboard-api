@@ -23,10 +23,37 @@
  *   Soft: "Saved. Marina connection will be completed by the Unboks team."
  *   Hard: "Direct customer reply will be connected by the Unboks team."
  *
+ * Imperative handle
+ * -----------------
+ * Exposed via `forwardRef` so the parent (Inbox) can let the Escalation
+ * Reason chips drive the composer without lifting all of its state up:
+ *
+ *   - `insertOrAppend(text)` — fills the textarea with `text` when empty,
+ *     otherwise appends after a blank line. Operator drafts are never
+ *     erased silently. Focus + caret move to the end of the inserted text.
+ *   - `focus()` — focus the textarea (used for chips that are pure actions
+ *     and shouldn't change the draft).
+ *   - `markResolved()` — same code path as the visible "Mark resolved"
+ *     button, so the chip and the button share behavior including any
+ *     pending-state guard.
+ *   - `takeover()` — switches to human takeover via the existing escalation
+ *     mutation; the composer mode flips to "hard" once the parent re-renders
+ *     with the new mode.
+ *   - `handback()` — symmetrical hand-back-to-Marina action (hard → soft).
+ *
+ * Chips never auto-send. The operator must still click "Send to Marina" or
+ * "Reply to customer" to dispatch the message.
+ *
  * Strict copy rule: no em dashes anywhere in this file's user-facing text.
  */
 
-import { useEffect, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { Sparkles, VolumeX, User, Bot, Undo2 } from "lucide-react";
 import { useEscalationMutations } from "@/hooks/use-client-api";
 import { ApiError } from "@/lib/error";
@@ -35,6 +62,19 @@ import { cn } from "@/lib/utils";
 import { AIEditorPanel } from "./AIEditorPanel";
 
 const NOT_CONNECTED_STATUSES = new Set([0, 404, 501, 503]);
+
+export interface EscalationReplyComposerHandle {
+  /**
+   * If the composer is empty, set the draft to `text`. Otherwise append
+   * `text` after a blank line. Focuses the textarea and moves the caret
+   * to the end so the operator can keep typing.
+   */
+  insertOrAppend: (text: string) => void;
+  focus: () => void;
+  markResolved: () => void;
+  takeover: () => void;
+  handback: () => void;
+}
 
 interface EscalationReplyComposerProps {
   /** DB id of the escalation row, used by the escalation endpoints. */
@@ -47,14 +87,20 @@ interface EscalationReplyComposerProps {
   onDone: () => void;
 }
 
-export function EscalationReplyComposer({
-  conversationDbId,
-  conversationId,
-  mode,
-  channel,
-  aiMuted = false,
-  onDone,
-}: EscalationReplyComposerProps) {
+export const EscalationReplyComposer = forwardRef<
+  EscalationReplyComposerHandle,
+  EscalationReplyComposerProps
+>(function EscalationReplyComposer(
+  {
+    conversationDbId,
+    conversationId,
+    mode,
+    channel,
+    aiMuted = false,
+    onDone,
+  },
+  ref,
+) {
   const [draft, setDraft] = useState("");
   const [prevDraft, setPrevDraft] = useState<string | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
@@ -62,6 +108,22 @@ export function EscalationReplyComposer({
     tone: "info" | "warning" | "error";
     text: string;
   } | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Mirror the latest draft into a ref so the imperative handle exposed
+  // to the Escalation Reason chips always reads the current text — even
+  // though `useImperativeHandle` itself memoises across renders. This
+  // matters most for hard-mode "Mark resolved", which sends the trimmed
+  // draft as the resolutionNote, and for "Switch to human takeover" /
+  // "Hand back" notice copy.
+  const draftRef = useRef(draft);
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+  const isSoftRef = useRef(mode === "soft");
+  useEffect(() => {
+    isSoftRef.current = mode === "soft";
+  }, [mode]);
 
   const { guidance, reply, resolve, takeover, handback } = useEscalationMutations();
   const isSoft = mode === "soft";
@@ -156,16 +218,137 @@ export function EscalationReplyComposer({
   };
 
   const onMarkResolved = () => {
+    if (resolve.isPending) return;
+    // Read draft + mode from refs so this handler stays correct when
+    // invoked via the imperative handle (which is memoised across
+    // renders). Without this, a chip click could send a stale resolution
+    // note in hard mode.
+    const currentDraft = draftRef.current;
+    const currentIsSoft = isSoftRef.current;
     resolve.mutate(
       {
         id: conversationDbId,
-        payload: isSoft
+        payload: currentIsSoft
           ? {}
-          : { resolutionNote: draft.trim() || undefined },
+          : { resolutionNote: currentDraft.trim() || undefined },
       },
-      { onSuccess: onDone },
+      {
+        onSuccess: onDone,
+        onError: (err) => {
+          if (isNotConnected(err)) {
+            setNotice({
+              tone: "info",
+              text: "Mark resolved will be connected by the Unboks team.",
+            });
+            return;
+          }
+          setNotice({
+            tone: "error",
+            text:
+              "Couldn't mark resolved: " +
+              (err instanceof Error ? err.message : "Unknown error"),
+          });
+        },
+      },
     );
   };
+
+  const onTakeover = () => {
+    if (takeover.isPending) return;
+    takeover.mutate(
+      { id: conversationDbId },
+      {
+        onSuccess: onDone,
+        onError: (err) => {
+          if (isNotConnected(err)) {
+            setNotice({
+              tone: "info",
+              text: "Switch to human takeover will be connected by the Unboks team.",
+            });
+            return;
+          }
+          setNotice({
+            tone: "error",
+            text:
+              "Couldn't switch to human takeover: " +
+              (err instanceof Error ? err.message : "Unknown error"),
+          });
+        },
+      },
+    );
+  };
+
+  const onHandback = () => {
+    if (handback.isPending) return;
+    handback.mutate(
+      { id: conversationDbId },
+      {
+        onSuccess: onDone,
+        onError: (err) => {
+          if (isNotConnected(err)) {
+            setNotice({
+              tone: "info",
+              text: "Hand back to Marina will be connected by the Unboks team.",
+            });
+            return;
+          }
+          setNotice({
+            tone: "error",
+            text:
+              "Couldn't hand back to Marina: " +
+              (err instanceof Error ? err.message : "Unknown error"),
+          });
+        },
+      },
+    );
+  };
+
+  // Imperative handle exposed to the Escalation Reason chips. We
+  // deliberately do not wrap these in mode-specific guards: the parent
+  // already routes chip clicks based on the current mode, and the
+  // mutation hooks themselves enforce server-side correctness.
+  useImperativeHandle(
+    ref,
+    () => ({
+      insertOrAppend(text: string) {
+        const incoming = text.trim();
+        if (!incoming) return;
+        let nextDraft = "";
+        setDraft((current) => {
+          nextDraft = current.trim().length === 0
+            ? incoming
+            : `${current.replace(/\s+$/u, "")}\n\n${incoming}`;
+          return nextDraft;
+        });
+        setNotice(null);
+        // Defer focus until after React commits the new value, otherwise
+        // the caret jumps to position 0 on some browsers.
+        requestAnimationFrame(() => {
+          const ta = textareaRef.current;
+          if (!ta) return;
+          ta.focus();
+          const end = nextDraft.length;
+          try {
+            ta.setSelectionRange(end, end);
+          } catch {
+            // Some environments throw when the textarea isn't in the DOM
+            // yet — safe to ignore.
+          }
+        });
+      },
+      focus() {
+        textareaRef.current?.focus();
+      },
+      markResolved: onMarkResolved,
+      takeover: onTakeover,
+      handback: onHandback,
+    }),
+    // The handlers above close over fresh `draft` / mode via setState
+    // updaters and the latest mutation hook objects, so we only need to
+    // refresh the handle when those identities change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [conversationDbId, mode, resolve, takeover, handback],
+  );
 
   const headingText = isSoft ? "Reply to Marina" : "Reply to customer";
   const helperText = isSoft
@@ -209,6 +392,7 @@ export function EscalationReplyComposer({
       {/* Composer */}
       <div className="relative">
         <textarea
+          ref={textareaRef}
           value={draft}
           onChange={(e) => {
             setDraft(e.target.value);
@@ -301,9 +485,7 @@ export function EscalationReplyComposer({
         {isSoft ? (
           <button
             type="button"
-            onClick={() =>
-              takeover.mutate({ id: conversationDbId }, { onSuccess: onDone })
-            }
+            onClick={onTakeover}
             disabled={takeover.isPending}
             className="ml-auto text-[12px] text-[#c5221f] hover:underline"
           >
@@ -312,9 +494,7 @@ export function EscalationReplyComposer({
         ) : (
           <button
             type="button"
-            onClick={() =>
-              handback.mutate({ id: conversationDbId }, { onSuccess: onDone })
-            }
+            onClick={onHandback}
             disabled={handback.isPending}
             className="ml-auto text-[12px] text-[#1a73e8] hover:underline"
           >
@@ -340,7 +520,7 @@ export function EscalationReplyComposer({
       )}
     </div>
   );
-}
+});
 
 function isNotConnected(err: unknown): boolean {
   if (err instanceof ApiError) return NOT_CONNECTED_STATUSES.has(err.status);

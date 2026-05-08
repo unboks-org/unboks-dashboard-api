@@ -1,0 +1,183 @@
+Project 2 dashboard frontend — create Appointments from confirmed scheduling conversations and show them in Appointments section.
+
+Important:
+- Project 2 Replit is frontend only.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Do not modify backend logic, DNS, secrets, deployment, auth, or Python backend assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch unrelated Inbox behavior unless required.
+- Do not commit.
+- Do not publish until reviewed.
+
+Product issue:
+A soft escalation scheduling flow resulted in a confirmed appointment, but the appointment does not appear in Workspace → Appointments.
+
+Conversation example:
+Customer wanted to meet.
+Customer gave availability:
+“tomorrow 10-12 thursday 09.00-12:00 those are my times”
+
+Operator replied to Marina choosing:
+Thursday 09:00 at Café Paris in Willemstad
+
+Marina replied:
+“Thursday 09:00 at Café Paris in Willemstad, passed to the team. They'll confirm shortly. Marina”
+
+This should be treated as an appointment.
+
+Important product rule:
+When customer availability and operator-selected time/location match, the system should create or show an appointment.
+
+In this case:
+- Customer offered Thursday 09:00 to 12:00.
+- Operator chose Thursday 09:00.
+- Operator added location Café Paris in Willemstad.
+- Marina communicated that to the customer.
+- Therefore this should show as an appointment.
+
+Required behavior:
+1. Appointments section must show confirmed or pending appointments created from scheduling conversations.
+2. A conversation where:
+   - customer asks to meet/book/schedule/activate
+   - customer gives availability
+   - operator/Marina confirms or selects a date/time/location
+   should produce an appointment row/card.
+3. Appointment should include:
+   - Customer name
+   - Channel
+   - Date/time
+   - Location
+   - Appointment topic/purpose
+   - Status
+   - Source conversation link/open action
+4. The appointment should appear under Workspace → Appointments.
+5. The appointment should not remain hidden only inside the message trail.
+6. If backend appointments endpoint is not available yet, frontend may show detected appointment candidates from conversation data as “Detected appointment” or “Pending sync”.
+7. Do not pretend backend saved the appointment unless backend confirms it.
+8. Do not create fake appointments from vague scheduling talk where no time was chosen.
+9. Do not create duplicate appointments for the same conversation/time.
+
+Appointment fields:
+{
+  "id": "string",
+  "customerName": "Calvin",
+  "channel": "whatsapp",
+  "conversationId": "string",
+  "title": "Activation meeting",
+  "dateTimeLabel": "Thursday 09:00",
+  "location": "Café Paris, Willemstad",
+  "status": "confirmed | pending | detected",
+  "source": "conversation",
+  "createdAt": "ISO timestamp"
+}
+
+For this current conversation, the frontend should be able to show:
+Customer:
+Calvin
+
+Topic:
+Activation meeting
+
+Time:
+Thursday 09:00
+
+Location:
+Café Paris, Willemstad
+
+Status:
+Confirmed or Pending team confirmation, depending backend state
+
+Source:
+WhatsApp conversation
+
+Important UX:
+Appointments page should not just be empty if conversations clearly contain confirmed appointment data.
+It should show useful appointment cards/list.
+
+Design:
+- Premium SaaS workspace page.
+- Clean appointment list.
+- Top title:
+  Appointments
+- Subtitle:
+  Scheduled customer appointments and confirmed follow-ups.
+- Appointment card/list row:
+  left: customer + topic
+  middle: date/time + location
+  right: status + open conversation
+- Keep it compact and readable.
+
+Detection fallback:
+If backend does not provide appointments yet, implement frontend detection only as a temporary view layer.
+
+Detect from messages where recent messages contain:
+- “meeting”
+- “appointment”
+- “meet”
+- “activate”
+- “confirm”
+- “confirmed”
+- “Thursday”
+- “tomorrow”
+- time patterns like 09:00, 9:00, 10-12, 12:00
+- location phrases like “at Café Paris”, “in Willemstad”
+
+Specific extraction for current case:
+Message:
+“Thursday 09:00 at Café Paris in Willemstad”
+should extract:
+dateTimeLabel: “Thursday 09:00”
+location: “Café Paris, Willemstad”
+
+Do not over-invent:
+If exact date/time cannot be extracted, show as appointment candidate with missing fields, not confirmed.
+
+Preferred backend endpoint later:
+GET /api/{client}/dashboard/api/appointments
+POST /api/{client}/dashboard/api/appointments
+PATCH /api/{client}/dashboard/api/appointments/{id}
+DELETE /api/{client}/dashboard/api/appointments/{id}
+
+Frontend should be structured so Jr can wire these later.
+
+Likely files:
+- artifacts/unboks/src/pages/Appointments.tsx or Bookings.tsx if Appointments reused existing page
+- artifacts/unboks/src/App.tsx if route label changed from Bookings to Appointments
+- artifacts/unboks/src/components/inbox/Drawer.tsx if nav label already exists
+- artifacts/unboks/src/lib/api.ts
+- artifacts/unboks/src/pages/Inbox.tsx if appointment detection uses conversations
+
+Possibly create:
+- artifacts/unboks/src/lib/appointment-detector.ts
+- artifacts/unboks/src/hooks/use-appointments.ts
+
+Do not touch:
+- artifacts/api-server
+- Settings.tsx
+- Tasks.tsx
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+Acceptance:
+- Workspace nav shows Appointments.
+- Appointments page shows appointment rows/cards.
+- The current Calvin conversation produces an appointment:
+  Thursday 09:00
+  Café Paris, Willemstad
+  Activation meeting
+  WhatsApp
+- The appointment links back to/open the source conversation.
+- Duplicate appointment rows are avoided.
+- If backend is missing, appointment is marked Pending sync or Detected.
+- If backend confirms later, status updates.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.

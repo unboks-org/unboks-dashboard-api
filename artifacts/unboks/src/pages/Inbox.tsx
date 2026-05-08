@@ -35,7 +35,8 @@ import type { ApiMessage, ConversationDetail } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { EscalationReplyComposer } from "@/components/inbox/EscalationReplyComposer";
 import { EmailMessageDetail } from "@/components/inbox/EmailMessageDetail";
-import { EscalationReasonPanel } from "@/components/inbox/EscalationReasonPanel";
+import { EscalationReasonPanel, type ChipAction } from "@/components/inbox/EscalationReasonPanel";
+import type { EscalationReplyComposerHandle } from "@/components/inbox/EscalationReplyComposer";
 import {
   ConversationTranslationBar,
   ConversationTranslationProvider,
@@ -347,6 +348,34 @@ function ConversationDetailPane({
     setTrailOpen(false);
   }, [conversation.id]);
 
+  // Imperative handle into the Escalation Reply composer so the option
+  // chips in the Reason panel can drive it (insert/append draft text,
+  // focus, mark resolved, switch to human takeover, hand back). The
+  // composer never auto-sends; chips only stage drafts or invoke the
+  // existing mutation paths.
+  const composerRef = useRef<EscalationReplyComposerHandle | null>(null);
+  const onChipAction = useCallback((action: ChipAction) => {
+    const c = composerRef.current;
+    if (!c) return;
+    switch (action.kind) {
+      case "draft":
+        c.insertOrAppend(action.text);
+        return;
+      case "focus":
+        c.focus();
+        return;
+      case "takeover":
+        c.takeover();
+        return;
+      case "handback":
+        c.handback();
+        return;
+      case "resolve":
+        c.markResolved();
+        return;
+    }
+  }, []);
+
   return (
     <div className="flex-1 flex flex-col bg-white overflow-hidden border-l border-[#f1f3f4]">
       {/* Header — compact: identity on the left, escalation mode pill on the
@@ -452,12 +481,14 @@ function ConversationDetailPane({
             customerName={conversation.sender}
             recommendedOptions={detail?.recommendedOptions}
             proposedTimes={detail?.extractedDetails?.proposedTimes}
+            onChipAction={onChipAction}
           />
 
           {dbId && (
             <EscalationReplyComposer
               // Do NOT key on selectedMode. Remounting would wipe the
               // operator's in-progress draft when they toggle soft/hard.
+              ref={composerRef}
               conversationDbId={dbId}
               conversationId={conversation.id}
               mode={selectedMode}
