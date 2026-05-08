@@ -183,14 +183,43 @@ export interface UseEscalationNotificationPrefsResult {
    */
   loadError: string | null;
   deliveryStatuses: DeliveryStatusMap;
+  /**
+   * Resolved default email address (e.g. `hello@unboks.org`) when the
+   * backend supplied one. Null otherwise — UI falls back to the legacy
+   * "uses your default account email" line.
+   */
+  defaultEmailAddress: string | null;
 }
 
 interface State {
   prefs: EscalationNotificationPrefs;
   deliveryStatuses: DeliveryStatusMap;
+  /**
+   * Backend-resolved real email address used for escalation alerts
+   * (e.g. `support_email` from the client config). Null when the
+   * backend hasn't supplied one — UI then shows the legacy default copy.
+   */
+  defaultEmailAddress: string | null;
   isLoading: boolean;
   source: PrefsSource;
   loadError: string | null;
+}
+
+/**
+ * Pull the operator-visible email address out of an escalation alert
+ * settings payload. Prefers the backend's explicit `resolvedDestination`,
+ * then a non-sentinel `destination` (rejecting the literal string
+ * `"default"` which is just a routing hint, not an address). Returns
+ * null when no real address could be found.
+ */
+function pickEmailAddress(s: import("@/lib/api").EscalationAlertSettings): string | null {
+  const email = s.channels.email;
+  if (!email) return null;
+  const resolved = email.resolvedDestination?.trim();
+  if (resolved && resolved.toLowerCase() !== "default") return resolved;
+  const dest = email.destination?.trim();
+  if (dest && dest.toLowerCase() !== "default") return dest;
+  return null;
 }
 
 function describeLoadError(err: unknown): string {
@@ -214,6 +243,7 @@ export function useEscalationNotificationPrefs(): UseEscalationNotificationPrefs
     return {
       prefs,
       deliveryStatuses: defaultStatuses(prefs),
+      defaultEmailAddress: null,
       isLoading: true,
       source: local ? "local" : "default",
       loadError: null,
@@ -235,6 +265,7 @@ export function useEscalationNotificationPrefs(): UseEscalationNotificationPrefs
         setState({
           prefs,
           deliveryStatuses: statuses,
+          defaultEmailAddress: pickEmailAddress(remote),
           isLoading: false,
           source: "backend",
           loadError: null,
@@ -281,13 +312,16 @@ export function useEscalationNotificationPrefs(): UseEscalationNotificationPrefs
       };
       const statuses = computeStatuses(remote, merged);
       writeToStorage(merged);
-      setState({
+      setState((s) => ({
         prefs: merged,
         deliveryStatuses: statuses,
+        // Email address comes from backend resolution; if the PUT response
+        // re-includes it, refresh, otherwise keep what we already loaded.
+        defaultEmailAddress: pickEmailAddress(remote) ?? s.defaultEmailAddress,
         isLoading: false,
         source: "backend",
         loadError: null,
-      });
+      }));
     } finally {
       setIsSaving(false);
     }
@@ -301,5 +335,6 @@ export function useEscalationNotificationPrefs(): UseEscalationNotificationPrefs
     source: state.source,
     loadError: state.loadError,
     deliveryStatuses: state.deliveryStatuses,
+    defaultEmailAddress: state.defaultEmailAddress,
   };
 }

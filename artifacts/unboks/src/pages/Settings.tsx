@@ -311,6 +311,7 @@ export default function Settings() {
     source: notifySource,
     loadError: notifyLoadError,
     deliveryStatuses: notifyDeliveryStatuses,
+    defaultEmailAddress: notifyDefaultEmail,
   } = useEscalationNotificationPrefs();
   const { isChannelEnabled, toggleChannel } = useEnabledChannels();
   const { settings: account, save: saveAccount } = useAccountSettings();
@@ -811,8 +812,13 @@ export default function Settings() {
                     <div className="flex items-center justify-between gap-4 py-3">
                       <div className="min-w-0">
                         <p className="text-[14px] text-[#202124]">Email</p>
-                        <p className="mt-0.5 text-[12px] text-[#5f6368]">
-                          Always on, uses your default account email
+                        <p
+                          className="mt-0.5 truncate text-[12px] text-[#5f6368]"
+                          title={notifyDefaultEmail ?? undefined}
+                        >
+                          {notifyDefaultEmail
+                            ? `Always on, sent to ${notifyDefaultEmail}`
+                            : "Always on, uses your default account email"}
                         </p>
                       </div>
                       <DeliveryBadge status={notifyDeliveryStatuses.email ?? "default"} />

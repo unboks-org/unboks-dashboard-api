@@ -1058,6 +1058,13 @@ export interface EscalationAlertChannelPref {
   enabled: boolean;
   destination: string;
   /**
+   * Backend-resolved real address when `destination` is a sentinel like
+   * `"default"`. For email this is the actual `support_email` from the
+   * client config, so the UI can show "Always on, sent to
+   * hello@unboks.org" instead of the literal string "default".
+   */
+  resolvedDestination?: string | null;
+  /**
    * Optional backend-supplied delivery status. Free-form so we can render
    * any future status the backend introduces. Common values today:
    *   "active" | "saved_only" | "provider_not_configured" | "failed"
@@ -1090,7 +1097,24 @@ function pickChannelPref(raw: unknown): EscalationAlertChannelPref | null {
         : typeof o.status === "string"
           ? o.status
           : null;
-  return { enabled, destination, deliveryStatus: status };
+  // Backend may return the resolved real address under several aliases.
+  // For email that's `support_email` from the client config; for other
+  // channels it could be a routed inbox address. Tried in order so the
+  // strongest signal wins.
+  const resolvedRaw =
+    o.resolvedDestination ??
+    o.resolved_destination ??
+    o.resolvedAddress ??
+    o.resolved_address ??
+    o.email ??
+    o.supportEmail ??
+    o.support_email ??
+    null;
+  const resolvedDestination =
+    typeof resolvedRaw === "string" && resolvedRaw.trim().length > 0
+      ? resolvedRaw.trim()
+      : null;
+  return { enabled, destination, resolvedDestination, deliveryStatus: status };
 }
 
 /**
