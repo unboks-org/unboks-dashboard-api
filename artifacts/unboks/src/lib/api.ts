@@ -621,6 +621,110 @@ export async function deleteConversation(phone: string): Promise<void> {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Email actions (TASK-021 / Briefs 210 + 218)
+// ---------------------------------------------------------------------------
+//
+// Reply / Forward / Delete for Email channel conversations. The Python
+// backend exposes these under the same `/messages/conversations/:id`
+// prefix as the existing detail/delete routes, so they share
+// `encodeConversationKey` (email ids can contain `:` / `@` / spaces).
+//
+// Errors propagate as ApiError so callers can branch on `.status`:
+//   0           — network / CORS — show generic retry copy
+//   401 / 403   — handled globally (auth wipe + redirect)
+//   404 / 501   — endpoint not deployed yet — show "not available yet"
+//   400/409/500 — show backend message verbatim
+
+export interface EmailReplyPayload {
+  body: string;
+  /** "direct" sends as the operator. Backend default if omitted. */
+  mode?: "direct";
+  attachments?: unknown[];
+}
+
+export interface EmailForwardPayload {
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
+  note?: string;
+  includeAttachments?: boolean;
+}
+
+export interface EmailDeletePayload {
+  /** "trash" = local hide. Backend may add archive/purge later. */
+  deleteMode?: "trash";
+}
+
+export async function replyToEmail(
+  conversationId: string,
+  payload: EmailReplyPayload,
+): Promise<{ ok: boolean }> {
+  const key = (conversationId ?? "").replace(/[\r\n]+/g, "").trim();
+  if (!key) throw new ApiError(400, "Conversation id is missing.");
+  return apiFetch<{ ok: boolean }>(
+    `/messages/conversations/${encodeConversationKey(key)}/email/reply`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        body: payload.body,
+        mode: payload.mode ?? "direct",
+        attachments: payload.attachments ?? [],
+      }),
+    },
+  );
+}
+
+export async function forwardEmail(
+  conversationId: string,
+  payload: EmailForwardPayload,
+): Promise<{ ok: boolean }> {
+  const key = (conversationId ?? "").replace(/[\r\n]+/g, "").trim();
+  if (!key) throw new ApiError(400, "Conversation id is missing.");
+  return apiFetch<{ ok: boolean }>(
+    `/messages/conversations/${encodeConversationKey(key)}/email/forward`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        to: payload.to,
+        cc: payload.cc ?? [],
+        bcc: payload.bcc ?? [],
+        note: payload.note ?? "",
+        includeAttachments: payload.includeAttachments ?? true,
+      }),
+    },
+  );
+}
+
+/**
+ * Delete (local hide) an email conversation. Tries DELETE first per the
+ * product contract; on 404/405 (older deployments may have only the POST
+ * variant) falls back to POST `/email/delete`. Any other error bubbles up.
+ */
+export async function deleteEmail(
+  conversationId: string,
+  payload: EmailDeletePayload = {},
+): Promise<{ ok: boolean }> {
+  const key = (conversationId ?? "").replace(/[\r\n]+/g, "").trim();
+  if (!key) throw new ApiError(400, "Conversation id is missing.");
+  const enc = encodeConversationKey(key);
+  const deleteMode = payload.deleteMode ?? "trash";
+  try {
+    return await apiFetch<{ ok: boolean }>(
+      `/messages/conversations/${enc}/email?deleteMode=${encodeURIComponent(deleteMode)}`,
+      { method: "DELETE" },
+    );
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 404 || err.status === 405)) {
+      return apiFetch<{ ok: boolean }>(
+        `/messages/conversations/${enc}/email/delete`,
+        { method: "POST", body: JSON.stringify({ deleteMode }) },
+      );
+    }
+    throw err;
+  }
+}
+
 export async function suggestReply(phone: string): Promise<{ suggestion: string }> {
   return apiFetch<{ suggestion: string }>("/messages/suggest-reply", {
     method: "POST",

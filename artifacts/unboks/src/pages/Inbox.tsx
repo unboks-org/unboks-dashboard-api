@@ -8,7 +8,6 @@ import {
   useConversation,
   useEscalations,
   useEscalationMutations,
-  useDeleteConversation,
 } from "@/hooks/use-client-api";
 import {
   mapApiConversation,
@@ -34,6 +33,11 @@ import {
 import type { ApiMessage, ConversationDetail } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { EscalationReplyComposer } from "@/components/inbox/EscalationReplyComposer";
+import {
+  EmailReplyModal,
+  EmailForwardModal,
+  EmailDeleteConfirm,
+} from "@/components/inbox/EmailActionsModal";
 import { EmailMessageDetail } from "@/components/inbox/EmailMessageDetail";
 import { EscalationReasonPanel, type ChipAction } from "@/components/inbox/EscalationReasonPanel";
 import type { EscalationReplyComposerHandle } from "@/components/inbox/EscalationReplyComposer";
@@ -654,37 +658,31 @@ export default function Inbox() {
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
   const [escalationFilter, setEscalationFilter] = useState<"all" | "soft" | "hard">("all");
   const { isChannelEnabled } = useEnabledChannels();
-  const deleteConv = useDeleteConversation();
 
-  // Email-only persistent row actions. Reply opens the conversation detail
-  // (where the existing reply UI lives). Forward has no backend yet — show
-  // calm placeholder copy. Delete confirms first, then calls the existing
-  // DELETE /messages/conversations/:id endpoint.
+  // Email-only persistent row actions. All three open dedicated modals
+  // that call the real backend endpoints:
+  //   - Reply   → POST /messages/conversations/:id/email/reply
+  //   - Forward → POST /messages/conversations/:id/email/forward
+  //   - Delete  → DELETE /messages/conversations/:id/email (POST fallback)
+  // The previous placeholders / confirm() / alert() flows are gone.
+  // Conversation ids are URL-encoded inside the api client (email ids
+  // can contain `:`, `@`, spaces).
+  const [emailReplyConv, setEmailReplyConv] = useState<Conversation | null>(null);
+  const [emailForwardConv, setEmailForwardConv] = useState<Conversation | null>(null);
+  const [emailDeleteConv, setEmailDeleteConv] = useState<Conversation | null>(null);
+
   const handleEmailReply = useCallback((conv: Conversation) => {
-    setSelectedConv(conv);
+    setEmailReplyConv(conv);
   }, []);
-  const handleEmailForward = useCallback((_conv: Conversation) => {
-    window.alert("Email forwarding will be connected by the Unboks team.");
+  const handleEmailForward = useCallback((conv: Conversation) => {
+    setEmailForwardConv(conv);
   }, []);
-  const handleEmailDelete = useCallback(
-    (conv: Conversation) => {
-      const subject = conv.subject?.trim() || conv.sender || "this email";
-      const ok = window.confirm(`Delete "${subject}"? This can't be undone.`);
-      if (!ok) return;
-      deleteConv.mutate(conv.id, {
-        onSuccess: () => {
-          setSelectedConv((cur) => (cur?.id === conv.id ? null : cur));
-        },
-        onError: (err) => {
-          const msg = err instanceof Error ? err.message : "Unknown error";
-          window.alert(
-            `Couldn't delete: ${msg}\n\nIf this keeps happening, delete will be connected by the Unboks team.`,
-          );
-        },
-      });
-    },
-    [deleteConv],
-  );
+  const handleEmailDelete = useCallback((conv: Conversation) => {
+    setEmailDeleteConv(conv);
+  }, []);
+  const handleEmailDeleted = useCallback((deletedId: string) => {
+    setSelectedConv((cur) => (cur?.id === deletedId ? null : cur));
+  }, []);
 
   const { data: apiConversations, isLoading, isError } = useConversations();
   // Escalations list is the source of truth for the Escalations tab AND for
@@ -957,6 +955,25 @@ export default function Inbox() {
           />
         )}
       </div>
+
+      {/* Email action modals — mounted at the page level so they overlay
+          both the list and the detail pane on every viewport. */}
+      <EmailReplyModal
+        open={Boolean(emailReplyConv)}
+        conversation={emailReplyConv}
+        onClose={() => setEmailReplyConv(null)}
+      />
+      <EmailForwardModal
+        open={Boolean(emailForwardConv)}
+        conversation={emailForwardConv}
+        onClose={() => setEmailForwardConv(null)}
+      />
+      <EmailDeleteConfirm
+        open={Boolean(emailDeleteConv)}
+        conversation={emailDeleteConv}
+        onClose={() => setEmailDeleteConv(null)}
+        onDeleted={handleEmailDeleted}
+      />
     </DashboardShell>
   );
 }

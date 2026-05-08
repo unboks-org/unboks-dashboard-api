@@ -24,10 +24,16 @@ import {
   type ScheduleSlot,
   aiEditorEdit,
   translateMessage,
+  replyToEmail,
+  forwardEmail,
+  deleteEmail,
   type GuidancePayload,
   type ResolvePayload,
   type AIEditorParams,
   type TranslateMessageParams,
+  type EmailReplyPayload,
+  type EmailForwardPayload,
+  type EmailDeletePayload,
 } from "@/lib/api";
 
 // ------ Conversations ------
@@ -207,5 +213,46 @@ export function useAIEditor() {
 export function useMessageTranslation() {
   return useMutation({
     mutationFn: (params: TranslateMessageParams) => translateMessage(params),
+  });
+}
+
+// ------ Email actions (Reply / Forward / Delete) ------
+//
+// All three invalidate the conversation list + the affected detail so
+// the UI reflects the backend's new state immediately. Delete also
+// clears the open detail cache for the deleted id.
+
+export function useEmailReply() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ conversationId, payload }: { conversationId: string; payload: EmailReplyPayload }) =>
+      replyToEmail(conversationId, payload),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["conversation", vars.conversationId] });
+    },
+  });
+}
+
+export function useEmailForward() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ conversationId, payload }: { conversationId: string; payload: EmailForwardPayload }) =>
+      forwardEmail(conversationId, payload),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["conversation", vars.conversationId] });
+    },
+  });
+}
+
+export function useEmailDelete() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ conversationId, payload }: { conversationId: string; payload?: EmailDeletePayload }) =>
+      deleteEmail(conversationId, payload),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.removeQueries({ queryKey: ["conversation", vars.conversationId] });
+    },
   });
 }

@@ -1,0 +1,187 @@
+Project 2 dashboard frontend hard bugfix — wire Email Reply, Forward, Delete to real backend endpoints.
+
+Important:
+- Project 2 Replit is frontend only.
+- Canonical backend is api.unboks.org.
+- Do not modify artifacts/api-server.
+- Do not build backend endpoints in Replit.
+- Do not modify DNS, secrets, auth, deployment config, or Python backend assumptions.
+- Work only in artifacts/unboks frontend.
+- Do not touch Settings.
+- Do not touch Tasks.
+- Do not touch sidebar unless absolutely required.
+- Do not commit.
+- Do not publish until reviewed.
+
+BUG:
+Email detail action buttons exist:
+- Reply
+- Forward
+- Delete
+
+But they still do not work.
+
+Current behavior:
+Forward shows placeholder:
+“Email forwarding will be connected by the Unboks team.”
+
+Delete does not work.
+Reply does not work.
+
+This is wrong because Jr has shipped backend support for:
+- Email reply
+- Email forward
+- Email delete / local hide
+
+Frontend must now call the real backend endpoints instead of placeholder logic.
+
+Backend state from Jr:
+Email reply / forward / delete was shipped in Product Contract TASK-021:
+- Brief 210: email reply
+- Brief 218: forward + delete
+- Provider-side IMAP MOVE may be deferred, but local hide works.
+
+Required behavior:
+1. Email Reply button must open a reply composer or modal.
+2. User can type reply.
+3. Clicking Send calls backend email reply endpoint.
+4. If backend returns ok:true, show success and update the conversation history if returned.
+5. If backend fails, show the backend error.
+6. Do not show “will be connected by the Unboks team” unless endpoint returns 404/501.
+
+7. Email Forward button must open a forward composer/modal.
+8. User can enter recipient email, optional note.
+9. Clicking Forward calls backend forward endpoint.
+10. If backend returns ok:true, show success.
+11. If backend fails, show the backend error.
+12. Do not show placeholder if backend endpoint exists.
+
+13. Email Delete button must ask for confirmation.
+14. After confirm, call backend delete endpoint.
+15. If backend returns ok:true, remove/hide the email from the inbox list/detail.
+16. If backend fails, show backend error.
+17. Do not silently fail.
+
+Backend endpoints to try:
+Use the endpoint names actually implemented in the frontend API client if present.
+If not present, add frontend API client functions.
+
+Expected endpoint shapes from product contract:
+
+Reply:
+POST /api/{client}/dashboard/api/messages/conversations/{conversation_id}/email/reply
+
+Body:
+{
+  "body": "reply text",
+  "mode": "direct",
+  "attachments": []
+}
+
+Forward:
+POST /api/{client}/dashboard/api/messages/conversations/{conversation_id}/email/forward
+
+Body:
+{
+  "to": ["recipient@example.com"],
+  "cc": [],
+  "bcc": [],
+  "note": "optional note",
+  "includeAttachments": true
+}
+
+Delete:
+DELETE /api/{client}/dashboard/api/messages/conversations/{conversation_id}/email
+
+or if backend uses POST:
+POST /api/{client}/dashboard/api/messages/conversations/{conversation_id}/email/delete
+
+Body:
+{
+  "deleteMode": "trash"
+}
+
+Important conversation id rule:
+Email conversation ids can contain special characters.
+
+Example:
+email::subj:calvin@gaimin.io:testing
+
+The frontend must use:
+encodeURIComponent(conversationId)
+
+Do not send raw email conversation id in the URL.
+Do not double encode.
+
+Use the exact backend-provided conversation key:
+- phone
+- conversationId
+- conversation_id
+- thread_key
+whichever is the real routable key already used for message detail.
+
+Investigation:
+1. Search for placeholder text:
+   “Email forwarding will be connected by the Unboks team.”
+   “Email reply will be connected by the Unboks team.”
+   “Email deletion will be connected by the Unboks team.”
+2. Remove placeholder-only paths where backend endpoints now exist.
+3. Search email action handlers in:
+   - Inbox.tsx
+   - MessageRow.tsx
+   - api.ts
+   - use-client-api.ts
+4. Confirm actual network requests fire when clicking Reply, Forward, Delete.
+5. Check request URL contains encoded conversation id.
+6. Check Authorization header is included.
+7. Check errors are displayed from backend JSON.
+
+UI requirements:
+Reply:
+- Small premium modal or inline composer.
+- Title: Reply to email
+- Textarea
+- Buttons: Send reply, Cancel
+
+Forward:
+- Small premium modal.
+- Title: Forward email
+- To field
+- Optional note textarea
+- Buttons: Forward, Cancel
+
+Delete:
+- Confirmation dialog.
+- Copy:
+  “Delete this email conversation?”
+  “This will remove it from the inbox.”
+- Buttons:
+  Delete
+  Cancel
+
+Do not make huge modals.
+Keep premium SaaS style.
+Mobile must work.
+
+Error handling:
+- 401/403: show session expired / sign in again.
+- 404/501: show:
+  “This email action is not available yet.”
+- 400/409/500: show backend error message if provided.
+- Never pretend success.
+
+Acceptance:
+- Clicking Reply opens reply composer.
+- Sending reply calls backend endpoint.
+- Clicking Forward opens forward modal.
+- Forwarding calls backend endpoint.
+- Clicking Delete asks confirmation.
+- Confirm delete calls backend endpoint.
+- Successful delete hides/removes email from inbox.
+- Placeholder “will be connected by the Unboks team” no longer appears for normal email actions if backend is available.
+- Email conversation id is URL encoded.
+- WhatsApp rows are not affected.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish.
