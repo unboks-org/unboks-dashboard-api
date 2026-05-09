@@ -43,6 +43,15 @@ export function useConversations() {
     queryKey: ["conversations"],
     queryFn: fetchConversations,
     staleTime: 30_000,
+    // Quiet 10s heartbeat so the inbox list reflects newly-arrived
+    // customer messages without the operator having to manually
+    // refresh. `refetchIntervalInBackground: false` stops the poll
+    // when the tab is hidden, so a backgrounded dashboard doesn't
+    // keep hammering the API. React Query merges results into the
+    // existing list — selected page / open conversation / scroll
+    // position are not reset.
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
     retry: 1,
   });
 }
@@ -53,6 +62,13 @@ export function useConversation(phone: string | null) {
     queryFn: () => fetchConversation(phone!),
     enabled: Boolean(phone),
     staleTime: 30_000,
+    // Quiet 10s heartbeat for the currently open conversation
+    // detail. `enabled` is gated by `phone`, so this only ticks
+    // while a conversation is actually open. The merged result
+    // appends new messages to the cached detail, so the open thread
+    // never closes or scrolls during a refetch.
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
     retry: 1,
   });
 }
@@ -76,6 +92,11 @@ export function useEscalations(mode?: "soft" | "hard" | "all") {
     queryKey: ["escalations", mode ?? "all"],
     queryFn: () => fetchEscalations(mode),
     staleTime: 30_000,
+    // Quiet 10s heartbeat so newly-raised escalations land in the
+    // operator's queue without manual refresh. Background polling
+    // is disabled to avoid wasted API calls when the tab is hidden.
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
     retry: 1,
   });
 }

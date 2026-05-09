@@ -55,6 +55,11 @@ export function useAppointments(): UseAppointmentsResult {
     queryKey: APPOINTMENTS_KEY,
     queryFn: fetchAppointments,
     staleTime: 60_000,
+    // Appointments change less often than inbox traffic — a 30s
+    // heartbeat keeps the page fresh without hammering the API.
+    // Background polling is off so a hidden tab doesn't tick.
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
     retry: 0,
   });
 
