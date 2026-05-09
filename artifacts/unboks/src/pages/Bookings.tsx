@@ -34,7 +34,7 @@ import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import { useAppointments } from "@/hooks/use-appointments";
 import { useActiveConversationKeys } from "@/hooks/use-active-conversation-keys";
-import { filterActiveAppointments } from "@/lib/active-appointments";
+import { filterActiveAppointments } from "@/lib/appointment-classifier";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import type { Appointment, AppointmentStatus } from "@/lib/api";

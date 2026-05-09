@@ -1,0 +1,150 @@
+TASK: Add manual Refresh button to Project 2 dashboard.
+
+PROJECT SCOPE:
+Project 2 customer dashboard only.
+Do NOT touch Project 1 public website.
+Do NOT touch pricing.
+Do NOT touch backend/API implementation.
+Do NOT modify artifacts/api-server.
+Frontend only.
+
+GOAL:
+Add a clear manual Refresh button in the dashboard so the operator can pull the latest data without doing a full browser refresh.
+
+WHY:
+The dashboard has heartbeat polling, but the operator also needs a manual “refresh now” control when checking for new messages, escalations, appointments, and tasks.
+
+LOCATION:
+Add Refresh button in the dashboard top/header area where it is always easy to find.
+
+It should be visible on operational pages:
+- Escalations
+- Inbox
+- WhatsApp
+- Email
+- Appointments
+- Tasks
+
+It does not need to be prominent on Settings.
+
+BUTTON COPY:
+Refresh
+
+Optional small status text:
+Updated just now
+or
+Last updated 21:34
+
+BEHAVIOR:
+Clicking Refresh must refetch dashboard data through React Query.
+
+Refresh should include:
+- conversations
+- escalations
+- selected/open conversation detail
+- appointments
+- tasks
+- status/sidebar counts if used
+
+Suggested query keys to invalidate/refetch:
+- ["conversations"]
+- ["escalations"]
+- ["conversation"]
+- ["appointments"]
+- ["tasks"]
+- ["status"]
+
+IMPORTANT:
+Do NOT reload the full page.
+Do NOT reset the current page.
+Do NOT close the selected conversation.
+Do NOT clear selected channel/filter.
+Do NOT clear search.
+Do NOT reset escalation tabs.
+Do NOT reset Appointments view.
+Do NOT affect Settings form drafts.
+
+UX REQUIREMENTS:
+- Button shows loading/spinner while refreshing.
+- Button disables while refresh is in progress.
+- On success, show “Updated just now” or update timestamp.
+- On failure, show calm error: “Could not refresh. Try again.”
+- Must look premium and compact.
+- No unnecessary vertical whitespace.
+- No giant button.
+- Use existing design system/button styling.
+- Mobile must work without horizontal overflow.
+- If space is tight on mobile, icon + accessible label is acceptable.
+
+PREFERRED DESIGN:
+Small button in top-right header:
+
+[ Refresh ⟳ ]   Updated just now
+
+or:
+
+[ ⟳ Refresh ]
+
+Use subtle border, clean icon, and professional spacing.
+
+TECHNICAL GUIDANCE:
+Use React Query queryClient.
+
+Example logic:
+const queryClient = useQueryClient();
+
+await Promise.allSettled([
+  queryClient.invalidateQueries({ queryKey: ["conversations"] }),
+  queryClient.invalidateQueries({ queryKey: ["escalations"] }),
+  queryClient.invalidateQueries({ queryKey: ["conversation"] }),
+  queryClient.invalidateQueries({ queryKey: ["appointments"] }),
+  queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+  queryClient.invalidateQueries({ queryKey: ["status"] }),
+]);
+
+If using refetchQueries instead of invalidateQueries is better for immediate refresh, use that.
+
+LIKELY FILES:
+- artifacts/unboks/src/components/inbox/DashboardShell.tsx
+- artifacts/unboks/src/components/inbox/Header.tsx
+- artifacts/unboks/src/pages/Inbox.tsx
+- artifacts/unboks/src/pages/Bookings.tsx or Appointments.tsx
+- artifacts/unboks/src/pages/Tasks.tsx only if needed
+
+Do not touch:
+- artifacts/api-server
+- Settings logic unless absolutely required
+- backend
+- DNS
+- auth
+- deployment config
+- .replit
+- attached_assets
+
+ACCEPTANCE:
+- Refresh button appears in dashboard header.
+- Clicking Refresh refetches Inbox/conversations.
+- Clicking Refresh refetches Escalations.
+- Clicking Refresh refetches selected conversation detail if one is open.
+- Clicking Refresh refetches Appointments.
+- Clicking Refresh refetches Tasks.
+- No full browser reload.
+- Current page remains open.
+- Selected conversation remains open.
+- Active filters remain.
+- Button shows loading state.
+- Success shows updated timestamp or “Updated just now”.
+- Failure shows calm error.
+- Mobile layout works.
+- Build/typecheck clean.
+
+REPORT BACK:
+1. Files changed.
+2. Where Refresh button was added.
+3. Which query keys are refreshed.
+4. How selected page/conversation is preserved.
+5. Confirmation no backend/API changes.
+6. Confirmation Project 1 was not touched.
+
+Do not commit.
+Do not publish until reviewed.

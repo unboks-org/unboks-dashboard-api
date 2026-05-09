@@ -14,7 +14,7 @@ import {
 } from "@/hooks/use-hidden-conversations";
 import { useArchivedConversations } from "@/hooks/use-archived-conversations";
 import { useActiveConversationKeys } from "@/hooks/use-active-conversation-keys";
-import { filterActiveAppointments } from "@/lib/active-appointments";
+import { filterActiveAppointments } from "@/lib/appointment-classifier";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",

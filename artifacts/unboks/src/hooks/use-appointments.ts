@@ -38,7 +38,7 @@ import {
   detectAppointment,
   hasSchedulingSignals,
   validateBackendAppointment,
-} from "@/lib/appointment-detector";
+} from "@/lib/appointment-classifier";
 import { mapApiConversation } from "@/lib/conversation-mapper";
 
 const APPOINTMENTS_KEY = ["appointments"] as const;
