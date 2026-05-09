@@ -15,6 +15,7 @@ import {
 import { useArchivedConversations } from "@/hooks/use-archived-conversations";
 import { useActiveConversationKeys } from "@/hooks/use-active-conversation-keys";
 import { filterActiveAppointments } from "@/lib/appointment-classifier";
+import { RefreshButton } from "@/components/inbox/RefreshButton";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
@@ -48,6 +49,12 @@ interface DashboardShellProps {
    * Now folded into the title-block subtitle so loading/error chips still appear.
    */
   titleSuffix?: ReactNode;
+  /**
+   * Hide the manual Refresh button in the header. Used by Settings
+   * where the page is a form and a global refetch would feel out of
+   * place. Defaults to false (button visible everywhere else).
+   */
+  hideRefresh?: boolean;
   children: ReactNode;
 }
 
@@ -59,6 +66,7 @@ export function DashboardShell({
   pageTitle,
   pageSubtitle,
   titleSuffix,
+  hideRefresh = false,
   children,
 }: DashboardShellProps) {
   const [location, navigate] = useLocation();
@@ -241,6 +249,7 @@ export function DashboardShell({
           searchQuery={searchQuery}
           onSearchChange={onSearchChange}
           onOpenDrawer={() => setDrawerOpen(true)}
+          rightSlot={hideRefresh ? null : <RefreshButton />}
         />
 
         {/* Main content scroll region.

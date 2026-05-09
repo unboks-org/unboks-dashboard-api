@@ -5,6 +5,7 @@ import { Loader2, X } from "lucide-react";
 import { useAuth } from "@/components/auth/useAuth";
 import { TaskComposer } from "@/components/tasks/TaskComposer";
 import { TaskCard } from "@/components/tasks/TaskCard";
+import { RefreshButton } from "@/components/inbox/RefreshButton";
 import {
   Task,
   TaskStatus,
@@ -593,6 +594,11 @@ export default function Tasks() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Manual data refresh — same control as the rest of the
+                dashboard. Tasks runs its own header (not DashboardShell)
+                so we mount the button inline here to keep visibility
+                consistent across operational pages. */}
+            <RefreshButton />
             {/* Acting-as toggle. Calvin and Jr share one login, so the
                 dashboard cannot infer who is at the keyboard. The active
                 identity drives `createdBy` on newly created local tasks and

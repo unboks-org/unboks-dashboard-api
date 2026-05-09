@@ -467,6 +467,7 @@ export default function Settings() {
       activeNav="settings"
       pageTitle="Settings"
       pageSubtitle="Manage your workspace, Agent information, channels, and alerts."
+      hideRefresh
     >
       <div className="min-h-full bg-[#f8f9fb]">
         <div className="mx-auto w-full max-w-[1180px] px-4 py-6 sm:px-6 sm:py-8">

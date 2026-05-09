@@ -7,6 +7,12 @@ interface HeaderProps {
   searchQuery: string;
   onSearchChange?: (query: string) => void;
   onOpenDrawer: () => void;
+  /**
+   * Optional right-side slot rendered between the title block and the
+   * search box. Used by the dashboard shell to mount the manual
+   * Refresh control without leaking React Query knowledge into Header.
+   */
+  rightSlot?: ReactNode;
 }
 
 export function Header({
@@ -15,6 +21,7 @@ export function Header({
   searchQuery,
   onSearchChange,
   onOpenDrawer,
+  rightSlot,
 }: HeaderProps) {
   const showSearch = typeof onSearchChange === "function";
   const hasTitleBlock = Boolean(title) || Boolean(subtitle);
@@ -46,6 +53,10 @@ export function Header({
         </div>
         {/* hasTitleBlock retained for future use (e.g. variant headers) */}
         {!hasTitleBlock && null}
+
+        {/* Right-side slot (e.g. manual Refresh button). Rendered before
+            the search box so the search retains its anchored right edge. */}
+        {rightSlot}
 
         {/* Compact desktop search (right side) */}
         {showSearch && (
