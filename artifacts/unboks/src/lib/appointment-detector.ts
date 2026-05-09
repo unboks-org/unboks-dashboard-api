@@ -2,34 +2,55 @@
  * Appointment detector.
  *
  * Reads a `ConversationDetail` (the same shape the Inbox detail pane
- * uses) and decides whether the conversation contains a confirmed or
- * pending appointment that should appear under Workspace → Appointments.
+ * uses) and decides whether the conversation contains a CONFIRMED
+ * appointment that should appear under Workspace → Appointments.
  *
- * Product rule
- * ============
- * An appointment row is produced ONLY when the messages contain enough
- * structured signal that we are not inventing one:
+ * Product rule (strict)
+ * =====================
+ * The Appointments page is the operator's "what's actually booked"
+ * view. Anything still in negotiation belongs in Inbox / Escalations,
+ * not here. So this detector only emits rows whose status is
+ * "confirmed" — every other in-flight state stays out.
  *
- *   1. The customer (or assistant on the customer's behalf) shows
- *      scheduling intent ("meet", "appointment", "activate", "book",
- *      "schedule", "demo", "call") OR offered availability.
- *   2. Some message contains a concrete day token (Monday..Sunday,
- *      "tomorrow", "today") AND a concrete time (HH:mm, H:mm or H.mm).
- *      The day + time are taken from the LATEST message that has both,
- *      so a Marina/operator confirmation overrides earlier customer
- *      ranges.
+ * The lifecycle the detector mirrors:
  *
- * If only vague scheduling talk is present (e.g. "let's meet sometime
- * next week") the detector returns `null` and no row is created.
+ *   1. Customer asks for an intake meeting               → Inbox
+ *   2. Marina asks for 2 or 3 candidate times            → Inbox
+ *   3. Customer offers multiple slots                    → Escalation (backend)
+ *   4. Operator picks a slot                             → still Escalation
+ *   5. Marina relays the slot and asks for confirmation  → still NOT an
+ *      Appointment (the slot has been proposed, not accepted)
+ *   6. Customer confirms ("Yes Thursday 09:00 works")    → APPOINTMENT
  *
- * Status
- * ======
- *  - "confirmed" — assistant confirmation language ("confirmed", "see
- *    you", "is set", "all set").
- *  - "pending"   — Marina-style hand-off language ("passed to the
- *    team", "team will confirm", "they'll confirm shortly").
- *  - "detected"  — neither marker present; we extracted a date/time but
- *    can't prove the team confirmed it.
+ * Concretely we require:
+ *   - Some message in the thread shows scheduling intent ("meet",
+ *     "appointment", "intake", "activate", "book", "schedule",
+ *     "demo", "call") OR explicit availability.
+ *   - The LATEST message containing BOTH a day token (Monday..Sunday,
+ *     "tomorrow", "today") AND a concrete time (HH:mm, H:mm or H.mm)
+ *     pins the slot.
+ *   - The status resolves to "confirmed" via one of:
+ *       a) the chosen message itself contains explicit confirmation
+ *          wording from Marina or the operator ("confirmed", "all
+ *          set", "see you on", "locked in", "booked"); OR
+ *       b) any later assistant/operator message contains that
+ *          wording; OR
+ *       c) the chosen message is from the customer AND uses
+ *          acceptance language ("Yes Thursday 09:00 works"); OR
+ *       d) the customer sends an acceptance message AFTER the chosen
+ *          slot was proposed by Marina/operator ("Yes", "OK",
+ *          "Confirmed", "works for me", "sounds good"...).
+ *
+ * If none of those hold, the detector returns `null` and no row is
+ * created. Customer slot offers ("tomorrow 17:00 or Monday 11:00"),
+ * Marina-asks-please-confirm messages, and bare detected slots all
+ * stay out of Appointments — they are still visible in Inbox /
+ * Escalations where the operator actually works on them.
+ *
+ * Backend rows (from `GET /appointments`) are NOT routed through this
+ * file; they go through `normalizeAppointmentList` and can carry any
+ * status the backend chooses, including "pending" or "detected" — the
+ * page's status pill still understands those for backend rows.
  *
  * Location extraction
  * ===================
@@ -51,7 +72,7 @@ const TIME_RE = /\b(\d{1,2})[:.](\d{2})\b/;
 // Schedule intent keywords. We accept intent on EITHER side — the
 // customer asking to meet, or the assistant proposing.
 const SCHEDULE_INTENT_RE =
-  /\b(meet|meeting|appointment|appt|book|booking|schedule|reschedul\w*|activate|activation|demo|consult\w*|call|session|onboard\w*|kickoff|kick-off)\b/i;
+  /\b(meet|meeting|appointment|appt|intake|book|booking|schedule|reschedul\w*|activate|activation|demo|consult\w*|call|session|onboard\w*|kickoff|kick-off)\b/i;
 // Availability-style phrasing from the customer.
 const AVAILABILITY_RE = /\b(available|availability|works for me|works for us|free|am free|i'?m free|those are my times|my availability)\b/i;
 
@@ -69,6 +90,7 @@ const CUSTOMER_CONFIRM_RE =
   /\b(yes|yep|yeah|sure|ok(?:ay)?|confirmed?|works(?: for me| for us)?|that works|sounds good|perfect|great|deal|done|see you|will be there|i'?ll be there)\b/i;
 
 const TOPIC_RULES: Array<{ re: RegExp; title: string }> = [
+  { re: /\bintake\b/i, title: "Intake meeting" },
   { re: /\b(activate|activation)\b/i, title: "Activation meeting" },
   { re: /\bdemo\b/i, title: "Product demo" },
   { re: /\b(consult\w*)\b/i, title: "Consultation" },
@@ -143,14 +165,18 @@ export function detectAppointment({
   // time are pinned by Marina's later confirmation.
   const title = pickTopic(msgs) ?? "Meeting";
 
-  // Status: prefer the chosen confirmation message's wording, then fall
-  // back to scanning all assistant + operator messages, then check
-  // whether the customer themselves accepted the slot in any reply
-  // received AFTER the chosen day+time message. We pass the chosen
-  // message's index in the original `msgs` array so the fallback can
-  // use thread order when timestamps are missing on either side.
+  // Status resolution. We pass the chosen message's index in the
+  // original `msgs` array so the fallback can use thread order when
+  // timestamps are missing on either side.
   const chosenIdx = msgs.indexOf(chosen.msg);
   const status = pickStatus(chosen.msg, msgs, chosenIdx);
+
+  // STRICT GATE — Appointments page only shows confirmed bookings.
+  // Anything still being negotiated (multi-slot offer, Marina asked
+  // please-confirm, operator hasn't picked yet) stays in Inbox /
+  // Escalations and must not surface here. Backend `/appointments`
+  // rows bypass this gate and can still carry pending/detected.
+  if (status !== "confirmed") return null;
 
   // Stable id keyed on the conversation + extracted slot so re-renders
   // (and hook re-runs) don't produce duplicates. The hook also dedups
@@ -185,46 +211,98 @@ function pickTopic(msgs: ApiMessage[]): string | null {
   return null;
 }
 
+/**
+ * Returns true when the chosen-msg content offers MORE THAN ONE
+ * candidate slot (e.g. "tomorrow 17:00 or Monday 11:00"). A multi-slot
+ * message is an availability offer, not a confirmation, even if it
+ * carries acceptance-shaped words like "works for me". The detector
+ * must never promote a multi-slot offer to a confirmed Appointment.
+ */
+function isMultiSlotOffer(content: string): boolean {
+  const dayMatches = content.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today)\b/gi) ?? [];
+  const timeMatches = content.match(/\b\d{1,2}[:.]\d{2}\b/g) ?? [];
+  return dayMatches.length > 1 || timeMatches.length > 1;
+}
+
+/**
+ * Predicate: is message at index `i` (with `tsMs` timestamp) at OR
+ * after the chosen-slot message? Uses real timestamps when both sides
+ * have them, otherwise falls back to position in the chronologically
+ * ordered `msgs` array.
+ */
+function isAtOrAfterChosen(
+  i: number,
+  tsMs: number,
+  chosenIdx: number,
+  chosenMs: number,
+): boolean {
+  if (chosenMs > 0 && tsMs > 0) return tsMs >= chosenMs;
+  if (chosenIdx >= 0) return i >= chosenIdx;
+  return false;
+}
+
 function pickStatus(
   chosenMsg: ApiMessage,
   msgs: ApiMessage[],
   chosenIdx: number,
 ): AppointmentStatus {
+  const chosenMs = chosenMsg.timestampMs;
+
   // 1. Wording on the message that pinned the slot itself wins.
   if (PENDING_RE.test(chosenMsg.content)) return "pending";
   if (CONFIRMED_RE.test(chosenMsg.content)) return "confirmed";
 
-  // 2. Scan assistant + operator (human team) messages for confirm /
-  //    pending-handoff language. Operator confirmations count too —
-  //    per the prompt rules, "operator/team selected a time" with no
-  //    further customer confirmation needed yields a confirmed booking.
-  for (const m of msgs) {
+  // 1b. The chosen message IS the customer accepting a single slot
+  //     in one breath ("Yes, Thursday 09:00 works for me"). We
+  //     explicitly REJECT multi-slot availability offers here — a
+  //     customer saying "tomorrow 17:00 or Monday 11:00 works" is
+  //     offering choices, not confirming a booking. Step 3 wouldn't
+  //     otherwise fire because it only looks at user messages
+  //     strictly AFTER the chosen one.
+  if (
+    chosenMsg.role === "user" &&
+    CUSTOMER_CONFIRM_RE.test(chosenMsg.content) &&
+    !isMultiSlotOffer(chosenMsg.content)
+  ) {
+    return "confirmed";
+  }
+
+  // 2. Scan assistant + operator (human team) messages AT OR AFTER
+  //    the chosen slot for confirm / pending-handoff language. We
+  //    intentionally ignore EARLIER confirmations — an old "confirmed"
+  //    from a previous appointment cycle in the same thread must not
+  //    promote a brand-new "please confirm Thursday 09:00" proposal
+  //    to confirmed. Operator confirmations count too: per the prompt
+  //    rules, "operator/team selected a time and confirmed" yields a
+  //    confirmed booking even before the customer replies.
+  for (let i = 0; i < msgs.length; i++) {
+    const m = msgs[i];
     if (m.role !== "assistant" && m.role !== "operator") continue;
+    if (!isAtOrAfterChosen(i, m.timestampMs, chosenIdx, chosenMs)) continue;
     if (PENDING_RE.test(m.content)) return "pending";
     if (CONFIRMED_RE.test(m.content)) return "confirmed";
   }
 
-  // 3. Customer accepted the slot. Per the Marina prompt's Example D
-  //    ("Yes, Thursday 09:00 works." → create confirmed appointment),
-  //    a customer reply received AFTER the chosen day+time message that
-  //    uses acceptance language upgrades the row to confirmed.
-  //
-  //    "After" is decided by timestampMs when both sides have it,
-  //    otherwise by position in the original `msgs` array (the backend
-  //    delivers messages in chronological order — see normalizeMessage
-  //    callers). This stops a generic "ok" sent earlier in the thread
-  //    from false-positiving the appointment.
-  const chosenMs = chosenMsg.timestampMs;
+  // 3. Customer accepted the slot in a LATER reply. The flow is:
+  //    Marina/operator proposes "Thursday 09:00, can you confirm?",
+  //    customer replies "Yes" → that "yes" upgrades the row to
+  //    confirmed. We require the customer message to come strictly
+  //    AFTER the chosen day+time message so a generic "ok" earlier in
+  //    the thread (e.g. acknowledging an unrelated step) cannot
+  //    false-positive. We also reject customer replies that themselves
+  //    offer multiple slots — those are counter-proposals, not
+  //    confirmations.
   for (let i = 0; i < msgs.length; i++) {
     const m = msgs[i];
     if (m.role !== "user") continue;
-    const isLater =
+    const isStrictlyLater =
       chosenMs > 0 && m.timestampMs > 0
         ? m.timestampMs > chosenMs
         : chosenIdx >= 0
           ? i > chosenIdx
           : false;
-    if (!isLater) continue;
+    if (!isStrictlyLater) continue;
+    if (isMultiSlotOffer(m.content)) continue;
     if (CUSTOMER_CONFIRM_RE.test(m.content)) return "confirmed";
   }
 
