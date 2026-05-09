@@ -59,6 +59,14 @@ const CONFIRMED_RE =
   /\b(confirmed|all set|is set|see you (?:on |at )|see u (?:on |at )|locked in|booked)\b/i;
 const PENDING_RE =
   /\b(passed to the team|team will confirm|they'?ll confirm|they will confirm|will confirm shortly|handed (?:off|over) to the team|forwarded to the team)\b/i;
+// Customer-side confirmation language. Per the Marina prompt's
+// appointment rules, a conversation becomes a confirmed Appointment
+// when the customer accepts the proposed time (e.g. "Yes, Thursday
+// 09:00 works"). We only fire this regex on customer messages that
+// arrived AFTER the chosen day+time message, so isolated "ok"s
+// elsewhere in the thread don't false-positive.
+const CUSTOMER_CONFIRM_RE =
+  /\b(yes|yep|yeah|sure|ok(?:ay)?|confirmed?|works(?: for me| for us)?|that works|sounds good|perfect|great|deal|done|see you|will be there|i'?ll be there)\b/i;
 
 const TOPIC_RULES: Array<{ re: RegExp; title: string }> = [
   { re: /\b(activate|activation)\b/i, title: "Activation meeting" },
@@ -136,8 +144,13 @@ export function detectAppointment({
   const title = pickTopic(msgs) ?? "Meeting";
 
   // Status: prefer the chosen confirmation message's wording, then fall
-  // back to scanning all assistant messages.
-  const status = pickStatus(chosen.msg, msgs);
+  // back to scanning all assistant + operator messages, then check
+  // whether the customer themselves accepted the slot in any reply
+  // received AFTER the chosen day+time message. We pass the chosen
+  // message's index in the original `msgs` array so the fallback can
+  // use thread order when timestamps are missing on either side.
+  const chosenIdx = msgs.indexOf(chosen.msg);
+  const status = pickStatus(chosen.msg, msgs, chosenIdx);
 
   // Stable id keyed on the conversation + extracted slot so re-renders
   // (and hook re-runs) don't produce duplicates. The hook also dedups
@@ -172,14 +185,49 @@ function pickTopic(msgs: ApiMessage[]): string | null {
   return null;
 }
 
-function pickStatus(chosenMsg: ApiMessage, msgs: ApiMessage[]): AppointmentStatus {
+function pickStatus(
+  chosenMsg: ApiMessage,
+  msgs: ApiMessage[],
+  chosenIdx: number,
+): AppointmentStatus {
+  // 1. Wording on the message that pinned the slot itself wins.
   if (PENDING_RE.test(chosenMsg.content)) return "pending";
   if (CONFIRMED_RE.test(chosenMsg.content)) return "confirmed";
+
+  // 2. Scan assistant + operator (human team) messages for confirm /
+  //    pending-handoff language. Operator confirmations count too —
+  //    per the prompt rules, "operator/team selected a time" with no
+  //    further customer confirmation needed yields a confirmed booking.
   for (const m of msgs) {
-    if (m.role !== "assistant") continue;
+    if (m.role !== "assistant" && m.role !== "operator") continue;
     if (PENDING_RE.test(m.content)) return "pending";
     if (CONFIRMED_RE.test(m.content)) return "confirmed";
   }
+
+  // 3. Customer accepted the slot. Per the Marina prompt's Example D
+  //    ("Yes, Thursday 09:00 works." → create confirmed appointment),
+  //    a customer reply received AFTER the chosen day+time message that
+  //    uses acceptance language upgrades the row to confirmed.
+  //
+  //    "After" is decided by timestampMs when both sides have it,
+  //    otherwise by position in the original `msgs` array (the backend
+  //    delivers messages in chronological order — see normalizeMessage
+  //    callers). This stops a generic "ok" sent earlier in the thread
+  //    from false-positiving the appointment.
+  const chosenMs = chosenMsg.timestampMs;
+  for (let i = 0; i < msgs.length; i++) {
+    const m = msgs[i];
+    if (m.role !== "user") continue;
+    const isLater =
+      chosenMs > 0 && m.timestampMs > 0
+        ? m.timestampMs > chosenMs
+        : chosenIdx >= 0
+          ? i > chosenIdx
+          : false;
+    if (!isLater) continue;
+    if (CUSTOMER_CONFIRM_RE.test(m.content)) return "confirmed";
+  }
+
   return "detected";
 }
 

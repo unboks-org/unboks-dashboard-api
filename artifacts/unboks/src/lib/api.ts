@@ -86,7 +86,21 @@ export interface ApiConversation {
 
 export interface ApiMessage {
   id: string;
-  role: "user" | "assistant";
+  /**
+   * Who sent the message.
+   *   - "user"      — the customer (inbound from any channel)
+   *   - "assistant" — Marina (the AI agent)
+   *   - "operator"  — a human teammate replying directly to the customer
+   *                  (human takeover, "Team will confirm" replies, etc.)
+   *
+   * The thread renderer styles each role distinctly so the operator
+   * can tell at a glance which side spoke. Backend role names map
+   * via `normalizeMessage` (see lib/api.ts) — `operator | staff |
+   * team | teammate | human | admin | support` all collapse to
+   * "operator". `agent` keeps mapping to "assistant" since Marina is
+   * the agent.
+   */
+  role: "user" | "assistant" | "operator";
   content: string;
   /** Display-formatted timestamp (e.g. "9:42 AM", "Yesterday", "3 Nov"). */
   timestamp: string;
@@ -485,9 +499,18 @@ function normalizeMessage(raw: unknown, idx: number): ApiMessage | null {
   const roleRaw = (
     pickStr(o, "role", "direction", "sender", "from", "author") ?? ""
   ).toLowerCase();
-  const role: "user" | "assistant" =
-    /^(incoming|inbound|in|customer|user|client|contact)$/.test(roleRaw)
-      ? "user"
+  // Three-way role mapping:
+  //   - inbound / customer-side strings → "user"
+  //   - human-team strings              → "operator"
+  //   - everything else (incl. "agent", "marina", "ai", "bot",
+  //     "outbound") → "assistant" (Marina, the AI)
+  // Order matters: check operator BEFORE the catch-all assistant.
+  const role: "user" | "assistant" | "operator" = /^(incoming|inbound|in|customer|user|client|contact)$/.test(
+    roleRaw,
+  )
+    ? "user"
+    : /^(operator|staff|team|teammate|human|admin|support|takeover)$/.test(roleRaw)
+      ? "operator"
       : "assistant";
 
   const timestampRaw = pickStr(

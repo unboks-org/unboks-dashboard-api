@@ -72,26 +72,55 @@ const NAV_LABELS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 function MessageBubble({ msg }: { msg: ApiMessage }) {
-  const isAssistant = msg.role === "assistant";
-  // Translation, when present for the current global target language and
-  // visibility, is rendered inline below the bubble by `MessageTranslationView`,
-  // which reads from the conversation-level translation context. There are
-  // no per-bubble Translate buttons — the single Translate Conversation
-  // toolbar at the top of the thread drives all translations.
+  // Three roles, three distinct visual treatments:
+  //   - user      → left side, neutral grey  (inbound from customer)
+  //   - assistant → right side, blue tint    (Marina, the AI agent)
+  //   - operator  → right side, purple tint  (human teammate / takeover reply)
+  // Both outbound roles align right since they were sent to the customer,
+  // but the color + small role label keeps Marina vs. the human team
+  // unambiguous in the trail. Translation, when present for the current
+  // global target language and visibility, is rendered inline below the
+  // bubble by `MessageTranslationView`, which reads from the
+  // conversation-level translation context. There are no per-bubble
+  // Translate buttons — the single Translate Conversation toolbar at the
+  // top of the thread drives all translations.
+  const isUser = msg.role === "user";
+  const isOperator = msg.role === "operator";
+  const isOutbound = !isUser;
+
+  const bubbleClasses = isUser
+    ? "bg-[#f1f3f4] text-[#202124] rounded-bl-sm"
+    : isOperator
+      ? "bg-[#f3e8ff] text-[#5b3fa0] rounded-br-sm"
+      : "bg-[#e8f0fe] text-[#1a73e8] rounded-br-sm";
+
+  const roleLabel = isOperator ? "Team" : isUser ? null : "Marina";
+  const roleLabelClass = isOperator
+    ? "text-[#5b3fa0]"
+    : "text-[#1a73e8]";
+
   return (
-    <div className={cn("flex", isAssistant ? "justify-end" : "justify-start")}>
+    <div className={cn("flex", isOutbound ? "justify-end" : "justify-start")}>
       <div
         className={cn(
           "flex max-w-[75%] flex-col",
-          isAssistant ? "items-end" : "items-start",
+          isOutbound ? "items-end" : "items-start",
         )}
       >
+        {roleLabel && (
+          <span
+            className={cn(
+              "mb-1 text-[10px] font-semibold uppercase tracking-[0.06em]",
+              roleLabelClass,
+            )}
+          >
+            {roleLabel}
+          </span>
+        )}
         <div
           className={cn(
             "px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed",
-            isAssistant
-              ? "bg-[#e8f0fe] text-[#1a73e8] rounded-br-sm"
-              : "bg-[#f1f3f4] text-[#202124] rounded-bl-sm",
+            bubbleClasses,
           )}
         >
           {msg.content}
@@ -102,7 +131,7 @@ function MessageBubble({ msg }: { msg: ApiMessage }) {
         {msg.id && (
           <MessageTranslationView
             messageId={msg.id}
-            align={isAssistant ? "right" : "left"}
+            align={isOutbound ? "right" : "left"}
           />
         )}
       </div>

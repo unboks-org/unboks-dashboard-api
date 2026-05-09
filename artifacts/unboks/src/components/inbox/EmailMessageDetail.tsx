@@ -41,30 +41,57 @@ interface EmailMessageDetailProps {
 export function EmailMessageDetail({ msg }: EmailMessageDetailProps) {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const { body, signature, disclaimer } = parseEmail(msg.content);
+  // Three-way role rendering — same role taxonomy as the chat
+  // bubble. Operator emails (human takeover) are tinted purple so the
+  // operator can spot at a glance which outbound emails were sent by
+  // the human team vs. by Marina, while inbound (customer) keeps the
+  // neutral surface.
+  const isOperator = msg.role === "operator";
   const isAssistant = msg.role === "assistant";
+  const isOutbound = isOperator || isAssistant;
 
   // The body can still be empty in the pathological case where the parser
   // pulled everything into signature/disclaimer. Always render *something*
   // so the card is never blank.
   const displayBody = body || msg.content;
 
+  const cardBorder = isOperator
+    ? "border-[#e2d5f5] bg-[#fbf7ff]"
+    : isAssistant
+      ? "border-[#d2e3fc] bg-[#f6faff]"
+      : "border-[#e8eaed]";
+
+  const labelText = isOperator
+    ? "Sent by Team"
+    : isAssistant
+      ? "Sent by Marina"
+      : "Received";
+
+  const labelColor = isOperator
+    ? "text-[#5b3fa0]"
+    : isAssistant
+      ? "text-[#1a73e8]"
+      : "text-[#5f6368]";
+
   return (
     <article
       className={cn(
         "rounded-xl border bg-white px-5 py-4 shadow-[0_1px_2px_rgba(60,64,67,0.06)]",
-        isAssistant ? "border-[#d2e3fc] bg-[#f6faff]" : "border-[#e8eaed]",
+        cardBorder,
       )}
     >
       {/* Subtle role label so threaded views still tell sender vs. our reply
-          apart, without resorting to chat-bubble alignment. */}
+          apart, without resorting to chat-bubble alignment. Operator emails
+          (human takeover) are explicitly labelled "Sent by Team" so the
+          operator never confuses their own reply with Marina's. */}
       <div className="mb-2 flex items-center justify-between gap-3">
         <span
           className={cn(
             "text-[11px] font-medium uppercase tracking-wide",
-            isAssistant ? "text-[#1a73e8]" : "text-[#5f6368]",
+            labelColor,
           )}
         >
-          {isAssistant ? "Sent" : "Received"}
+          {labelText}
         </span>
         {msg.timestamp && (
           <span className="text-[11px] text-[#9aa0a6]">{msg.timestamp}</span>
