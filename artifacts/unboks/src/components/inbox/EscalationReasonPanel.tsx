@@ -48,6 +48,10 @@ interface EscalationReasonPanelProps {
   customerName?: string | null;
   recommendedOptions?: string[] | null;
   proposedTimes?: string[] | null;
+  /** Backend-supplied "what the customer wants" line (verbatim if set). */
+  customerWants?: string | null;
+  /** Backend-supplied "what the operator needs to decide" line (verbatim if set). */
+  operatorNeedsToDecide?: string | null;
   /**
    * Retained for backward compatibility with the parent's wiring.
    * Currently unused — the action surface lives in the composer.
@@ -63,6 +67,8 @@ export function EscalationReasonPanel({
   customerName,
   recommendedOptions,
   proposedTimes,
+  customerWants,
+  operatorNeedsToDecide,
 }: EscalationReasonPanelProps) {
   const isSoft = mode === "soft";
   const briefing = buildEscalationBriefing({
@@ -73,6 +79,8 @@ export function EscalationReasonPanel({
     customerName,
     recommendedOptions,
     proposedTimes,
+    customerWants,
+    operatorNeedsToDecide,
   });
 
   return (

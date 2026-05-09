@@ -49,6 +49,18 @@ interface BuildArgs {
   messages?: ApiMessage[];
   customerName?: string | null;
   /**
+   * Backend-supplied "what the customer wants" line. When non-empty,
+   * it is used verbatim in place of the local heuristic. The prompt
+   * is the source of truth when it speaks.
+   */
+  customerWants?: string | null;
+  /**
+   * Backend-supplied "what the operator needs to decide" line. When
+   * non-empty, it is used verbatim as the "Suggested next step" row
+   * in place of the local heuristic.
+   */
+  operatorNeedsToDecide?: string | null;
+  /**
    * Backend-supplied recommended options. When provided non-empty, EVERY
    * entry MUST be rendered as its own chip in order — no slicing, no
    * collapsing. Local heuristic chips are skipped in this case so the
@@ -556,6 +568,8 @@ export function buildEscalationBriefing({
   customerName,
   recommendedOptions,
   proposedTimes,
+  customerWants: backendCustomerWants,
+  operatorNeedsToDecide: backendOperatorNeedsToDecide,
 }: BuildArgs): EscalationBriefing {
   const name = firstName(customerName);
   const trimmedSummary = summary?.trim() ?? "";
@@ -608,17 +622,32 @@ export function buildEscalationBriefing({
       "This conversation was escalated because your Agent needs human input before replying.";
   }
 
-  const customerWants = hasMessageData
-    ? customerWantsLine(topics, slots, hasWeekHint)
-    : mode === "hard"
-      ? "A direct reply from a human."
-      : "A reply your Agent can send confidently.";
+  // Prefer backend-supplied lines when the prompt produces them. The
+  // Marina prompt now emits structured `customerWants` and
+  // `operatorNeedsToDecide` strings — when present (non-empty) we use
+  // them verbatim and skip the local heuristic so the operator reads
+  // exactly what the agent intended. Falls back to heuristic copy when
+  // the backend hasn't shipped these fields yet.
+  const trimmedBackendWants = backendCustomerWants?.trim() ?? "";
+  const trimmedBackendNeeds = backendOperatorNeedsToDecide?.trim() ?? "";
 
-  const marinaNeeds = hasMessageData
-    ? marinaNeedsLine(mode, topics, slots, hasTimeHint)
-    : mode === "hard"
-      ? "Send a direct reply, request more information, or hand back to your Agent."
-      : "Tell your Agent what to answer, ask it to collect more details, or take over yourself.";
+  const customerWants =
+    trimmedBackendWants.length > 0
+      ? trimmedBackendWants
+      : hasMessageData
+        ? customerWantsLine(topics, slots, hasWeekHint)
+        : mode === "hard"
+          ? "A direct reply from a human."
+          : "A reply your Agent can send confidently.";
+
+  const marinaNeeds =
+    trimmedBackendNeeds.length > 0
+      ? trimmedBackendNeeds
+      : hasMessageData
+        ? marinaNeedsLine(mode, topics, slots, hasTimeHint)
+        : mode === "hard"
+          ? "Send a direct reply, request more information, or hand back to your Agent."
+          : "Tell your Agent what to answer, ask it to collect more details, or take over yourself.";
 
   // Options precedence:
   //  1. Backend-supplied `recommendedOptions` — render EVERY entry as a

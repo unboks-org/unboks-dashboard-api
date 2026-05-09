@@ -575,6 +575,8 @@ function ConversationDetailPane({
             customerName={conversation.sender}
             recommendedOptions={detail?.recommendedOptions}
             proposedTimes={detail?.extractedDetails?.proposedTimes}
+            customerWants={detail?.customerWants}
+            operatorNeedsToDecide={detail?.operatorNeedsToDecide}
             onChipAction={onChipAction}
           />
 

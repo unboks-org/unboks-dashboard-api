@@ -110,6 +110,17 @@ export interface ConversationDetail {
   escalationMode?: EscalationMode;
   escalationReason?: string | null;
   escalationSummary?: string | null;
+  /**
+   * Backend-supplied "what the customer wants" line. When the prompt
+   * provides this directly, the briefing panel uses it verbatim
+   * instead of re-deriving from message text.
+   */
+  customerWants?: string | null;
+  /**
+   * Backend-supplied "what the operator needs to decide" line.
+   * Surfaced as the "Suggested next step" row when present.
+   */
+  operatorNeedsToDecide?: string | null;
   humanGuidance?: string | null;
   humanResponder?: string | null;
   humanRespondedAt?: string | null;
@@ -559,6 +570,12 @@ export async function fetchConversation(phone: string): Promise<ConversationDeta
     escalationMode: (pickStr(env, "escalationMode", "escalation_mode") ?? null) as ConversationDetail["escalationMode"],
     escalationReason: pickStr(env, "escalationReason", "escalation_reason"),
     escalationSummary: pickStr(env, "escalationSummary", "escalation_summary"),
+    customerWants: pickStr(env, "customerWants", "customer_wants"),
+    operatorNeedsToDecide: pickStr(
+      env,
+      "operatorNeedsToDecide",
+      "operator_needs_to_decide",
+    ),
     humanGuidance: pickStr(env, "humanGuidance", "human_guidance"),
     humanResponder: pickStr(env, "humanResponder", "human_responder"),
     humanRespondedAt: pickStr(env, "humanRespondedAt", "human_responded_at"),
