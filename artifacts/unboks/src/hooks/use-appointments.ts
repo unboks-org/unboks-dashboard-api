@@ -34,7 +34,11 @@ import {
   type ConversationDetail,
 } from "@/lib/api";
 import { useConversations } from "@/hooks/use-client-api";
-import { detectAppointment, hasSchedulingSignals } from "@/lib/appointment-detector";
+import {
+  detectAppointment,
+  hasSchedulingSignals,
+  validateBackendAppointment,
+} from "@/lib/appointment-detector";
 import { mapApiConversation } from "@/lib/conversation-mapper";
 
 const APPOINTMENTS_KEY = ["appointments"] as const;
@@ -106,17 +110,39 @@ export function useAppointments(): UseAppointmentsResult {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidates, ...detailQueries.map((q) => q.data)]);
 
+  // Look-up table: conversationId → loaded ConversationDetail. Built
+  // from the same `useQueries` results the detector already consumes,
+  // so the backend-row validator gets the same evidence the detector
+  // sees without firing extra fetches.
+  const detailByConvId = useMemo(() => {
+    const map = new Map<string, ConversationDetail>();
+    for (let i = 0; i < candidates.length; i++) {
+      const d = detailQueries[i]?.data as ConversationDetail | undefined;
+      if (d) map.set(candidates[i].phone, d);
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [candidates, ...detailQueries.map((q) => q.data)]);
+
   const merged = useMemo<Appointment[]>(() => {
     const backendList = backend.data?.items ?? [];
     const seen = new Set<string>();
     const key = (a: Appointment) => `${a.conversationId}|${a.dateTimeLabel}`;
     const result: Appointment[] = [];
-    // Backend rows first so they take precedence on dedup.
+    // Backend rows first so they take precedence on dedup — but each
+    // one is run through `validateBackendAppointment` first. A backend
+    // "confirmed" that the linked conversation contradicts (multi-slot
+    // proposal with no acceptance, OR a different slot was actually
+    // confirmed in the same thread) is dropped here so it never lands
+    // on the operator's Appointments page.
     for (const a of backendList) {
-      const k = key(a);
+      const detail = detailByConvId.get(a.conversationId) ?? null;
+      const validated = validateBackendAppointment({ apt: a, detail });
+      if (!validated) continue;
+      const k = key(validated);
       if (seen.has(k)) continue;
       seen.add(k);
-      result.push(a);
+      result.push(validated);
     }
     for (const a of detected) {
       const k = key(a);
@@ -131,7 +157,7 @@ export function useAppointments(): UseAppointmentsResult {
       return db - da;
     });
     return result;
-  }, [backend.data, detected]);
+  }, [backend.data, detected, detailByConvId]);
 
   return {
     appointments: merged,

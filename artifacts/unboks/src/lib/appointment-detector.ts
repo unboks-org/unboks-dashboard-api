@@ -202,6 +202,87 @@ export function detectAppointment({
   };
 }
 
+// ---------------------------------------------------------------------------
+// Backend-row validator
+// ---------------------------------------------------------------------------
+//
+// Even when the backend `/appointments` endpoint is live, its
+// "confirmed" status is not blindly trusted. This validator checks a
+// backend row against the linked conversation and either returns the
+// row as-is, or returns `null` to hide it.
+//
+// The rule (mirrors the strict frontend detector):
+//   1. If the row's status is NOT "confirmed", return it unchanged. We
+//      never second-guess pending / detected rows from the backend.
+//   2. If we have no conversation detail to inspect (the conversation
+//      isn't in the operator's list, or its detail hasn't loaded yet),
+//      trust the backend.
+//   3. If the linked conversation has a single, detector-confirmed
+//      slot:
+//        - Same slot as the backend row → keep (corroborated).
+//        - Different slot → hide. This is the "two confirmed
+//          appointments from the same conversation that are actually
+//          alternative proposed slots" guard the operator asked for.
+//   4. If the detector finds NO confirmed slot in the conversation,
+//      check for an explicit contradiction: any message that itself
+//      offers MULTIPLE candidate slots ("tomorrow 17:00 or Monday
+//      11:00"). If contradicted, hide. Otherwise trust the backend
+//      (e.g. manual calendar entries with no related discussion).
+
+function normalizeSlotLabel(s: string): string {
+  return s.trim().toLowerCase().replace(/\s+/gu, " ");
+}
+
+export interface ValidateBackendArgs {
+  apt: Appointment;
+  /**
+   * Linked conversation detail, or null when the conversation isn't
+   * in the operator's current list / its detail hasn't loaded.
+   */
+  detail: ConversationDetail | null;
+}
+
+export function validateBackendAppointment({
+  apt,
+  detail,
+}: ValidateBackendArgs): Appointment | null {
+  // Rule 1 — never downgrade pending / detected.
+  if (apt.status !== "confirmed") return apt;
+
+  // Rule 2 — silence (no detail) means we can't contradict.
+  if (!detail) return apt;
+  const msgs = Array.isArray(detail.messages) ? detail.messages : [];
+  if (msgs.length === 0) return apt;
+
+  // Rule 3 — try to corroborate via the strict detector. The detector
+  // only returns a row when it would emit a confirmed appointment, so
+  // any non-null result is a positive corroboration of *some* slot.
+  const evidence = detectAppointment({
+    detail,
+    conversationId: apt.conversationId,
+    channel: apt.channel,
+    customerName: apt.customerName,
+  });
+  if (evidence) {
+    if (normalizeSlotLabel(apt.dateTimeLabel) === normalizeSlotLabel(evidence.dateTimeLabel)) {
+      return apt;
+    }
+    // Detector confirms a different slot in the same conversation.
+    // Backend is showing an alternative proposal that was never
+    // accepted — hide so the operator never sees two confirmed cards
+    // for one customer when only one was actually agreed on.
+    return null;
+  }
+
+  // Rule 4 — no detector evidence. Look for an explicit contradiction.
+  const hasMultiSlotOffer = msgs.some((m) => isMultiSlotOffer(m.content));
+  if (hasMultiSlotOffer) return null;
+
+  // No corroboration, no contradiction — trust the backend (manual
+  // calendar entries, slot agreed on a different channel, etc.).
+  return apt;
+}
+
 function pickTopic(msgs: ApiMessage[]): string | null {
   for (const m of msgs) {
     for (const rule of TOPIC_RULES) {
@@ -217,8 +298,12 @@ function pickTopic(msgs: ApiMessage[]): string | null {
  * message is an availability offer, not a confirmation, even if it
  * carries acceptance-shaped words like "works for me". The detector
  * must never promote a multi-slot offer to a confirmed Appointment.
+ *
+ * Exported for use by `validateBackendAppointment`, which uses the
+ * same heuristic to detect whether the linked conversation contradicts
+ * a backend row claiming "confirmed".
  */
-function isMultiSlotOffer(content: string): boolean {
+export function isMultiSlotOffer(content: string): boolean {
   const dayMatches = content.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today)\b/gi) ?? [];
   const timeMatches = content.match(/\b\d{1,2}[:.]\d{2}\b/g) ?? [];
   return dayMatches.length > 1 || timeMatches.length > 1;
