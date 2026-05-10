@@ -4,6 +4,7 @@ import {
   updateEscalationAlertSettings,
   type EscalationAlertSettings,
   type EscalationAlertChannelKey,
+  type EscalationAlertTypes,
 } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 
@@ -24,6 +25,12 @@ export interface NotifyChannelPref {
  */
 export type EscalationNotificationPrefs = Record<NotifyChannelKey, NotifyChannelPref> & {
   alternativeEmail: string;
+  /**
+   * Which categories of alerts the operator wants delivered. Both
+   * default to true so an older backend that doesn't echo `alertTypes`
+   * is treated as "all on", matching the pre-toggle behaviour.
+   */
+  alertTypes: EscalationAlertTypes;
 };
 
 /**
@@ -60,6 +67,7 @@ const DEFAULT_PREFS: EscalationNotificationPrefs = {
   messenger: { enabled: false, destination: "" },
   telegram: { enabled: false, destination: "" },
   alternativeEmail: "",
+  alertTypes: { escalations: true, appointments: true },
 };
 
 // -------- localStorage cache --------
@@ -85,6 +93,19 @@ function readFromStorage(): EscalationNotificationPrefs | null {
     if (typeof root.alternativeEmail === "string") {
       merged.alternativeEmail = root.alternativeEmail;
     }
+    if (root.alertTypes && typeof root.alertTypes === "object") {
+      const at = root.alertTypes as Record<string, unknown>;
+      merged.alertTypes = {
+        escalations:
+          typeof at.escalations === "boolean"
+            ? at.escalations
+            : DEFAULT_PREFS.alertTypes.escalations,
+        appointments:
+          typeof at.appointments === "boolean"
+            ? at.appointments
+            : DEFAULT_PREFS.alertTypes.appointments,
+      };
+    }
     return merged;
   } catch {
     return null;
@@ -102,7 +123,10 @@ function writeToStorage(prefs: EscalationNotificationPrefs) {
 // -------- backend ⇄ UI conversion --------
 
 function fromBackend(s: EscalationAlertSettings): EscalationNotificationPrefs {
-  const next: EscalationNotificationPrefs = { ...DEFAULT_PREFS };
+  const next: EscalationNotificationPrefs = {
+    ...DEFAULT_PREFS,
+    alertTypes: { ...DEFAULT_PREFS.alertTypes },
+  };
   for (const key of CHANNEL_KEYS) {
     const ch = s.channels[key];
     if (ch) {
@@ -110,6 +134,12 @@ function fromBackend(s: EscalationAlertSettings): EscalationNotificationPrefs {
     }
   }
   next.alternativeEmail = s.channels.email?.alternativeDestination?.trim() ?? "";
+  // `normalizeEscalationAlertSettings` already defaults missing
+  // alertTypes to {true,true}, so this passes through that contract.
+  next.alertTypes = {
+    escalations: s.alertTypes?.escalations ?? DEFAULT_PREFS.alertTypes.escalations,
+    appointments: s.alertTypes?.appointments ?? DEFAULT_PREFS.alertTypes.appointments,
+  };
   return next;
 }
 
@@ -130,6 +160,13 @@ function toBackend(prefs: EscalationNotificationPrefs): EscalationAlertSettings 
       whatsapp: { enabled: prefs.whatsapp.enabled, destination: prefs.whatsapp.destination.trim() },
       messenger: { enabled: prefs.messenger.enabled, destination: prefs.messenger.destination.trim() },
       telegram: { enabled: prefs.telegram.enabled, destination: prefs.telegram.destination.trim() },
+    },
+    // Always send alertTypes so the backend can persist either toggle
+    // independently. Channel destinations above are unchanged so the
+    // existing alert-destinations UI keeps round-tripping verbatim.
+    alertTypes: {
+      escalations: prefs.alertTypes.escalations,
+      appointments: prefs.alertTypes.appointments,
     },
   };
 }
@@ -338,6 +375,19 @@ export function useEscalationNotificationPrefs(): UseEscalationNotificationPrefs
         alternativeEmail:
           remote.channels.email?.alternativeDestination?.trim() ??
           next.alternativeEmail,
+        // Trust the backend's echo of alert types when present;
+        // otherwise keep what the operator just submitted so a partial
+        // PUT response doesn't silently flip a toggle back.
+        alertTypes: {
+          escalations:
+            typeof remote.alertTypes?.escalations === "boolean"
+              ? remote.alertTypes.escalations
+              : next.alertTypes.escalations,
+          appointments:
+            typeof remote.alertTypes?.appointments === "boolean"
+              ? remote.alertTypes.appointments
+              : next.alertTypes.appointments,
+        },
       };
       const statuses = computeStatuses(remote, merged);
       writeToStorage(merged);

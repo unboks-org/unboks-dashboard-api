@@ -1244,8 +1244,41 @@ export interface EscalationAlertChannelPref {
   deliveryStatus?: string | null;
 }
 
+/**
+ * Which categories of alerts the tenant wants delivered.
+ *  - `escalations`  → urgent moments where Marina needs human help
+ *  - `appointments` → confirmed bookings / scheduled calls
+ *
+ * Both default to `true` for backward compatibility: an older backend
+ * that doesn't yet include `alertTypes` in the GET response is treated
+ * as "all alert types on", matching the pre-toggle behaviour.
+ */
+export interface EscalationAlertTypes {
+  escalations: boolean;
+  appointments: boolean;
+}
+
 export interface EscalationAlertSettings {
   channels: Partial<Record<EscalationAlertChannelKey, EscalationAlertChannelPref>>;
+  alertTypes: EscalationAlertTypes;
+}
+
+const DEFAULT_ALERT_TYPES: EscalationAlertTypes = {
+  escalations: true,
+  appointments: true,
+};
+
+function pickAlertTypes(raw: unknown): EscalationAlertTypes {
+  if (!raw || typeof raw !== "object") return { ...DEFAULT_ALERT_TYPES };
+  const o = raw as Record<string, unknown>;
+  // Tolerate snake_case from older Python payloads as well as the
+  // canonical camelCase wire shape documented in the issue.
+  const escRaw = o.escalations ?? o.escalation ?? o.escalation_alerts;
+  const aptRaw = o.appointments ?? o.appointment ?? o.appointment_alerts;
+  return {
+    escalations: typeof escRaw === "boolean" ? escRaw : DEFAULT_ALERT_TYPES.escalations,
+    appointments: typeof aptRaw === "boolean" ? aptRaw : DEFAULT_ALERT_TYPES.appointments,
+  };
 }
 
 function pickChannelPref(raw: unknown): EscalationAlertChannelPref | null {
@@ -1315,14 +1348,21 @@ function pickChannelPref(raw: unknown): EscalationAlertChannelPref | null {
  * either nested-under-`channels` or flat root-level keys.
  */
 export function normalizeEscalationAlertSettings(raw: unknown): EscalationAlertSettings {
-  const empty: EscalationAlertSettings = { channels: {} };
+  const empty: EscalationAlertSettings = {
+    channels: {},
+    alertTypes: { ...DEFAULT_ALERT_TYPES },
+  };
   if (!raw || typeof raw !== "object") return empty;
   const o = raw as Record<string, unknown>;
   const src =
     o.channels && typeof o.channels === "object"
       ? (o.channels as Record<string, unknown>)
       : o;
-  const out: EscalationAlertSettings = { channels: {} };
+  const out: EscalationAlertSettings = {
+    channels: {},
+    // Tolerate both `alertTypes` (canonical) and `alert_types` (snake).
+    alertTypes: pickAlertTypes(o.alertTypes ?? o.alert_types),
+  };
   for (const key of ["email", "whatsapp", "messenger", "telegram"] as EscalationAlertChannelKey[]) {
     const pref = pickChannelPref(src[key]);
     if (pref) out.channels[key] = pref;

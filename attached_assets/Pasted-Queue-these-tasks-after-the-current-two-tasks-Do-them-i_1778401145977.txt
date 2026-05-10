@@ -1,0 +1,74 @@
+Queue these tasks after the current two tasks. Do them in order. Frontend only. Do not touch backend.
+
+TASK 3 — WhatsApp activation status in Settings
+
+Backend GET /settings/escalation-alerts now returns WhatsApp route status through:
+channels.whatsapp.zernioResolved
+
+Goal:
+Show WhatsApp alert activation status only when WhatsApp alerts are enabled/selected.
+
+Status rules:
+- WhatsApp not enabled = no activation UI
+- WhatsApp enabled but no destination = Not configured
+- WhatsApp enabled + destination saved + zernioResolved false = Pending activation
+- WhatsApp enabled + destination saved + zernioResolved true = Active
+- If backend later returns error/failed status, show Failed / needs attention
+
+Copy:
+Pending activation:
+“WhatsApp alerts are configured but not active yet. Send START from this operator WhatsApp number to the business WhatsApp number to activate alerts.”
+
+Active:
+“WhatsApp alerts are active.”
+
+Rules:
+- Do not hardcode Calvin’s number.
+- Do not show activation instructions unless WhatsApp alerts are enabled.
+- Keep style consistent.
+- Do not touch backend.
+- Build/test.
+
+TASK 4 — Alert delivery status display
+
+Goal:
+Where alerts/settings/debug information is shown, display clear delivery status for alert channels.
+
+For WhatsApp:
+- If zernioResolved true, show Active
+- If enabled but unresolved, show Pending activation
+- If disabled, show Disabled
+
+For Telegram/Messenger:
+- If provider not configured, show Provider not configured
+- Do not make it look active.
+
+Rules:
+- This is UI display only.
+- Do not invent backend fields.
+- Use existing fields returned by GET /settings/escalation-alerts.
+- Build/test.
+
+TASK 5 — Appointment confirm UX polish
+
+Goal:
+After Confirm appointment is implemented, make the UX clear and safe.
+
+Requirements:
+- Button label: “Confirm appointment”
+- Optional confirmation dialog:
+  “Confirm this appointment? This will notify the configured alert destinations.”
+- After success:
+  “Appointment confirmed”
+- If alreadyConfirmed true:
+  “Appointment was already confirmed”
+- Refresh appointments list after success.
+- Hide or disable Confirm button when status is confirmed.
+- Keep premium/simple dashboard style.
+- Build/test.
+
+Report after each task:
+- Files changed
+- What changed
+- Build result
+- Any issue/blocker

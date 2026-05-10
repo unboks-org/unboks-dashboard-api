@@ -18,7 +18,6 @@ import {
   type NotifyChannelKey,
   type DeliveryStatus,
 } from "@/hooks/use-escalation-notification-preferences";
-import { useAlertTypePrefs } from "@/hooks/use-alert-type-preferences";
 import { ApiError } from "@/lib/error";
 import { useEnabledChannels, TOGGLEABLE_CHANNELS } from "@/hooks/use-enabled-channels";
 import { useAccountSettings, type AccountSettings } from "@/hooks/use-account-settings";
@@ -333,11 +332,6 @@ export default function Settings() {
     deliveryStatuses: notifyDeliveryStatuses,
     defaultEmailAddress: notifyDefaultEmail,
   } = useEscalationNotificationPrefs();
-  // Alert-type toggles are persisted locally for now. The backend
-  // alerts endpoint only models channels; once it grows an
-  // `alertTypes` field, callers can swap this hook for a server-backed
-  // version without touching the rest of the UI.
-  const { prefs: alertTypes, update: updateAlertTypes } = useAlertTypePrefs();
   const { isChannelEnabled, toggleChannel } = useEnabledChannels();
   const { settings: account, save: saveAccount } = useAccountSettings();
   const { updates, addUpdate, setActive: setUpdateActive, removeUpdate } = useYourInfoUpdates();
@@ -851,9 +845,12 @@ export default function Settings() {
                   )}
 
                   {/* Alert types — which kinds of notifications the
-                      operator wants. Saved locally; backend currently
-                      only models channels (see use-alert-type-preferences).
-                      We never claim appointment delivery is wired up. */}
+                      operator wants. Persisted via the same
+                      /settings/escalation-alerts endpoint as channel
+                      destinations: edits go into `notifyDraft` and are
+                      saved by the existing Save button below alongside
+                      every other field, so destinations are always
+                      preserved on save. */}
                   <div className="mb-4">
                     <p className="text-[12px] font-medium uppercase tracking-wide text-[#5f6368]">
                       Alert types
@@ -865,14 +862,17 @@ export default function Settings() {
                           <p className="mt-0.5 text-[12px] text-[#5f6368]">
                             Get notified when Marina needs human help or a customer conversation requires attention.
                           </p>
-                          <p className="mt-0.5 text-[11px] text-[#5f6368]">
-                            Escalation email is always on. Saved on this device.
-                          </p>
                         </div>
                         <Switch
-                          checked={alertTypes.escalations}
-                          onCheckedChange={(v) => updateAlertTypes({ escalations: v })}
-                          aria-label="Receive escalation alerts on non-email channels"
+                          checked={notifyDraft.alertTypes.escalations}
+                          onCheckedChange={(v) =>
+                            setNotifyDraft((d) => ({
+                              ...d,
+                              alertTypes: { ...d.alertTypes, escalations: v },
+                            }))
+                          }
+                          disabled={notifyLoading || notifySaving}
+                          aria-label="Receive escalation alerts"
                           className="mt-0.5 data-[state=checked]:bg-[#1a73e8] data-[state=unchecked]:bg-[#dadce0]"
                         />
                       </div>
@@ -882,13 +882,16 @@ export default function Settings() {
                           <p className="mt-0.5 text-[12px] text-[#5f6368]">
                             Get notified when a customer confirms an appointment, booking, order, or scheduled call.
                           </p>
-                          <p className="mt-0.5 text-[11px] text-[#5f6368]">
-                            Saved on this device. Delivery turns on once your Unboks setup supports it.
-                          </p>
                         </div>
                         <Switch
-                          checked={alertTypes.appointments}
-                          onCheckedChange={(v) => updateAlertTypes({ appointments: v })}
+                          checked={notifyDraft.alertTypes.appointments}
+                          onCheckedChange={(v) =>
+                            setNotifyDraft((d) => ({
+                              ...d,
+                              alertTypes: { ...d.alertTypes, appointments: v },
+                            }))
+                          }
+                          disabled={notifyLoading || notifySaving}
                           aria-label="Receive appointment alerts"
                           className="mt-0.5 data-[state=checked]:bg-[#1a73e8] data-[state=unchecked]:bg-[#dadce0]"
                         />
