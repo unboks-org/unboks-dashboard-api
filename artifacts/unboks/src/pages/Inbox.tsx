@@ -595,7 +595,15 @@ function ConversationDetailPane({
         // even on short viewports. The translation toolbar lives inside
         // the trail since translations only matter when the operator is
         // actually reading messages.
-        <div className="flex-1 overflow-y-auto">
+        //
+        // `flex flex-col` + `mt-auto` on the trail wrapper anchors the
+        // collapsed-trail toggle to the bottom of the panel when the
+        // decision card + composer don't fill the viewport. Without
+        // this, short escalations left a large empty area below the
+        // composer with the trail toggle floating mid-pane. When the
+        // trail is open or content overflows, the `mt-auto` is a no-op
+        // and the natural scroll behaviour is preserved exactly.
+        <div className="flex-1 overflow-y-auto flex flex-col">
           <EscalationReasonPanel
             mode={selectedMode}
             summary={detail?.escalationSummary}
@@ -640,7 +648,7 @@ function ConversationDetailPane({
             channel={conversation.channel}
             messages={messages}
           >
-            <div className="border-t border-[#e8eaed]">
+            <div className="mt-auto border-t border-[#e8eaed] bg-white">
               <button
                 type="button"
                 onClick={() => setTrailOpen((v) => !v)}
