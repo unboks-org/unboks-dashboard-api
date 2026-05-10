@@ -654,7 +654,12 @@ function ConversationDetailPane({
                 onClick={() => setTrailOpen((v) => !v)}
                 aria-expanded={trailOpen}
                 aria-controls="conversation-trail"
-                className="flex w-full items-center gap-2 bg-white px-4 py-2 text-left text-[12px] font-semibold text-[#5f6368] hover:bg-[#f8f9fa]"
+                // Slightly softer background and a touch more vertical
+                // padding so the toggle reads as an intentional footer
+                // when `mt-auto` anchors it to the bottom of short
+                // escalations, instead of looking like an orphaned
+                // button strip floating in white space.
+                className="flex w-full items-center gap-2 bg-[#fbfbfd] px-4 py-2.5 text-left text-[12px] font-semibold text-[#5f6368] hover:bg-[#f1f3f4]"
               >
                 {trailOpen ? (
                   <ChevronDown className="h-3.5 w-3.5 flex-shrink-0" />
