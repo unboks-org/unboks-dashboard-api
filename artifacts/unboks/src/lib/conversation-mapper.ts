@@ -294,6 +294,10 @@ function inferChannel(c: ApiConversation, prefix: ParsedPrefix | null): Channel 
   if (prefix) return prefix.channel;
   const phone = typeof c.phone === "string" ? c.phone.trim() : "";
   if (phone && !isMongoObjectId(phone)) {
+    // Email conversation keys look like `email::subj:sender@x.com:subject` —
+    // detect before the digit-only phone check so they resolve to "Email"
+    // rather than "Unknown" when the backend omits the explicit `channel` field.
+    if (/^email::/i.test(phone)) return "Email";
     const digits = phone.replace(/[\s().-]/g, "");
     if (/^\+?\d{7,}$/.test(digits)) return "WhatsApp";
   }
@@ -493,7 +497,18 @@ export function escalationToConversationRow(
 /** Canonical conversation mapper — use this in every page/component */
 export function mapApiConversation(c: ApiConversation): Conversation {
   const rawText = rawLastMessageText(c);
-  const prefix = parsePlatformPrefix(rawText);
+  // When the body is absent the email-thread key in `c.phone` carries the
+  // channel + sender + subject envelope (`email::subj:<from>:<subject>`).
+  // Fall back to parsing it so email conversations that arrive with no
+  // `lastMessage` / `body` field still get a human-readable sender, subject,
+  // and correct "Email" channel classification — exactly as if the text had
+  // arrived in the message body.
+  const effectiveText =
+    rawText ??
+    (typeof c.phone === "string" && /^email::/i.test(c.phone.trim())
+      ? c.phone.trim()
+      : null);
+  const prefix = parsePlatformPrefix(effectiveText);
 
   let subject: string;
   let preview: string;
@@ -551,7 +566,11 @@ export function mapApiConversation(c: ApiConversation): Conversation {
     timestamp: formatConversationTimestamp(tsRaw),
     timestampMs,
     unread: c.unread ?? false,
-    escalated: c.escalated ?? false,
+    // The Python backend sometimes surfaces escalation state via `status:
+    // "escalated"` rather than the boolean `escalated` field. Accept either.
+    escalated:
+      c.escalated ??
+      (typeof c.status === "string" && /^escalated$/i.test(c.status)),
     hasAttachment: c.hasAttachment ?? false,
     escalationMode: (c.escalationMode ?? null) as Conversation["escalationMode"],
     escalationSummary: c.escalationSummary ?? null,

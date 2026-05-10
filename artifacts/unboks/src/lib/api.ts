@@ -643,7 +643,14 @@ export async function fetchConversation(phone: string): Promise<ConversationDeta
     contactId: pickStr(env, "contactId", "contact_id"),
     platform: pickStr(env, "platform", "channel") ?? "",
     messages,
-    escalated: typeof env.escalated === "boolean" ? env.escalated : undefined,
+    // Accept both `escalated: true` (boolean field) and `status: "escalated"`
+    // (string field used by the Python backend for email conversations).
+    escalated:
+      typeof env.escalated === "boolean"
+        ? env.escalated
+        : typeof env.status === "string" && /^escalated$/i.test(env.status as string)
+          ? true
+          : undefined,
     escalationResolved:
       typeof env.escalationResolved === "boolean"
         ? env.escalationResolved
