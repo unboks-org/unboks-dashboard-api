@@ -36,17 +36,31 @@ export type EscalationNotificationPrefs = Record<NotifyChannelKey, NotifyChannel
 /**
  * Per-channel delivery status surfaced to the UI as a small badge.
  *  - "active"                 → backend confirms outbound delivery is live
+ *  - "pending_activation"     → setting is saved & provider is connected,
+ *                               but the destination still needs the operator
+ *                               to complete activation (e.g. WhatsApp opt-in
+ *                               via START message). Used when the backend
+ *                               returns `zernioResolved: false` for WhatsApp.
+ *  - "not_configured"         → channel is enabled but no destination has
+ *                               been entered yet. Different from
+ *                               `provider_not_configured`, which is about the
+ *                               upstream provider integration.
  *  - "saved_only"             → setting saved but nothing is dispatched yet
- *  - "provider_not_configured"→ provider connection still missing
+ *  - "provider_not_configured"→ provider connection still missing (e.g.
+ *                               Telegram/Messenger bots not wired up)
  *  - "failed"                 → last attempted dispatch failed
  *  - "default"                → e.g. email always-on default account
+ *  - "disabled"               → the channel toggle is off
  */
 export type DeliveryStatus =
   | "active"
+  | "pending_activation"
+  | "not_configured"
   | "saved_only"
   | "provider_not_configured"
   | "failed"
-  | "default";
+  | "default"
+  | "disabled";
 
 export type DeliveryStatusMap = Partial<
   Record<EscalationAlertChannelKey, DeliveryStatus>
@@ -180,32 +194,73 @@ function normalizeStatus(raw: string | null | undefined): DeliveryStatus | null 
   if (!raw) return null;
   const v = raw.trim().toLowerCase();
   if (v === "active" || v === "ok" || v === "delivering") return "active";
+  if (
+    v === "pending_activation" ||
+    v === "pending" ||
+    v === "awaiting_activation" ||
+    v === "awaiting_optin"
+  ) {
+    return "pending_activation";
+  }
   if (v === "saved_only" || v === "saved" || v === "skipped") return "saved_only";
   if (
     v === "provider_not_configured" ||
     v === "provider_not_connected" ||
-    v === "not_configured" ||
     v === "no_provider"
   ) {
     return "provider_not_configured";
   }
+  // The string "not_configured" coming from the backend most often
+  // means "channel was enabled but no destination was supplied yet"
+  // (which is what we surface as `not_configured` in the UI). The
+  // upstream-provider variant has its own distinct values handled
+  // above (`provider_not_configured`, etc.).
+  if (v === "not_configured" || v === "missing_destination") return "not_configured";
   if (v === "failed" || v === "error") return "failed";
   if (v === "default") return "default";
+  if (v === "disabled" || v === "off") return "disabled";
   return null;
 }
 
 /**
- * Default delivery statuses when the backend doesn't supply explicit ones,
- * per the bugfix brief:
- *   - Email     → "default"
- *   - WhatsApp  → "active" if enabled, else null
- *   - Telegram  → "saved_only" / "provider_not_configured" if enabled
- *   - Messenger → "saved_only" / "provider_not_configured" if enabled
+ * Default delivery statuses when the backend doesn't supply explicit ones.
+ *
+ *  - Email     → always "default" (the primary destination is server-owned)
+ *  - WhatsApp  → derived from `enabled`, `destination`, and `zernioResolved`
+ *                so the UI never shows "Active" before the operator has
+ *                completed the WhatsApp opt-in handshake:
+ *                  disabled                    → "disabled"
+ *                  enabled & no destination    → "not_configured"
+ *                  enabled & zernioResolved=true → "active"
+ *                  enabled & zernioResolved=false / unknown → "pending_activation"
+ *  - Telegram  → "provider_not_configured" if enabled, else undefined
+ *  - Messenger → "provider_not_configured" if enabled, else undefined
+ *
+ * Backend explicit `deliveryStatus` always wins over these fallbacks
+ * via `computeStatuses` below.
  */
-function defaultStatuses(prefs: EscalationNotificationPrefs): DeliveryStatusMap {
+function defaultStatuses(
+  prefs: EscalationNotificationPrefs,
+  s?: EscalationAlertSettings,
+): DeliveryStatusMap {
+  const wa = prefs.whatsapp;
+  const zernioResolved = s?.channels.whatsapp?.zernioResolved;
+  let whatsappStatus: DeliveryStatus | undefined;
+  if (!wa.enabled) {
+    whatsappStatus = "disabled";
+  } else if (wa.destination.trim().length === 0) {
+    whatsappStatus = "not_configured";
+  } else if (zernioResolved === true) {
+    whatsappStatus = "active";
+  } else {
+    // Either the backend explicitly said `false`, or the field was
+    // missing. In both cases we can't claim activation, so we surface
+    // "Pending activation" with the START-message instructions.
+    whatsappStatus = "pending_activation";
+  }
   return {
     email: "default",
-    whatsapp: prefs.whatsapp.enabled ? "active" : undefined,
+    whatsapp: whatsappStatus,
     messenger: prefs.messenger.enabled ? "provider_not_configured" : undefined,
     telegram: prefs.telegram.enabled ? "provider_not_configured" : undefined,
   };
@@ -215,11 +270,20 @@ function computeStatuses(
   s: EscalationAlertSettings,
   prefs: EscalationNotificationPrefs,
 ): DeliveryStatusMap {
-  const fallback = defaultStatuses(prefs);
+  const fallback = defaultStatuses(prefs, s);
   const out: DeliveryStatusMap = { ...fallback };
   for (const key of ["email", "whatsapp", "messenger", "telegram"] as EscalationAlertChannelKey[]) {
     const fromBackendStatus = normalizeStatus(s.channels[key]?.deliveryStatus);
-    if (fromBackendStatus) out[key] = fromBackendStatus;
+    if (!fromBackendStatus) continue;
+    // For WhatsApp, `zernioResolved` is the canonical source of truth
+    // for activation. We don't let a generic backend `deliveryStatus`
+    // (e.g. "active", "saved_only") override the derived state, since
+    // that would let us claim Active before the operator has completed
+    // the WhatsApp opt-in handshake. The only override we honour is
+    // an explicit failure signal — per the issue: "If backend later
+    // returns error/failed status, show Failed / needs attention."
+    if (key === "whatsapp" && fromBackendStatus !== "failed") continue;
+    out[key] = fromBackendStatus;
   }
   return out;
 }

@@ -206,12 +206,20 @@ function DeliveryBadge({ status }: { status: DeliveryStatus }) {
       label: "Active",
       className: "bg-[#e6f4ea] text-[#137333]",
     },
+    pending_activation: {
+      label: "Pending activation",
+      className: "bg-[#fef7e0] text-[#7a5a00]",
+    },
+    not_configured: {
+      label: "Not configured",
+      className: "bg-[#f1f3f4] text-[#5f6368]",
+    },
     saved_only: {
       label: "Saved only",
       className: "bg-[#f1f3f4] text-[#5f6368]",
     },
     provider_not_configured: {
-      label: "Provider not connected",
+      label: "Provider not configured",
       className: "bg-[#fef7e0] text-[#7a5a00]",
     },
     failed: {
@@ -221,6 +229,10 @@ function DeliveryBadge({ status }: { status: DeliveryStatus }) {
     default: {
       label: "Default",
       className: "bg-[#f1f3f4] text-[#5f6368]",
+    },
+    disabled: {
+      label: "Disabled",
+      className: "bg-[#f1f3f4] text-[#9aa0a6]",
     },
   };
   const { label, className } = map[status];
@@ -964,6 +976,15 @@ export default function Settings() {
                       (row) => {
                         const pref = notifyDraft[row.key];
                         const status = notifyDeliveryStatuses[row.key];
+                        // WhatsApp shows its status badge in every state
+                        // (Active / Pending activation / Not configured /
+                        // Disabled) so the operator always knows where the
+                        // channel stands. Telegram and Messenger only show
+                        // a badge when enabled, since their disabled state
+                        // is conveyed by the toggle alone.
+                        const showBadge =
+                          status !== undefined &&
+                          (row.key === "whatsapp" || pref.enabled);
                         return (
                           <div key={row.key} className="py-3">
                             <div className="flex items-center justify-between gap-4 py-3">
@@ -971,7 +992,7 @@ export default function Settings() {
                                 <p className="text-[14px] text-[#202124]">{row.label}</p>
                               </div>
                               <div className="flex flex-shrink-0 items-center gap-2">
-                                {pref.enabled && status && <DeliveryBadge status={status} />}
+                                {showBadge && <DeliveryBadge status={status!} />}
                                 <Switch
                                   checked={pref.enabled}
                                   onCheckedChange={(v) =>
@@ -996,6 +1017,30 @@ export default function Settings() {
                                 }
                                 placeholder={row.placeholder}
                               />
+                            )}
+                            {/* WhatsApp activation guidance. Only shown
+                                when the operator has enabled WhatsApp
+                                alerts, so we never lecture them about a
+                                channel they didn't ask for. The longer
+                                START-message instruction appears for
+                                "pending activation"; the short
+                                confirmation for "active". The business
+                                number isn't hardcoded — it's part of the
+                                Unboks setup the operator already knows. */}
+                            {row.key === "whatsapp" && pref.enabled && status === "pending_activation" && (
+                              <div className="mt-2 rounded-md border border-[#fde293] bg-[#fef7e0] px-3 py-2 text-[12px] text-[#7a5a00]">
+                                WhatsApp alerts are configured but not active yet. Send START from this operator WhatsApp number to the business WhatsApp number to activate alerts.
+                              </div>
+                            )}
+                            {row.key === "whatsapp" && pref.enabled && status === "active" && (
+                              <p className="mt-2 text-[12px] text-[#137333]">
+                                WhatsApp alerts are active.
+                              </p>
+                            )}
+                            {row.key === "whatsapp" && pref.enabled && status === "not_configured" && (
+                              <p className="mt-2 text-[12px] text-[#5f6368]">
+                                Add a WhatsApp number above to activate alerts.
+                              </p>
                             )}
                           </div>
                         );

@@ -1239,9 +1239,20 @@ export interface EscalationAlertChannelPref {
    * Optional backend-supplied delivery status. Free-form so we can render
    * any future status the backend introduces. Common values today:
    *   "active" | "saved_only" | "provider_not_configured" | "failed"
-   *   | "default" | "skipped"
+   *   | "default" | "skipped" | "pending_activation"
    */
   deliveryStatus?: string | null;
+  /**
+   * WhatsApp-only: whether the operator's WhatsApp number has been
+   * resolved by the Zernio routing service yet. When `true` the
+   * channel can actually deliver alerts; when `false` the destination
+   * is saved but inert until the operator sends START to the business
+   * number. The backend exposes this as `channels.whatsapp.zernioResolved`
+   * (camelCase) — we also accept `zernio_resolved` for forward
+   * compatibility. `undefined` means the backend didn't include the
+   * field at all (older deployment) and we can't make a claim either way.
+   */
+  zernioResolved?: boolean | null;
 }
 
 /**
@@ -1333,12 +1344,25 @@ function pickChannelPref(raw: unknown): EscalationAlertChannelPref | null {
     null;
   const alternativeDestination =
     typeof altRaw === "string" && altRaw.trim().length > 0 ? altRaw.trim() : null;
+  // Per the issue, the backend now reports WhatsApp activation state as
+  // `channels.whatsapp.zernioResolved`. Tolerate the snake_case alias
+  // and treat any non-boolean value as "unknown" so we never lie about
+  // activation when the field is missing.
+  const zernioRaw =
+    "zernioResolved" in o
+      ? o.zernioResolved
+      : "zernio_resolved" in o
+        ? o.zernio_resolved
+        : undefined;
+  const zernioResolved =
+    typeof zernioRaw === "boolean" ? zernioRaw : undefined;
   return {
     enabled,
     destination,
     alternativeDestination,
     resolvedDestination,
     deliveryStatus: status,
+    zernioResolved,
   };
 }
 
