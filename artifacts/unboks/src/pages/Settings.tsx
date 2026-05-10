@@ -18,6 +18,7 @@ import {
   type NotifyChannelKey,
   type DeliveryStatus,
 } from "@/hooks/use-escalation-notification-preferences";
+import { useAlertTypePrefs } from "@/hooks/use-alert-type-preferences";
 import { ApiError } from "@/lib/error";
 import { useEnabledChannels, TOGGLEABLE_CHANNELS } from "@/hooks/use-enabled-channels";
 import { useAccountSettings, type AccountSettings } from "@/hooks/use-account-settings";
@@ -72,8 +73,8 @@ const CATEGORIES: {
   },
   {
     id: "escalation",
-    label: "Escalation Alerts",
-    description: "Choose where urgent escalation alerts should be sent.",
+    label: "Alerts",
+    description: "Choose where notifications should be sent.",
     icon: Bell,
   },
   {
@@ -332,6 +333,11 @@ export default function Settings() {
     deliveryStatuses: notifyDeliveryStatuses,
     defaultEmailAddress: notifyDefaultEmail,
   } = useEscalationNotificationPrefs();
+  // Alert-type toggles are persisted locally for now. The backend
+  // alerts endpoint only models channels; once it grows an
+  // `alertTypes` field, callers can swap this hook for a server-backed
+  // version without touching the rest of the UI.
+  const { prefs: alertTypes, update: updateAlertTypes } = useAlertTypePrefs();
   const { isChannelEnabled, toggleChannel } = useEnabledChannels();
   const { settings: account, save: saveAccount } = useAccountSettings();
   const { updates, addUpdate, setActive: setUpdateActive, removeUpdate } = useYourInfoUpdates();
@@ -818,8 +824,8 @@ export default function Settings() {
 
               {active === "escalation" && (
                 <Card
-                  title="Where alerts are sent"
-                  description="Email is always on. Add backup channels you'd like to be reached on."
+                  title="Alerts"
+                  description="Choose which alerts you want to receive and where they should be sent."
                   footer={
                     <>
                       <SavedFlash visible={notifySaved} />
@@ -843,6 +849,59 @@ export default function Settings() {
                       {notifyValidationError}
                     </div>
                   )}
+
+                  {/* Alert types — which kinds of notifications the
+                      operator wants. Saved locally; backend currently
+                      only models channels (see use-alert-type-preferences).
+                      We never claim appointment delivery is wired up. */}
+                  <div className="mb-4">
+                    <p className="text-[12px] font-medium uppercase tracking-wide text-[#5f6368]">
+                      Alert types
+                    </p>
+                    <div className="mt-2 divide-y divide-[#f1f3f4] rounded-lg border border-[#e8eaed]">
+                      <div className="flex items-start justify-between gap-4 px-3 py-3">
+                        <div className="min-w-0">
+                          <p className="text-[14px] text-[#202124]">Escalation alerts</p>
+                          <p className="mt-0.5 text-[12px] text-[#5f6368]">
+                            Get notified when Marina needs human help or a customer conversation requires attention.
+                          </p>
+                          <p className="mt-0.5 text-[11px] text-[#5f6368]">
+                            Escalation email is always on. Saved on this device.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={alertTypes.escalations}
+                          onCheckedChange={(v) => updateAlertTypes({ escalations: v })}
+                          aria-label="Receive escalation alerts on non-email channels"
+                          className="mt-0.5 data-[state=checked]:bg-[#1a73e8] data-[state=unchecked]:bg-[#dadce0]"
+                        />
+                      </div>
+                      <div className="flex items-start justify-between gap-4 px-3 py-3">
+                        <div className="min-w-0">
+                          <p className="text-[14px] text-[#202124]">Appointment alerts</p>
+                          <p className="mt-0.5 text-[12px] text-[#5f6368]">
+                            Get notified when a customer confirms an appointment, booking, order, or scheduled call.
+                          </p>
+                          <p className="mt-0.5 text-[11px] text-[#5f6368]">
+                            Saved on this device. Delivery turns on once your Unboks setup supports it.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={alertTypes.appointments}
+                          onCheckedChange={(v) => updateAlertTypes({ appointments: v })}
+                          aria-label="Receive appointment alerts"
+                          className="mt-0.5 data-[state=checked]:bg-[#1a73e8] data-[state=unchecked]:bg-[#dadce0]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-[12px] font-medium uppercase tracking-wide text-[#5f6368]">
+                      Where alerts are sent
+                    </p>
+                  </div>
+
                   <div className="divide-y divide-[#f1f3f4]">
                     {/* Email row — mandatory */}
                     <div className="flex items-center justify-between gap-4 py-3">
@@ -890,7 +949,7 @@ export default function Settings() {
                         className="mt-1 h-9 w-full rounded-md border border-[#dadce0] bg-white px-3 text-[14px] text-[#202124] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] disabled:bg-[#f8f9fa] disabled:text-[#9aa0a6]"
                       />
                       <p className="mt-1 text-[11px] text-[#5f6368]">
-                        Send escalation alerts to an additional email address. Leave empty to use only the default.
+                        Send alerts to an additional email address. Leave empty to use only the default.
                       </p>
                     </div>
 
@@ -941,7 +1000,7 @@ export default function Settings() {
                     )}
                   </div>
                   <p className="mt-3 text-[12px] text-[#5f6368]">
-                    Escalation delivery uses the channels connected by your Unboks setup.
+                    Alert delivery uses the channels connected by your Unboks setup.
                   </p>
                 </Card>
               )}
