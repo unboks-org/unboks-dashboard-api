@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "qa:dry-run": "QA_DRY_RUN=1 tsx ./src/qa/runner.ts",
+    "qa:live": "tsx ./src/qa/runner.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",

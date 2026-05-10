@@ -1,0 +1,977 @@
+[
+  {
+    "testId": "APPT-001",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Simple appointment request with full details",
+    "messages": [
+      "[QA TEST] Hi, I would like to book an appointment for next Tuesday at 10am. My name is Calvin. Please confirm."
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": true,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014", "--"]
+    },
+    "severity": "critical",
+    "category": "appointment",
+    "tags": ["booking", "email", "happy-path"]
+  },
+  {
+    "testId": "APPT-002",
+    "channel": "whatsapp",
+    "persona": "confused_customer",
+    "senderPhone": "+1555000001",
+    "description": "Appointment request missing time — should ask for clarification",
+    "messages": [
+      "[QA TEST] hey i want to come in sometime next week, is that ok?"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": true,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "high",
+    "category": "appointment",
+    "tags": ["booking", "whatsapp", "missing-info"]
+  },
+  {
+    "testId": "APPT-003",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Appointment request missing date and time",
+    "messages": [
+      "[QA TEST] I'd like to schedule a consultation with you. I'm free most mornings. What do you have available?"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": true,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "high",
+    "category": "appointment",
+    "tags": ["booking", "email", "missing-info"]
+  },
+  {
+    "testId": "APPT-004",
+    "channel": "whatsapp",
+    "persona": "reschedule_customer",
+    "senderPhone": "+1555000002",
+    "description": "Reschedule existing appointment",
+    "messages": [
+      "[QA TEST] Hi, I have an appointment on Thursday at 2pm but I need to move it to Friday. Can you help?"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "high",
+    "category": "appointment",
+    "tags": ["reschedule", "whatsapp"]
+  },
+  {
+    "testId": "APPT-005",
+    "channel": "email",
+    "persona": "cancellation_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Appointment cancellation",
+    "messages": [
+      "[QA TEST] I need to cancel my appointment scheduled for Monday morning. Sorry for the late notice."
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "high",
+    "category": "appointment",
+    "tags": ["cancellation", "email"]
+  },
+  {
+    "testId": "APPT-006",
+    "channel": "whatsapp",
+    "persona": "confused_customer",
+    "senderPhone": "+1555000003",
+    "description": "Appointment request for a service that may not exist",
+    "messages": [
+      "[QA TEST] do you do laser treatment appointments? id like to book one for next week"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": true,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "appointment",
+    "tags": ["booking", "whatsapp", "unknown-service"]
+  },
+  {
+    "testId": "APPT-007",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Same-day urgent appointment request",
+    "messages": [
+      "[QA TEST] Hello, is there any chance you have a slot available today? I know it is last minute but it is quite urgent."
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "appointment",
+    "tags": ["urgent", "email", "same-day"]
+  },
+  {
+    "testId": "APPT-008",
+    "channel": "whatsapp",
+    "persona": "multi_message_customer",
+    "senderPhone": "+1555000004",
+    "description": "Multiple short WhatsApp messages composing a booking request",
+    "messages": [
+      "[QA TEST] hi",
+      "[QA TEST] i want to book",
+      "[QA TEST] tuesday 3pm",
+      "[QA TEST] my name is Sam"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": true,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "high",
+    "category": "appointment",
+    "tags": ["multi-message", "whatsapp", "booking"]
+  },
+  {
+    "testId": "APPT-009",
+    "channel": "email",
+    "persona": "non_native_speaker",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Appointment request in broken English",
+    "messages": [
+      "[QA TEST] Hello I want appointment please. I come wednesday? morning time ok? thank you very much"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": true,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "appointment",
+    "tags": ["booking", "non-native", "email"]
+  },
+  {
+    "testId": "APPT-010",
+    "channel": "whatsapp",
+    "persona": "impatient_customer",
+    "senderPhone": "+1555000005",
+    "description": "Follow-up on appointment confirmation not yet received",
+    "messages": [
+      "[QA TEST] I booked an appointment 2 days ago and still haven't received a confirmation. What is going on?"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "high",
+    "category": "appointment",
+    "tags": ["follow-up", "whatsapp", "no-confirmation"]
+  },
+  {
+    "testId": "APPT-011",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Group appointment request for multiple people",
+    "messages": [
+      "[QA TEST] Hi, I would like to book appointments for myself and two colleagues for Friday afternoon. Is that possible?"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": true,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "appointment",
+    "tags": ["group", "email", "booking"]
+  },
+  {
+    "testId": "APPT-012",
+    "channel": "whatsapp",
+    "persona": "polite_customer",
+    "senderPhone": "+1555000006",
+    "description": "Request to book recurring weekly appointment",
+    "messages": [
+      "[QA TEST] Can I set up a standing weekly appointment every Monday at 9am going forward?"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": true,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "appointment",
+    "tags": ["recurring", "whatsapp"]
+  },
+  {
+    "testId": "APPT-013",
+    "channel": "email",
+    "persona": "cancellation_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Cancellation with request to rebook for later date",
+    "messages": [
+      "[QA TEST] Hi, I need to cancel tomorrow's appointment. Work came up. Can I rebook for the following week instead?"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": true,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "appointment",
+    "tags": ["cancellation", "rebook", "email"]
+  },
+  {
+    "testId": "APPT-014",
+    "channel": "whatsapp",
+    "persona": "vague_customer",
+    "senderPhone": "+1555000007",
+    "description": "Completely vague booking intent with no details",
+    "messages": [
+      "[QA TEST] yeah I think I want to come in"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": true,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "appointment",
+    "tags": ["vague", "whatsapp"]
+  },
+  {
+    "testId": "APPT-015",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Appointment outside business hours",
+    "messages": [
+      "[QA TEST] Hello, I would like to book an appointment for Saturday evening around 7pm. Do you have anything available?"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "appointment",
+    "tags": ["outside-hours", "email"]
+  },
+  {
+    "testId": "FAQ-001",
+    "channel": "whatsapp",
+    "persona": "price_asker",
+    "senderPhone": "+1555000008",
+    "description": "Direct pricing question",
+    "messages": [
+      "[QA TEST] how much does it cost?"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "high",
+    "category": "faq",
+    "tags": ["pricing", "whatsapp"]
+  },
+  {
+    "testId": "FAQ-002",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Opening hours question",
+    "messages": [
+      "[QA TEST] Hi, what are your opening hours? I could not find them on your website."
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "high",
+    "category": "faq",
+    "tags": ["hours", "email"]
+  },
+  {
+    "testId": "FAQ-003",
+    "channel": "whatsapp",
+    "persona": "repeat_asker",
+    "senderPhone": "+1555000009",
+    "description": "Repetitive FAQ question — same question sent twice",
+    "messages": [
+      "[QA TEST] what are your hours",
+      "[QA TEST] hello? what are your hours???"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "faq",
+    "tags": ["repetitive", "whatsapp", "hours"]
+  },
+  {
+    "testId": "FAQ-004",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Location and parking question",
+    "messages": [
+      "[QA TEST] Could you tell me your address and whether there is parking nearby? I'll be driving."
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "faq",
+    "tags": ["location", "email"]
+  },
+  {
+    "testId": "FAQ-005",
+    "channel": "whatsapp",
+    "persona": "price_asker",
+    "senderPhone": "+1555000010",
+    "description": "Comparison pricing question",
+    "messages": [
+      "[QA TEST] are your prices the same as last year or have they gone up"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "faq",
+    "tags": ["pricing", "whatsapp"]
+  },
+  {
+    "testId": "FAQ-006",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Question about what services are offered",
+    "messages": [
+      "[QA TEST] Hello, could you give me an overview of the services you offer? I'm new and considering becoming a client."
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "faq",
+    "tags": ["services", "email"]
+  },
+  {
+    "testId": "FAQ-007",
+    "channel": "whatsapp",
+    "persona": "repeat_asker",
+    "senderPhone": "+1555000011",
+    "description": "Same FAQ repeated in a new message after no reply for a while",
+    "messages": [
+      "[QA TEST] what is your cancellation policy?"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "faq",
+    "tags": ["cancellation-policy", "whatsapp"]
+  },
+  {
+    "testId": "FAQ-008",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Question about accepted payment methods",
+    "messages": [
+      "[QA TEST] Do you accept card payments or is it cash only? Also do you take PayPal?"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "faq",
+    "tags": ["payment", "email"]
+  },
+  {
+    "testId": "FAQ-009",
+    "channel": "whatsapp",
+    "persona": "polite_customer",
+    "senderPhone": "+1555000012",
+    "description": "Question about accessibility / wheelchair access",
+    "messages": [
+      "[QA TEST] Hi, is your location wheelchair accessible? I will be coming with my mother who uses a wheelchair."
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "faq",
+    "tags": ["accessibility", "whatsapp"]
+  },
+  {
+    "testId": "FAQ-010",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Question about new client onboarding process",
+    "messages": [
+      "[QA TEST] I'm interested in becoming a new client. What does the process look like and how do I get started?"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "faq",
+    "tags": ["onboarding", "email"]
+  },
+  {
+    "testId": "COMP-001",
+    "channel": "email",
+    "persona": "angry_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Angry complaint about service quality — should escalate",
+    "messages": [
+      "[QA TEST] I am extremely unhappy with the service I received last week. Your staff was rude and unprofessional. I want to speak to a manager immediately."
+    ],
+    "expected": {
+      "shouldEscalate": true,
+      "escalationMode": "hard",
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "critical",
+    "category": "complaint",
+    "tags": ["complaint", "escalation", "email", "hard-mode"]
+  },
+  {
+    "testId": "COMP-002",
+    "channel": "whatsapp",
+    "persona": "refund_demander",
+    "senderPhone": "+1555000013",
+    "description": "Refund demand after unsatisfactory service",
+    "messages": [
+      "[QA TEST] I want a full refund. What happened last time was completely unacceptable and I am not paying for that."
+    ],
+    "expected": {
+      "shouldEscalate": true,
+      "escalationMode": "hard",
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "critical",
+    "category": "complaint",
+    "tags": ["refund", "escalation", "whatsapp"]
+  },
+  {
+    "testId": "COMP-003",
+    "channel": "email",
+    "persona": "angry_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Complaint with threat to leave a bad review",
+    "messages": [
+      "[QA TEST] Unless I hear back from someone senior today, I will be leaving a 1-star review everywhere I can. This has been an absolutely terrible experience."
+    ],
+    "expected": {
+      "shouldEscalate": true,
+      "escalationMode": "hard",
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "critical",
+    "category": "complaint",
+    "tags": ["review-threat", "escalation", "email"]
+  },
+  {
+    "testId": "COMP-004",
+    "channel": "whatsapp",
+    "persona": "human_requester",
+    "senderPhone": "+1555000014",
+    "description": "Customer explicitly asks for a human agent",
+    "messages": [
+      "[QA TEST] I don't want to talk to a bot. Please connect me to a real person now."
+    ],
+    "expected": {
+      "shouldEscalate": true,
+      "escalationMode": "soft",
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "high",
+    "category": "complaint",
+    "tags": ["human-request", "escalation", "whatsapp"]
+  },
+  {
+    "testId": "COMP-005",
+    "channel": "email",
+    "persona": "refund_demander",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Payment dispute — customer says they were overcharged",
+    "messages": [
+      "[QA TEST] I was charged twice for my last appointment. I have the bank statement to prove it. I want this resolved today."
+    ],
+    "expected": {
+      "shouldEscalate": true,
+      "escalationMode": "hard",
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "critical",
+    "category": "complaint",
+    "tags": ["payment-dispute", "escalation", "email"]
+  },
+  {
+    "testId": "COMP-006",
+    "channel": "whatsapp",
+    "persona": "angry_customer",
+    "senderPhone": "+1555000015",
+    "description": "No-show complaint — operator did not show up for appointment",
+    "messages": [
+      "[QA TEST] i waited 45 minutes and nobody showed up for my appointment. this is a joke. what happened???"
+    ],
+    "expected": {
+      "shouldEscalate": true,
+      "escalationMode": "hard",
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "critical",
+    "category": "complaint",
+    "tags": ["no-show", "escalation", "whatsapp"]
+  },
+  {
+    "testId": "COMP-007",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Mild dissatisfaction — soft escalation expected",
+    "messages": [
+      "[QA TEST] Hi, I was a little disappointed with my last visit. I felt the service was rushed and I didn't get what I expected. I'm not sure if I want to rebook."
+    ],
+    "expected": {
+      "shouldEscalate": true,
+      "escalationMode": "soft",
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "high",
+    "category": "complaint",
+    "tags": ["mild-complaint", "soft-escalation", "email"]
+  },
+  {
+    "testId": "COMP-008",
+    "channel": "whatsapp",
+    "persona": "angry_customer",
+    "senderPhone": "+1555000016",
+    "description": "Complaint about AI / bot handling — does not want automated replies",
+    "messages": [
+      "[QA TEST] stop sending me automated replies. i know its a bot. i want a REAL answer from a real person or im going elsewhere"
+    ],
+    "expected": {
+      "shouldEscalate": true,
+      "escalationMode": "hard",
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "high",
+    "category": "complaint",
+    "tags": ["bot-complaint", "escalation", "whatsapp"]
+  },
+  {
+    "testId": "COMP-009",
+    "channel": "email",
+    "persona": "angry_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Complaint with incorrect information received from previous reply",
+    "messages": [
+      "[QA TEST] You told me last week the price was X but then you charged me Y. This is misleading. I want an explanation."
+    ],
+    "expected": {
+      "shouldEscalate": true,
+      "escalationMode": "soft",
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "high",
+    "category": "complaint",
+    "tags": ["wrong-info", "escalation", "email"]
+  },
+  {
+    "testId": "COMP-010",
+    "channel": "whatsapp",
+    "persona": "impatient_customer",
+    "senderPhone": "+1555000017",
+    "description": "Customer frustrated by slow response time",
+    "messages": [
+      "[QA TEST] I messaged 3 days ago and still no reply. Is anyone actually monitoring this? Very unprofessional."
+    ],
+    "expected": {
+      "shouldEscalate": true,
+      "escalationMode": "soft",
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "high",
+    "category": "complaint",
+    "tags": ["slow-response", "soft-escalation", "whatsapp"]
+  },
+  {
+    "testId": "THREAD-001",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Customer replies inside an existing email thread",
+    "messages": [
+      "[QA TEST] Thanks for your reply. Just to confirm, the appointment is still on for 3pm Tuesday right?"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "high",
+    "category": "reply-threading",
+    "tags": ["thread-reply", "email"]
+  },
+  {
+    "testId": "THREAD-002",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Customer replies to confirmation email with follow-up question",
+    "messages": [
+      "[QA TEST] Got your confirmation, thank you. One more thing — is there anything I should bring to the appointment?"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "reply-threading",
+    "tags": ["thread-reply", "email", "follow-up"]
+  },
+  {
+    "testId": "THREAD-003",
+    "channel": "whatsapp",
+    "persona": "multi_message_customer",
+    "senderPhone": "+1555000018",
+    "description": "Multi-turn conversation: inquiry then appointment",
+    "messages": [
+      "[QA TEST] hi what services do you offer",
+      "[QA TEST] ok cool i want to book the first one",
+      "[QA TEST] thursday 11am works for me"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": true,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "high",
+    "category": "reply-threading",
+    "tags": ["multi-turn", "whatsapp", "booking"]
+  },
+  {
+    "testId": "THREAD-004",
+    "channel": "email",
+    "persona": "angry_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Customer reopens a resolved thread with a new complaint",
+    "messages": [
+      "[QA TEST] Following up on our previous exchange — the issue has NOT been resolved as you claimed. I am still waiting."
+    ],
+    "expected": {
+      "shouldEscalate": true,
+      "escalationMode": "soft",
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "high",
+    "category": "reply-threading",
+    "tags": ["reopen", "email", "escalation"]
+  },
+  {
+    "testId": "THREAD-005",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Reply with attachment reference (no actual attachment in test)",
+    "messages": [
+      "[QA TEST] Hi, I'm replying with the form you requested. I've attached the document. Please let me know if you received it."
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "reply-threading",
+    "tags": ["attachment", "email", "threading"]
+  },
+  {
+    "testId": "DASH-001",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Dashboard action: inbox loads and renders conversations",
+    "messages": [
+      "[QA TEST] Test message to seed inbox — ignore."
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "critical",
+    "category": "dashboard-action",
+    "tags": ["inbox", "dashboard"]
+  },
+  {
+    "testId": "DASH-002",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Dashboard action: escalations list loads correctly",
+    "messages": [
+      "[QA TEST] I need help with something urgent please."
+    ],
+    "expected": {
+      "shouldEscalate": true,
+      "escalationMode": "soft",
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "critical",
+    "category": "dashboard-action",
+    "tags": ["escalations", "dashboard"]
+  },
+  {
+    "testId": "DASH-003",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Dashboard action: appointments tab loads and renders rows",
+    "messages": [
+      "[QA TEST] Booking for Wednesday 2pm — Calvin."
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": true,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "critical",
+    "category": "dashboard-action",
+    "tags": ["appointments", "dashboard"]
+  },
+  {
+    "testId": "DASH-004",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Dashboard action: settings page loads without error",
+    "messages": [
+      "[QA TEST] Settings check seed."
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "high",
+    "category": "dashboard-action",
+    "tags": ["settings", "dashboard"]
+  },
+  {
+    "testId": "DASH-005",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Dashboard action: deep link to escalation resolves correctly",
+    "messages": [
+      "[QA TEST] Deep link seed escalation."
+    ],
+    "expected": {
+      "shouldEscalate": true,
+      "escalationMode": "soft",
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "high",
+    "category": "dashboard-action",
+    "tags": ["deep-link", "escalation", "dashboard"]
+  },
+  {
+    "testId": "EDGE-001",
+    "channel": "email",
+    "persona": "spam_sender",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Spam / irrelevant message — should not escalate or create appointment",
+    "messages": [
+      "[QA TEST] Congratulations!!! You have been selected to win a $500 prize. Click here to claim: http://spam.example.com"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "edge-case",
+    "tags": ["spam", "email"]
+  },
+  {
+    "testId": "EDGE-002",
+    "channel": "whatsapp",
+    "persona": "multilingual_customer",
+    "senderPhone": "+1555000019",
+    "description": "Message in Spanish — multilingual handling",
+    "messages": [
+      "[QA TEST] Hola, me gustaria reservar una cita para el viernes por la manana. Es posible?"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "edge-case",
+    "tags": ["multilingual", "spanish", "whatsapp"]
+  },
+  {
+    "testId": "EDGE-003",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Empty or near-empty message body",
+    "messages": [
+      "[QA TEST] ."
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": true,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "edge-case",
+    "tags": ["empty-message", "email"]
+  },
+  {
+    "testId": "EDGE-004",
+    "channel": "whatsapp",
+    "persona": "vague_customer",
+    "senderPhone": "+1555000020",
+    "description": "Message requiring clarification — completely ambiguous intent",
+    "messages": [
+      "[QA TEST] can you help"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": true,
+      "shouldCreateAppointment": false,
+      "mustNotContain": ["butlerbensonagent@gmail.com", "\u2014"]
+    },
+    "severity": "medium",
+    "category": "edge-case",
+    "tags": ["vague", "whatsapp"]
+  },
+  {
+    "testId": "EDGE-005",
+    "channel": "email",
+    "persona": "polite_customer",
+    "senderEmail": "calvinadamus@gmail.com",
+    "description": "Identity leak check — Marina reply must not expose internal sender address",
+    "messages": [
+      "[QA TEST] What email address should I use to contact you directly?"
+    ],
+    "expected": {
+      "shouldEscalate": false,
+      "shouldAskClarifyingQuestion": false,
+      "shouldCreateAppointment": false,
+      "mustNotContain": [
+        "butlerbensonagent@gmail.com",
+        "\u2014",
+        "unboks.org/internal",
+        "noreply@"
+      ],
+      "shouldContain": ["hello@unboks.org"]
+    },
+    "severity": "critical",
+    "category": "edge-case",
+    "tags": ["identity-leak", "email", "critical"]
+  }
+]

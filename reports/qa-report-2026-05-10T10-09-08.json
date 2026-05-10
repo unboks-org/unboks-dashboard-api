@@ -1,0 +1,1518 @@
+{
+  "summary": {
+    "date": "2026-05-10T10:09:08.133Z",
+    "environment": "https://api.unboks.org",
+    "tenant": "unboks",
+    "qaCustomerEmail": "calvinadamus@gmail.com",
+    "mode": "dry-run",
+    "total": 50,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "dryRun": 50,
+    "bySeverity": {
+      "critical": {
+        "passed": 0,
+        "failed": 0
+      },
+      "high": {
+        "passed": 0,
+        "failed": 0
+      },
+      "medium": {
+        "passed": 0,
+        "failed": 0
+      },
+      "low": {
+        "passed": 0,
+        "failed": 0
+      }
+    },
+    "byCategory": {
+      "appointment": {
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "faq": {
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "complaint": {
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "reply-threading": {
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "dashboard-action": {
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      },
+      "edge-case": {
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "results": [
+    {
+      "testId": "APPT-001",
+      "channel": "email",
+      "category": "appointment",
+      "severity": "critical",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.121Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "APPT-002",
+      "channel": "whatsapp",
+      "category": "appointment",
+      "severity": "high",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.123Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "APPT-003",
+      "channel": "email",
+      "category": "appointment",
+      "severity": "high",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.124Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "APPT-004",
+      "channel": "whatsapp",
+      "category": "appointment",
+      "severity": "high",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.124Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "APPT-005",
+      "channel": "email",
+      "category": "appointment",
+      "severity": "high",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.124Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "APPT-006",
+      "channel": "whatsapp",
+      "category": "appointment",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.124Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "APPT-007",
+      "channel": "email",
+      "category": "appointment",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.125Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "APPT-008",
+      "channel": "whatsapp",
+      "category": "appointment",
+      "severity": "high",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.125Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "APPT-009",
+      "channel": "email",
+      "category": "appointment",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.125Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "APPT-010",
+      "channel": "whatsapp",
+      "category": "appointment",
+      "severity": "high",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.125Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "APPT-011",
+      "channel": "email",
+      "category": "appointment",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.126Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "APPT-012",
+      "channel": "whatsapp",
+      "category": "appointment",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.126Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "APPT-013",
+      "channel": "email",
+      "category": "appointment",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.126Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "APPT-014",
+      "channel": "whatsapp",
+      "category": "appointment",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.126Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "APPT-015",
+      "channel": "email",
+      "category": "appointment",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.126Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "FAQ-001",
+      "channel": "whatsapp",
+      "category": "faq",
+      "severity": "high",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.126Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "FAQ-002",
+      "channel": "email",
+      "category": "faq",
+      "severity": "high",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.126Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "FAQ-003",
+      "channel": "whatsapp",
+      "category": "faq",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.127Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "FAQ-004",
+      "channel": "email",
+      "category": "faq",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.127Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "FAQ-005",
+      "channel": "whatsapp",
+      "category": "faq",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.127Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "FAQ-006",
+      "channel": "email",
+      "category": "faq",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.127Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "FAQ-007",
+      "channel": "whatsapp",
+      "category": "faq",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.127Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "FAQ-008",
+      "channel": "email",
+      "category": "faq",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.128Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "FAQ-009",
+      "channel": "whatsapp",
+      "category": "faq",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.128Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "FAQ-010",
+      "channel": "email",
+      "category": "faq",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.128Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "COMP-001",
+      "channel": "email",
+      "category": "complaint",
+      "severity": "critical",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.128Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "COMP-002",
+      "channel": "whatsapp",
+      "category": "complaint",
+      "severity": "critical",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.128Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "COMP-003",
+      "channel": "email",
+      "category": "complaint",
+      "severity": "critical",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.129Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "COMP-004",
+      "channel": "whatsapp",
+      "category": "complaint",
+      "severity": "high",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.129Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "COMP-005",
+      "channel": "email",
+      "category": "complaint",
+      "severity": "critical",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.129Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "COMP-006",
+      "channel": "whatsapp",
+      "category": "complaint",
+      "severity": "critical",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.129Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "COMP-007",
+      "channel": "email",
+      "category": "complaint",
+      "severity": "high",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.129Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "COMP-008",
+      "channel": "whatsapp",
+      "category": "complaint",
+      "severity": "high",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.130Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "COMP-009",
+      "channel": "email",
+      "category": "complaint",
+      "severity": "high",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.130Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "COMP-010",
+      "channel": "whatsapp",
+      "category": "complaint",
+      "severity": "high",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.130Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "THREAD-001",
+      "channel": "email",
+      "category": "reply-threading",
+      "severity": "high",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.130Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "THREAD-002",
+      "channel": "email",
+      "category": "reply-threading",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.130Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "THREAD-003",
+      "channel": "whatsapp",
+      "category": "reply-threading",
+      "severity": "high",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.130Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "THREAD-004",
+      "channel": "email",
+      "category": "reply-threading",
+      "severity": "high",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.131Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "THREAD-005",
+      "channel": "email",
+      "category": "reply-threading",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.131Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "DASH-001",
+      "channel": "email",
+      "category": "dashboard-action",
+      "severity": "critical",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.131Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "DASH-002",
+      "channel": "email",
+      "category": "dashboard-action",
+      "severity": "critical",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.131Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "DASH-003",
+      "channel": "email",
+      "category": "dashboard-action",
+      "severity": "critical",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.131Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "DASH-004",
+      "channel": "email",
+      "category": "dashboard-action",
+      "severity": "high",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.131Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "DASH-005",
+      "channel": "email",
+      "category": "dashboard-action",
+      "severity": "high",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.132Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "EDGE-001",
+      "channel": "email",
+      "category": "edge-case",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.132Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "EDGE-002",
+      "channel": "whatsapp",
+      "category": "edge-case",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.132Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "EDGE-003",
+      "channel": "email",
+      "category": "edge-case",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.132Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "EDGE-004",
+      "channel": "whatsapp",
+      "category": "edge-case",
+      "severity": "medium",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.132Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    },
+    {
+      "testId": "EDGE-005",
+      "channel": "email",
+      "category": "edge-case",
+      "severity": "critical",
+      "status": "dry-run",
+      "startedAt": "2026-05-10T10:09:08.133Z",
+      "durationMs": 0,
+      "checks": [
+        {
+          "name": "scenario shape valid",
+          "status": "pass"
+        },
+        {
+          "name": "messages contain [QA TEST] marker",
+          "status": "pass"
+        },
+        {
+          "name": "mustNotContain has no em-dash check",
+          "status": "pass",
+          "detail": "em-dash guard present"
+        },
+        {
+          "name": "internal email guard",
+          "status": "pass",
+          "detail": "butlerbensonagent guard present"
+        }
+      ]
+    }
+  ],
+  "missingEndpoints": [],
+  "blockers": []
+}
