@@ -128,7 +128,7 @@ export function RefreshButton({ className }: { className?: string }) {
         }
         title={statusText ?? "Refresh dashboard"}
         className={cn(
-          "inline-flex items-center gap-1.5 h-9 rounded-lg border border-[#e2e6ec] bg-white px-2 sm:px-2.5 text-[13px] font-medium text-[#1f2937] transition-colors",
+          "inline-flex items-center justify-center h-9 w-9 rounded-lg border border-[#e2e6ec] bg-white text-[#1f2937] transition-colors",
           "hover:border-[#1a73e8] hover:text-[#1a73e8]",
           "focus:outline-none focus:ring-2 focus:ring-[#1a73e8]/20",
           "disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:border-[#e2e6ec] disabled:hover:text-[#1f2937]",
@@ -141,7 +141,6 @@ export function RefreshButton({ className }: { className?: string }) {
           )}
           aria-hidden="true"
         />
-        <span className="hidden sm:inline">Refresh</span>
       </button>
     </div>
   );
