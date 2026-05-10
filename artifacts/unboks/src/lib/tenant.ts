@@ -1,7 +1,27 @@
-const DEFAULT_CLIENT = "unboks";
+// ---------------------------------------------------------------------------
+// Deploy-time tenant
+// ---------------------------------------------------------------------------
+//
+// VITE_CLIENT_SLUG is baked into the bundle at build time so the correct
+// tenant is wired in without relying on per-device localStorage. Set it in
+// .env.local (dev) or as an environment variable in the deployment runner:
+//
+//   VITE_CLIENT_SLUG=unboks
+//
+// Fallback chain (highest priority first):
+//   1. URL path / login flow via setClientSlug() → written to localStorage
+//   2. VITE_CLIENT_SLUG build-time constant → baked into the JS bundle
+//   3. Hard-coded "unboks" default → correct for the primary production deploy
+//
+// The result: a fresh mobile browser with empty localStorage always hits
+// the right tenant as long as the deploy was built with VITE_CLIENT_SLUG
+// or the user opens a URL that contains the tenant slug (see TenantRootRedirect
+// in App.tsx).
+const DEPLOY_CLIENT: string =
+  (import.meta.env.VITE_CLIENT_SLUG as string | undefined) || "unboks";
 
 export function getClientSlug(): string {
-  return localStorage.getItem("wtyj_client") || DEFAULT_CLIENT;
+  return localStorage.getItem("wtyj_client") || DEPLOY_CLIENT;
 }
 
 export function setClientSlug(slug: string): void {
@@ -21,8 +41,6 @@ export function setToken(token: string, slug?: string): void {
 }
 
 export function clearAuth(): void {
-  // Only clear the auth token. Keep the client slug so the login screen
-  // and tenant-scoped UI still know which workspace the user belongs to.
   const slug = getClientSlug();
   localStorage.removeItem(getTokenKey(slug));
 }

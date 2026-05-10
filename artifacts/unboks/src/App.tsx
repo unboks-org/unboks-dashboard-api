@@ -1,6 +1,7 @@
 import { Component, type ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect, useParams } from "wouter";
 import { setClientSlug, getClientSlug } from "@/lib/tenant";
+import { VALID_CLIENTS, type ValidClient } from "@/lib/api";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -71,35 +72,29 @@ const queryClient = new QueryClient({
 });
 
 /**
- * Handles backend-generated path-based deep links of the form:
- *   https://dashboard.unboks.org/<tenant>/escalations/<id>
- *   https://dashboard.unboks.org/<tenant>/appointments/<id>
+ * Handles bare tenant URLs of the form:
+ *   https://dashboard.unboks.org/unboks
  *
- * When the production Vite build has BASE_PATH="/" (the default for the
- * deployment runner), Wouter's base is "" and the full pathname is visible
- * to the router. The specific short routes (/escalations/:id, etc.) are
- * registered WITHOUT the tenant prefix, so the tenant-prefixed URL falls
- * through to a 404.
+ * Sets the client slug from the URL (same as TenantDeepLinkRedirect) so that
+ * opening a shared dashboard link on a fresh mobile browser — where localStorage
+ * may be empty — always targets the correct tenant rather than falling back to
+ * the deploy-time default.
  *
- * This component:
- *   1. Reads the :tenant and :id params via useParams (within a Route match).
- *   2. Synchronously writes the tenant slug to localStorage so all subsequent
- *      API calls target the right workspace — identical to the login flow.
- *   3. Issues a Wouter Redirect to the canonical inner path (/escalations/:id
- *      or /appointments/:id) which IS registered, so the full auth-gate →
- *      deep-link → detail-panel flow runs exactly as for in-app navigation.
- *
- * Login redirect round-trip:
- *   - Unauthenticated user hits /:tenant/escalations/25.
- *   - TenantDeepLinkRedirect sets slug, then redirects to /escalations/25.
- *   - ProtectedRoute on /escalations/:id saves "/escalations/25" and sends
- *     user to /login.
- *   - After login AuthProvider navigates to "/escalations/25" directly. ✓
- *
- * Placement: these two routes must come AFTER all the short specific routes
- * inside <Switch> so they don't shadow /escalations/:id (which would match
- * with tenant="escalations" otherwise).
+ * Guarded by VALID_CLIENTS so arbitrary single-segment paths (e.g. /favicon.ico)
+ * don't silently overwrite the slug and redirect to the inbox; unrecognised
+ * segments fall through to the NotFound page as before.
  */
+function TenantRootRedirect() {
+  const { tenant } = useParams<{ tenant: string }>();
+  if (!tenant || !VALID_CLIENTS.includes(tenant as ValidClient)) {
+    return <NotFound />;
+  }
+  if (tenant !== getClientSlug()) {
+    setClientSlug(tenant);
+  }
+  return <Redirect to="/" />;
+}
+
 function TenantDeepLinkRedirect({ section }: { section: "escalations" | "appointments" }) {
   const { tenant, id } = useParams<{ tenant: string; id: string }>();
   // Synchronously update the client slug before the redirect commits.
@@ -166,6 +161,15 @@ function Router() {
       </Route>
       <Route path="/:tenant/appointments/:id">
         <TenantDeepLinkRedirect section="appointments" />
+      </Route>
+      {/* Bare tenant URL: e.g. dashboard.unboks.org/unboks sets the slug
+          from the URL path and redirects to the main inbox. Guarded by
+          VALID_CLIENTS so unknown single-segment paths still 404.
+          Must come after /:tenant/escalations/:id and /:tenant/appointments/:id
+          (Wouter named params don't cross slashes, so there's no shadowing,
+          but explicit ordering keeps the intent clear). */}
+      <Route path="/:tenant">
+        <TenantRootRedirect />
       </Route>
       <Route component={NotFound} />
     </Switch>
