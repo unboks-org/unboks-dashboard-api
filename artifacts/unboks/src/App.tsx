@@ -7,6 +7,10 @@ import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SettingsErrorBoundary } from "@/components/SettingsErrorBoundary";
 import { FeatureTogglesProvider } from "@/lib/feature-toggles";
+// QAPanel: hidden internal dev panel for manual flow testing. Renders
+// nothing unless `?qa=1` or localStorage["unboks_qa_panel"]==="1".
+// Remove this import + the <QAPanel /> mount below to take it out.
+import { QAPanel } from "@/components/dev/QAPanel";
 import NotFound from "@/pages/not-found";
 import Inbox from "@/pages/Inbox";
 import Login from "@/pages/Login";
@@ -130,6 +134,7 @@ function App() {
             <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
               <AuthProvider>
                 <Router />
+                <QAPanel />
               </AuthProvider>
             </WouterRouter>
             <Toaster richColors position="top-right" />
