@@ -15,6 +15,7 @@ import {
   escalationToConversationRow,
 } from "@/lib/conversation-mapper";
 import { dedupeEscalations } from "@/lib/dedupe-escalations";
+import { useDeepLink, clearDeepLinkQuery } from "@/lib/deep-link";
 import { CHANNEL_BADGE_COLORS } from "@/lib/channel-map";
 import type { NavId } from "@/components/inbox/Drawer";
 import { useEnabledChannels } from "@/hooks/use-enabled-channels";
@@ -989,6 +990,84 @@ export default function Inbox() {
       }
     }
   }, [allConversations]);
+
+  // ---- Deep-link handling (escalation links from alert emails / WhatsApp) --
+  //
+  // Two link shapes resolve to Inbox:
+  //   - Path:  /escalations/:id            (PRIMARY — what backend sends now)
+  //   - Query: /?view=escalations&escalationId=ID  (fallback)
+  //
+  // When the kind is `appointment` we hand control over to the
+  // Appointments page via `navigate(...)`; Inbox doesn't own that
+  // surface. We track the consumed id in a ref so that:
+  //   - escalation list refetches don't re-trigger the auto-open (which
+  //     would fight the user if they had since clicked elsewhere), and
+  //   - sidebar / refresh / heartbeat keep working untouched.
+  const deepLink = useDeepLink();
+  const consumedDeepLinkRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (deepLink.kind === "appointment") {
+      // Forward query-style appointment links from the inbox surface
+      // to the Appointments page, where the highlight logic lives.
+      const target = deepLink.id
+        ? `/appointments/${encodeURIComponent(deepLink.id)}`
+        : "/appointments";
+      navigate(target);
+      return;
+    }
+    if (deepLink.kind !== "escalation") return;
+
+    // Tab switch: do this even when there's no id, so /escalations or
+    // ?view=escalations alone still lands on the Escalations list.
+    setActiveNavState((cur) => (cur === "escalations" ? cur : "escalations"));
+
+    if (!deepLink.id) {
+      // No id to resolve — clean up query fallback markers and bail.
+      if (deepLink.source === "query") clearDeepLinkQuery();
+      return;
+    }
+
+    // Wait for escalations to finish loading before declaring not-found.
+    if (escIsLoading) return;
+
+    const lookupKey = deepLink.id;
+    if (consumedDeepLinkRef.current === lookupKey) return;
+
+    if (escIsError) {
+      // Don't claim "not found" when the request itself errored — the
+      // existing error UI in the list will surface that, and a refresh
+      // can re-fire the deep link cleanly.
+      return;
+    }
+
+    // Match priority: explicit escalationId, then conversation id (in case
+    // the backend ever sends a conversation key), then phone.
+    const match =
+      escalationRows.find((c) => c.escalationId === lookupKey) ??
+      escalationRows.find((c) => c.id === lookupKey) ??
+      null;
+
+    if (match) {
+      setSelectedConv(match);
+      consumedDeepLinkRef.current = lookupKey;
+      if (deepLink.source === "query") clearDeepLinkQuery();
+    } else if (rawEscalations) {
+      // Loaded with a definitive answer and the id isn't in the list.
+      // Either it was already resolved, or the link is stale.
+      consumedDeepLinkRef.current = lookupKey;
+      toast.message("Escalation not found or already resolved.");
+      if (deepLink.source === "query") clearDeepLinkQuery();
+    }
+  }, [
+    deepLink.kind,
+    deepLink.id,
+    deepLink.source,
+    escalationRows,
+    rawEscalations,
+    escIsLoading,
+    escIsError,
+    navigate,
+  ]);
 
   // Consume any cross-route nav intent parked by DashboardShell when the user
   // clicked a channel/escalations item from Bookings/Analytics/Settings.

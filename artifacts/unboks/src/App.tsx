@@ -81,6 +81,22 @@ function Router() {
       <Route path="/appointments">
         <ProtectedRoute><Bookings /></ProtectedRoute>
       </Route>
+      {/* Deep link from alert emails / WhatsApp: opens the
+          Appointments page and auto-highlights the matching row.
+          The id is decoded inside Bookings via `useDeepLink`. */}
+      <Route path="/appointments/:id">
+        <ProtectedRoute><Bookings /></ProtectedRoute>
+      </Route>
+      {/* Deep links into Escalations. Both the bare /escalations
+          surface (used for `?view=escalations` style links) and the
+          path-with-id form are protected and rendered through Inbox,
+          which owns the Escalations list and detail panel. */}
+      <Route path="/escalations">
+        <ProtectedRoute><Inbox /></ProtectedRoute>
+      </Route>
+      <Route path="/escalations/:id">
+        <ProtectedRoute><Inbox /></ProtectedRoute>
+      </Route>
       <Route path="/settings">
         <ProtectedRoute>
           <SettingsErrorBoundary>

@@ -10,6 +10,7 @@ import {
   clearAuth,
 } from "@/lib/tenant";
 import { apiLogin, registerUnauthorizedHandler } from "@/lib/api";
+import { LOGIN_REDIRECT_STORAGE_KEY } from "@/lib/deep-link";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [, navigate] = useLocation();
@@ -34,7 +35,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { token } = await apiLogin(password);
       setToken(token, slug);
       setIsAuthenticated(true);
-      navigate("/");
+      // Honour the path the user was trying to reach before the auth
+      // bounce (set by `ProtectedRoute`). This is what makes deep links
+      // from alert emails survive an unauthenticated entry point — the
+      // user signs in once and lands on the exact escalation or
+      // appointment that was linked, instead of the inbox root.
+      let dest = "/";
+      try {
+        const stored = sessionStorage.getItem(LOGIN_REDIRECT_STORAGE_KEY);
+        if (stored && !stored.startsWith("/login")) dest = stored;
+        sessionStorage.removeItem(LOGIN_REDIRECT_STORAGE_KEY);
+      } catch {
+        // sessionStorage may be unavailable; fall back to "/".
+      }
+      navigate(dest);
     },
     [navigate],
   );

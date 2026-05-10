@@ -35,7 +35,8 @@ import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import { useAppointments } from "@/hooks/use-appointments";
 import { useActiveConversationKeys } from "@/hooks/use-active-conversation-keys";
 import { filterActiveAppointments } from "@/lib/appointment-classifier";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { useDeepLink, clearDeepLinkQuery } from "@/lib/deep-link";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -180,6 +181,52 @@ export default function Bookings() {
 
   const showPendingSyncHint = !backendAvailable && appointments.length > 0;
 
+  // ---- Deep-link handling (appointment links from alert emails / WhatsApp)
+  //
+  // Two link shapes resolve to this page:
+  //   - Path:  /appointments/:id           (PRIMARY — what backend sends now)
+  //   - Query: /appointments?appointmentId=ID  (fallback)
+  //
+  // We highlight the matching row and scroll it into view; we do NOT
+  // auto-open the confirm dialog (acceptance criterion: "highlight /
+  // open the matching appointment", not "act on it"). If the id isn't
+  // in the loaded list, we surface a calm not-found banner.
+  const deepLink = useDeepLink();
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [deepLinkNotFound, setDeepLinkNotFound] = useState<string | null>(null);
+  const consumedDeepLinkRef = useRef<string | null>(null);
+  const rowRefs = useRef<Map<string, HTMLLIElement>>(new Map());
+  // Loaded means: the appointments query has settled at least once.
+  // We rely on `isLoading` flipping to false plus appointments being
+  // an array (it always is here) — once that happens we can declare
+  // not-found honestly.
+  useEffect(() => {
+    if (deepLink.kind !== "appointment" || !deepLink.id) return;
+    if (consumedDeepLinkRef.current === deepLink.id) return;
+    if (isLoading) return;
+
+    const id = deepLink.id;
+    const match = appointments.find((a) => a.id === id) ?? null;
+    if (match) {
+      consumedDeepLinkRef.current = id;
+      setHighlightedId(id);
+      setDeepLinkNotFound(null);
+      // Defer the scroll until after the row has rendered with the
+      // highlight class. requestAnimationFrame handles both the
+      // initial mount case and the case where the appointments
+      // refetch populates the list.
+      requestAnimationFrame(() => {
+        const el = rowRefs.current.get(id);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      if (deepLink.source === "query") clearDeepLinkQuery();
+    } else {
+      consumedDeepLinkRef.current = id;
+      setDeepLinkNotFound("Appointment not found or no longer active.");
+      if (deepLink.source === "query") clearDeepLinkQuery();
+    }
+  }, [deepLink.kind, deepLink.id, deepLink.source, appointments, isLoading]);
+
   return (
     <DashboardShell
       activeNav="bookings"
@@ -191,6 +238,19 @@ export default function Bookings() {
           <div className="border-b border-[#e8eaed] bg-[#fbfbfd] px-4 py-2 text-[12px] text-[#5f6368]">
             Showing detected appointments from your conversations. They will
             sync once the appointments service is connected.
+          </div>
+        )}
+        {deepLinkNotFound && (
+          <div className="flex items-start justify-between gap-3 border-b border-[#feefc3] bg-[#fef7e0] px-4 py-2.5 text-[13px] text-[#5f3e00]">
+            <span>{deepLinkNotFound}</span>
+            <button
+              type="button"
+              onClick={() => setDeepLinkNotFound(null)}
+              className="text-[12px] font-medium text-[#5f3e00] hover:text-[#1f2937] focus:outline-none"
+              aria-label="Dismiss"
+            >
+              Dismiss
+            </button>
           </div>
         )}
 
@@ -220,10 +280,24 @@ export default function Bookings() {
                   apt.source === "backend" && apt.status !== "confirmed";
                 const confirmingThis =
                   confirmMutation.isPending && pendingConfirm?.id === apt.id;
+                const isHighlighted = highlightedId === apt.id;
                 return (
                   <li
                     key={apt.id}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-[#fbfbfd] transition-colors"
+                    ref={(el) => {
+                      // Track row nodes so the deep-link effect can scroll
+                      // the matching row into view. Cleanup on unmount
+                      // keeps the map from holding stale refs across
+                      // list refetches.
+                      if (el) rowRefs.current.set(apt.id, el);
+                      else rowRefs.current.delete(apt.id);
+                    }}
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-3 transition-colors",
+                      isHighlighted
+                        ? "bg-[#e8f0fe] ring-1 ring-[#1a73e8]/30"
+                        : "hover:bg-[#fbfbfd]",
+                    )}
                   >
                     {/* Customer + topic */}
                     <div className="flex items-center gap-3 min-w-0 flex-[1.2]">
