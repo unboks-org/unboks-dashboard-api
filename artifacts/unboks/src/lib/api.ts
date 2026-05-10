@@ -276,6 +276,66 @@ export async function fetchAppointments(): Promise<AppointmentsResponse> {
 
 const APPOINTMENTS_NOT_CONNECTED = new Set([0, 404, 501, 503]);
 
+// ---------------------------------------------------------------------------
+// Confirm appointment
+// ---------------------------------------------------------------------------
+//
+// Backend contract (issue unboks-org/unboks-dashboard-api#1):
+//   POST /dashboard/api/appointments/{appointment_id}/confirm
+//   Auth: Bearer (existing dashboard auth)
+//   Body (optional): { confirmedBy?: string, note?: string }
+//   200: { id, status: "confirmed", confirmedAt, alreadyConfirmed: boolean }
+//   404: { detail: "appointment not found" }
+//
+// Confirm is final operator confirmation — the backend fans out alerts
+// (email / alt email / WhatsApp via Zernio / Telegram or Messenger when
+// configured), so the UI guards the action behind a confirmation
+// dialog and surfaces the `alreadyConfirmed` flag distinctly.
+
+export interface ConfirmAppointmentPayload {
+  confirmedBy?: string;
+  note?: string;
+}
+
+export interface ConfirmAppointmentResponse {
+  id: string;
+  status: string;
+  confirmedAt: string | null;
+  alreadyConfirmed: boolean;
+}
+
+export async function confirmAppointment(
+  appointmentId: string,
+  payload: ConfirmAppointmentPayload = {},
+): Promise<ConfirmAppointmentResponse> {
+  const id = (appointmentId ?? "").toString().trim();
+  if (!id) {
+    throw new ApiError(400, "Appointment id is missing.");
+  }
+  // The issue documents the endpoint as
+  //   POST /dashboard/api/appointments/{appointment_id}/confirm
+  // but `getApiBase()` already returns `<host>/api/<slug>/dashboard/api`
+  // (see lib/tenant.ts), so we pass only the suffix here. The composed
+  // request URL ends up as
+  //   <host>/api/<slug>/dashboard/api/appointments/<id>/confirm
+  // — exactly the documented path under the per-tenant slug routing
+  // every other dashboard endpoint already uses.
+  const raw = await apiFetch<unknown>(
+    `/appointments/${encodeURIComponent(id)}/confirm`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+  const o = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}) as Record<string, unknown>;
+  return {
+    id: pickStr(o, "id", "_id", "appointmentId") ?? id,
+    status: pickStr(o, "status") ?? "confirmed",
+    confirmedAt: pickStr(o, "confirmedAt", "confirmed_at"),
+    alreadyConfirmed: o.alreadyConfirmed === true || o.already_confirmed === true,
+  };
+}
+
 function normalizeAppointmentList(raw: unknown): Appointment[] {
   // Accept both `[ ... ]` and `{ items: [...] }` envelope shapes.
   let items: unknown[] = [];

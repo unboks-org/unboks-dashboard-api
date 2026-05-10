@@ -29,15 +29,30 @@
  */
 
 import { useLocation } from "wouter";
-import { Calendar, MapPin, MessageCircle, ArrowRight } from "lucide-react";
+import { Calendar, MapPin, MessageCircle, ArrowRight, Check, Loader2 } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import { useAppointments } from "@/hooks/use-appointments";
 import { useActiveConversationKeys } from "@/hooks/use-active-conversation-keys";
 import { filterActiveAppointments } from "@/lib/appointment-classifier";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import type { Appointment, AppointmentStatus } from "@/lib/api";
+import { toast } from "sonner";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  confirmAppointment,
+  type Appointment,
+  type AppointmentStatus,
+} from "@/lib/api";
+import { ApiError } from "@/lib/error";
 
 function avatarColor(name: string) {
   const colors = ["#f9a825", "#1a73e8", "#34a853", "#ea4335", "#7e57c2", "#ec407a", "#26a69a"];
@@ -126,6 +141,43 @@ export default function Bookings() {
     navigate(`/?c=${encodeURIComponent(conversationId)}`);
   };
 
+  // Confirm-appointment flow.
+  // We only allow confirmation for backend rows. Detection-only rows
+  // don't have a backend id, so calling /confirm would 404 — and even
+  // a synthetic id would have no row to mark confirmed. The button
+  // hides for such rows, matching acceptance criteria 1 + 8 in the
+  // tracking issue.
+  const queryClient = useQueryClient();
+  const [pendingConfirm, setPendingConfirm] = useState<Appointment | null>(null);
+  const confirmMutation = useMutation({
+    mutationFn: (appointmentId: string) =>
+      confirmAppointment(appointmentId, { confirmedBy: "operator" }),
+    onSuccess: (data) => {
+      // Refresh /appointments either way so a duplicate confirm still
+      // pulls the canonical confirmedAt + status into the cache.
+      void queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      if (data.alreadyConfirmed) {
+        toast.message("Appointment was already confirmed");
+      } else {
+        toast.success("Appointment confirmed");
+      }
+      setPendingConfirm(null);
+    },
+    onError: (err) => {
+      // 404 means the row no longer exists on the backend (already
+      // removed or stale local state). Refresh the list so the bad row
+      // disappears, and tell the operator clearly.
+      if (err instanceof ApiError && err.status === 404) {
+        void queryClient.invalidateQueries({ queryKey: ["appointments"] });
+        toast.error("This appointment is no longer available. Refreshing.");
+        setPendingConfirm(null);
+        return;
+      }
+      const msg = err instanceof Error ? err.message : "Could not confirm appointment.";
+      toast.error(msg);
+    },
+  });
+
   const showPendingSyncHint = !backendAvailable && appointments.length > 0;
 
   return (
@@ -160,6 +212,14 @@ export default function Bookings() {
             <ul className="divide-y divide-[#f1f3f4]">
               {appointments.map((apt) => {
                 const pill = statusPill(apt.status, apt.source, backendAvailable);
+                // Confirm button visibility:
+                //  - only for backend-sourced rows (detection rows have
+                //    no canonical id to confirm against),
+                //  - only when not already confirmed.
+                const canConfirm =
+                  apt.source === "backend" && apt.status !== "confirmed";
+                const confirmingThis =
+                  confirmMutation.isPending && pendingConfirm?.id === apt.id;
                 return (
                   <li
                     key={apt.id}
@@ -229,6 +289,28 @@ export default function Bookings() {
                       >
                         {pill.label}
                       </span>
+                      {canConfirm && (
+                        <button
+                          type="button"
+                          onClick={() => setPendingConfirm(apt)}
+                          disabled={confirmingThis}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-md border border-[#1a73e8] bg-[#1a73e8] px-2.5 py-1 text-[12px] font-medium text-white transition-colors",
+                            "hover:bg-[#1664c1] hover:border-[#1664c1]",
+                            "focus:outline-none focus:ring-2 focus:ring-[#1a73e8]/30",
+                            "disabled:opacity-60 disabled:cursor-not-allowed",
+                          )}
+                          title="Confirm this appointment and notify configured alert destinations."
+                        >
+                          {confirmingThis ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5" />
+                          )}
+                          <span className="hidden sm:inline">Confirm appointment</span>
+                          <span className="sm:hidden">Confirm</span>
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => openConversation(apt.conversationId)}
@@ -247,6 +329,77 @@ export default function Bookings() {
           )}
         </div>
       </div>
+
+      {/* Confirm-appointment guard dialog. The backend confirm endpoint
+          fans out alerts (email / alt email / WhatsApp / Telegram /
+          Messenger), so we never confirm without an explicit operator
+          tap. */}
+      <Dialog
+        open={pendingConfirm !== null}
+        onOpenChange={(v) => {
+          if (!v && !confirmMutation.isPending) setPendingConfirm(null);
+        }}
+      >
+        <DialogContent className="box-border w-[calc(100vw-32px)] max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Confirm this appointment?</DialogTitle>
+            <DialogDescription className="text-[#5f6368]">
+              This will notify the configured alert destinations.
+            </DialogDescription>
+          </DialogHeader>
+          {pendingConfirm && (
+            <div className="rounded-md border border-[#e6e8eb] bg-[#fbfbfd] px-3 py-2 text-[13px]">
+              <p className="font-medium text-[#1f2937]">
+                {pendingConfirm.customerName}
+              </p>
+              <p className="text-[#5f6368] mt-0.5">{pendingConfirm.title}</p>
+              <p className="text-[#202124] mt-1.5 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#5f6368]" />
+                {pendingConfirm.dateTimeLabel}
+              </p>
+              {pendingConfirm.location && (
+                <p className="text-[#5f6368] mt-0.5 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5" />
+                  {pendingConfirm.location}
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => setPendingConfirm(null)}
+              disabled={confirmMutation.isPending}
+              className={cn(
+                "inline-flex items-center justify-center h-9 rounded-lg border border-[#e2e6ec] bg-white px-3 text-[13px] font-medium text-[#1f2937] transition-colors",
+                "hover:border-[#1a73e8] hover:text-[#1a73e8]",
+                "disabled:opacity-60 disabled:cursor-not-allowed",
+              )}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (pendingConfirm) confirmMutation.mutate(pendingConfirm.id);
+              }}
+              disabled={confirmMutation.isPending}
+              className={cn(
+                "inline-flex items-center justify-center gap-1.5 h-9 rounded-lg border border-[#1a73e8] bg-[#1a73e8] px-3 text-[13px] font-medium text-white transition-colors",
+                "hover:bg-[#1664c1] hover:border-[#1664c1]",
+                "disabled:opacity-60 disabled:cursor-not-allowed",
+              )}
+            >
+              {confirmMutation.isPending ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Check className="w-3.5 h-3.5" />
+              )}
+              Confirm appointment
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardShell>
   );
 }
