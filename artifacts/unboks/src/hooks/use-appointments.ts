@@ -33,13 +33,13 @@ import {
   type ApiConversation,
   type ConversationDetail,
 } from "@/lib/api";
-import { useConversations } from "@/hooks/use-client-api";
+import { useConversations, useEscalations } from "@/hooks/use-client-api";
 import {
   detectAppointment,
   hasSchedulingSignals,
   validateBackendAppointment,
 } from "@/lib/appointment-classifier";
-import { mapApiConversation } from "@/lib/conversation-mapper";
+import { mapApiConversation, normalizeEscalation } from "@/lib/conversation-mapper";
 
 const APPOINTMENTS_KEY = ["appointments"] as const;
 
@@ -68,6 +68,29 @@ export function useAppointments(): UseAppointmentsResult {
   });
 
   const conversations = useConversations();
+
+  // Live escalations — used as an authoritative "do not show in
+  // Appointments" signal. Calvin observed a non-appointment escalation
+  // surfacing in the Appointments list (R2-23 problem B). The
+  // appointment-classifier lifecycle says any conversation in stages
+  // 3-4 (customer_proposed_slots / operator_selected_slot) belongs in
+  // Escalations, never Appointments. We treat the escalations endpoint
+  // as the source of truth for that: any unresolved escalation's
+  // conversation is excluded from the Appointments merge below, even
+  // if the backend appointment row claims "confirmed". When the
+  // escalation is later resolved (escalationResolved=true), the row
+  // drops out of `active` here and the appointment can re-appear.
+  const escalations = useEscalations("all");
+  const escalatedPhones = useMemo(() => {
+    const set = new Set<string>();
+    const list = (escalations.data ?? []) as unknown[];
+    for (const raw of list) {
+      const n = normalizeEscalation(raw);
+      if (!n || n.resolved) continue;
+      if (n.phone) set.add(n.phone);
+    }
+    return set;
+  }, [escalations.data]);
 
   // Filter candidates by the cheap preview-string signal so we only
   // fetch full detail for conversations that plausibly contain an
@@ -150,14 +173,18 @@ export function useAppointments(): UseAppointmentsResult {
       seen.add(k);
       result.push(a);
     }
+    // Escalation guard — drop any row whose owning conversation is
+    // currently a live (unresolved) escalation. See `escalatedPhones`
+    // above for the rationale.
+    const guarded = result.filter((a) => !escalatedPhones.has(a.conversationId));
     // Newest first by createdAt.
-    result.sort((a, b) => {
+    guarded.sort((a, b) => {
       const da = Date.parse(a.createdAt) || 0;
       const db = Date.parse(b.createdAt) || 0;
       return db - da;
     });
-    return result;
-  }, [backend.data, detected, detailByConvId]);
+    return guarded;
+  }, [backend.data, detected, detailByConvId, escalatedPhones]);
 
   return {
     appointments: merged,
