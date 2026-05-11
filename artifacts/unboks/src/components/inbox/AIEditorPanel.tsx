@@ -35,11 +35,11 @@ const LANGUAGES: AIEditorLanguage[] = [
 ];
 
 const STYLES: { value: AIEditorStyle; label: string; hint: string }[] = [
-  { value: "professional", label: "Professional", hint: "Calm, clear, business tone." },
-  { value: "warmer", label: "Warmer", hint: "Friendly, human, kind." },
-  { value: "shorter", label: "Shorter", hint: "Trim to essentials." },
-  { value: "friendlier", label: "Friendlier", hint: "Light, approachable." },
-  { value: "direct", label: "More direct", hint: "Plain and to the point." },
+  { value: "professional", label: "Professional", hint: "Clean, polished, businesslike. No filler." },
+  { value: "warmer", label: "Warmer", hint: "More human, caring and personal." },
+  { value: "shorter", label: "Shorter", hint: "Fewer words. Keep only what matters." },
+  { value: "friendlier", label: "Friendlier", hint: "Light, casual and approachable." },
+  { value: "direct", label: "More direct", hint: "Plain and concise. No fluff." },
 ];
 
 const TABS: { value: AIEditorAction; label: string; Icon: typeof Sparkles }[] = [
