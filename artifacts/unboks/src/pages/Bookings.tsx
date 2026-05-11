@@ -56,7 +56,8 @@ import {
 import { ApiError } from "@/lib/error";
 
 function avatarColor(name: string) {
-  const colors = ["#f9a825", "#1a73e8", "#34a853", "#ea4335", "#7e57c2", "#ec407a", "#26a69a"];
+  // Muted, desaturated palette — matches Inbox avatar treatment.
+  const colors = ["#7a8fa6", "#8b7ba8", "#6b9a78", "#a0786a", "#6885a3", "#9a6e8a", "#5f8fa0"];
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
   return colors[h % colors.length];
@@ -313,7 +314,7 @@ export default function Bookings() {
                     >
                       {/* Avatar */}
                       <div
-                        className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[14px] font-medium flex-shrink-0"
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[14px] font-medium flex-shrink-0 shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.18)]"
                         style={{ backgroundColor: avatarColor(apt.customerName) }}
                         aria-hidden="true"
                       >
@@ -396,7 +397,7 @@ export default function Bookings() {
                   {/* Customer hero */}
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center text-white text-[18px] font-semibold flex-shrink-0"
+                      className="w-12 h-12 rounded-full flex items-center justify-center text-white text-[18px] font-semibold flex-shrink-0 shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.18)]"
                       style={{ backgroundColor: avatarColor(selectedApt.customerName) }}
                       aria-hidden="true"
                     >

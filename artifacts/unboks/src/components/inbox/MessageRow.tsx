@@ -4,10 +4,22 @@ import { cn } from "@/lib/utils";
 import { CHANNEL_BADGE_COLORS } from "@/lib/channel-map";
 import { Star, Reply, Forward, Trash2, Archive, ArchiveRestore } from "lucide-react";
 
+// Muted, desaturated palette — premium SaaS feel.
+// Enough depth for white initials to remain legible (all clear ~3.5:1+),
+// but no neon blocks or saturated primary fills.
 const AVATAR_COLORS = [
-  "#f9a825", "#1a73e8", "#34a853", "#ea4335",
-  "#7e57c2", "#ec407a", "#26a69a", "#ff7043",
-  "#5c6bc0", "#26c6da", "#9ccc65", "#ab47bc",
+  "#7a8fa6", // muted steel blue
+  "#8b7ba8", // dusty violet
+  "#6b9a78", // sage green
+  "#a0786a", // dusty terracotta
+  "#6885a3", // cornflower slate
+  "#9a6e8a", // dusty rose
+  "#5f8fa0", // cadet
+  "#a08060", // warm sand
+  "#7a80a0", // cool indigo grey
+  "#688a6a", // muted forest
+  "#9a8888", // warm grey-rose
+  "#6a8fa0", // slate teal
 ];
 
 function avatarColor(name: string) {
@@ -88,6 +100,7 @@ export function MessageRow({
       <div
         className={cn(
           "w-10 h-10 rounded-full flex items-center justify-center text-white text-[16px] font-medium flex-shrink-0",
+          "shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.18)]",
           dimmed && "opacity-50 grayscale",
         )}
         style={{ backgroundColor: color }}
