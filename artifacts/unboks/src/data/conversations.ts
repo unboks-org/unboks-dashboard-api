@@ -45,6 +45,12 @@ export interface Conversation {
   escalationMode?: EscalationMode;
   escalationSummary?: string | null;
   learningStatus?: LearningStatus;
+  /**
+   * Set to `true` for rows sourced from the resolved escalations endpoint.
+   * Allows `ConversationDetailPane` to enforce read-only/history mode
+   * independently of the active UI filter state.
+   */
+  resolvedEscalation?: boolean;
 }
 
 export const conversations: Conversation[] = [

@@ -97,7 +97,9 @@ export function MessageRow({
       </div>
 
       <div className="flex-1 min-w-0">
-        {/* Line 1: sender (+ optional escalation badge) on the left, time + star on the right */}
+        {/* Line 1: sender name on the left, timestamp + action icons on the right.
+            Escalation badges moved to line 2 so they never compete with the
+            timestamp or icon strip for horizontal space. */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
             <span
@@ -112,28 +114,6 @@ export function MessageRow({
             >
               {conversation.sender}
             </span>
-            {dimmed ? (
-              <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 bg-[#e6f4ea] text-[#137333]">
-                Resolved
-              </span>
-            ) : conversation.escalated ? (
-              <span
-                className={cn(
-                  "text-[11px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0",
-                  conversation.escalationMode === "soft"
-                    ? "bg-[#fef7e0] text-[#a06800]"
-                    : conversation.escalationMode === "hard"
-                      ? "bg-[#fce8e6] text-[#c5221f]"
-                      : "bg-[#f1f3f4] text-[#5f6368]",
-                )}
-              >
-                {conversation.escalationMode === "soft"
-                  ? "Agent needs help"
-                  : conversation.escalationMode === "hard"
-                    ? "Human takeover"
-                    : "Escalation"}
-              </span>
-            ) : null}
           </div>
           <div className="flex items-center gap-0.5 flex-shrink-0">
             <span
@@ -241,16 +221,42 @@ export function MessageRow({
           </div>
         </div>
 
-        {/* Line 2: message preview on the left, optional channel pill on the right */}
-        <div className="mt-0.5 flex items-center justify-between gap-3 min-w-0">
-          <p
-            className={cn(
-              "truncate text-[13px]",
-              dimmed ? "text-[#9aa0a6]" : conversation.unread ? "text-[#3c4043]" : "text-[#5f6368]",
-            )}
-          >
-            {snippet || <span className="italic text-[#9aa0a6]">No preview</span>}
-          </p>
+        {/* Line 2: escalation/resolved badge (when present) + preview on the
+            left, optional channel pill on the right. Badges live here so they
+            never collide with the timestamp or action icons on line 1. */}
+        <div className="mt-0.5 flex items-center justify-between gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {dimmed ? (
+              <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 bg-[#e6f4ea] text-[#137333]">
+                Resolved
+              </span>
+            ) : conversation.escalated ? (
+              <span
+                className={cn(
+                  "text-[11px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0",
+                  conversation.escalationMode === "soft"
+                    ? "bg-[#fef7e0] text-[#a06800]"
+                    : conversation.escalationMode === "hard"
+                      ? "bg-[#fce8e6] text-[#c5221f]"
+                      : "bg-[#f1f3f4] text-[#5f6368]",
+                )}
+              >
+                {conversation.escalationMode === "soft"
+                  ? "Agent needs help"
+                  : conversation.escalationMode === "hard"
+                    ? "Human takeover"
+                    : "Escalation"}
+              </span>
+            ) : null}
+            <p
+              className={cn(
+                "truncate text-[13px]",
+                dimmed ? "text-[#9aa0a6]" : conversation.unread ? "text-[#3c4043]" : "text-[#5f6368]",
+              )}
+            >
+              {snippet || <span className="italic text-[#9aa0a6]">No preview</span>}
+            </p>
+          </div>
           {!hideChannel && (
             <span
               className="inline-flex items-center gap-1 flex-shrink-0 rounded-full border border-[#e8eaed] bg-white px-1.5 py-0.5 text-[11px] font-medium text-[#5f6368]"

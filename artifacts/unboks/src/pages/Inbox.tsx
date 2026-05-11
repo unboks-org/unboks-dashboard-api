@@ -334,8 +334,14 @@ function ConversationDetailPane({
   onArchive,
   onRestore,
   archived = false,
-  resolvedContext = false,
+  resolvedContext: resolvedContextProp = false,
 }: ConversationDetailPaneProps) {
+  // Belt-and-suspenders: the prop is set by the parent when
+  // `escalationFilter === "resolved"`. The data flag is embedded directly in
+  // each resolved escalation row so history mode is enforced even if the
+  // parent's filter state doesn't propagate cleanly (e.g. stale closure or
+  // re-render timing). Both paths must agree before treating as active.
+  const resolvedContext = resolvedContextProp || Boolean(conversation.resolvedEscalation);
   const { data: detail, isLoading, isError, error } = useConversation(conversation.id);
   const badgeColor = CHANNEL_BADGE_COLORS[conversation.channel] ?? "#9aa0a6";
   // Sort newest-first by parsed backend timestamp so the latest message is
@@ -1008,7 +1014,10 @@ export default function Inbox() {
     return deduped
       .map((n) => {
         const enrich = n.phone ? convoById.get(n.phone) ?? null : null;
-        return escalationToConversationRow(n, enrich);
+        const row = escalationToConversationRow(n, enrich);
+        // Embed resolved flag in the data so ConversationDetailPane can enforce
+        // read-only/history mode independently of the active UI filter state.
+        return { ...row, resolvedEscalation: true as const };
       })
       .filter((c) => !isRowHidden(collectConversationHideKeys(c)));
   }, [rawResolvedEscalations, allConversations, isRowHidden]);
@@ -1270,7 +1279,7 @@ export default function Inbox() {
                 <button
                   key={m}
                   type="button"
-                  onClick={() => setEscalationFilter(m)}
+                  onClick={() => { setEscalationFilter(m); setSelectedConv(null); }}
                   className={cn(
                     "px-3 py-1 text-[12px] rounded-full",
                     escalationFilter === m
