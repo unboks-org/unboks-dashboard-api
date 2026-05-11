@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Sparkles, Languages, Wand2, CheckCircle2, X, Loader2 } from "lucide-react";
 import { useAIEditor } from "@/hooks/use-client-api";
 import { ApiError } from "@/lib/error";
@@ -138,9 +139,15 @@ export function AIEditorPanel({
     onClose();
   };
 
-  return (
+  // Render via a portal directly at document.body so that `position: fixed`
+  // always resolves against the viewport, never against a CSS-transformed
+  // ancestor (e.g. Radix DialogContent animations). Without this, the panel
+  // is trapped inside the dialog's transform context and max-h-[92vh]
+  // computes against the dialog box — causing the Style tab to overflow and
+  // clip the footer buttons. z-[9999] guarantees stacking above any dialog.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-[#202124]/40 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[9999] flex items-end md:items-center justify-center bg-[#202124]/40 backdrop-blur-[2px]"
       role="dialog"
       aria-modal="true"
       aria-label="Agent Editor"
@@ -346,7 +353,8 @@ export function AIEditorPanel({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
