@@ -14,7 +14,6 @@
  */
 
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { Sparkles, Languages, Wand2, CheckCircle2, X, Loader2 } from "lucide-react";
 import { useAIEditor } from "@/hooks/use-client-api";
 import { ApiError } from "@/lib/error";
@@ -58,6 +57,16 @@ interface AIEditorPanelProps {
   draftText: string;
   onApply: (newText: string) => void;
   context?: AIEditorContext;
+  /**
+   * When true, render as a flex-fill block with no backdrop and no fixed
+   * positioning. Use this when the panel is rendered INSIDE an existing
+   * modal (e.g. Radix Dialog) so it does not clash with the host modal's
+   * focus trap, overlay, or transform-clipped containing block.
+   *
+   * The host is responsible for sizing the parent container (e.g. give the
+   * DialogContent `flex flex-col max-h-[85vh]`).
+   */
+  inline?: boolean;
 }
 
 export function AIEditorPanel({
@@ -66,6 +75,7 @@ export function AIEditorPanel({
   draftText,
   onApply,
   context,
+  inline = false,
 }: AIEditorPanelProps) {
   const [tab, setTab] = useState<AIEditorAction>("fix");
   const [language, setLanguage] = useState<AIEditorLanguage>("English");
@@ -139,31 +149,22 @@ export function AIEditorPanel({
     onClose();
   };
 
-  // Render via a portal directly at document.body so that `position: fixed`
-  // always resolves against the viewport, never against a CSS-transformed
-  // ancestor (e.g. Radix DialogContent animations). Without this, the panel
-  // is trapped inside the dialog's transform context and max-h-[92vh]
-  // computes against the dialog box — causing the Style tab to overflow and
-  // clip the footer buttons. z-[9999] guarantees stacking above any dialog.
-  return createPortal(
+  // The panel content is identical for overlay and inline modes; only the
+  // outer wrapper differs. Inline mode is used when the panel is rendered
+  // inside an existing modal (e.g. Radix Dialog) — no backdrop, no fixed
+  // positioning, no rounded card chrome (the host dialog provides those).
+  // The host must give the panel a bounded parent so the body can scroll.
+  const panel = (
     <div
-      className="fixed inset-0 z-[9999] flex items-end md:items-center justify-center bg-[#202124]/40 backdrop-blur-[2px]"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Agent Editor"
-      onMouseDown={(e) => {
-        // Click outside to close, but only on the backdrop itself.
-        if (e.target === e.currentTarget) onClose();
-      }}
+      className={cn(
+        "flex flex-col bg-white",
+        inline
+          ? // Fill the host container; no chrome, no max-height.
+            "h-full min-h-0 w-full overflow-hidden"
+          : // Standalone overlay card.
+            "w-full md:w-[560px] max-w-[96vw] shadow-2xl rounded-t-2xl md:rounded-2xl max-h-[92vh] overflow-hidden border border-[#e8eaed]",
+      )}
     >
-      <div
-        className={cn(
-          "w-full md:w-[560px] max-w-[96vw] bg-white shadow-2xl",
-          "rounded-t-2xl md:rounded-2xl",
-          "max-h-[92vh] flex flex-col overflow-hidden",
-          "border border-[#e8eaed]",
-        )}
-      >
         {/* Header */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-[#f1f3f4]">
           <Sparkles className="w-4 h-4 text-[#1a73e8]" />
@@ -353,8 +354,23 @@ export function AIEditorPanel({
           </button>
         </div>
       </div>
-    </div>,
-    document.body,
+  );
+
+  if (inline) return panel;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-[#202124]/40 backdrop-blur-[2px]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Agent Editor"
+      onMouseDown={(e) => {
+        // Click outside to close, but only on the backdrop itself.
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      {panel}
+    </div>
   );
 }
 
