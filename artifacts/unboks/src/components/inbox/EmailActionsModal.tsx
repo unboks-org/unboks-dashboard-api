@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Sparkles } from "lucide-react";
 import { ApiError } from "@/lib/error";
 import { useEmailReply, useEmailForward, useEmailDelete } from "@/hooks/use-client-api";
 import {
@@ -19,6 +20,8 @@ import {
 } from "@/hooks/use-hidden-conversations";
 import { toast } from "sonner";
 import type { Conversation } from "@/data/conversations";
+import { cn } from "@/lib/utils";
+import { AIEditorPanel } from "@/components/inbox/AIEditorPanel";
 
 /**
  * Translate any error from the email mutation hooks into calm operator copy.
@@ -62,6 +65,7 @@ interface EmailReplyModalProps {
 export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModalProps) {
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
   const reply = useEmailReply();
   const subject = conversation?.subject?.trim() || conversation?.sender || "this email";
   const taRef = useRef<HTMLTextAreaElement | null>(null);
@@ -71,12 +75,14 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
     if (open) {
       setBody("");
       setError(null);
+      setAiOpen(false);
       // focus after the dialog mounts
       requestAnimationFrame(() => taRef.current?.focus());
     }
   }, [open, conversation?.id]);
 
   const canSend = body.trim().length > 0 && !reply.isPending && Boolean(conversation);
+  const hasBody = body.trim().length > 0;
 
   const onSend = async () => {
     if (!conversation) return;
@@ -104,6 +110,15 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
             {subject}
           </DialogDescription>
         </DialogHeader>
+
+        {/* Identity notice — operator must know this goes out as the team, not as Marina */}
+        <div className="flex items-center gap-2 rounded-md border border-[#e6e8eb] bg-[#fbfbfd] px-3 py-2">
+          <span className="h-2 w-2 rounded-full bg-[#7a8fa6] flex-shrink-0" />
+          <span className="text-[12px] text-[#5f6368]">
+            Sent as your team, not as Marina
+          </span>
+        </div>
+
         <div className="min-w-0 space-y-2">
           <Label htmlFor="email-reply-body" className="sr-only">Reply</Label>
           <Textarea
@@ -115,6 +130,23 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
             className="box-border block min-h-[140px] w-full max-w-full min-w-0 resize-none text-[14px]"
             disabled={reply.isPending}
           />
+          {/* Agent Editor trigger — active only when there is draft text */}
+          <button
+            type="button"
+            onClick={() => setAiOpen(true)}
+            disabled={!hasBody || reply.isPending}
+            aria-label="Open Agent Editor"
+            title="Agent Editor: Translate, Style, Fix"
+            className={cn(
+              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium border transition-colors",
+              !hasBody || reply.isPending
+                ? "border-[#e8eaed] text-[#9aa0a6] bg-white cursor-not-allowed"
+                : "border-[#1a73e8]/30 text-[#1a73e8] bg-[#f0f6ff] hover:bg-[#e8f0fe]",
+            )}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Agent Editor
+          </button>
           {error && (
             <p role="alert" className="break-words text-[12px] text-[#c5221f]">{error}</p>
           )}
@@ -125,6 +157,21 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
             {reply.isPending ? "Sending…" : "Send reply"}
           </Button>
         </DialogFooter>
+
+        {/* AI Editor panel — rendered inside the Radix portal so the fixed
+            overlay stacks correctly above the dialog backdrop at the same
+            z-level. Apply patches the draft in-place; send still requires
+            the operator to click Send reply. */}
+        <AIEditorPanel
+          open={aiOpen}
+          onClose={() => setAiOpen(false)}
+          draftText={body}
+          onApply={(text) => setBody(text)}
+          context={{
+            conversationId: conversation?.conversationKey || conversation?.id,
+            channel: "email",
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
