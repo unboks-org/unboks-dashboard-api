@@ -99,15 +99,32 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v && !reply.isPending) onClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (v) return;
+        if (reply.isPending) return;
+        // When the Agent Editor is open, Esc / outside-click should
+        // return the operator to the composer, not close the whole
+        // email reply modal (and lose the draft).
+        if (aiOpen) {
+          setAiOpen(false);
+          return;
+        }
+        onClose();
+      }}
+    >
       <DialogContent
         className={cn(
           "box-border w-[calc(100vw-32px)] max-w-[520px] overflow-hidden",
-          // When the Agent Editor is open, swap to a flex-column layout
-          // with a bounded height so the inline panel can scroll its body
-          // without clipping the footer buttons. Drop the dialog's own
-          // padding so the panel can fill edge-to-edge.
-          aiOpen && "flex flex-col max-h-[85vh] p-0 gap-0",
+          // When the Agent Editor is open: bound the height for the
+          // inline panel scroll, drop dialog padding so the panel fills
+          // edge-to-edge, and HIDE the dialog's built-in close X
+          // (DialogPrimitive.Close renders as the only direct <button>
+          // child of DialogContent — selector below targets it). The
+          // panel renders its own X in its header that correctly
+          // returns to the composer view instead of closing the modal.
+          aiOpen && "flex flex-col max-h-[85vh] p-0 gap-0 [&>button]:hidden",
         )}
       >
         {aiOpen ? (

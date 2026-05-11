@@ -83,6 +83,9 @@ export function AIEditorPanel({
   const [edited, setEdited] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [notConnected, setNotConnected] = useState(false);
+  // Operator can edit the source text inside the panel before generating.
+  // Initialised from the parent draft each time the panel opens.
+  const [originalDraft, setOriginalDraft] = useState<string>(draftText);
 
   const ai = useAIEditor();
 
@@ -93,13 +96,14 @@ export function AIEditorPanel({
     setEdited(null);
     setErrorText(null);
     setNotConnected(false);
+    setOriginalDraft(draftText);
     ai.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   if (!open) return null;
 
-  const trimmed = draftText.trim();
+  const trimmed = originalDraft.trim();
   const canGenerate = trimmed.length > 0 && !ai.isPending;
 
   const generate = () => {
@@ -280,16 +284,30 @@ export function AIEditorPanel({
             </p>
           )}
 
-          {/* Original */}
+          {/* Original — editable. Operator can refine the source before
+              generating. Generate uses this updated text. Apply still
+              writes the AI-edited result back to the parent composer. */}
           <div className="space-y-1">
-            <p className="text-[11px] uppercase tracking-wide text-[#9aa0a6] font-medium">
-              Original
-            </p>
-            <div className="rounded-md border border-[#e8eaed] bg-[#f8f9fa] px-3 py-2 text-[13px] text-[#202124] whitespace-pre-wrap min-h-[60px] max-h-[160px] overflow-y-auto">
-              {trimmed || (
-                <span className="text-[#9aa0a6]">Write something in the composer first.</span>
-              )}
-            </div>
+            <label
+              htmlFor="ai-editor-original"
+              className="block text-[11px] uppercase tracking-wide text-[#9aa0a6] font-medium"
+            >
+              Original (editable)
+            </label>
+            <textarea
+              id="ai-editor-original"
+              value={originalDraft}
+              onChange={(e) => {
+                setOriginalDraft(e.target.value);
+                // Editing the source invalidates any prior AI result.
+                if (edited) setEdited(null);
+                if (errorText) setErrorText(null);
+              }}
+              placeholder="Write something here, or in the composer first."
+              disabled={ai.isPending}
+              rows={3}
+              className="block w-full resize-y rounded-md border border-[#e8eaed] bg-[#f8f9fa] px-3 py-2 text-[13px] text-[#202124] min-h-[60px] max-h-[200px] overflow-y-auto focus:outline-none focus:ring-2 focus:ring-[#1a73e8]/30 focus:border-[#1a73e8] disabled:opacity-60"
+            />
           </div>
 
           {/* Result / status */}
