@@ -316,6 +316,13 @@ interface ConversationDetailPaneProps {
   onArchive?: (conv: Conversation) => void;
   onRestore?: (conv: Conversation) => void;
   archived?: boolean;
+  /**
+   * When true the pane is rendering a resolved escalation from the Resolved
+   * tab. Forces the non-escalation (read-only trail) layout regardless of
+   * what the backend detail payload says, suppresses the mode toggle and
+   * reply composer, and shows a "Resolved escalation" badge in the header.
+   */
+  resolvedContext?: boolean;
 }
 
 function ConversationDetailPane({
@@ -327,6 +334,7 @@ function ConversationDetailPane({
   onArchive,
   onRestore,
   archived = false,
+  resolvedContext = false,
 }: ConversationDetailPaneProps) {
   const { data: detail, isLoading, isError, error } = useConversation(conversation.id);
   const badgeColor = CHANNEL_BADGE_COLORS[conversation.channel] ?? "#9aa0a6";
@@ -399,7 +407,10 @@ function ConversationDetailPane({
   // panel + the composer. They can expand the trail when they need
   // context. Reset to collapsed whenever the open conversation changes
   // so a previously-expanded trail doesn't carry over.
-  const isEscalation = Boolean(showBanner);
+  // resolvedContext forces read-only history layout regardless of the backend
+  // detail payload — resolved escalation rows still carry escalated:true but
+  // must never surface the reply composer or mode toggle.
+  const isEscalation = Boolean(showBanner) && !resolvedContext;
   const [trailOpen, setTrailOpen] = useState(false);
   useEffect(() => {
     setTrailOpen(false);
@@ -471,20 +482,26 @@ function ConversationDetailPane({
               >
                 {conversation.channel}
               </span>
+              {resolvedContext && (
+                <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 bg-[#e6f4ea] text-[#137333]">
+                  Resolved escalation
+                </span>
+              )}
               {conversation.timestamp && (
                 <span className="text-[11.5px] text-[#5f6368] flex-shrink-0">
                   {conversation.timestamp}
                 </span>
               )}
-              {showBanner && detail?.escalationSummary && (
+              {showBanner && !resolvedContext && detail?.escalationSummary && (
                 <p className="text-[12px] text-[#5f6368] truncate min-w-0" title={detail.escalationSummary}>
                   {detail.escalationSummary}
                 </p>
               )}
             </div>
           </div>
-          {/* Mode toggle: stays in row 1 on md+, moves to row 2 on mobile/tablet */}
-          {showBanner && dbId && (
+          {/* Mode toggle: stays in row 1 on md+, moves to row 2 on mobile/tablet.
+              Hidden in resolvedContext — resolved escalations are read-only. */}
+          {showBanner && dbId && !resolvedContext && (
             <div className="hidden md:block flex-shrink-0">
               <EscalationModeToggle
                 conversationDbId={dbId}
@@ -568,7 +585,12 @@ function ConversationDetailPane({
           >
             {conversation.channel}
           </span>
-          {showBanner && dbId && (
+          {resolvedContext && (
+            <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 bg-[#e6f4ea] text-[#137333]">
+              Resolved escalation
+            </span>
+          )}
+          {showBanner && dbId && !resolvedContext && (
             <EscalationModeToggle
               conversationDbId={dbId}
               selectedMode={selectedMode}
@@ -582,8 +604,8 @@ function ConversationDetailPane({
           )}
         </div>
 
-        {/* Mobile/tablet: escalation summary on its own line */}
-        {showBanner && detail?.escalationSummary && (
+        {/* Mobile/tablet: escalation summary on its own line — hidden for resolved context */}
+        {showBanner && !resolvedContext && detail?.escalationSummary && (
           <p className="md:hidden text-[12.5px] text-[#5f6368] mt-1.5 leading-snug" title={detail.escalationSummary}>
             {detail.escalationSummary}
           </p>
@@ -1349,6 +1371,7 @@ export default function Inbox() {
             onArchive={escalationFilter === "resolved" ? undefined : handleArchive}
             onRestore={escalationFilter === "resolved" ? undefined : handleRestore}
             archived={inboxView === "archived"}
+            resolvedContext={escalationFilter === "resolved"}
           />
         )}
       </div>
