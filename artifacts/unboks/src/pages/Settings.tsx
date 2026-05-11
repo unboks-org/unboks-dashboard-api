@@ -122,7 +122,7 @@ function Card({
       )}
       <div className="px-5 py-5 sm:px-6 sm:py-6">{children}</div>
       {footer && (
-        <footer className="flex items-center justify-end gap-3 border-t border-[#f1f3f4] bg-[#fafbfc] px-5 py-3 sm:px-6">
+        <footer className="sticky bottom-0 z-10 flex items-center justify-end gap-3 border-t border-[#f1f3f4] bg-[#fafbfc] px-5 py-3 sm:px-6">
           {footer}
         </footer>
       )}
@@ -215,11 +215,11 @@ function DeliveryBadge({ status }: { status: DeliveryStatus }) {
       className: "bg-[#f1f3f4] text-[#5f6368]",
     },
     saved_only: {
-      label: "Saved only",
+      label: "Not yet sending",
       className: "bg-[#f1f3f4] text-[#5f6368]",
     },
     provider_not_configured: {
-      label: "Provider not configured",
+      label: "Not yet connected",
       className: "bg-[#fef7e0] text-[#7a5a00]",
     },
     failed: {
@@ -1006,17 +1006,24 @@ export default function Settings() {
                               </div>
                             </div>
                             {pref.enabled && (
-                              <TextInput
-                                type="text"
-                                value={pref.destination}
-                                onChange={(e) =>
-                                  setNotifyDraft({
-                                    ...notifyDraft,
-                                    [row.key]: { ...pref, destination: e.target.value },
-                                  })
-                                }
-                                placeholder={row.placeholder}
-                              />
+                              <>
+                                <TextInput
+                                  type="text"
+                                  value={pref.destination}
+                                  onChange={(e) =>
+                                    setNotifyDraft({
+                                      ...notifyDraft,
+                                      [row.key]: { ...pref, destination: e.target.value },
+                                    })
+                                  }
+                                  placeholder={row.placeholder}
+                                />
+                                {row.key === "whatsapp" && (
+                                  <p className="mt-1 text-[11px] text-[#5f6368]">
+                                    Include country code, for example +599 for Curaçao or +351 for Portugal.
+                                  </p>
+                                )}
+                              </>
                             )}
                             {/* WhatsApp activation guidance. Only shown
                                 when the operator has enabled WhatsApp
@@ -1042,14 +1049,34 @@ export default function Settings() {
                                 Add a WhatsApp number above to activate alerts.
                               </p>
                             )}
+                            {row.key === "whatsapp" && pref.enabled && status === "saved_only" && (
+                              <p className="mt-2 text-[12px] text-[#5f6368]">
+                                Settings are saved but alerts are not sending yet. Contact your Unboks team if this does not update soon.
+                              </p>
+                            )}
+                            {row.key === "whatsapp" && pref.enabled && status === "provider_not_configured" && (
+                              <p className="mt-2 text-[12px] text-[#5f6368]">
+                                Your Unboks team still needs to finish setup. No action needed on your end.
+                              </p>
+                            )}
+                            {row.key === "whatsapp" && pref.enabled && status === "failed" && (
+                              <p className="mt-2 text-[12px] text-[#a50e0e]">
+                                Recent delivery failed. Check the number or contact your Unboks team.
+                              </p>
+                            )}
                           </div>
                         );
                       },
                     )}
                   </div>
-                  <p className="mt-3 text-[12px] text-[#5f6368]">
-                    Alert delivery uses the channels connected by your Unboks setup.
-                  </p>
+                  <div className="mt-4 space-y-1 rounded-lg border border-[#e6e8eb] bg-[#fbfbfd] px-3 py-3 text-[11px] text-[#5f6368]">
+                    <p className="font-medium text-[#3c4043]">Status guide</p>
+                    <p><span className="font-medium text-[#137333]">Active</span> — alerts are being sent.</p>
+                    <p><span className="font-medium text-[#7a5a00]">Pending activation</span> — configured and saved. Send START from your WhatsApp to the business number to finish activating.</p>
+                    <p><span className="font-medium text-[#5f6368]">Not yet sending</span> — settings are saved but no delivery yet. Contact your Unboks team if this persists.</p>
+                    <p><span className="font-medium text-[#7a5a00]">Not yet connected</span> — your Unboks team still needs to finish setup. No action needed on your end.</p>
+                    <p><span className="font-medium text-[#a50e0e]">Failed</span> — recent delivery failed. Check the number or contact your Unboks team.</p>
+                  </div>
                 </Card>
               )}
 
