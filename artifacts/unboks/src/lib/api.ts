@@ -587,7 +587,7 @@ function normalizeMessage(raw: unknown, idx: number): ApiMessage | null {
     roleRaw,
   )
     ? "user"
-    : /^(operator|staff|team|teammate|human|admin|support|takeover)$/.test(roleRaw)
+    : /^(operator|staff|team|teammate|human|admin|support|takeover|human_reply|team_reply|from_team|outbound_human|manual_reply)$/.test(roleRaw)
       ? "operator"
       : "assistant";
 

@@ -41,6 +41,8 @@ import {
   Trash2,
   Archive,
   ArchiveRestore,
+  Users,
+  Bot,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { ApiMessage, ConversationDetail } from "@/lib/api";
@@ -114,10 +116,15 @@ function MessageBubble({ msg }: { msg: ApiMessage }) {
         {roleLabel && (
           <span
             className={cn(
-              "mb-1 text-[10px] font-semibold uppercase tracking-[0.06em]",
+              "mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em]",
               roleLabelClass,
             )}
           >
+            {isOperator ? (
+              <Users className="h-3 w-3 flex-shrink-0" />
+            ) : (
+              <Bot className="h-3 w-3 flex-shrink-0" />
+            )}
             {roleLabel}
           </span>
         )}

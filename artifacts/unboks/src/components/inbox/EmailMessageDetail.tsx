@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { ChevronDown, ChevronRight, ShieldAlert } from "lucide-react";
+import { ChevronDown, ChevronRight, ShieldAlert, Users, Bot, Mail } from "lucide-react";
 import type { ApiMessage } from "@/lib/api";
 import { parseEmail, tokenizeInline } from "@/lib/email-parser";
 import { cn } from "@/lib/utils";
@@ -55,8 +55,11 @@ export function EmailMessageDetail({ msg }: EmailMessageDetailProps) {
   // so the card is never blank.
   const displayBody = body || msg.content;
 
+  // Operator cards get a richer purple treatment so human team replies are
+  // immediately obvious vs. Marina's blue cards. The left accent strip +
+  // stronger border makes the distinction pop at a glance in threaded views.
   const cardBorder = isOperator
-    ? "border-[#e2d5f5] bg-[#fbf7ff]"
+    ? "border-[#c4aff0] bg-[#f5f0ff] border-l-[3px] border-l-[#7c3aed]"
     : isAssistant
       ? "border-[#d2e3fc] bg-[#f6faff]"
       : "border-[#e8eaed]";
@@ -68,29 +71,30 @@ export function EmailMessageDetail({ msg }: EmailMessageDetailProps) {
       : "Received";
 
   const labelColor = isOperator
-    ? "text-[#5b3fa0]"
+    ? "text-[#5b3fa0] font-semibold"
     : isAssistant
       ? "text-[#1a73e8]"
       : "text-[#5f6368]";
 
+  const LabelIcon = isOperator ? Users : isAssistant ? Bot : Mail;
+
   return (
     <article
       className={cn(
-        "rounded-xl border bg-white px-5 py-4 shadow-[0_1px_2px_rgba(60,64,67,0.06)]",
+        "rounded-xl border px-5 py-4 shadow-[0_1px_2px_rgba(60,64,67,0.06)]",
         cardBorder,
       )}
     >
-      {/* Subtle role label so threaded views still tell sender vs. our reply
-          apart, without resorting to chat-bubble alignment. Operator emails
-          (human takeover) are explicitly labelled "Sent by Team" so the
-          operator never confuses their own reply with Marina's. */}
+      {/* Role label — operator gets an icon + stronger color so human team
+          replies are unambiguous vs. Marina's messages in a threaded view. */}
       <div className="mb-2 flex items-center justify-between gap-3">
         <span
           className={cn(
-            "text-[11px] font-medium uppercase tracking-wide",
+            "flex items-center gap-1.5 text-[11px] uppercase tracking-wide",
             labelColor,
           )}
         >
+          <LabelIcon className="h-3.5 w-3.5 flex-shrink-0" />
           {labelText}
         </span>
         {msg.timestamp && (
