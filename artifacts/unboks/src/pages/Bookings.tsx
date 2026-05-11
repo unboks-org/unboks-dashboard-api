@@ -28,13 +28,14 @@
  * text. Em dash is freely allowed in code comments.
  */
 
-import { Calendar, MapPin, MessageCircle, ArrowLeft, Check, Loader2, X } from "lucide-react";
+import { Calendar, MapPin, MessageCircle, ArrowLeft, Check, Loader2 } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import { useAppointments } from "@/hooks/use-appointments";
 import { useActiveConversationKeys } from "@/hooks/use-active-conversation-keys";
 import { useConversation } from "@/hooks/use-client-api";
 import { filterActiveAppointments } from "@/lib/appointment-classifier";
+import { sanitizeMessageContent } from "@/lib/message-sanitize";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useDeepLink, clearDeepLinkQuery } from "@/lib/deep-link";
 import { cn } from "@/lib/utils";
@@ -135,17 +136,20 @@ export default function Bookings() {
       ),
     [rawAppointments, activeConversationKeys, convKeysReady],
   );
-  // R2-23 problem A — opening "View conversation" used to navigate to
-  // `/?c=<phone>`, which switched the active sidebar from Appointments
-  // to Inbox and made the operator feel they were yanked into a
-  // different product area. We now open the conversation in an in-page
-  // modal that preserves activeNav="bookings" and Appointments state
-  // (selected appointment, scroll position, deep-link highlight).
-  const [conversationModalApt, setConversationModalApt] =
-    useState<Appointment | null>(null);
-  const openConversation = (apt: Appointment) => {
-    setConversationModalApt(apt);
-  };
+  // R2-23 — clicking "View conversation" used to navigate to Inbox
+  // (sidebar context loss), then briefly used a modal (awkward UX).
+  // The final design is a clean inline swap on the right pane:
+  // viewMode "detail" shows the appointment summary; viewMode
+  // "conversation" shows a curated decision-context view of the
+  // underlying conversation. Sidebar stays on Appointments the entire
+  // time, and switching back to detail keeps the same appointment
+  // selected, the list scroll position, and the deep-link highlight.
+  // viewMode resets to "detail" whenever the operator picks a
+  // different appointment so they never land on the previous
+  // conversation view by accident.
+  const [rightPaneView, setRightPaneView] = useState<"detail" | "conversation">("detail");
+  const openConversation = () => setRightPaneView("conversation");
+  const backToDetail = () => setRightPaneView("detail");
 
   // Confirm-appointment flow.
   // We only allow confirmation for backend rows. Detection-only rows
@@ -217,6 +221,7 @@ export default function Bookings() {
       consumedDeepLinkRef.current = id;
       setHighlightedId(id);
       setSelectedApt(match);
+      setRightPaneView("detail");
       setDeepLinkNotFound(null);
       // Defer the scroll until after the row has rendered with the
       // highlight class. requestAnimationFrame handles both the
@@ -300,11 +305,12 @@ export default function Bookings() {
                       }}
                       role="button"
                       tabIndex={0}
-                      onClick={() => setSelectedApt(apt)}
+                      onClick={() => { setSelectedApt(apt); setRightPaneView("detail"); }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
                           setSelectedApt(apt);
+                          setRightPaneView("detail");
                         }
                       }}
                       className={cn(
@@ -372,7 +378,7 @@ export default function Bookings() {
           </div>
 
           {/* Appointment detail pane */}
-          {selectedApt ? (
+          {selectedApt && rightPaneView === "detail" ? (
             <div className="flex-1 flex flex-col overflow-hidden bg-white">
               {/* Pane header */}
               <div className="flex items-center gap-2 px-4 py-3 border-b border-[#f1f3f4] bg-white flex-shrink-0">
@@ -474,7 +480,7 @@ export default function Bookings() {
                   {/* View conversation — secondary action */}
                   <button
                     type="button"
-                    onClick={() => openConversation(selectedApt)}
+                    onClick={openConversation}
                     className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#e6e8eb] bg-white px-3 py-2 text-[13px] text-[#1a73e8] font-medium hover:bg-[#f0f6ff] transition-colors"
                   >
                     <MessageCircle className="w-4 h-4" />
@@ -483,7 +489,21 @@ export default function Bookings() {
                 </div>
               </div>
             </div>
-          ) : (
+          ) : null}
+
+          {/* Inline conversation-context pane (R2-23 final UX).
+              Replaces the appointment detail body when the operator
+              taps "View conversation". Sidebar stays on Appointments;
+              the back arrow returns to the appointment detail with
+              all selection state intact. */}
+          {selectedApt && rightPaneView === "conversation" && (
+            <ConversationContextPane
+              appointment={selectedApt}
+              onBack={backToDetail}
+            />
+          )}
+
+          {!selectedApt && (
             <div className="hidden md:flex flex-1 items-center justify-center text-center px-6">
               <div>
                 <Calendar className="w-8 h-8 text-[#9aa0a6] mx-auto mb-2" />
@@ -560,159 +580,193 @@ export default function Bookings() {
         </DialogContent>
       </Dialog>
 
-      {/* In-page conversation viewer (R2-23 problem A).
-          Read-only message trail for the appointment's conversation.
-          Closing returns the operator to Appointments with no nav
-          change — activeNav stays "bookings" the entire time. */}
-      <ConversationViewerDialog
-        appointment={conversationModalApt}
-        onClose={() => setConversationModalApt(null)}
-      />
     </DashboardShell>
   );
 }
 
 /**
- * Read-only conversation viewer rendered inside Appointments. Lazy-
- * fetches the conversation detail by phone (the same key
- * `useConversation` uses on the Inbox detail pane) and renders the
- * message trail bottom-aligned, newest message at the bottom, matching
- * standard chat-thread reading order.
+ * Inline conversation-context pane (right side of the Appointments
+ * page). Replaces the appointment-detail body when the operator clicks
+ * "View conversation" on a selected appointment. The sidebar stays on
+ * Appointments the whole time and the back arrow returns to the
+ * appointment detail with all selection state preserved.
  *
- * Intentionally minimal: no reply composer, no escalation controls, no
- * AI editor. Operators viewing a conversation from Appointments are
- * checking context, not replying. If they need to reply, they can open
- * Inbox themselves.
+ * Why curated, not a raw email dump
+ * =================================
+ * Calvin / Jr2 explicitly rejected showing the full message stream as
+ * the Appointments-side conversation view. Operators here are deciding
+ * "is this booking real, who proposed what slot, who confirmed it".
+ * Email noise (signatures, quoted reply history, mobile-client
+ * footers, confidentiality disclaimers) buries that signal and makes
+ * the page feel like an inbox forensic tool.
+ *
+ * So this pane:
+ *   1. Surfaces the booked slot at the top (date/time/location/topic)
+ *      as the headline answer.
+ *   2. Below, renders a curated message trail. Each message body is
+ *      passed through `sanitizeMessageContent` to strip the noise
+ *      listed above.
+ *   3. Bubbles whose sanitised body is empty (pure noise) are dropped.
+ *   4. Bubbles are laid out as a clean two-column thread, oldest at
+ *      the top, with auto-scroll to the newest message on open and as
+ *      the heartbeat appends new replies.
+ *
+ * No reply composer, no escalation controls, no AI editor — operators
+ * who need to reply have one click to Inbox via the footer hint.
  */
-function ConversationViewerDialog({
+function ConversationContextPane({
   appointment,
-  onClose,
+  onBack,
 }: {
-  appointment: Appointment | null;
-  onClose: () => void;
+  appointment: Appointment;
+  onBack: () => void;
 }) {
-  const open = appointment !== null;
   const { data: detail, isLoading, isError } = useConversation(
-    open ? appointment!.conversationId : null,
+    appointment.conversationId,
   );
 
-  // Sort messages oldest-first for natural top-to-bottom reading.
-  const orderedMessages = useMemo(() => {
+  // Build the curated trail: oldest first, sanitised, drop empties.
+  const trail = useMemo(() => {
     const msgs = detail?.messages ?? [];
-    return [...msgs].sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0));
+    const sorted = [...msgs].sort(
+      (a, b) => (a.timestampMs || 0) - (b.timestampMs || 0),
+    );
+    return sorted
+      .map((m) => ({ ...m, cleaned: sanitizeMessageContent(m.content) }))
+      .filter((m) => m.cleaned.length > 0);
   }, [detail?.messages]);
 
-  // Auto-scroll the message list to the newest message when the modal
-  // opens (and again whenever the loaded thread for this appointment
-  // changes — e.g. the 10s heartbeat appends a new reply). Operators
-  // open this viewer to see latest context, so landing at the top of
-  // a long thread would bury the relevant messages.
+  // Auto-scroll the trail to the newest message on open and as the
+  // 10s conversation heartbeat appends new replies. requestAnimationFrame
+  // defers until bubbles have measured so scrollHeight is final.
   const scrollRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    if (!open) return;
     const el = scrollRef.current;
     if (!el) return;
-    // Defer to after layout so the bubbles have measured.
     requestAnimationFrame(() => {
       el.scrollTop = el.scrollHeight;
     });
-  }, [open, appointment?.conversationId, orderedMessages.length]);
+  }, [appointment.conversationId, trail.length]);
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (!v) onClose();
-      }}
-    >
-      <DialogContent
-        className="box-border w-[calc(100vw-32px)] max-w-[640px] p-0 gap-0 flex flex-col max-h-[85vh] [&>button]:hidden"
-      >
-        <DialogTitle className="sr-only">Conversation</DialogTitle>
-        <DialogDescription className="sr-only">
-          Read only conversation history for this appointment.
-        </DialogDescription>
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3 border-b border-[#e6e8eb] px-4 py-3">
-          <div className="min-w-0">
-            <p className="text-[14px] font-semibold text-[#1f2937] truncate">
-              {appointment?.customerName ?? "Conversation"}
-            </p>
-            {appointment && (
-              <p className="text-[12px] text-[#5f6368] truncate mt-0.5">
-                {channelLabel(appointment.channel)} . {appointment.dateTimeLabel}
-              </p>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close conversation"
-            className="w-8 h-8 -mr-1 -mt-1 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#5f6368] flex-shrink-0"
-          >
-            <X className="w-4 h-4" />
-          </button>
+    <div className="flex-1 flex flex-col overflow-hidden bg-white">
+      {/* Pane header — back arrow returns to the appointment detail
+          for the same selectedApt; sidebar stays on Appointments. */}
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-[#f1f3f4] bg-white flex-shrink-0">
+        <button
+          type="button"
+          onClick={onBack}
+          className="w-8 h-8 -ml-1 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#5f6368] flex-shrink-0"
+          aria-label="Back to appointment"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </button>
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium text-[#202124] truncate">
+            Conversation context
+          </p>
+          <p className="text-[11.5px] text-[#5f6368] truncate">
+            {appointment.customerName} . {channelLabel(appointment.channel)}
+          </p>
         </div>
-        {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-[#fbfbfd] px-4 py-3">
-          {isLoading && (
-            <div className="flex items-center justify-center py-12 text-[13px] text-[#5f6368]">
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              Loading conversation
+      </div>
+
+      {/* Body */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto bg-[#fbfbfd]">
+        <div className="p-4 space-y-4">
+          {/* Decision context card — the booked slot, surfaced. This
+              is the answer the operator came to confirm. */}
+          <div className="rounded-lg border border-[#e6e8eb] bg-white p-3 space-y-2">
+            <p className="text-[11px] uppercase tracking-wide text-[#5f6368] font-medium">
+              Booked slot
+            </p>
+            <p className="text-[14px] font-medium text-[#1f2937]">
+              {appointment.title}
+            </p>
+            <div className="flex items-center gap-2 text-[13px] text-[#202124]">
+              <Calendar className="w-4 h-4 text-[#5f6368] flex-shrink-0" />
+              <span>{appointment.dateTimeLabel}</span>
             </div>
-          )}
-          {isError && !isLoading && (
-            <div className="rounded-md border border-[#feefc3] bg-[#fef7e0] px-3 py-2 text-[13px] text-[#5f3e00]">
-              Could not load this conversation. Try again in a moment.
+            <div className="flex items-center gap-2 text-[13px] text-[#5f6368]">
+              <MapPin className="w-4 h-4 flex-shrink-0" />
+              <span>{appointment.location ?? "Location not set"}</span>
             </div>
-          )}
-          {!isLoading && !isError && orderedMessages.length === 0 && (
-            <div className="text-center py-12 text-[13px] text-[#5f6368]">
-              No messages in this conversation yet.
-            </div>
-          )}
-          {!isLoading && !isError && orderedMessages.length > 0 && (
-            <ul className="space-y-2">
-              {orderedMessages.map((m, idx) => {
-                const isCustomer = m.role === "user";
-                return (
-                  <li
-                    key={`${m.timestampMs}-${idx}`}
-                    className={cn(
-                      "flex",
-                      isCustomer ? "justify-start" : "justify-end",
-                    )}
-                  >
-                    <div
+          </div>
+
+          {/* Curated trail */}
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-[#5f6368] font-medium mb-2">
+              Scheduling exchange
+            </p>
+            {isLoading && (
+              <div className="flex items-center justify-center py-8 text-[13px] text-[#5f6368]">
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Loading conversation
+              </div>
+            )}
+            {isError && !isLoading && (
+              <div className="rounded-md border border-[#feefc3] bg-[#fef7e0] px-3 py-2 text-[13px] text-[#5f3e00]">
+                Could not load this conversation. Try again in a moment.
+              </div>
+            )}
+            {!isLoading && !isError && trail.length === 0 && (
+              <div className="rounded-md border border-[#e6e8eb] bg-white px-3 py-3 text-[13px] text-[#5f6368]">
+                No conversation content to show. The underlying messages
+                were either signatures, quoted replies, or disclaimers.
+              </div>
+            )}
+            {!isLoading && !isError && trail.length > 0 && (
+              <ul className="space-y-2">
+                {trail.map((m, idx) => {
+                  const isCustomer = m.role === "user";
+                  const speaker =
+                    m.role === "operator"
+                      ? "You"
+                      : m.role === "assistant"
+                        ? "Marina"
+                        : detail?.name ?? "Customer";
+                  return (
+                    <li
+                      key={`${m.timestampMs}-${idx}`}
                       className={cn(
-                        "max-w-[80%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed",
-                        isCustomer
-                          ? "bg-white border border-[#e6e8eb] text-[#1f2937] rounded-bl-sm"
-                          : "bg-[#1a73e8] text-white rounded-br-sm",
+                        "flex",
+                        isCustomer ? "justify-start" : "justify-end",
                       )}
                     >
-                      <p className="whitespace-pre-wrap break-words">{m.content}</p>
-                      <p
+                      <div
                         className={cn(
-                          "text-[11px] mt-1",
-                          isCustomer ? "text-[#5f6368]" : "text-white/75",
+                          "max-w-[85%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed",
+                          isCustomer
+                            ? "bg-white border border-[#e6e8eb] text-[#1f2937] rounded-bl-sm"
+                            : "bg-[#1a73e8] text-white rounded-br-sm",
                         )}
                       >
-                        {m.role === "operator" ? "You" : m.role === "assistant" ? "Marina" : (detail?.name ?? "Customer")}
-                        {m.timestamp ? ` . ${m.timestamp}` : ""}
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                        <p className="whitespace-pre-wrap break-words">
+                          {m.cleaned}
+                        </p>
+                        <p
+                          className={cn(
+                            "text-[11px] mt-1",
+                            isCustomer ? "text-[#5f6368]" : "text-white/75",
+                          )}
+                        >
+                          {speaker}
+                          {m.timestamp ? ` . ${m.timestamp}` : ""}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </div>
-        {/* Footer hint */}
-        <div className="border-t border-[#e6e8eb] bg-white px-4 py-2 text-[12px] text-[#5f6368]">
-          Read only view. To reply, open this conversation in Inbox.
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+
+      {/* Footer hint — operators who need to reply go to Inbox. */}
+      <div className="border-t border-[#e6e8eb] bg-white px-4 py-2 text-[12px] text-[#5f6368] flex-shrink-0">
+        Read only view. To reply, open this conversation in Inbox.
+      </div>
+    </div>
   );
 }
