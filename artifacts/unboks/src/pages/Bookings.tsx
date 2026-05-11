@@ -29,7 +29,7 @@
  */
 
 import { useLocation } from "wouter";
-import { Calendar, MapPin, MessageCircle, ArrowRight, Check, Loader2 } from "lucide-react";
+import { Calendar, MapPin, MessageCircle, ArrowLeft, Check, Loader2 } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import { useAppointments } from "@/hooks/use-appointments";
@@ -192,6 +192,7 @@ export default function Bookings() {
   // open the matching appointment", not "act on it"). If the id isn't
   // in the loaded list, we surface a calm not-found banner.
   const deepLink = useDeepLink();
+  const [selectedApt, setSelectedApt] = useState<Appointment | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [deepLinkNotFound, setDeepLinkNotFound] = useState<string | null>(null);
   const consumedDeepLinkRef = useRef<string | null>(null);
@@ -210,6 +211,7 @@ export default function Bookings() {
     if (match) {
       consumedDeepLinkRef.current = id;
       setHighlightedId(id);
+      setSelectedApt(match);
       setDeepLinkNotFound(null);
       // Defer the scroll until after the row has rendered with the
       // highlight class. requestAnimationFrame handles both the
@@ -254,53 +256,62 @@ export default function Bookings() {
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto">
-          {isLoading && appointments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center px-6">
-              <p className="text-[14px] text-[#5f6368]">Loading appointments...</p>
-            </div>
-          ) : appointments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center px-6">
-              <Calendar className="w-8 h-8 text-[#9aa0a6] mb-3" />
-              <p className="text-[14px] text-[#5f6368]">No appointments yet.</p>
-              <p className="text-[12px] text-[#9aa0a6] mt-1 max-w-[360px]">
-                Appointments will appear here when a customer schedules a
-                meeting and a date, time, and location are confirmed.
-              </p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-[#f1f3f4]">
-              {appointments.map((apt) => {
-                const pill = statusPill(apt.status, apt.source, backendAvailable);
-                // Confirm button visibility:
-                //  - only for backend-sourced rows (detection rows have
-                //    no canonical id to confirm against),
-                //  - only when not already confirmed.
-                const canConfirm =
-                  apt.source === "backend" && apt.status !== "confirmed";
-                const confirmingThis =
-                  confirmMutation.isPending && pendingConfirm?.id === apt.id;
-                const isHighlighted = highlightedId === apt.id;
-                return (
-                  <li
-                    key={apt.id}
-                    ref={(el) => {
-                      // Track row nodes so the deep-link effect can scroll
-                      // the matching row into view. Cleanup on unmount
-                      // keeps the map from holding stale refs across
-                      // list refetches.
-                      if (el) rowRefs.current.set(apt.id, el);
-                      else rowRefs.current.delete(apt.id);
-                    }}
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-3 transition-colors",
-                      isHighlighted
-                        ? "bg-[#e8f0fe] ring-1 ring-[#1a73e8]/30"
-                        : "hover:bg-[#fbfbfd]",
-                    )}
-                  >
-                    {/* Customer + topic */}
-                    <div className="flex items-center gap-3 min-w-0 flex-[1.2]">
+        <div className="flex flex-1 overflow-hidden">
+          {/* Appointment list — hidden on mobile when detail is open */}
+          <div
+            className={cn(
+              "overflow-y-auto",
+              selectedApt
+                ? "hidden md:flex md:flex-col md:w-[320px] md:flex-none md:border-r md:border-[#f1f3f4]"
+                : "flex-1 flex flex-col",
+            )}
+          >
+            {isLoading && appointments.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+                <p className="text-[14px] text-[#5f6368]">Loading appointments...</p>
+              </div>
+            ) : appointments.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+                <Calendar className="w-8 h-8 text-[#9aa0a6] mb-3" />
+                <p className="text-[14px] text-[#5f6368]">No appointments yet.</p>
+                <p className="text-[12px] text-[#9aa0a6] mt-1 max-w-[360px]">
+                  Appointments will appear here when a customer schedules a
+                  meeting and a date, time, and location are confirmed.
+                </p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-[#f1f3f4]">
+                {appointments.map((apt) => {
+                  const pill = statusPill(apt.status, apt.source, backendAvailable);
+                  const canConfirm = apt.source === "backend" && apt.status !== "confirmed";
+                  const confirmingThis = confirmMutation.isPending && pendingConfirm?.id === apt.id;
+                  const isSelected = selectedApt?.id === apt.id;
+                  return (
+                    <li
+                      key={apt.id}
+                      ref={(el) => {
+                        if (el) rowRefs.current.set(apt.id, el);
+                        else rowRefs.current.delete(apt.id);
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedApt(apt)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedApt(apt);
+                        }
+                      }}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-3 transition-colors cursor-pointer",
+                        isSelected
+                          ? "bg-[#e8f0fe]"
+                          : highlightedId === apt.id
+                            ? "bg-[#e8f0fe] ring-1 ring-inset ring-[#1a73e8]/30"
+                            : "hover:bg-[#fbfbfd]",
+                      )}
+                    >
+                      {/* Avatar */}
                       <div
                         className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[14px] font-medium flex-shrink-0"
                         style={{ backgroundColor: avatarColor(apt.customerName) }}
@@ -308,68 +319,32 @@ export default function Bookings() {
                       >
                         {initial(apt.customerName)}
                       </div>
-                      <div className="min-w-0">
+                      {/* Customer + topic + status */}
+                      <div className="min-w-0 flex-1">
                         <p className="text-[14px] font-medium text-[#202124] truncate">
                           {apt.customerName}
                         </p>
-                        <p className="text-[12px] text-[#5f6368] truncate">
-                          {apt.title}
-                          <span className="text-[#9aa0a6]">
-                            {" \u00B7 "}
-                            {channelLabel(apt.channel)}
+                        <p className="text-[12px] text-[#5f6368] truncate">{apt.title}</p>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span
+                            className={cn(
+                              "inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium",
+                              pill.className,
+                            )}
+                          >
+                            {pill.label}
                           </span>
-                        </p>
+                          <span className="text-[11px] text-[#9aa0a6] truncate">{apt.dateTimeLabel}</span>
+                        </div>
                       </div>
-                    </div>
-
-                    {/* Date / time + location */}
-                    <div className="hidden sm:flex flex-col min-w-0 flex-[1.1]">
-                      <div className="flex items-center gap-1.5 text-[13px] text-[#202124]">
-                        <Calendar className="w-3.5 h-3.5 text-[#5f6368] flex-shrink-0" />
-                        <span className="truncate">{apt.dateTimeLabel}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[12px] text-[#5f6368] mt-0.5">
-                        <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span className="truncate">
-                          {apt.location ?? "Location not set"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Status + open. On mobile the date/time stack hides,
-                        so duplicate the essentials into the trailing block
-                        compactly. */}
-                    <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
-                      <div className="sm:hidden flex flex-col items-end mr-1">
-                        <span className="text-[12px] text-[#202124]">
-                          {apt.dateTimeLabel}
-                        </span>
-                        {apt.location && (
-                          <span className="text-[11px] text-[#5f6368] max-w-[140px] truncate">
-                            {apt.location}
-                          </span>
-                        )}
-                      </div>
-                      <span
-                        className={cn(
-                          "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium",
-                          pill.className,
-                        )}
-                        title={
-                          apt.source === "conversation"
-                            ? "Detected from this conversation. Will sync when the appointments service is connected."
-                            : "From the appointments service."
-                        }
-                      >
-                        {pill.label}
-                      </span>
+                      {/* Confirm button on row — stopPropagation so click does not open detail */}
                       {canConfirm && (
                         <button
                           type="button"
-                          onClick={() => setPendingConfirm(apt)}
+                          onClick={(e) => { e.stopPropagation(); setPendingConfirm(apt); }}
                           disabled={confirmingThis}
                           className={cn(
-                            "inline-flex items-center gap-1 rounded-md border border-[#1a73e8] bg-[#1a73e8] px-2.5 py-1 text-[12px] font-medium text-white transition-colors",
+                            "flex-shrink-0 inline-flex items-center gap-1 rounded-md border border-[#1a73e8] bg-[#1a73e8] px-2.5 py-1 text-[12px] font-medium text-white transition-colors",
                             "hover:bg-[#1664c1] hover:border-[#1664c1]",
                             "focus:outline-none focus:ring-2 focus:ring-[#1a73e8]/30",
                             "disabled:opacity-60 disabled:cursor-not-allowed",
@@ -381,33 +356,142 @@ export default function Bookings() {
                           ) : (
                             <Check className="w-3.5 h-3.5" />
                           )}
-                          <span className="hidden sm:inline">Confirm appointment</span>
-                          <span className="sm:hidden">Confirm</span>
+                          Confirm
                         </button>
                       )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          {/* Appointment detail pane */}
+          {selectedApt ? (
+            <div className="flex-1 flex flex-col overflow-hidden bg-white">
+              {/* Pane header */}
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-[#f1f3f4] bg-white flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSelectedApt(null)}
+                  className="md:hidden w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#5f6368] flex-shrink-0"
+                  aria-label="Back to appointments"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <p className="text-[13px] font-medium text-[#202124] truncate">Appointment</p>
+                <button
+                  type="button"
+                  onClick={() => setSelectedApt(null)}
+                  className="hidden md:flex ml-auto w-7 h-7 items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#5f6368] flex-shrink-0"
+                  aria-label="Close"
+                >
+                  <span className="text-[16px] leading-none">&times;</span>
+                </button>
+              </div>
+
+              {/* Detail body */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-4 space-y-4">
+                  {/* Customer hero */}
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-12 h-12 rounded-full flex items-center justify-center text-white text-[18px] font-semibold flex-shrink-0"
+                      style={{ backgroundColor: avatarColor(selectedApt.customerName) }}
+                      aria-hidden="true"
+                    >
+                      {initial(selectedApt.customerName)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[16px] font-semibold text-[#202124] truncate">
+                        {selectedApt.customerName}
+                      </p>
+                      <p className="text-[12px] text-[#5f6368]">
+                        {channelLabel(selectedApt.channel)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Status pill */}
+                  {(() => {
+                    const pill = statusPill(selectedApt.status, selectedApt.source, backendAvailable);
+                    return (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[12px] text-[#5f6368]">Status</span>
+                        <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium", pill.className)}>
+                          {pill.label}
+                        </span>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Appointment info card */}
+                  <div className="rounded-lg border border-[#e6e8eb] bg-[#fbfbfd] p-3 space-y-2">
+                    <p className="text-[14px] font-medium text-[#1f2937]">{selectedApt.title}</p>
+                    <div className="flex items-center gap-2 text-[13px] text-[#202124]">
+                      <Calendar className="w-4 h-4 text-[#5f6368] flex-shrink-0" />
+                      <span>{selectedApt.dateTimeLabel}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[13px] text-[#5f6368]">
+                      <MapPin className="w-4 h-4 flex-shrink-0" />
+                      <span>{selectedApt.location ?? "Location not set"}</span>
+                    </div>
+                  </div>
+
+                  {/* Confirm action — shown when pending and backend-sourced */}
+                  {selectedApt.source === "backend" && selectedApt.status !== "confirmed" && (
+                    <div className="rounded-lg border border-[#feefc3] bg-[#fef7e0] p-3">
+                      <p className="text-[13px] font-medium text-[#5f3e00]">Pending confirmation</p>
+                      <p className="text-[12px] text-[#7d5700] mt-0.5">
+                        Confirm this appointment to notify the customer and alert destinations.
+                      </p>
                       <button
                         type="button"
-                        onClick={() => openConversation(apt.conversationId)}
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] text-[#1a73e8] hover:bg-[#f0f6ff] transition-colors"
-                        title="Open the source conversation in the inbox."
+                        onClick={() => setPendingConfirm(selectedApt)}
+                        disabled={confirmMutation.isPending && pendingConfirm?.id === selectedApt.id}
+                        className={cn(
+                          "mt-2.5 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#1a73e8] bg-[#1a73e8] px-3 py-2 text-[13px] font-medium text-white transition-colors",
+                          "hover:bg-[#1664c1] hover:border-[#1664c1]",
+                          "focus:outline-none focus:ring-2 focus:ring-[#1a73e8]/30",
+                          "disabled:opacity-60 disabled:cursor-not-allowed",
+                        )}
                       >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        Open
-                        <ArrowRight className="w-3 h-3" />
+                        {confirmMutation.isPending && pendingConfirm?.id === selectedApt.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Check className="w-4 h-4" />
+                        )}
+                        Confirm appointment
                       </button>
                     </div>
-                  </li>
-                );
-              })}
-            </ul>
+                  )}
+
+                  {/* View conversation — secondary action */}
+                  <button
+                    type="button"
+                    onClick={() => openConversation(selectedApt.conversationId)}
+                    className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#e6e8eb] bg-white px-3 py-2 text-[13px] text-[#1a73e8] font-medium hover:bg-[#f0f6ff] transition-colors"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    View conversation
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="hidden md:flex flex-1 items-center justify-center text-center px-6">
+              <div>
+                <Calendar className="w-8 h-8 text-[#9aa0a6] mx-auto mb-2" />
+                <p className="text-[13px] text-[#5f6368]">Select an appointment to view details</p>
+              </div>
+            </div>
           )}
         </div>
       </div>
 
       {/* Confirm-appointment guard dialog. The backend confirm endpoint
           fans out alerts (email / alt email / WhatsApp / Telegram /
-          Messenger), so we never confirm without an explicit operator
-          tap. */}
+          Messenger), so we never confirm without an explicit operator tap. */}
       <Dialog
         open={pendingConfirm !== null}
         onOpenChange={(v) => {
@@ -423,9 +507,7 @@ export default function Bookings() {
           </DialogHeader>
           {pendingConfirm && (
             <div className="rounded-md border border-[#e6e8eb] bg-[#fbfbfd] px-3 py-2 text-[13px]">
-              <p className="font-medium text-[#1f2937]">
-                {pendingConfirm.customerName}
-              </p>
+              <p className="font-medium text-[#1f2937]">{pendingConfirm.customerName}</p>
               <p className="text-[#5f6368] mt-0.5">{pendingConfirm.title}</p>
               <p className="text-[#202124] mt-1.5 flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-[#5f6368]" />
@@ -454,9 +536,7 @@ export default function Bookings() {
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (pendingConfirm) confirmMutation.mutate(pendingConfirm.id);
-              }}
+              onClick={() => { if (pendingConfirm) confirmMutation.mutate(pendingConfirm.id); }}
               disabled={confirmMutation.isPending}
               className={cn(
                 "inline-flex items-center justify-center gap-1.5 h-9 rounded-lg border border-[#1a73e8] bg-[#1a73e8] px-3 text-[13px] font-medium text-white transition-colors",
