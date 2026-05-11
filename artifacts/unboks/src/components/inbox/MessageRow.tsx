@@ -38,12 +38,18 @@ interface MessageRowProps {
   /**
    * Archive / restore are channel-agnostic. Archive moves the row out of
    * the active inbox (with auto-restore on new inbound). Restore is shown
-   * in place of Archive when `archived` is true (Archived view). Both are
-   * local-only today — see `useArchivedConversations` for the contract.
+   * in place of Archive when `archived` is true (Archived view).
    */
   onArchive?: (conv: Conversation) => void;
   onRestore?: (conv: Conversation) => void;
   archived?: boolean;
+  /**
+   * Muted/history treatment for resolved escalation rows. When true the row
+   * renders with dimmed avatar, muted text, and a "Resolved" badge in place
+   * of the active escalation mode badge. Archive/restore actions should be
+   * omitted at the call site for dimmed rows.
+   */
+  dimmed?: boolean;
 }
 
 export function MessageRow({
@@ -57,6 +63,7 @@ export function MessageRow({
   onArchive,
   onRestore,
   archived = false,
+  dimmed = false,
 }: MessageRowProps) {
   const [starred, setStarred] = useState(false);
   const color = avatarColor(conversation.sender);
@@ -71,11 +78,18 @@ export function MessageRow({
       className={cn(
         "flex items-start gap-3 px-4 py-3 border-b border-[#f1f3f4] transition-colors",
         onSelect ? "cursor-pointer" : "cursor-default",
-        isSelected ? "bg-[#e8f0fe]" : "bg-white hover:bg-[#f6f8fc] active:bg-[#eef1f6]",
+        isSelected
+          ? "bg-[#e8f0fe]"
+          : dimmed
+            ? "bg-[#fbfbfd] hover:bg-[#f6f8fc]"
+            : "bg-white hover:bg-[#f6f8fc] active:bg-[#eef1f6]",
       )}
     >
       <div
-        className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[16px] font-medium flex-shrink-0"
+        className={cn(
+          "w-10 h-10 rounded-full flex items-center justify-center text-white text-[16px] font-medium flex-shrink-0",
+          dimmed && "opacity-50 grayscale",
+        )}
         style={{ backgroundColor: color }}
         aria-hidden="true"
       >
@@ -89,12 +103,20 @@ export function MessageRow({
             <span
               className={cn(
                 "truncate text-[14px]",
-                conversation.unread ? "font-semibold text-[#202124]" : "font-normal text-[#3c4043]",
+                dimmed
+                  ? "font-normal text-[#9aa0a6]"
+                  : conversation.unread
+                    ? "font-semibold text-[#202124]"
+                    : "font-normal text-[#3c4043]",
               )}
             >
               {conversation.sender}
             </span>
-            {conversation.escalated && (
+            {dimmed ? (
+              <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 bg-[#e6f4ea] text-[#137333]">
+                Resolved
+              </span>
+            ) : conversation.escalated ? (
               <span
                 className={cn(
                   "text-[11px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0",
@@ -111,7 +133,7 @@ export function MessageRow({
                     ? "Human takeover"
                     : "Escalation"}
               </span>
-            )}
+            ) : null}
           </div>
           <div className="flex items-center gap-0.5 flex-shrink-0">
             <span
@@ -224,7 +246,7 @@ export function MessageRow({
           <p
             className={cn(
               "truncate text-[13px]",
-              conversation.unread ? "text-[#3c4043]" : "text-[#5f6368]",
+              dimmed ? "text-[#9aa0a6]" : conversation.unread ? "text-[#3c4043]" : "text-[#5f6368]",
             )}
           >
             {snippet || <span className="italic text-[#9aa0a6]">No preview</span>}

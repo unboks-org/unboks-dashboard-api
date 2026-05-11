@@ -1311,9 +1311,10 @@ export default function Inbox() {
                 onReply={canDeleteChannel(conv.channel) ? handleEmailReply : undefined}
                 onForward={canDeleteChannel(conv.channel) ? handleEmailForward : undefined}
                 onDelete={canDeleteChannel(conv.channel) ? handleEmailDelete : undefined}
-                onArchive={handleArchive}
-                onRestore={handleRestore}
+                onArchive={escalationFilter === "resolved" ? undefined : handleArchive}
+                onRestore={escalationFilter === "resolved" ? undefined : handleRestore}
                 archived={inboxView === "archived"}
+                dimmed={escalationFilter === "resolved"}
               />
             ))
           ) : (
@@ -1326,7 +1327,9 @@ export default function Inbox() {
                           ? `: ${escError.message}`
                           : "."
                       }`
-                    : "No escalations to show."
+                    : escalationFilter === "resolved"
+                      ? "No resolved escalations yet."
+                      : "No escalations to show."
                   : isError
                     ? "Couldn't load conversations."
                     : "No conversations to show."}
@@ -1343,8 +1346,8 @@ export default function Inbox() {
             onEmailReply={canDeleteChannel(selectedConv.channel) ? handleEmailReply : undefined}
             onEmailForward={canDeleteChannel(selectedConv.channel) ? handleEmailForward : undefined}
             onEmailDelete={canDeleteChannel(selectedConv.channel) ? handleEmailDelete : undefined}
-            onArchive={handleArchive}
-            onRestore={handleRestore}
+            onArchive={escalationFilter === "resolved" ? undefined : handleArchive}
+            onRestore={escalationFilter === "resolved" ? undefined : handleRestore}
             archived={inboxView === "archived"}
           />
         )}
