@@ -504,6 +504,24 @@ export async function fetchConversations(): Promise<ApiConversation[]> {
   return apiFetch<ApiConversation[]>("/messages/conversations");
 }
 
+export async function fetchArchivedConversations(): Promise<ApiConversation[]> {
+  return apiFetch<ApiConversation[]>("/messages/conversations/archived");
+}
+
+export async function archiveConversation(conversationId: string): Promise<void> {
+  return apiFetch<void>(
+    `/messages/conversations/${encodeConversationKey(conversationId)}/archive`,
+    { method: "POST" },
+  );
+}
+
+export async function unarchiveConversation(conversationId: string): Promise<void> {
+  return apiFetch<void>(
+    `/messages/conversations/${encodeConversationKey(conversationId)}/unarchive`,
+    { method: "POST" },
+  );
+}
+
 /**
  * Sanitize a conversation identifier before placing it in a URL path.
  *
@@ -969,6 +987,10 @@ export async function suggestReply(phone: string): Promise<{ suggestion: string 
 export async function fetchEscalations(mode?: "soft" | "hard" | "all"): Promise<Escalation[]> {
   const qs = mode && mode !== "all" ? `?mode=${mode}` : "";
   return apiFetch<Escalation[]>(`/escalations${qs}`);
+}
+
+export async function fetchResolvedEscalations(): Promise<Escalation[]> {
+  return apiFetch<Escalation[]>(`/escalations?status=resolved`);
 }
 
 export async function resolveEscalation(

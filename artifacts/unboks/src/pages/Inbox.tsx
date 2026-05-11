@@ -8,6 +8,10 @@ import {
   useConversation,
   useEscalations,
   useEscalationMutations,
+  useArchivedConversationsList,
+  useArchiveMutation,
+  useUnarchiveMutation,
+  useResolvedEscalations,
 } from "@/hooks/use-client-api";
 import {
   mapApiConversation,
@@ -23,7 +27,6 @@ import {
   useHiddenConversations,
   collectConversationHideKeys,
 } from "@/hooks/use-hidden-conversations";
-import { useArchivedConversations } from "@/hooks/use-archived-conversations";
 import { canDeleteChannel } from "@/lib/channel-rules";
 import { cn } from "@/lib/utils";
 import {
@@ -842,7 +845,7 @@ export default function Inbox() {
   const [searchQuery, setSearchQueryState] = useState("");
   const [activeNav, setActiveNavState] = useState<NavId>("inbox");
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
-  const [escalationFilter, setEscalationFilter] = useState<"all" | "soft" | "hard">("all");
+  const [escalationFilter, setEscalationFilter] = useState<"all" | "soft" | "hard" | "resolved">("all");
   const { isChannelEnabled } = useEnabledChannels();
 
   // Email-only persistent row actions. All three open dedicated modals
@@ -877,41 +880,46 @@ export default function Inbox() {
   // sidebar counts re-render the moment the hidden set changes.
   const { isHidden: isRowHidden } = useHiddenConversations();
 
-  // Local archive overlay (channel-agnostic). See
-  // `useArchivedConversations` for the honest local-only contract +
-  // auto-restore-on-new-inbound semantics. The "Active vs Archived"
-  // view below is the single read site for `isArchived`; everything
-  // else (escalations sub-filter, channel sub-filter, search) layers
-  // on top of the same filtered list.
-  const {
-    isArchived: isRowArchived,
-    archive: archiveRow,
-    unarchive: unarchiveRow,
-  } = useArchivedConversations();
+  // Server-backed archive/unarchive. Brief 249 (backend issue #18) ships
+  // GET /messages/conversations/archived, POST .../{id}/archive,
+  // POST .../{id}/unarchive — archive state now syncs across devices.
+  const { data: archivedApiData, isLoading: archiveIsLoading } = useArchivedConversationsList();
+  const archiveMutation = useArchiveMutation();
+  const unarchiveMutation = useUnarchiveMutation();
+  const { data: rawResolvedEscalations } = useResolvedEscalations();
   const [inboxView, setInboxView] = useState<"active" | "archived">("active");
 
   const handleArchive = useCallback(
-    (conv: Conversation) => {
-      const keys = collectConversationHideKeys(conv);
-      if (keys.length === 0) {
+    async (conv: Conversation) => {
+      const id = conv.conversationKey || conv.id;
+      if (!id) {
         toast.error("Couldn't archive — no stable identifier on this row.");
         return;
       }
-      archiveRow(keys);
-      setSelectedConv((cur) => (cur?.id === conv.id ? null : cur));
-      toast.success("Archived — local on this device", {
-        description: "Returns to Active when the customer replies.",
-      });
+      try {
+        await archiveMutation.mutateAsync(id);
+        setSelectedConv((cur) => (cur?.id === conv.id ? null : cur));
+        toast.success("Archived", {
+          description: "Returns to Active when the customer replies.",
+        });
+      } catch {
+        toast.error("Couldn't archive — try again.");
+      }
     },
-    [archiveRow],
+    [archiveMutation],
   );
   const handleRestore = useCallback(
-    (conv: Conversation) => {
-      const keys = collectConversationHideKeys(conv);
-      unarchiveRow(keys);
-      toast.success("Restored to Active");
+    async (conv: Conversation) => {
+      const id = conv.conversationKey || conv.id;
+      if (!id) return;
+      try {
+        await unarchiveMutation.mutateAsync(id);
+        toast.success("Restored to Active");
+      } catch {
+        toast.error("Couldn't restore — try again.");
+      }
     },
-    [unarchiveRow],
+    [unarchiveMutation],
   );
 
   const { data: apiConversations, isLoading, isError } = useConversations();
@@ -957,6 +965,31 @@ export default function Inbox() {
       })
       .filter((c) => !isRowHidden(collectConversationHideKeys(c)));
   }, [rawEscalations, allConversations, isRowHidden]);
+
+  const archivedConversations: Conversation[] = useMemo(() => {
+    if (!archivedApiData) return [];
+    return archivedApiData
+      .map(mapApiConversation)
+      .filter((c) => !isRowHidden(collectConversationHideKeys(c)));
+  }, [archivedApiData, isRowHidden]);
+
+  const resolvedEscalationRows: Conversation[] = useMemo(() => {
+    if (!rawResolvedEscalations) return [];
+    const convoById = new Map(allConversations.map((c) => [c.id, c]));
+    const resolved = [];
+    for (const raw of rawResolvedEscalations as unknown[]) {
+      const n = normalizeEscalation(raw);
+      if (!n) continue;
+      resolved.push(n);
+    }
+    const deduped = dedupeEscalations(resolved);
+    return deduped
+      .map((n) => {
+        const enrich = n.phone ? convoById.get(n.phone) ?? null : null;
+        return escalationToConversationRow(n, enrich);
+      })
+      .filter((c) => !isRowHidden(collectConversationHideKeys(c)));
+  }, [rawResolvedEscalations, allConversations, isRowHidden]);
 
   // Stable handler. Always updates local filter state for inbox-context ids,
   // even when the route is already "/" (channel ↔ channel switches, or
@@ -1117,36 +1150,24 @@ export default function Inbox() {
   const filtered = useMemo(() => {
     let list: Conversation[];
     if (activeNav === "escalations") {
-      // Escalations come from /escalations, NOT from /messages/conversations.
-      // Don't apply per-channel visibility here — an escalation must always
-      // be reachable, even if its channel toggle happens to be off.
-      // "All" tab includes legacy/null modes by design.
-      list = escalationRows;
-      if (escalationFilter === "soft") list = list.filter((c) => c.escalationMode === "soft");
-      else if (escalationFilter === "hard") list = list.filter((c) => c.escalationMode === "hard");
+      // Resolved tab uses GET /escalations?status=resolved (Brief 249).
+      // Active tabs (All / soft / hard) use the standard /escalations endpoint.
+      if (escalationFilter === "resolved") {
+        list = resolvedEscalationRows;
+      } else {
+        list = escalationRows;
+        if (escalationFilter === "soft") list = list.filter((c) => c.escalationMode === "soft");
+        else if (escalationFilter === "hard") list = list.filter((c) => c.escalationMode === "hard");
+      }
     } else {
-      list = allConversations.filter((c) => isChannelEnabled(c.channel));
+      // Archive is now server-backed: active list comes from /messages/conversations,
+      // archived list from /messages/conversations/archived. No client-side split needed.
+      const source = inboxView === "archived" ? archivedConversations : allConversations;
+      list = source.filter((c) => isChannelEnabled(c.channel));
       if (activeNav.startsWith("channel:")) {
         const ch = activeNav.split(":")[1] as Channel;
         list = list.filter((c) => c.channel === ch);
       }
-    }
-    // Active vs Archived split — applied AFTER channel filtering so an
-    // Archived row is reachable from the same channel surface it was
-    // archived from. Per the persistence brief, archived rows MUST be
-    // excluded from every active surface, including Escalations All /
-    // Agent-needs-help / Human-takeover. The Escalations tab doesn't
-    // expose an Active/Archived toggle, so we hard-fix it to "active":
-    // an archived escalation is hidden everywhere (Active inbox,
-    // channel filters, escalations sub-filters, sidebar counts) and
-    // only re-appears via the auto-restore-on-new-inbound path that
-    // `isRowArchived` honours via the row's raw last_message_at.
-    {
-      const view = activeNav === "escalations" ? "active" : inboxView;
-      list = list.filter((c) => {
-        const arch = isRowArchived(collectConversationHideKeys(c), c.timestampMs);
-        return view === "archived" ? arch : !arch;
-      });
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -1163,12 +1184,13 @@ export default function Inbox() {
     return [...list].sort((a, b) => (b.timestampMs ?? 0) - (a.timestampMs ?? 0));
   }, [
     allConversations,
+    archivedConversations,
+    resolvedEscalationRows,
     escalationRows,
     activeNav,
     searchQuery,
     isChannelEnabled,
     escalationFilter,
-    isRowArchived,
     inboxView,
   ]);
 
@@ -1176,6 +1198,7 @@ export default function Inbox() {
     if (activeNav === "escalations") {
       if (escIsLoading) return "Loading…";
       if (escIsError) return "Couldn't load escalations";
+      if (escalationFilter === "resolved") return "Resolved escalations";
       return "Conversations that need your attention";
     }
     if (isLoading) return "Loading…";
@@ -1221,7 +1244,7 @@ export default function Inbox() {
         >
           {activeNav === "escalations" ? (
             <div className="flex items-center gap-1 px-3 py-2 border-b border-[#f1f3f4] bg-white sticky top-0 z-10">
-              {(["all", "soft", "hard"] as const).map((m) => (
+              {(["all", "soft", "hard", "resolved"] as const).map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -1233,17 +1256,13 @@ export default function Inbox() {
                       : "text-[#5f6368] hover:bg-[#f1f3f4]",
                   )}
                 >
-                  {m === "all" ? "All" : m === "soft" ? "Agent needs help" : "Human takeover"}
+                  {m === "all" ? "All" : m === "soft" ? "Agent needs help" : m === "hard" ? "Human takeover" : "Resolved"}
                 </button>
               ))}
             </div>
           ) : (
-            // Active vs Archived view toggle. Local-only today (the
-            // honest caption sits next to the toggle so operators know
-            // archive doesn't sync to teammates yet) — see
-            // `useArchivedConversations`. The same toggle also drives
-            // the per-channel views (channel:Email etc.) since it
-            // filters AFTER the channel selector.
+            // Active vs Archived view toggle. Archive is now server-backed
+            // (Brief 249 / backend issue #18) — syncs across devices.
             <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-[#f1f3f4] bg-white sticky top-0 z-10">
               <div className="flex items-center gap-1">
                 {(["active", "archived"] as const).map((v) => (
@@ -1264,17 +1283,12 @@ export default function Inbox() {
                   </button>
                 ))}
               </div>
-              {inboxView === "archived" && (
-                <span
-                  className="text-[10.5px] text-[#9aa0a6] truncate"
-                  title="Archive is stored on this device until backend support ships."
-                >
-                  Local on this device
-                </span>
+              {inboxView === "archived" && archiveIsLoading && (
+                <span className="text-[10.5px] text-[#9aa0a6] truncate">Loading…</span>
               )}
             </div>
           )}
-          {(activeNav === "escalations" ? escIsLoading : isLoading) && filtered.length === 0 ? (
+          {(activeNav === "escalations" ? escIsLoading : inboxView === "archived" ? archiveIsLoading : isLoading) && filtered.length === 0 ? (
             <div className="divide-y divide-[#f1f3f4]" aria-busy="true" aria-label="Loading conversations">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="flex items-center gap-3 px-4 py-4">

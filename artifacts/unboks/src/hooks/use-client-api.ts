@@ -2,9 +2,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   fetchConversations,
   fetchConversation,
+  fetchArchivedConversations,
+  archiveConversation,
+  unarchiveConversation,
   deleteConversation,
   suggestReply,
   fetchEscalations,
+  fetchResolvedEscalations,
   resolveEscalation,
   replyEscalation,
   deleteEscalation,
@@ -85,6 +89,37 @@ export function useSuggestReply() {
   return useMutation({ mutationFn: (phone: string) => suggestReply(phone) });
 }
 
+export function useArchivedConversationsList() {
+  return useQuery({
+    queryKey: ["conversations", "archived"],
+    queryFn: fetchArchivedConversations,
+    staleTime: 30_000,
+    retry: 1,
+  });
+}
+
+export function useArchiveMutation() {
+  const qc = useQueryClient();
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["conversations"] });
+  };
+  return useMutation({
+    mutationFn: (conversationId: string) => archiveConversation(conversationId),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUnarchiveMutation() {
+  const qc = useQueryClient();
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["conversations"] });
+  };
+  return useMutation({
+    mutationFn: (conversationId: string) => unarchiveConversation(conversationId),
+    onSuccess: invalidate,
+  });
+}
+
 // ------ Escalations ------
 
 export function useEscalations(mode?: "soft" | "hard" | "all") {
@@ -97,6 +132,15 @@ export function useEscalations(mode?: "soft" | "hard" | "all") {
     // is disabled to avoid wasted API calls when the tab is hidden.
     refetchInterval: 10_000,
     refetchIntervalInBackground: false,
+    retry: 1,
+  });
+}
+
+export function useResolvedEscalations() {
+  return useQuery({
+    queryKey: ["escalations", "resolved"],
+    queryFn: fetchResolvedEscalations,
+    staleTime: 30_000,
     retry: 1,
   });
 }
