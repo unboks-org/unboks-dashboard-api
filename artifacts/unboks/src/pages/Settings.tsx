@@ -33,6 +33,7 @@ import { CloudKnowledgeConnections } from "@/components/settings/CloudKnowledgeC
 import { DataRetentionSettings } from "@/components/settings/DataRetentionSettings";
 import { DisconnectUnboksDanger } from "@/components/settings/DisconnectUnboksDanger";
 import { BlockedSendersList } from "@/components/settings/BlockedSendersList";
+import { AgentLearningsList } from "@/components/settings/AgentLearningsList";
 import { useSot, type SotBlock, type SotSubsection } from "@/data/sot";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,7 @@ const ALT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type CategoryId =
   | "workspace"
   | "your-info"
+  | "agent-learnings"
   | "channels"
   | "escalation"
   | "data-retention"
@@ -70,6 +72,13 @@ const CATEGORIES: {
     label: "Company knowledge",
     description:
       "Add business information, files, policies, offers, and cloud folders your Agent can use when answering customers.",
+    icon: Sparkles,
+  },
+  {
+    id: "agent-learnings",
+    label: "Agent learnings",
+    description:
+      "Review answers your team gave during escalations. Approved entries become part of your Agent's knowledge.",
     icon: Sparkles,
   },
   {
@@ -1435,6 +1444,12 @@ export default function Settings() {
               {active === "blocked-senders" && (
                 <div className="space-y-5">
                   <BlockedSendersList />
+                </div>
+              )}
+
+              {active === "agent-learnings" && (
+                <div className="space-y-5">
+                  <AgentLearningsList />
                 </div>
               )}
 

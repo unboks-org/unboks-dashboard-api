@@ -738,7 +738,11 @@ async function apiFetch<T>(
     let msg = `HTTP ${res.status}`;
     try {
       const body = await res.json();
-      msg = body.message ?? body.error ?? msg;
+      // `body.detail` is what the new escalation-learning endpoints
+      // (Claudia #32) return for human-friendly errors. Other endpoints
+      // continue to use `message` / `error`. Order: message > error >
+      // detail so we don't regress existing behaviour.
+      msg = body.message ?? body.error ?? body.detail ?? msg;
     } catch {
       // ignore
     }
@@ -1438,6 +1442,95 @@ export async function saveLearning(id: string): Promise<void> {
 
 export async function deleteLearning(id: string): Promise<void> {
   return apiFetch<void>(`/learning/${id}`, { method: "DELETE" });
+}
+
+// ---------------------------------------------------------------------------
+// Escalation Learnings (R2-32 / R2-34, Claudia #32 backend)
+// ---------------------------------------------------------------------------
+//
+// NEW system, deliberately separate from the legacy `/learning` endpoints
+// above. The flow:
+//
+//   1. After the operator Sends, Send & Resolves, or Resolves an
+//      escalation, the dashboard POSTs the operator's reply text to
+//      `/escalations/{id}/suggest-learning` to create a "pending"
+//      learning candidate.
+//   2. The operator sees a SuggestedLearningCard with three actions:
+//      Approve, Edit first, Do not save. Approve / Edit-then-Approve
+//      promote the candidate to "approved"; Do not save dismisses it.
+//   3. Pending candidates are also surfaced in the Settings page
+//      (Agent learnings) so the operator can review anything they
+//      skipped at composer time.
+//
+// Approved learnings are the only ones the Agent should ever consult.
+// Pending and dismissed entries must never look like active knowledge.
+
+export type EscalationLearningStatus = "pending" | "approved" | "dismissed";
+
+export interface EscalationLearning {
+  id: string;
+  status: EscalationLearningStatus;
+  suggestedText: string;
+  sourceQuestion: string;
+  channel: string;
+  operator: string;
+  createdAt: string;
+  updatedAt?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  dismissedAt?: string;
+  escalationId?: string;
+}
+
+export interface SuggestEscalationLearningPayload {
+  suggestedText: string;
+  sourceQuestion: string;
+  channel: string;
+  operator: string;
+}
+
+export async function fetchEscalationLearnings(
+  status?: EscalationLearningStatus,
+): Promise<EscalationLearning[]> {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+  return apiFetch<EscalationLearning[]>(`/escalation-learnings${qs}`);
+}
+
+export async function suggestEscalationLearning(
+  escalationId: string,
+  payload: SuggestEscalationLearningPayload,
+): Promise<EscalationLearning> {
+  return apiFetch<EscalationLearning>(
+    `/escalations/${encodeURIComponent(escalationId)}/suggest-learning`,
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+}
+
+export async function editEscalationLearning(
+  id: string,
+  suggestedText: string,
+): Promise<EscalationLearning> {
+  return apiFetch<EscalationLearning>(
+    `/escalation-learnings/${encodeURIComponent(id)}`,
+    { method: "PATCH", body: JSON.stringify({ suggestedText }) },
+  );
+}
+
+export async function approveEscalationLearning(
+  id: string,
+  operator: string,
+): Promise<EscalationLearning> {
+  return apiFetch<EscalationLearning>(
+    `/escalation-learnings/${encodeURIComponent(id)}/approve`,
+    { method: "POST", body: JSON.stringify({ operator }) },
+  );
+}
+
+export async function dismissEscalationLearning(id: string): Promise<void> {
+  return apiFetch<void>(
+    `/escalation-learnings/${encodeURIComponent(id)}/dismiss`,
+    { method: "POST" },
+  );
 }
 
 // ---------------------------------------------------------------------------

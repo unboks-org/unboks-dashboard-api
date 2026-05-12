@@ -54,6 +54,10 @@ import { toast } from "sonner";
 import type { ApiMessage, ConversationDetail } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { EscalationReplyComposer } from "@/components/inbox/EscalationReplyComposer";
+import { SuggestedLearningCard } from "@/components/inbox/SuggestedLearningCard";
+import { useEscalationLearningMutations } from "@/hooks/use-client-api";
+import { useDashboardIdentity } from "@/hooks/use-dashboard-identity";
+import type { EscalationLearning } from "@/lib/api";
 import { BlockSenderModal } from "@/components/inbox/BlockSenderModal";
 import { useBlockedLookup } from "@/hooks/use-blocked-senders";
 import {
@@ -63,7 +67,10 @@ import {
 } from "@/components/inbox/EmailActionsModal";
 import { EmailMessageDetail } from "@/components/inbox/EmailMessageDetail";
 import { EscalationReasonPanel, type ChipAction } from "@/components/inbox/EscalationReasonPanel";
-import type { EscalationReplyComposerHandle } from "@/components/inbox/EscalationReplyComposer";
+import type {
+  EscalationReplyComposerHandle,
+  EscalationDoneContext,
+} from "@/components/inbox/EscalationReplyComposer";
 import {
   ConversationTranslationBar,
   ConversationTranslationProvider,
@@ -448,6 +455,70 @@ function ConversationDetailPane({
   // composer never auto-sends; chips only stage drafts or invoke the
   // existing mutation paths.
   const composerRef = useRef<EscalationReplyComposerHandle | null>(null);
+
+  // ----- Suggested learning flow (R2-32 / R2-34, Claudia #32) -----
+  //
+  // After Send / Send & Resolve / Resolve produces a non-empty answer,
+  // we POST it to /escalations/{id}/suggest-learning to create a pending
+  // learning candidate, then mount SuggestedLearningCard so the operator
+  // can Approve, Edit, or Dismiss it before the conversation closes.
+  // For Resolve with no draft (or Takeover / Handback), the composer
+  // calls onDone with no ctx and we close immediately without prompting.
+  const [pendingLearning, setPendingLearning] =
+    useState<EscalationLearning | null>(null);
+  // Reset any in-flight suggestion when the operator navigates to a
+  // different conversation; otherwise a stale modal could appear over a
+  // new escalation.
+  useEffect(() => {
+    setPendingLearning(null);
+  }, [conversation.id]);
+  const { suggest: suggestLearning } = useEscalationLearningMutations();
+  const { identity } = useDashboardIdentity();
+  const handleComposerDone = useCallback(
+    (ctx?: EscalationDoneContext) => {
+      // No teachable text → close immediately. This covers Takeover,
+      // Handback, and bare Resolve with no draft.
+      if (!ctx || !ctx.sentText || !dbId) {
+        onClose();
+        return;
+      }
+      // Build the source-question payload from the latest customer
+      // (role === "user") inbound message — same heuristic as
+      // LatestCustomerMessagePreview, so the operator sees consistent
+      // context across the pane and the modal.
+      const lastInbound = [...messages]
+        .reverse()
+        .find((m) => m.role === "user");
+      const sourceQuestion = lastInbound?.content ?? "";
+
+      suggestLearning.mutate(
+        {
+          escalationId: dbId,
+          payload: {
+            suggestedText: ctx.sentText,
+            sourceQuestion,
+            channel: conversation.channel,
+            operator: identity,
+          },
+        },
+        {
+          onSuccess: (created) => setPendingLearning(created),
+          onError: () => {
+            // Backend isn't ready or rejected the suggestion — never
+            // block the operator. We swallow the error here (the post-
+            // send flow already succeeded) and close the conversation
+            // as before. The Settings "Agent learnings" tab will
+            // surface backend issues separately when the operator
+            // browses pending entries.
+            onClose();
+          },
+        },
+      );
+    },
+    [dbId, messages, conversation.channel, identity, onClose, suggestLearning],
+  );
+
+
   const onChipAction = useCallback((action: ChipAction) => {
     const c = composerRef.current;
     if (!c) return;
@@ -697,7 +768,24 @@ function ConversationDetailPane({
               mode={selectedMode}
               channel={conversation.channel}
               aiMuted={selectedMode === "hard" ? detail?.aiMuted ?? false : false}
-              onDone={onClose}
+              onDone={handleComposerDone}
+            />
+          )}
+
+          {/* Suggested-learning modal (R2-32 / R2-34). Mounted only after
+              a Send / Send & Resolve / Resolve produces teachable text.
+              While it's open, we deliberately do NOT close the
+              conversation pane — the operator must explicitly Approve,
+              Edit + Save, or Dismiss the suggestion (or close the modal,
+              which leaves the row in pending so they can revisit it
+              later in Settings). */}
+          {pendingLearning && (
+            <SuggestedLearningCard
+              learning={pendingLearning}
+              onDone={() => {
+                setPendingLearning(null);
+                onClose();
+              }}
             />
           )}
 

@@ -20,6 +20,13 @@ import {
   approveLearning,
   saveLearning,
   deleteLearning,
+  fetchEscalationLearnings,
+  suggestEscalationLearning,
+  editEscalationLearning,
+  approveEscalationLearning,
+  dismissEscalationLearning,
+  type EscalationLearningStatus,
+  type SuggestEscalationLearningPayload,
   fetchAvailability,
   fetchConfig,
   fetchStatus,
@@ -206,6 +213,58 @@ export function useLearningMutations() {
   const save = useMutation({ mutationFn: saveLearning, onSuccess: invalidate });
   const remove = useMutation({ mutationFn: deleteLearning, onSuccess: invalidate });
   return { approve, save, remove };
+}
+
+// ------ Escalation Learnings (R2-32 / R2-34, Claudia #32) ------
+//
+// NEW system, deliberately separate from `useLearningEntries` /
+// `useLearningMutations` above (which back the legacy `/learning`
+// endpoints). All cache keys live under "escalation-learnings" so the
+// two systems never collide.
+
+export function useEscalationLearnings(status?: EscalationLearningStatus) {
+  return useQuery({
+    queryKey: ["escalation-learnings", status ?? "all"],
+    queryFn: () => fetchEscalationLearnings(status),
+    staleTime: 30_000,
+    retry: 1,
+  });
+}
+
+export function useEscalationLearningMutations() {
+  const qc = useQueryClient();
+  const invalidate = () =>
+    qc.invalidateQueries({ queryKey: ["escalation-learnings"] });
+
+  const suggest = useMutation({
+    mutationFn: ({
+      escalationId,
+      payload,
+    }: {
+      escalationId: string;
+      payload: SuggestEscalationLearningPayload;
+    }) => suggestEscalationLearning(escalationId, payload),
+    onSuccess: invalidate,
+  });
+
+  const edit = useMutation({
+    mutationFn: ({ id, suggestedText }: { id: string; suggestedText: string }) =>
+      editEscalationLearning(id, suggestedText),
+    onSuccess: invalidate,
+  });
+
+  const approve = useMutation({
+    mutationFn: ({ id, operator }: { id: string; operator: string }) =>
+      approveEscalationLearning(id, operator),
+    onSuccess: invalidate,
+  });
+
+  const dismiss = useMutation({
+    mutationFn: (id: string) => dismissEscalationLearning(id),
+    onSuccess: invalidate,
+  });
+
+  return { suggest, edit, approve, dismiss };
 }
 
 // ------ Availability (Bookings) ------

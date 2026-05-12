@@ -63,6 +63,19 @@ import { AIEditorPanel } from "./AIEditorPanel";
 
 const NOT_CONNECTED_STATUSES = new Set([0, 404, 501, 503]);
 
+/**
+ * Action context passed to the parent's `onDone` callback after a
+ * successful Send / Send & Resolve / Resolve. The parent (Inbox) uses
+ * this to decide whether to surface the SuggestedLearningCard before
+ * closing the conversation. `sentText` is null for Resolve actions
+ * where the operator chose to resolve without typing anything — there
+ * is nothing for the Agent to learn from in that case.
+ */
+export interface EscalationDoneContext {
+  action: "send" | "send-and-resolve" | "resolve";
+  sentText: string | null;
+}
+
 export interface EscalationReplyComposerHandle {
   /**
    * If the composer is empty, set the draft to `text`. Otherwise append
@@ -84,7 +97,19 @@ interface EscalationReplyComposerProps {
   mode: "soft" | "hard";
   channel: Channel;
   aiMuted?: boolean;
-  onDone: () => void;
+  /**
+   * Invoked after any composer-driven mutation finishes successfully.
+   *
+   * - For Send / Send & Resolve / Resolve, `ctx` carries `action` and
+   *   the `sentText` (the operator's reply or guidance, or null for
+   *   bare resolves with no draft).
+   * - For Takeover / Handback / chip-driven flows that don't produce
+   *   a teachable answer, `ctx` is omitted.
+   *
+   * The parent decides what to do next (e.g. show the
+   * SuggestedLearningCard before closing).
+   */
+  onDone: (ctx?: EscalationDoneContext) => void;
 }
 
 export const EscalationReplyComposer = forwardRef<
@@ -184,7 +209,7 @@ export const EscalationReplyComposer = forwardRef<
           onSuccess: () => {
             setDraft("");
             setPrevDraft(null);
-            onDone();
+            onDone({ action: "send", sentText: trimmed });
           },
           onError: (err) => {
             if (isNotConnected(err)) {
@@ -213,7 +238,7 @@ export const EscalationReplyComposer = forwardRef<
         onSuccess: () => {
           setDraft("");
           setPrevDraft(null);
-          onDone();
+          onDone({ action: "send", sentText: trimmed });
         },
         onError: (err) => {
           if (isNotConnected(err)) {
@@ -275,7 +300,7 @@ export const EscalationReplyComposer = forwardRef<
             setCombinedStep(null);
             setDraft("");
             setPrevDraft(null);
-            onDone();
+            onDone({ action: "send-and-resolve", sentText: trimmed });
           },
           onError: (err) => {
             setCombinedStep(null);
@@ -373,7 +398,10 @@ export const EscalationReplyComposer = forwardRef<
           : { resolutionNote: currentDraft.trim() || undefined },
       },
       {
-        onSuccess: onDone,
+        onSuccess: () => {
+          const trimmed = currentDraft.trim();
+          onDone({ action: "resolve", sentText: trimmed.length > 0 ? trimmed : null });
+        },
         onError: (err) => {
           if (isNotConnected(err)) {
             setNotice({
@@ -398,7 +426,7 @@ export const EscalationReplyComposer = forwardRef<
     takeover.mutate(
       { id: conversationDbId },
       {
-        onSuccess: onDone,
+        onSuccess: () => onDone(),
         onError: (err) => {
           if (isNotConnected(err)) {
             setNotice({
@@ -423,7 +451,7 @@ export const EscalationReplyComposer = forwardRef<
     handback.mutate(
       { id: conversationDbId },
       {
-        onSuccess: onDone,
+        onSuccess: () => onDone(),
         onError: (err) => {
           if (isNotConnected(err)) {
             setNotice({
