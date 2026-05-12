@@ -67,7 +67,7 @@ export function EmailMessageDetail({ msg }: EmailMessageDetailProps) {
   const labelText = isOperator
     ? "Sent by Team"
     : isAssistant
-      ? "Sent by Marina"
+      ? "Sent by Agent"
       : "Received";
 
   const labelColor = isOperator

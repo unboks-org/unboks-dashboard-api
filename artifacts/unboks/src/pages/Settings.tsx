@@ -872,7 +872,7 @@ export default function Settings() {
                         <div className="min-w-0">
                           <p className="text-[14px] text-[#202124]">Escalation alerts</p>
                           <p className="mt-0.5 text-[12px] text-[#5f6368]">
-                            Get notified when Marina needs human help or a customer conversation requires attention.
+                            Get notified when your Agent needs human help or a customer conversation requires attention.
                           </p>
                         </div>
                         <Switch

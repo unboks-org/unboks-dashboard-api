@@ -100,7 +100,7 @@ function MessageBubble({ msg }: { msg: ApiMessage }) {
       ? "bg-[#f3e8ff] text-[#5b3fa0] rounded-br-sm"
       : "bg-[#e8f0fe] text-[#1a73e8] rounded-br-sm";
 
-  const roleLabel = isOperator ? "Team" : isUser ? null : "Marina";
+  const roleLabel = isOperator ? "Team" : isUser ? null : "Agent";
   const roleLabelClass = isOperator
     ? "text-[#5b3fa0]"
     : "text-[#1a73e8]";
@@ -1281,14 +1281,20 @@ export default function Inbox() {
           )}
         >
           {activeNav === "escalations" ? (
-            <div className="flex items-center gap-1 px-3 py-2 border-b border-[#f1f3f4] bg-white sticky top-0 z-10">
+            <div
+              className="flex items-center gap-1 px-3 py-2 border-b border-[#f1f3f4] bg-white sticky top-0 z-10 overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              role="tablist"
+              aria-label="Escalation filter"
+            >
               {(["all", "soft", "hard", "resolved"] as const).map((m) => (
                 <button
                   key={m}
                   type="button"
+                  role="tab"
+                  aria-selected={escalationFilter === m}
                   onClick={() => { setEscalationFilter(m); setSelectedConv(null); }}
                   className={cn(
-                    "px-3 py-1 text-[12px] rounded-full",
+                    "px-3 py-1 text-[12px] rounded-full flex-shrink-0",
                     escalationFilter === m
                       ? "bg-[#e8f0fe] text-[#1a73e8] font-medium"
                       : "text-[#5f6368] hover:bg-[#f1f3f4]",

@@ -161,11 +161,11 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
               </DialogDescription>
             </DialogHeader>
 
-            {/* Identity notice — operator must know this goes out as the team, not as Marina */}
+            {/* Identity notice — operator must know this goes out as the team, not as the Agent */}
             <div className="flex items-center gap-2 rounded-md border border-[#e6e8eb] bg-[#fbfbfd] px-3 py-2">
               <span className="h-2 w-2 rounded-full bg-[#7a8fa6] flex-shrink-0" />
               <span className="text-[12px] text-[#5f6368]">
-                Sent as your team, not as Marina
+                Sent as your team, not as the Agent
               </span>
             </div>
 

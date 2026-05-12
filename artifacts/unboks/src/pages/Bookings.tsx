@@ -723,7 +723,7 @@ function ConversationContextPane({
                     m.role === "operator"
                       ? "You"
                       : m.role === "assistant"
-                        ? "Marina"
+                        ? "Agent"
                         : detail?.name ?? "Customer";
                   return (
                     <li
