@@ -1,0 +1,86 @@
+R2-28
+
+Make the Source of Truth / Your Info data in Settings editable.
+
+Problem:
+In Settings, the current card says:
+“What your Agent already knows”
+“A snapshot of the business details your Agent is already using.”
+
+This feels read-only. The tenant/operator must be able to edit the data the Agent uses.
+
+Scope:
+Project 2 dashboard frontend first.
+Backend may be needed if save endpoint is missing.
+Do not touch Project 1.
+Do not touch Nr 3.
+Do not touch pricing page.
+
+Product expectation:
+Settings must allow the tenant/operator to update the Source of Truth / Agent knowledge.
+
+The client should be trained that Settings / Source of Truth is where they can continuously update:
+- pricing
+- services/products
+- opening hours
+- policies
+- seasonal information
+- special offers
+- holidays/closures
+- tone rules
+- escalation rules
+- appointment/booking rules
+- important business notes
+
+Required behavior:
+1. Existing Agent knowledge is visible.
+2. Operator can edit the core SOT/Agent knowledge fields.
+3. Add clear Edit / Save changes / Cancel flow.
+4. Saving must persist server-side if endpoint exists.
+5. If backend write endpoint is missing, implement safe UI and report exact backend contract needed.
+6. Do not fake saved state if backend save fails.
+7. Show clear success/error state.
+8. Cancel discards unsaved changes.
+9. No internal prompt/debug fields exposed.
+10. No secrets/credentials editable.
+11. Keep it simple, premium, normal-operator friendly.
+
+Suggested copy:
+Replace:
+“What your Agent already knows”
+“A snapshot of the business details your Agent is already using.”
+
+With:
+“Your Agent knowledge”
+“Review and update the business information your Agent uses when replying to customers.”
+
+Suggested sections:
+- Business details
+- Products/services
+- Pricing
+- Opening hours
+- Policies
+- Tone and reply style
+- Escalation rules
+- Temporary updates / special notes
+
+Acceptance:
+1. Open Settings.
+2. Open Source of Truth / Your Info area.
+3. Existing Agent knowledge is visible.
+4. Operator can edit at least the core text/data fields.
+5. Save persists the change or clearly reports backend not available.
+6. Refresh page and confirm saved change remains if backend supports it.
+7. Cancel discards unsaved changes.
+8. Error state is clear if save fails.
+9. No internal prompt/secrets exposed.
+10. Build/typecheck clean.
+
+Final report:
+- files changed
+- which SOT fields are editable now
+- endpoint(s) used for saving
+- any backend contract needed
+- build/typecheck result
+- whether Calvin must republish
+- Calvin retest steps

@@ -1,3 +1,5 @@
+import { useCallback, useState } from "react";
+
 export interface SotSubsection {
   title: string;
   content?: string;
@@ -220,10 +222,84 @@ export function loadSot(): SotBlock[] {
   }
 }
 
-export function saveSot(blocks: SotBlock[]) {
+export function saveSotSync(blocks: SotBlock[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(blocks));
   } catch {
     // ignore
   }
+}
+
+/**
+ * Persistence shape for the editable Source-of-Truth UI.
+ *
+ * `source` is intentionally exposed so the UI can be transparent with the
+ * operator about *where* the change lives. Today the dashboard has no
+ * backend endpoint for SOT (see backend contract notes in the R2-28
+ * report), so writes are persisted to `localStorage` and the UI shows a
+ * clear "saved on this device" notice rather than faking server-side
+ * persistence. When the backend ships the contract documented below,
+ * `useSot` is the single swap point: replace the localStorage write with
+ * a `PUT /api/unboks/source-of-truth` call and flip `source` to
+ * `"server"`.
+ *
+ * Backend contract needed (frontend-ready):
+ *   GET  /api/unboks/source-of-truth  -> { blocks: SotBlock[] }
+ *   PUT  /api/unboks/source-of-truth  body { blocks: SotBlock[] }
+ *                                     -> { blocks: SotBlock[] }
+ *   Auth: same tenant cookie as the rest of the dashboard.
+ *   Validation: titles are server-controlled (don't trust client titles
+ *   for built-in blocks); content/items/subsections are free-text and
+ *   should be length-capped (e.g. 4 KB per field) to stop runaway pastes.
+ */
+export type SotSource = "local" | "server";
+
+export interface UseSotResult {
+  blocks: SotBlock[];
+  source: SotSource;
+  saveBlock: (block: SotBlock) => Promise<void>;
+  isSaving: boolean;
+}
+
+export function useSot(): UseSotResult {
+  // Lazy initialiser: read once from localStorage on first render and keep
+  // the hydrated array in React state so subsequent edits show up
+  // immediately without re-reading storage.
+  const [blocks, setBlocks] = useState<SotBlock[]>(() => loadSot());
+  const [isSaving, setIsSaving] = useState(false);
+
+  const saveBlock = useCallback(async (updated: SotBlock) => {
+    setIsSaving(true);
+    try {
+      // Build the next array with the updated block in place. We never
+      // change block ordering or insert new blocks here — the editor is
+      // strictly an in-place editor for known sections.
+      const next = blocks.map((b) => (b.id === updated.id ? updated : b));
+      // No backend yet — persist locally and surface the failure to the
+      // caller so the UI can show an error state instead of a fake
+      // success. NOTE: we intentionally bypass `saveSotSync` here because
+      // it swallows storage errors for backwards-compat callers; the hook
+      // needs the raw exception so a quota / private-mode failure can be
+      // shown to the operator. When the API ships, swap this for a
+      // `PUT /api/unboks/source-of-truth` and only update local state on
+      // a 2xx.
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch (err) {
+        throw new Error(
+          err instanceof Error
+            ? err.message
+            : "Browser storage refused the write (it may be full or in private mode).",
+        );
+      }
+      // Only mirror the new array into React state after the write
+      // succeeded — on failure we keep the canonical pre-save value so
+      // the read view never shows data that wasn't actually persisted.
+      setBlocks(next);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [blocks]);
+
+  return { blocks, source: "local", saveBlock, isSaving };
 }

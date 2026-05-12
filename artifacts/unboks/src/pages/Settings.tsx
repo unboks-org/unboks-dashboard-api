@@ -3,10 +3,15 @@ import {
   Archive,
   Bell,
   Building2,
+  Check,
   ChevronDown,
+  Loader2,
   MessageSquare,
+  Pencil,
+  Plus,
   Sparkles,
   SlidersHorizontal,
+  Trash2,
   X,
 } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
@@ -26,7 +31,7 @@ import { KnowledgeFileUploader } from "@/components/settings/KnowledgeFileUpload
 import { CloudKnowledgeConnections } from "@/components/settings/CloudKnowledgeConnections";
 import { DataRetentionSettings } from "@/components/settings/DataRetentionSettings";
 import { DisconnectUnboksDanger } from "@/components/settings/DisconnectUnboksDanger";
-import { loadSot, type SotBlock } from "@/data/sot";
+import { useSot, type SotBlock, type SotSubsection } from "@/data/sot";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -277,18 +282,165 @@ function ToggleRow({
   );
 }
 
-// ---------- Your Info read-only knowledge cards ----------
+// ---------- Your Info editable knowledge cards ----------
 
-function SotKnowledgeCard({ block }: { block: SotBlock }) {
+/**
+ * Per-block edit/save/cancel for the Source-of-Truth knowledge.
+ *
+ * Edit model:
+ *   - Title is intentionally NOT editable: section titles act as stable
+ *     anchors the rest of the product (and any future server-side
+ *     validation) keys off of.
+ *   - `content` becomes a textarea.
+ *   - `items` are edited as one item per line. Empty lines are dropped on
+ *     save, so an operator can clear an item by emptying the line.
+ *   - `subsections` get the same treatment per row. Subsection titles
+ *     ARE editable because they're free-text under each block.
+ *
+ * The Save button is disabled when the draft is identical to the current
+ * value (cheap JSON compare) or when a save is already in flight.
+ * Cancel resets the draft back to the persisted block and exits edit
+ * mode. A failed save surfaces a toast and keeps the operator in edit
+ * mode with their unsaved changes intact, so nothing silently
+ * disappears.
+ */
+function SotKnowledgeCard({
+  block,
+  onSave,
+  isSavingExternal,
+}: {
+  block: SotBlock;
+  onSave: (updated: SotBlock) => Promise<void>;
+  isSavingExternal: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<SotBlock>(block);
+  const [busy, setBusy] = useState(false);
+
+  // If the canonical block changes underneath us (e.g. a refresh of the
+  // hook), and we're not in the middle of editing, mirror the new value
+  // into the draft so the read view stays current.
+  useEffect(() => {
+    if (!editing) setDraft(block);
+  }, [block, editing]);
+
+  const dirty = useMemo(
+    () => JSON.stringify(block) !== JSON.stringify(draft),
+    [block, draft],
+  );
+
+  const handleCancel = () => {
+    setDraft(block);
+    setEditing(false);
+  };
+
+  const handleSave = async () => {
+    if (!dirty || busy) return;
+    setBusy(true);
+    try {
+      // Normalise items + subsection items: drop blank lines and trim.
+      const cleanedItems = draft.items
+        ? draft.items.map((s) => s.trim()).filter(Boolean)
+        : undefined;
+      const cleanedSubs = draft.subsections?.map((s) => ({
+        title: s.title.trim(),
+        content: s.content?.trim() || undefined,
+        items: s.items
+          ? s.items.map((x) => x.trim()).filter(Boolean)
+          : undefined,
+      }));
+      const payload: SotBlock = {
+        ...draft,
+        content: draft.content?.trim() || undefined,
+        items: cleanedItems && cleanedItems.length > 0 ? cleanedItems : undefined,
+        subsections: cleanedSubs && cleanedSubs.length > 0 ? cleanedSubs : undefined,
+      };
+      await onSave(payload);
+      toast.success("Saved.");
+      setEditing(false);
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? `Could not save: ${err.message}`
+          : "Could not save changes.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const isSaving = busy || isSavingExternal;
+
   return (
     <div className="rounded-xl border border-[#e8eaed] bg-white p-4">
-      <p className="mb-2 text-[13px] font-semibold text-[#202124]">{block.title}</p>
-      {block.content && (
-        <p className="text-[13px] leading-relaxed text-[#5f6368]">{block.content}</p>
+      <div className="mb-2 flex items-start justify-between gap-3">
+        <p className="text-[13px] font-semibold text-[#202124]">{block.title}</p>
+        {!editing ? (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="flex flex-shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium text-[#1a73e8] hover:bg-[#e8f0fe]"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Edit
+          </button>
+        ) : (
+          <div className="flex flex-shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={isSaving}
+              className="rounded-md px-2 py-1 text-[12px] font-medium text-[#5f6368] hover:bg-[#f1f3f4] disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={!dirty || isSaving}
+              className="flex items-center gap-1.5 rounded-md bg-[#1a73e8] px-2.5 py-1 text-[12px] font-medium text-white hover:bg-[#1765cc] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSaving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Check className="h-3.5 w-3.5" />
+              )}
+              Save changes
+            </button>
+          </div>
+        )}
+      </div>
+
+      {!editing ? (
+        <SotBlockReadView block={block} />
+      ) : (
+        <SotBlockEditView draft={draft} onChange={setDraft} disabled={isSaving} />
       )}
-      {block.items && block.items.length > 0 && (
+    </div>
+  );
+}
+
+function SotBlockReadView({ block }: { block: SotBlock }) {
+  const hasContent = !!block.content;
+  const hasItems = block.items && block.items.length > 0;
+  const hasSubs = block.subsections && block.subsections.length > 0;
+  if (!hasContent && !hasItems && !hasSubs) {
+    return (
+      <p className="text-[13px] italic text-[#9aa0a6]">
+        No information added yet. Use Edit to add details for your Agent.
+      </p>
+    );
+  }
+  return (
+    <>
+      {block.content && (
+        <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-[#5f6368]">
+          {block.content}
+        </p>
+      )}
+      {hasItems && (
         <ul className="mt-1 space-y-0.5">
-          {block.items.map((item, i) => (
+          {block.items!.map((item, i) => (
             <li key={i} className="flex gap-2 text-[13px] text-[#5f6368]">
               <span className="select-none text-[#9aa0a6]">–</span>
               <span>{item}</span>
@@ -296,15 +448,17 @@ function SotKnowledgeCard({ block }: { block: SotBlock }) {
           ))}
         </ul>
       )}
-      {block.subsections && block.subsections.length > 0 && (
+      {hasSubs && (
         <div className="mt-3 space-y-3">
-          {block.subsections.map((sub, i) => (
+          {block.subsections!.map((sub, i) => (
             <div key={i} className="border-t border-[#e8eaed] pt-3">
               <p className="mb-1.5 text-[12px] font-medium uppercase tracking-wide text-[#5f6368]">
                 {sub.title}
               </p>
               {sub.content && (
-                <p className="text-[13px] leading-relaxed text-[#5f6368]">{sub.content}</p>
+                <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-[#5f6368]">
+                  {sub.content}
+                </p>
               )}
               {sub.items && sub.items.length > 0 && (
                 <ul className="mt-1 space-y-0.5">
@@ -318,6 +472,177 @@ function SotKnowledgeCard({ block }: { block: SotBlock }) {
               )}
             </div>
           ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+function SotBlockEditView({
+  draft,
+  onChange,
+  disabled,
+}: {
+  draft: SotBlock;
+  onChange: (next: SotBlock) => void;
+  disabled: boolean;
+}) {
+  const hasContent = draft.content !== undefined;
+  const hasItems = draft.items !== undefined;
+  const hasSubs = draft.subsections !== undefined && draft.subsections.length > 0;
+
+  const inputCls =
+    "w-full rounded-md border border-[#dadce0] bg-white px-2.5 py-2 text-[13px] text-[#202124] placeholder:text-[#9aa0a6] focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8] disabled:cursor-not-allowed disabled:bg-[#f8f9fa]";
+
+  return (
+    <div className="space-y-3">
+      {hasContent && (
+        <label className="block">
+          <span className="mb-1 block text-[12px] font-medium text-[#5f6368]">
+            Description
+          </span>
+          <textarea
+            value={draft.content ?? ""}
+            onChange={(e) => onChange({ ...draft, content: e.target.value })}
+            disabled={disabled}
+            rows={3}
+            className={cn(inputCls, "min-h-[72px] resize-y")}
+          />
+        </label>
+      )}
+
+      {hasItems && (
+        <label className="block">
+          <span className="mb-1 block text-[12px] font-medium text-[#5f6368]">
+            Items (one per line)
+          </span>
+          <textarea
+            value={(draft.items ?? []).join("\n")}
+            onChange={(e) =>
+              onChange({ ...draft, items: e.target.value.split("\n") })
+            }
+            disabled={disabled}
+            rows={Math.min(10, Math.max(3, (draft.items ?? []).length + 1))}
+            className={cn(inputCls, "resize-y font-normal")}
+          />
+        </label>
+      )}
+
+      {hasSubs && (
+        <div className="space-y-3">
+          {draft.subsections!.map((sub, i) => (
+            <div
+              key={i}
+              className="space-y-2 rounded-md border border-[#e8eaed] bg-[#fbfbfd] p-3"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <label className="block flex-1">
+                  <span className="mb-1 block text-[12px] font-medium uppercase tracking-wide text-[#5f6368]">
+                    Section title
+                  </span>
+                  <input
+                    type="text"
+                    value={sub.title}
+                    onChange={(e) => {
+                      const subs = [...draft.subsections!];
+                      subs[i] = { ...sub, title: e.target.value };
+                      onChange({ ...draft, subsections: subs });
+                    }}
+                    disabled={disabled}
+                    className={inputCls}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const subs = draft.subsections!.filter((_, j) => j !== i);
+                    onChange({ ...draft, subsections: subs });
+                  }}
+                  disabled={disabled}
+                  className="mt-5 rounded-md p-1.5 text-[#5f6368] hover:bg-[#f1f3f4] disabled:opacity-60"
+                  aria-label="Remove section"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              {sub.content !== undefined && (
+                <label className="block">
+                  <span className="mb-1 block text-[12px] font-medium text-[#5f6368]">
+                    Description
+                  </span>
+                  <textarea
+                    value={sub.content ?? ""}
+                    onChange={(e) => {
+                      const subs = [...draft.subsections!];
+                      subs[i] = { ...sub, content: e.target.value };
+                      onChange({ ...draft, subsections: subs });
+                    }}
+                    disabled={disabled}
+                    rows={3}
+                    className={cn(inputCls, "min-h-[64px] resize-y")}
+                  />
+                </label>
+              )}
+              {sub.items !== undefined && (
+                <label className="block">
+                  <span className="mb-1 block text-[12px] font-medium text-[#5f6368]">
+                    Items (one per line)
+                  </span>
+                  <textarea
+                    value={(sub.items ?? []).join("\n")}
+                    onChange={(e) => {
+                      const subs = [...draft.subsections!];
+                      subs[i] = { ...sub, items: e.target.value.split("\n") };
+                      onChange({ ...draft, subsections: subs });
+                    }}
+                    disabled={disabled}
+                    rows={Math.min(8, Math.max(3, (sub.items ?? []).length + 1))}
+                    className={cn(inputCls, "resize-y")}
+                  />
+                </label>
+              )}
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => {
+              const subs: SotSubsection[] = [
+                ...(draft.subsections ?? []),
+                { title: "New section", content: "" },
+              ];
+              onChange({ ...draft, subsections: subs });
+            }}
+            disabled={disabled}
+            className="flex items-center gap-1.5 rounded-md border border-dashed border-[#dadce0] px-2.5 py-1.5 text-[12px] font-medium text-[#5f6368] hover:bg-[#f8f9fa] disabled:opacity-60"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add section
+          </button>
+        </div>
+      )}
+
+      {/* If a block has no content/items/subsections at all, give the
+          operator a way to start adding either a description or list. */}
+      {!hasContent && !hasItems && !hasSubs && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => onChange({ ...draft, content: "" })}
+            disabled={disabled}
+            className="flex items-center gap-1.5 rounded-md border border-dashed border-[#dadce0] px-2.5 py-1.5 text-[12px] font-medium text-[#5f6368] hover:bg-[#f8f9fa] disabled:opacity-60"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add description
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange({ ...draft, items: [""] })}
+            disabled={disabled}
+            className="flex items-center gap-1.5 rounded-md border border-dashed border-[#dadce0] px-2.5 py-1.5 text-[12px] font-medium text-[#5f6368] hover:bg-[#f8f9fa] disabled:opacity-60"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add list
+          </button>
         </div>
       )}
     </div>
@@ -348,7 +673,7 @@ export default function Settings() {
   const { settings: account, save: saveAccount } = useAccountSettings();
   const { updates, addUpdate, setActive: setUpdateActive, removeUpdate } = useYourInfoUpdates();
 
-  const sotBlocks = useMemo<SotBlock[]>(() => loadSot(), []);
+  const { blocks: sotBlocks, source: sotSource, saveBlock: saveSotBlock, isSaving: sotSaving } = useSot();
 
   // Workspace draft -------------------------------------
   const [accountDraft, setAccountDraft] = useState<AccountSettings>(account);
@@ -805,7 +1130,12 @@ export default function Settings() {
                     <CloudKnowledgeConnections />
                   </Card>
 
-                  <YourInfoKnowledge blocks={sotBlocks} />
+                  <YourInfoKnowledge
+                    blocks={sotBlocks}
+                    source={sotSource}
+                    onSaveBlock={saveSotBlock}
+                    isSavingBlock={sotSaving}
+                  />
                 </div>
               )}
 
@@ -1170,9 +1500,19 @@ export default function Settings() {
   );
 }
 
-// ---------- Collapsible read-only knowledge from sot.ts ----------
+// ---------- Collapsible editable knowledge from sot.ts ----------
 
-function YourInfoKnowledge({ blocks }: { blocks: SotBlock[] }) {
+function YourInfoKnowledge({
+  blocks,
+  source,
+  onSaveBlock,
+  isSavingBlock,
+}: {
+  blocks: SotBlock[];
+  source: "local" | "server";
+  onSaveBlock: (block: SotBlock) => Promise<void>;
+  isSavingBlock: boolean;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <section className="overflow-hidden rounded-2xl border border-[#e8eaed] bg-white">
@@ -1183,10 +1523,10 @@ function YourInfoKnowledge({ blocks }: { blocks: SotBlock[] }) {
       >
         <div className="min-w-0">
           <h3 className="text-[14px] font-semibold text-[#202124]">
-            What your Agent already knows
+            Your Agent knowledge
           </h3>
           <p className="mt-0.5 text-[13px] text-[#5f6368]">
-            A snapshot of the business details your Agent is already using.
+            Review and update the business information your Agent uses when replying to customers.
           </p>
         </div>
         <ChevronDown
@@ -1198,10 +1538,26 @@ function YourInfoKnowledge({ blocks }: { blocks: SotBlock[] }) {
       </button>
       {open && (
         <div className="space-y-3 border-t border-[#f1f3f4] px-5 py-5 sm:px-6">
+          {/* Transparent persistence notice. We never claim "saved to
+              server" when the data is only in localStorage; this banner
+              tells the operator exactly where their changes live so a
+              cross-device sync expectation isn't created by accident. */}
+          {source === "local" && (
+            <div className="rounded-md border border-[#fde9c8] bg-[#fef7e0] px-3 py-2 text-[12px] leading-relaxed text-[#7a4f00]">
+              Edits are saved on this device while we wire up sync across browsers and team members. Use a single browser for now and re-enter the same updates anywhere else you sign in.
+            </div>
+          )}
           {blocks.length === 0 ? (
             <p className="text-[13px] text-[#9aa0a6]">No knowledge added yet.</p>
           ) : (
-            blocks.map((block) => <SotKnowledgeCard key={block.id} block={block} />)
+            blocks.map((block) => (
+              <SotKnowledgeCard
+                key={block.id}
+                block={block}
+                onSave={onSaveBlock}
+                isSavingExternal={isSavingBlock}
+              />
+            ))
           )}
         </div>
       )}
