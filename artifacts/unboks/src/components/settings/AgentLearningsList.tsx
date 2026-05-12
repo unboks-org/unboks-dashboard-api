@@ -24,6 +24,7 @@ import {
   useEscalationLearningMutations,
   useAgentLearningPrefs,
   useAgentLearningPrefsMutation,
+  isAgentLearningPrefsBackendMissing,
 } from "@/hooks/use-client-api";
 import type { AgentLearningPrefs } from "@/lib/api";
 import { useDashboardIdentity } from "@/hooks/use-dashboard-identity";
@@ -314,24 +315,39 @@ function ReadOnlyRow({ entry }: { entry: EscalationLearning }) {
 /**
  * Behavior toggles for the suggested-learning flow.
  *
- * Both toggles default ON, which is the behaviour shipped in R2-34.
+ * These preferences MUST be tenant-scoped and server-persisted so they
+ * sync across browsers, devices, and teammates. There is deliberately
+ * NO localStorage fallback — if the backend endpoint
+ *   GET/PUT /api/{tenant}/dashboard/api/settings/agent-learnings
+ * is not yet shipped, the toggles render disabled with honest
+ * "Awaiting backend support" copy and the Inbox flow uses the R2-34
+ * baseline (both behaviours ON). This avoids faking persistence and
+ * showing the operator a value that won't actually carry across.
+ *
  * Critical rule: neither toggle ever auto-approves a learning. The
  * "automatic" path here means "create a row in PENDING for review",
  * never "add to live Agent knowledge".
  */
 function AgentLearningPrefsCard() {
-  const { data: prefs, isLoading: loadingPrefs } = useAgentLearningPrefs();
+  const { data: prefs, isLoading, isError, error } = useAgentLearningPrefs();
   const mutation = useAgentLearningPrefsMutation();
 
+  const backendMissing = isError && isAgentLearningPrefsBackendMissing(error);
+  // Show a value in the toggles even while the endpoint is missing so
+  // the operator can see what each option means. The values shown are
+  // the system defaults and are NOT considered authoritative — the
+  // toggles are disabled and the Inbox does not act on them.
   const value: AgentLearningPrefs = prefs ?? {
-    showSuggestionAfterReply: true,
-    createPendingFromReplies: true,
+    showSuggestionAfterReplies: true,
+    createPendingLearningFromOperatorReplies: true,
   };
 
   const update = (patch: Partial<AgentLearningPrefs>) => {
-    if (mutation.isPending) return;
+    if (mutation.isPending || backendMissing || isError) return;
     mutation.mutate({ ...value, ...patch });
   };
+
+  const togglesDisabled = isLoading || mutation.isPending || isError;
 
   return (
     <section className="overflow-hidden rounded-2xl border border-[#e8eaed] bg-white">
@@ -343,25 +359,41 @@ function AgentLearningPrefsCard() {
       </header>
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
+        {backendMissing && (
+          <p
+            role="status"
+            className="text-[12.5px] text-[#5f3e00] bg-[#fef7e0] border border-[#fce293] rounded-md px-2.5 py-2"
+          >
+            Awaiting backend support. These toggles will activate once tenant-level sync is enabled. Until then the Agent uses the default behaviour (both options on, with no auto-approval).
+          </p>
+        )}
+        {isError && !backendMissing && (
+          <p
+            role="alert"
+            className="text-[12.5px] text-[#5f1414] bg-[#fce8e6] border border-[#f6c6c2] rounded-md px-2.5 py-2"
+          >
+            Could not load behaviour settings: {getErrorMessage(error)}
+          </p>
+        )}
         <ToggleRow
-          id="show-suggestion-after-reply"
+          id="show-suggestion-after-replies"
           title="Show learning suggestion after replies"
           description="When on, Unboks shows a Suggested Learning card after operator replies when the answer may be reusable."
-          checked={value.showSuggestionAfterReply}
-          disabled={loadingPrefs || mutation.isPending}
-          onChange={(next) => update({ showSuggestionAfterReply: next })}
+          checked={value.showSuggestionAfterReplies}
+          disabled={togglesDisabled}
+          onChange={(next) => update({ showSuggestionAfterReplies: next })}
         />
         <ToggleRow
-          id="create-pending-from-replies"
+          id="create-pending-learning-from-operator-replies"
           title="Create pending learning from operator replies"
           description="When on, operator replies are saved as pending learnings for review. They are not used by the Agent until approved."
-          checked={value.createPendingFromReplies}
-          disabled={loadingPrefs || mutation.isPending}
-          onChange={(next) => update({ createPendingFromReplies: next })}
+          checked={value.createPendingLearningFromOperatorReplies}
+          disabled={togglesDisabled}
+          onChange={(next) => update({ createPendingLearningFromOperatorReplies: next })}
         />
         {mutation.isError && (
           <p role="alert" className="text-[12.5px] text-[#5f1414] bg-[#fce8e6] border border-[#f6c6c2] rounded-md px-2.5 py-2">
-            {getErrorMessage(mutation.error)}
+            Could not save: {getErrorMessage(mutation.error)}
           </p>
         )}
       </div>
