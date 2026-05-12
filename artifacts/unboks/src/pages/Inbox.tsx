@@ -535,11 +535,33 @@ function ConversationDetailPane({
         },
         {
           onSuccess: (created) => {
-            // Honour showSuggestionAfterReplies: when OFF, the row was
-            // created (per the other toggle being ON) but the operator
-            // does NOT see the modal — it sits in Settings → Pending
-            // for later review.
+            // R2-37 fix (Sonia): when showSuggestionAfterReplies = ON,
+            // the operator must see visible confirmation. The R2-32/34
+            // modal mounts inside ConversationDetailPane, so on
+            // Send & Resolve (and any other path that resolves the
+            // escalation and removes it from the active list) the pane
+            // unmounts before the modal can render and the operator
+            // saw nothing — the original Sonia #37 partial-pass bug.
+            //
+            // Fix: emit a sonner toast with a "View pending learnings"
+            // action. Toasts mount at the page root via App.tsx's
+            // <Toaster>, so they survive any pane unmount. Also still
+            // set pendingLearning so the inline modal appears as a
+            // bonus when the pane is still mounted (e.g. plain Send on
+            // a not-yet-resolved escalation), preserving the inline
+            // Approve / Edit / Dismiss UX from R2-32/R2-34.
+            //
+            // When showSuggestionAfterReplies = OFF, the row still
+            // exists on the server (per the other toggle) but no
+            // visible UI fires — operator opted out of post-reply
+            // prompts.
             if (prefs.showSuggestionAfterReplies) {
+              toast.success("Reply sent. Saved as pending learning for review.", {
+                action: {
+                  label: "View pending learnings",
+                  onClick: () => navigate("/settings?category=agent-learnings"),
+                },
+              });
               setPendingLearning(created);
             } else {
               onClose();
@@ -574,6 +596,7 @@ function ConversationDetailPane({
       onClose,
       suggestLearning,
       learningPrefs,
+      navigate,
     ],
   );
 
