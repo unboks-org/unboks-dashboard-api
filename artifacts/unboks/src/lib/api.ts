@@ -387,6 +387,115 @@ function defaultProviderLabel(p: CloudConnectionProviderId): string {
 }
 
 // ---------------------------------------------------------------------------
+// Block sender (Unboks-level block)
+// ---------------------------------------------------------------------------
+//
+// Backend contract (issue unboks-org/unboks-dashboard-api#30):
+//   POST   /dashboard/api/messages/conversations/{conversationId}/block
+//          body: { reason, blocked_by }
+//   POST   /dashboard/api/messages/conversations/{conversationId}/unblock
+//   GET    /dashboard/api/blocked-senders
+//          200: { conversations: BlockedSender[] }
+//
+// "Block in Unboks" only suppresses the conversation inside this dashboard:
+// future inbound messages do not appear in the active inbox, the Agent does
+// not auto-reply, and escalation alerts do not fire. It does NOT block the
+// contact at the channel layer (e.g. WhatsApp) — operators must do that on
+// the phone separately if they want the contact to stop reaching them at
+// all. Historical messages are preserved.
+
+export type BlockReason = "spam" | "abusive" | "wrong_contact" | "other";
+
+export const BLOCK_REASONS: ReadonlyArray<{ value: BlockReason; label: string }> = [
+  { value: "spam", label: "Spam" },
+  { value: "abusive", label: "Abusive" },
+  { value: "wrong_contact", label: "Wrong contact" },
+  { value: "other", label: "Other" },
+];
+
+export interface BlockedSender {
+  conversationId: string;
+  channel: string;
+  updatedAt: string;
+  reason: BlockReason | string;
+  blockedBy: string;
+}
+
+export interface BlockedSendersResponse {
+  conversations: BlockedSender[];
+}
+
+export interface BlockConversationPayload {
+  reason: BlockReason;
+  blocked_by: string;
+}
+
+export interface BlockConversationResponse {
+  ok: boolean;
+  conversationId: string;
+  blocked: true;
+  reason: string;
+  blockedBy: string;
+}
+
+export async function blockConversation(
+  conversationId: string,
+  payload: BlockConversationPayload,
+): Promise<BlockConversationResponse> {
+  const enc = encodeConversationKey(conversationId);
+  const raw = await apiFetch<unknown>(
+    `/messages/conversations/${enc}/block`,
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+  const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  return {
+    ok: o.ok === true,
+    conversationId: pickStr(o, "conversationId", "conversation_id") ?? conversationId,
+    blocked: true,
+    reason: pickStr(o, "reason") ?? payload.reason,
+    blockedBy: pickStr(o, "blockedBy", "blocked_by") ?? payload.blocked_by,
+  };
+}
+
+export async function unblockConversation(conversationId: string): Promise<void> {
+  const enc = encodeConversationKey(conversationId);
+  return apiFetch<void>(
+    `/messages/conversations/${enc}/unblock`,
+    { method: "POST" },
+  );
+}
+
+export async function fetchBlockedSenders(): Promise<BlockedSendersResponse> {
+  const raw = await apiFetch<unknown>("/blocked-senders");
+  return { conversations: normalizeBlockedSenders(raw) };
+}
+
+function normalizeBlockedSenders(raw: unknown): BlockedSender[] {
+  let items: unknown[] = [];
+  if (Array.isArray(raw)) items = raw;
+  else if (raw && typeof raw === "object") {
+    const r = raw as Record<string, unknown>;
+    const maybe = r.conversations ?? r.items ?? r.blocked;
+    if (Array.isArray(maybe)) items = maybe;
+  }
+  const out: BlockedSender[] = [];
+  for (const it of items) {
+    if (!it || typeof it !== "object") continue;
+    const o = it as Record<string, unknown>;
+    const conversationId = pickStr(o, "conversationId", "conversation_id", "phone", "id");
+    if (!conversationId) continue;
+    out.push({
+      conversationId,
+      channel: (pickStr(o, "channel", "platform") ?? "unknown").toLowerCase(),
+      updatedAt: pickStr(o, "updatedAt", "updated_at", "blockedAt", "blocked_at") ?? "",
+      reason: (pickStr(o, "reason") ?? "other") as BlockReason | string,
+      blockedBy: pickStr(o, "blockedBy", "blocked_by") ?? "",
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Confirm appointment
 // ---------------------------------------------------------------------------
 //

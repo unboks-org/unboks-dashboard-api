@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, ChangeEvent } from "react";
 import {
   Archive,
+  Ban,
   Bell,
   Building2,
   Check,
@@ -31,6 +32,7 @@ import { KnowledgeFileUploader } from "@/components/settings/KnowledgeFileUpload
 import { CloudKnowledgeConnections } from "@/components/settings/CloudKnowledgeConnections";
 import { DataRetentionSettings } from "@/components/settings/DataRetentionSettings";
 import { DisconnectUnboksDanger } from "@/components/settings/DisconnectUnboksDanger";
+import { BlockedSendersList } from "@/components/settings/BlockedSendersList";
 import { useSot, type SotBlock, type SotSubsection } from "@/data/sot";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -48,6 +50,7 @@ type CategoryId =
   | "channels"
   | "escalation"
   | "data-retention"
+  | "blocked-senders"
   | "preferences";
 
 const CATEGORIES: {
@@ -86,6 +89,12 @@ const CATEGORIES: {
     label: "Data retention & archive",
     description: "Control how long conversations stay active, archived, and searchable.",
     icon: Archive,
+  },
+  {
+    id: "blocked-senders",
+    label: "Blocked senders",
+    description: "Senders blocked from your active inbox at the Unboks dashboard layer.",
+    icon: Ban,
   },
   {
     id: "preferences",
@@ -1413,6 +1422,12 @@ export default function Settings() {
               {active === "data-retention" && (
                 <div className="space-y-5">
                   <DataRetentionSettings />
+                </div>
+              )}
+
+              {active === "blocked-senders" && (
+                <div className="space-y-5">
+                  <BlockedSendersList />
                 </div>
               )}
 

@@ -46,6 +46,7 @@ import {
   Trash2,
   Archive,
   ArchiveRestore,
+  Ban,
   Users,
   Bot,
 } from "lucide-react";
@@ -53,6 +54,8 @@ import { toast } from "sonner";
 import type { ApiMessage, ConversationDetail } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { EscalationReplyComposer } from "@/components/inbox/EscalationReplyComposer";
+import { BlockSenderModal } from "@/components/inbox/BlockSenderModal";
+import { useBlockedLookup } from "@/hooks/use-blocked-senders";
 import {
   EmailReplyModal,
   EmailForwardModal,
@@ -328,6 +331,10 @@ interface ConversationDetailPaneProps {
   onArchive?: (conv: Conversation) => void;
   onRestore?: (conv: Conversation) => void;
   archived?: boolean;
+  /** "Block in Unboks" handler. Opens the BlockSenderModal at the page
+   *  level. Only surfaced when wired from the parent — typically every
+   *  active inbox view, but never on the Resolved tab. */
+  onBlock?: (conv: Conversation) => void;
   /**
    * When true the pane is rendering a resolved escalation from the Resolved
    * tab. Forces the non-escalation (read-only trail) layout regardless of
@@ -346,6 +353,7 @@ function ConversationDetailPane({
   onArchive,
   onRestore,
   archived = false,
+  onBlock,
   resolvedContext: resolvedContextProp = false,
 }: ConversationDetailPaneProps) {
   // Belt-and-suspenders: the prop is set by the parent when
@@ -550,6 +558,17 @@ function ConversationDetailPane({
                   className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full hover:bg-[#e8f0fe] text-[#5f6368] hover:text-[#1a73e8]"
                 >
                   <ArchiveRestore className="w-5 h-5 md:w-4 md:h-4" />
+                </button>
+              )}
+              {onBlock && !archived && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onBlock(conversation); }}
+                  aria-label="Block in Unboks"
+                  title="Block in Unboks"
+                  className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full hover:bg-[#fce8e6] text-[#5f6368] hover:text-[#c5221f]"
+                >
+                  <Ban className="w-5 h-5 md:w-4 md:h-4" />
                 </button>
               )}
             </div>
@@ -923,6 +942,10 @@ export default function Inbox() {
   const [emailReplyConv, setEmailReplyConv] = useState<Conversation | null>(null);
   const [emailForwardConv, setEmailForwardConv] = useState<Conversation | null>(null);
   const [emailDeleteConv, setEmailDeleteConv] = useState<Conversation | null>(null);
+  // "Block in Unboks" target. Modal is mounted at page-level (same pattern
+  // as the email modals) so it overlays the list AND the detail pane on
+  // every viewport. Cleared on dismiss / on successful block.
+  const [blockConv, setBlockConv] = useState<Conversation | null>(null);
 
   const handleEmailReply = useCallback((conv: Conversation) => {
     setEmailReplyConv(conv);
@@ -936,6 +959,21 @@ export default function Inbox() {
   const handleEmailDeleted = useCallback((deletedId: string) => {
     setSelectedConv((cur) => (cur?.id === deletedId ? null : cur));
   }, []);
+  const handleBlock = useCallback((conv: Conversation) => {
+    setBlockConv(conv);
+  }, []);
+  const handleBlocked = useCallback((blockedId: string) => {
+    // Close the open detail pane if it was on the blocked row — the row
+    // itself is removed from the list by the blocked-set filter on the
+    // next render once the query invalidates.
+    setSelectedConv((cur) => (cur?.id === blockedId ? null : cur));
+  }, []);
+
+  // Server-backed blocked senders. The lookup is cheap (Set.has), so
+  // every list filter passes through the same predicate the sidebar
+  // counts use, guaranteeing badges and rows agree on which senders
+  // are suppressed.
+  const { isBlocked: isRowBlocked } = useBlockedLookup();
 
   // Locally-hidden conversation ids (Email/Escalation rows that were
   // removed from the UI either via successful backend delete or via
@@ -1001,8 +1039,11 @@ export default function Inbox() {
     if (isError || !apiConversations) return [];
     return apiConversations
       .map(mapApiConversation)
-      .filter((c) => !isRowHidden(collectConversationHideKeys(c)));
-  }, [apiConversations, isError, isRowHidden]);
+      .filter((c) => {
+        const keys = collectConversationHideKeys(c);
+        return !isRowHidden(keys) && !isRowBlocked(keys);
+      });
+  }, [apiConversations, isError, isRowHidden, isRowBlocked]);
 
   // Convert the live /escalations response into Conversation-shaped rows the
   // existing MessageRow + ConversationDetailPane already know how to render.
@@ -1027,15 +1068,21 @@ export default function Inbox() {
         const enrich = n.phone ? convoById.get(n.phone) ?? null : null;
         return escalationToConversationRow(n, enrich);
       })
-      .filter((c) => !isRowHidden(collectConversationHideKeys(c)));
-  }, [rawEscalations, allConversations, isRowHidden]);
+      .filter((c) => {
+        const keys = collectConversationHideKeys(c);
+        return !isRowHidden(keys) && !isRowBlocked(keys);
+      });
+  }, [rawEscalations, allConversations, isRowHidden, isRowBlocked]);
 
   const archivedConversations: Conversation[] = useMemo(() => {
     if (!archivedApiData) return [];
     return archivedApiData
       .map(mapApiConversation)
-      .filter((c) => !isRowHidden(collectConversationHideKeys(c)));
-  }, [archivedApiData, isRowHidden]);
+      .filter((c) => {
+        const keys = collectConversationHideKeys(c);
+        return !isRowHidden(keys) && !isRowBlocked(keys);
+      });
+  }, [archivedApiData, isRowHidden, isRowBlocked]);
 
   const resolvedEscalationRows: Conversation[] = useMemo(() => {
     if (!rawResolvedEscalations) return [];
@@ -1055,8 +1102,11 @@ export default function Inbox() {
         // read-only/history mode independently of the active UI filter state.
         return { ...row, resolvedEscalation: true as const };
       })
-      .filter((c) => !isRowHidden(collectConversationHideKeys(c)));
-  }, [rawResolvedEscalations, allConversations, isRowHidden]);
+      .filter((c) => {
+        const keys = collectConversationHideKeys(c);
+        return !isRowHidden(keys) && !isRowBlocked(keys);
+      });
+  }, [rawResolvedEscalations, allConversations, isRowHidden, isRowBlocked]);
 
   // Stable handler. Inbox-context navigation now writes to the URL via
   // `inboxContextUrl(id)` so a refresh / crash-recovery / 401 bounce
@@ -1431,6 +1481,11 @@ export default function Inbox() {
             onArchive={escalationFilter === "resolved" ? undefined : handleArchive}
             onRestore={escalationFilter === "resolved" ? undefined : handleRestore}
             archived={inboxView === "archived"}
+            onBlock={
+              escalationFilter === "resolved" || inboxView === "archived"
+                ? undefined
+                : handleBlock
+            }
             resolvedContext={escalationFilter === "resolved"}
           />
         )}
@@ -1453,6 +1508,13 @@ export default function Inbox() {
         conversation={emailDeleteConv}
         onClose={() => setEmailDeleteConv(null)}
         onDeleted={handleEmailDeleted}
+      />
+      <BlockSenderModal
+        open={Boolean(blockConv)}
+        conversation={blockConv}
+        operatorLabel="Operator"
+        onClose={() => setBlockConv(null)}
+        onBlocked={handleBlocked}
       />
     </DashboardShell>
   );

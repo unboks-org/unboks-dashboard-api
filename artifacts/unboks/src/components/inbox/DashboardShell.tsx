@@ -12,6 +12,7 @@ import {
   useHiddenConversations,
   collectConversationHideKeys,
 } from "@/hooks/use-hidden-conversations";
+import { useBlockedLookup } from "@/hooks/use-blocked-senders";
 import { useArchivedConversations } from "@/hooks/use-archived-conversations";
 import { useActiveConversationKeys } from "@/hooks/use-active-conversation-keys";
 import { filterActiveAppointments } from "@/lib/appointment-classifier";
@@ -141,6 +142,11 @@ export function DashboardShell({
   // the page filters in `pages/Inbox.tsx`.
   const { isHidden: isRowHidden } = useHiddenConversations();
   const { isArchived: isRowArchived } = useArchivedConversations();
+  // Server-backed blocked senders. Same lookup the Inbox page filters
+  // use, so the sidebar badges never count rows the lists hide as
+  // "blocked in Unboks". The hook exposes a Set-backed predicate so
+  // the cost is O(keys-per-row) per render.
+  const { isBlocked: isRowBlocked } = useBlockedLookup();
 
   // Never fall back to MOCK on the live dashboard — that flashes fake names
   // and counts on every refresh. Use [] until the API returns real data.
@@ -151,8 +157,11 @@ export function DashboardShell({
     if (!apiConversations || isError) return [];
     return apiConversations
       .map(mapApiConversation)
-      .filter((c) => !isRowHidden(collectConversationHideKeys(c)));
-  }, [apiConversations, isError, isRowHidden]);
+      .filter((c) => {
+        const keys = collectConversationHideKeys(c);
+        return !isRowHidden(keys) && !isRowBlocked(keys);
+      });
+  }, [apiConversations, isError, isRowHidden, isRowBlocked]);
 
   const hasConvData = !convLoading && !isError && Boolean(apiConversations);
   const hasEscData = !escLoading && Boolean(apiEscalations);
@@ -214,10 +223,11 @@ export function DashboardShell({
       const id = n.phone || `esc:${n.id}`;
       const keys = [conversationKey, id, n.id];
       if (isRowHidden(keys)) return false;
+      if (isRowBlocked(keys)) return false;
       if (isRowArchived(keys, enrich?.timestampMs)) return false;
       return true;
     }).length;
-  }, [apiEscalations, hasEscData, allConversations, isRowHidden, isRowArchived]);
+  }, [apiEscalations, hasEscData, allConversations, isRowHidden, isRowArchived, isRowBlocked]);
 
   // Appointments sidebar count must use the same merged + de-duplicated
   // list the Appointments page renders, so the badge can never disagree
