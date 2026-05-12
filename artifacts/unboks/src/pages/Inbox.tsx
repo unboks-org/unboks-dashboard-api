@@ -1035,15 +1035,26 @@ export default function Inbox() {
     error: escError,
   } = useEscalations("all");
 
-  const allConversations: Conversation[] = useMemo(() => {
+  // Pre-filter projection of the API list. Used as the source for
+  // escalation enrichment so an escalation row whose owning conversation
+  // is blocked still resolves its `conversationKey` correctly — without
+  // it the row would fall back to `n.phone` and its keys would no longer
+  // match the blocked Set (the Set is keyed on whatever the backend
+  // stored, which is `conversationKey || id` — see BlockSenderModal).
+  // Hidden rows are still excluded from enrichment because a hidden
+  // conversation is gone from the operator's world entirely.
+  const enrichmentConversations: Conversation[] = useMemo(() => {
     if (isError || !apiConversations) return [];
     return apiConversations
       .map(mapApiConversation)
-      .filter((c) => {
-        const keys = collectConversationHideKeys(c);
-        return !isRowHidden(keys) && !isRowBlocked(keys);
-      });
-  }, [apiConversations, isError, isRowHidden, isRowBlocked]);
+      .filter((c) => !isRowHidden(collectConversationHideKeys(c)));
+  }, [apiConversations, isError, isRowHidden]);
+
+  const allConversations: Conversation[] = useMemo(() => {
+    return enrichmentConversations.filter(
+      (c) => !isRowBlocked(collectConversationHideKeys(c)),
+    );
+  }, [enrichmentConversations, isRowBlocked]);
 
   // Convert the live /escalations response into Conversation-shaped rows the
   // existing MessageRow + ConversationDetailPane already know how to render.
@@ -1052,7 +1063,13 @@ export default function Inbox() {
   // so the count and the list always match.
   const escalationRows: Conversation[] = useMemo(() => {
     if (!rawEscalations) return [];
-    const convoById = new Map(allConversations.map((c) => [c.id, c]));
+    // Use the PRE-block-filter projection for enrichment so a blocked
+    // sender's escalation row still resolves to the correct
+    // `conversationKey` (which is what the blocked Set is keyed on).
+    // The blocked filter still runs at the end of this pipeline, so
+    // the row is dropped from the rendered list — but only after its
+    // identifier resolved correctly enough for the filter to match.
+    const convoById = new Map(enrichmentConversations.map((c) => [c.id, c]));
     // Normalize + drop resolved + dedupe by stable conversation key so a
     // single customer/conversation never appears as 2-3 rows. Sidebar
     // count uses the identical pass.
@@ -1072,7 +1089,7 @@ export default function Inbox() {
         const keys = collectConversationHideKeys(c);
         return !isRowHidden(keys) && !isRowBlocked(keys);
       });
-  }, [rawEscalations, allConversations, isRowHidden, isRowBlocked]);
+  }, [rawEscalations, enrichmentConversations, isRowHidden, isRowBlocked]);
 
   const archivedConversations: Conversation[] = useMemo(() => {
     if (!archivedApiData) return [];
@@ -1086,7 +1103,11 @@ export default function Inbox() {
 
   const resolvedEscalationRows: Conversation[] = useMemo(() => {
     if (!rawResolvedEscalations) return [];
-    const convoById = new Map(allConversations.map((c) => [c.id, c]));
+    // Pre-block-filter source for the same reason as `escalationRows`
+    // above — keeps the blocked filter at the end of the pipeline
+    // honest for resolved escalation rows whose owning conversation
+    // has been blocked since.
+    const convoById = new Map(enrichmentConversations.map((c) => [c.id, c]));
     const resolved = [];
     for (const raw of rawResolvedEscalations as unknown[]) {
       const n = normalizeEscalation(raw);
@@ -1106,7 +1127,7 @@ export default function Inbox() {
         const keys = collectConversationHideKeys(c);
         return !isRowHidden(keys) && !isRowBlocked(keys);
       });
-  }, [rawResolvedEscalations, allConversations, isRowHidden, isRowBlocked]);
+  }, [rawResolvedEscalations, enrichmentConversations, isRowHidden, isRowBlocked]);
 
   // Stable handler. Inbox-context navigation now writes to the URL via
   // `inboxContextUrl(id)` so a refresh / crash-recovery / 401 bounce

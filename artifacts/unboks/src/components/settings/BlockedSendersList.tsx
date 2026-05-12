@@ -29,7 +29,9 @@ function formatChannel(channel: string): string {
 }
 
 function formatUpdatedAt(iso: string): string {
-  if (!iso) return "—";
+  // ASCII hyphen for the "no value" placeholder per the brand rule
+  // (no em-dashes anywhere in user-visible copy).
+  if (!iso) return "-";
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) return iso;
   try {

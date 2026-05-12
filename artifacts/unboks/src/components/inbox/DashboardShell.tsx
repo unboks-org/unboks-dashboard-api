@@ -153,15 +153,24 @@ export function DashboardShell({
   // `allConversations` is the post-delete (hidden) set; we still keep
   // archived rows in here so the Escalations badge — which intentionally
   // bypasses archive in `pages/Inbox.tsx` — can resolve its convo lookup.
-  const allConversations: Conversation[] = useMemo(() => {
+  // Pre-block-filter projection. Used as the source for the
+  // Escalations badge so an escalation row whose owning conversation
+  // is blocked still resolves to the correct `conversationKey` before
+  // the blocked filter drops it from the count — keeping the badge
+  // and the rendered list (Inbox.tsx applies the same trick) in
+  // lockstep when an email escalation is blocked.
+  const enrichmentConversations: Conversation[] = useMemo(() => {
     if (!apiConversations || isError) return [];
     return apiConversations
       .map(mapApiConversation)
-      .filter((c) => {
-        const keys = collectConversationHideKeys(c);
-        return !isRowHidden(keys) && !isRowBlocked(keys);
-      });
-  }, [apiConversations, isError, isRowHidden, isRowBlocked]);
+      .filter((c) => !isRowHidden(collectConversationHideKeys(c)));
+  }, [apiConversations, isError, isRowHidden]);
+
+  const allConversations: Conversation[] = useMemo(() => {
+    return enrichmentConversations.filter(
+      (c) => !isRowBlocked(collectConversationHideKeys(c)),
+    );
+  }, [enrichmentConversations, isRowBlocked]);
 
   const hasConvData = !convLoading && !isError && Boolean(apiConversations);
   const hasEscData = !escLoading && Boolean(apiEscalations);
@@ -216,7 +225,11 @@ export function DashboardShell({
     // `timestampMs` so the auto-restore-on-new-inbound path stays in
     // lockstep with the Inbox list (a fresh inbound un-archives the
     // row in both surfaces on the same render).
-    const convoByPhone = new Map(allConversations.map((c) => [c.id, c]));
+    // Enrichment lookup must be the pre-block-filter projection so
+    // blocked email escalations still resolve to the right
+    // `conversationKey` and get caught by the blocked predicate
+    // immediately below. See `enrichmentConversations` JSDoc above.
+    const convoByPhone = new Map(enrichmentConversations.map((c) => [c.id, c]));
     return dedupeEscalations(active).filter((n) => {
       const enrich = n.phone ? convoByPhone.get(n.phone) ?? null : null;
       const conversationKey = enrich?.conversationKey ?? n.phone ?? `esc:${n.id}`;
@@ -227,7 +240,7 @@ export function DashboardShell({
       if (isRowArchived(keys, enrich?.timestampMs)) return false;
       return true;
     }).length;
-  }, [apiEscalations, hasEscData, allConversations, isRowHidden, isRowArchived, isRowBlocked]);
+  }, [apiEscalations, hasEscData, enrichmentConversations, isRowHidden, isRowArchived, isRowBlocked]);
 
   // Appointments sidebar count must use the same merged + de-duplicated
   // list the Appointments page renders, so the badge can never disagree
