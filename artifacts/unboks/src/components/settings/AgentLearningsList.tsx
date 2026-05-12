@@ -506,11 +506,44 @@ function ToggleRow({ id, title, description, checked, disabled, onChange }: Togg
   );
 }
 
+const COLLAPSED_LIMIT = 3;
+
 export function AgentLearningsList() {
   const [tab, setTab] = useState<EscalationLearningStatus>("pending");
+  const [expanded, setExpanded] = useState(false);
   const { data, isLoading, isError, error } = useEscalationLearnings(tab);
 
-  const entries = data ?? [];
+  // R2-41: show the latest entries first so the default 3 are the most
+  // relevant. Sort by status-appropriate timestamp, falling back to
+  // createdAt when the lifecycle timestamp is missing. Sort is stable
+  // for equal keys so React keys stay stable across renders.
+  const entries = [...(data ?? [])].sort((a, b) => {
+    const ka =
+      a.status === "approved"
+        ? a.approvedAt ?? a.updatedAt ?? a.createdAt
+        : a.status === "dismissed"
+        ? a.dismissedAt ?? a.updatedAt ?? a.createdAt
+        : a.createdAt;
+    const kb =
+      b.status === "approved"
+        ? b.approvedAt ?? b.updatedAt ?? b.createdAt
+        : b.status === "dismissed"
+        ? b.dismissedAt ?? b.updatedAt ?? b.createdAt
+        : b.createdAt;
+    return Date.parse(kb ?? "") - Date.parse(ka ?? "");
+  });
+
+  const total = entries.length;
+  const overflow = Math.max(0, total - COLLAPSED_LIMIT);
+  const visibleEntries = expanded ? entries : entries.slice(0, COLLAPSED_LIMIT);
+
+  const handleSelectTab = (next: EscalationLearningStatus) => {
+    if (next === tab) return;
+    setTab(next);
+    // R2-41: each tab starts collapsed so the operator sees the latest
+    // 3 first when switching contexts.
+    setExpanded(false);
+  };
 
   return (
     <div className="space-y-5">
@@ -538,7 +571,7 @@ export function AgentLearningsList() {
                 role="tab"
                 type="button"
                 aria-selected={active}
-                onClick={() => setTab(t.id)}
+                onClick={() => handleSelectTab(t.id)}
                 className={cn(
                   "px-3 py-1 rounded-full text-[12.5px] font-medium transition-colors",
                   active
@@ -573,15 +606,34 @@ export function AgentLearningsList() {
               : "No dismissed learnings."}
           </p>
         ) : (
-          <ul className="space-y-2.5">
-            {entries.map((entry) =>
-              entry.status === "pending" ? (
-                <PendingRow key={entry.id} entry={entry} />
-              ) : (
-                <ReadOnlyRow key={entry.id} entry={entry} />
-              ),
+          <>
+            <ul className="space-y-2.5">
+              {visibleEntries.map((entry) =>
+                entry.status === "pending" ? (
+                  <PendingRow key={entry.id} entry={entry} />
+                ) : (
+                  <ReadOnlyRow key={entry.id} entry={entry} />
+                ),
+              )}
+            </ul>
+            {overflow > 0 && (
+              <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
+                <p className="text-[12px] text-[#5f6368]">
+                  {expanded
+                    ? `Showing all ${total}.`
+                    : `Showing ${COLLAPSED_LIMIT} of ${total}.`}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setExpanded((v) => !v)}
+                  aria-expanded={expanded}
+                  className="inline-flex items-center justify-center rounded-full px-3 py-1 min-h-[32px] text-[12.5px] font-medium border border-[#dadce0] bg-white text-[#1a73e8] hover:bg-[#f0f6ff] transition-colors"
+                >
+                  {expanded ? "Show less" : `See more (${overflow})`}
+                </button>
+              </div>
             )}
-          </ul>
+          </>
         )}
       </div>
       </section>
