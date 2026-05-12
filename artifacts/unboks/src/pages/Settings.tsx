@@ -682,7 +682,13 @@ export default function Settings() {
   const { settings: account, save: saveAccount } = useAccountSettings();
   const { updates, addUpdate, setActive: setUpdateActive, removeUpdate } = useYourInfoUpdates();
 
-  const { blocks: sotBlocks, source: sotSource, saveBlock: saveSotBlock, isSaving: sotSaving } = useSot();
+  const {
+    blocks: sotBlocks,
+    saveBlock: saveSotBlock,
+    isSaving: sotSaving,
+    isLoading: sotLoading,
+    loadError: sotLoadError,
+  } = useSot();
 
   // Workspace draft -------------------------------------
   const [accountDraft, setAccountDraft] = useState<AccountSettings>(account);
@@ -1141,9 +1147,10 @@ export default function Settings() {
 
                   <YourInfoKnowledge
                     blocks={sotBlocks}
-                    source={sotSource}
                     onSaveBlock={saveSotBlock}
                     isSavingBlock={sotSaving}
+                    isLoading={sotLoading}
+                    loadError={sotLoadError}
                   />
                 </div>
               )}
@@ -1519,14 +1526,16 @@ export default function Settings() {
 
 function YourInfoKnowledge({
   blocks,
-  source,
   onSaveBlock,
   isSavingBlock,
+  isLoading,
+  loadError,
 }: {
   blocks: SotBlock[];
-  source: "local" | "server";
   onSaveBlock: (block: SotBlock) => Promise<void>;
   isSavingBlock: boolean;
+  isLoading: boolean;
+  loadError: Error | null;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -1553,16 +1562,34 @@ function YourInfoKnowledge({
       </button>
       {open && (
         <div className="space-y-3 border-t border-[#f1f3f4] px-5 py-5 sm:px-6">
-          {/* Transparent persistence notice. We never claim "saved to
-              server" when the data is only in localStorage; this banner
-              tells the operator exactly where their changes live so a
-              cross-device sync expectation isn't created by accident. */}
-          {source === "local" && (
-            <div className="rounded-md border border-[#fde9c8] bg-[#fef7e0] px-3 py-2 text-[12px] leading-relaxed text-[#7a4f00]">
-              Edits are saved on this device while we wire up sync across browsers and team members. Use a single browser for now and re-enter the same updates anywhere else you sign in.
+          {/* Sync status. SOT lives on the backend now (PUT /source-of-truth);
+              every save is the canonical value for the whole workspace, so
+              we tell the operator exactly that. Saving... shows while a
+              PUT is in flight. A load error is surfaced verbatim so the
+              operator knows the panel is read-only until it recovers. */}
+          {loadError ? (
+            <div
+              role="alert"
+              className="rounded-md border border-[#f6caca] bg-[#fce8e6] px-3 py-2 text-[12px] leading-relaxed text-[#a50e0e]"
+            >
+              Could not load your Agent knowledge from the server: {loadError.message}. Refresh to retry.
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-[12px] leading-relaxed text-[#5f6368]">
+              {isSavingBlock ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#1a73e8]" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <span>Synced across your workspace.</span>
+              )}
             </div>
           )}
-          {blocks.length === 0 ? (
+
+          {isLoading ? (
+            <p className="text-[13px] text-[#9aa0a6]">Loading your Agent knowledge...</p>
+          ) : blocks.length === 0 ? (
             <p className="text-[13px] text-[#9aa0a6]">No knowledge added yet.</p>
           ) : (
             blocks.map((block) => (

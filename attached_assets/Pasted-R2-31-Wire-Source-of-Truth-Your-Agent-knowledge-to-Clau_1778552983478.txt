@@ -1,0 +1,77 @@
+R2-31
+
+Wire Source of Truth / Your Agent knowledge to Claudia #31 backend sync.
+
+Problem:
+SOT editing currently saves only in browser localStorage. That is not acceptable. Claudia #31 added server-side Source of Truth endpoints. Replace local-only persistence with backend sync.
+
+Scope:
+Project 2 dashboard frontend.
+Do not touch backend.
+Do not touch Project 1.
+Do not touch Nr 3.
+
+Backend endpoints:
+GET /api/{tenant}/dashboard/api/source-of-truth
+Response:
+{ "blocks": SotBlock[] }
+
+PUT /api/{tenant}/dashboard/api/source-of-truth
+Body:
+{ "blocks": SotBlock[] }
+
+Response:
+{ "blocks": SotBlock[] }
+
+SotBlock shape:
+{
+  id: string,
+  title: string,
+  content?: string,
+  items?: string[],
+  subsections?: {
+    title: string,
+    content?: string,
+    items?: string[]
+  }[]
+}
+
+Required behavior:
+1. Remove localStorage as the main SOT persistence.
+2. Load SOT from backend on Settings / Your Agent knowledge.
+3. Save edits to backend with PUT.
+4. On save success, update UI with backend canonical response.
+5. If backend GET returns empty blocks, seed existing DEFAULT_SOT once by PUT.
+6. Remove the yellow “saved on this device” warning.
+7. Replace it with synced wording:
+   “Synced across your workspace.”
+8. Show Saving... while PUT is running.
+9. Show clear error if backend rejects save.
+10. Do not fake success if backend save fails.
+11. Keep Edit / Save / Cancel behavior from #28.
+12. No prompt/debug fields visible.
+13. No secrets visible.
+14. Build/typecheck clean.
+
+Acceptance:
+1. Open Settings → Company knowledge → Your Agent knowledge.
+2. Edit Pricing.
+3. Save.
+4. Refresh same browser → change remains.
+5. Open another browser/device or incognito login → change appears there too.
+6. Remove the test change.
+7. Save.
+8. Confirm removal syncs too.
+9. Yellow local-only warning is gone.
+10. UI says synced across workspace.
+11. Build/typecheck clean.
+
+Final report:
+- files changed
+- endpoint paths used
+- localStorage removal behavior
+- seed-on-empty behavior
+- sync status copy
+- build/typecheck result
+- whether Calvin must republish
+- Calvin retest steps

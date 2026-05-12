@@ -465,6 +465,55 @@ export async function unblockConversation(conversationId: string): Promise<void>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Source of Truth (Your Agent knowledge)
+// ---------------------------------------------------------------------------
+
+// We import the SotBlock type only (no runtime symbols) so we don't create a
+// circular runtime dependency between `lib/api.ts` and `data/sot.ts` —
+// `data/sot.ts` calls these two functions; `import type` is erased at build
+// time so the cycle is purely structural and TypeScript handles it cleanly.
+import type { SotBlock } from "@/data/sot";
+
+/**
+ * GET /source-of-truth — canonical knowledge for this workspace.
+ *
+ * Tolerant decoder: accepts the contracted `{ blocks: SotBlock[] }` shape,
+ * a bare array (in case the backend skips the wrapper), or an empty body.
+ * Returning `[]` on an unrecognised shape lets the seed-on-empty path in
+ * `useSot` populate a fresh workspace with `DEFAULT_SOT` instead of
+ * crashing the panel.
+ */
+export async function fetchSourceOfTruth(): Promise<SotBlock[]> {
+  const raw = await apiFetch<unknown>("/source-of-truth");
+  if (raw && typeof raw === "object" && Array.isArray((raw as { blocks?: unknown }).blocks)) {
+    return (raw as { blocks: SotBlock[] }).blocks;
+  }
+  if (Array.isArray(raw)) return raw as SotBlock[];
+  return [];
+}
+
+/**
+ * PUT /source-of-truth — replace the full blocks list. The backend
+ * response is the new canonical value (it may have normalised / trimmed
+ * fields the FE didn't), so we hand it back to the caller verbatim and
+ * the React Query cache adopts it.
+ *
+ * If the response is malformed we fall back to the array we just sent
+ * so the UI doesn't lose the operator's edit on a successful 200.
+ */
+export async function saveSourceOfTruth(blocks: SotBlock[]): Promise<SotBlock[]> {
+  const raw = await apiFetch<unknown>("/source-of-truth", {
+    method: "PUT",
+    body: JSON.stringify({ blocks }),
+  });
+  if (raw && typeof raw === "object" && Array.isArray((raw as { blocks?: unknown }).blocks)) {
+    return (raw as { blocks: SotBlock[] }).blocks;
+  }
+  if (Array.isArray(raw)) return raw as SotBlock[];
+  return blocks;
+}
+
 export async function fetchBlockedSenders(): Promise<BlockedSendersResponse> {
   const raw = await apiFetch<unknown>("/blocked-senders");
   return { conversations: normalizeBlockedSenders(raw) };

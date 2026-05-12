@@ -1,4 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchSourceOfTruth, saveSourceOfTruth } from "@/lib/api";
+import { getClientSlug } from "@/lib/tenant";
 
 export interface SotSubsection {
   title: string;
@@ -14,6 +17,17 @@ export interface SotBlock {
   subsections?: SotSubsection[];
 }
 
+/**
+ * Default Source-of-Truth content. Used in two places:
+ *  1. As the seed PUT to the backend when GET returns an empty list (so
+ *     a fresh tenant starts with the canonical Unboks knowledge base
+ *     instead of a blank panel).
+ *  2. As a render-time fallback while the initial GET is still loading
+ *     so the operator never sees a blank knowledge panel mid-load.
+ *
+ * The backend is the single source of truth once a workspace has any
+ * blocks at all. We never read or write `localStorage` for SOT.
+ */
 export const DEFAULT_SOT: SotBlock[] = [
   {
     id: "core-value",
@@ -65,7 +79,7 @@ export const DEFAULT_SOT: SotBlock[] = [
         ],
       },
       {
-        title: "Hard escalation — behavior",
+        title: "Hard escalation - behavior",
         content: "Your Agent stops and hands the conversation to a human. The human replies directly from the dashboard.",
       },
       {
@@ -208,98 +222,144 @@ export const DEFAULT_SOT: SotBlock[] = [
   },
 ];
 
-const STORAGE_KEY = "unboks_sot";
-
-export function loadSot(): SotBlock[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_SOT;
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_SOT;
-    return parsed as SotBlock[];
-  } catch {
-    return DEFAULT_SOT;
-  }
+// Tenant-scoped query key. If a sign-in or deep link switches tenants
+// mid-session (App.tsx calls setClientSlug for both), the cache must
+// not surface the previous tenant's SOT. Stable for the duration the
+// slug is the same, which is the only window the data is valid.
+function sotQueryKey(slug: string): readonly [string, string] {
+  return ["source-of-truth", slug] as const;
 }
-
-export function saveSotSync(blocks: SotBlock[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(blocks));
-  } catch {
-    // ignore
-  }
-}
-
-/**
- * Persistence shape for the editable Source-of-Truth UI.
- *
- * `source` is intentionally exposed so the UI can be transparent with the
- * operator about *where* the change lives. Today the dashboard has no
- * backend endpoint for SOT (see backend contract notes in the R2-28
- * report), so writes are persisted to `localStorage` and the UI shows a
- * clear "saved on this device" notice rather than faking server-side
- * persistence. When the backend ships the contract documented below,
- * `useSot` is the single swap point: replace the localStorage write with
- * a `PUT /api/unboks/source-of-truth` call and flip `source` to
- * `"server"`.
- *
- * Backend contract needed (frontend-ready):
- *   GET  /api/unboks/source-of-truth  -> { blocks: SotBlock[] }
- *   PUT  /api/unboks/source-of-truth  body { blocks: SotBlock[] }
- *                                     -> { blocks: SotBlock[] }
- *   Auth: same tenant cookie as the rest of the dashboard.
- *   Validation: titles are server-controlled (don't trust client titles
- *   for built-in blocks); content/items/subsections are free-text and
- *   should be length-capped (e.g. 4 KB per field) to stop runaway pastes.
- */
-export type SotSource = "local" | "server";
 
 export interface UseSotResult {
   blocks: SotBlock[];
-  source: SotSource;
   saveBlock: (block: SotBlock) => Promise<void>;
   isSaving: boolean;
+  isLoading: boolean;
+  loadError: Error | null;
 }
 
+/**
+ * Backend-synced Source-of-Truth hook.
+ *
+ * Behaviour:
+ *   - GET /source-of-truth on mount via React Query.
+ *   - If the GET returns an empty array AND we have not already
+ *     attempted a seed in this session, PUT `DEFAULT_SOT` once so the
+ *     workspace lands on the canonical content. Future GETs will return
+ *     whatever the backend stored. The seed-once latch (`seededRef`) is
+ *     intentionally module-instance scoped via a hook ref so React 18
+ *     StrictMode's double-invoke doesn't fire two PUTs.
+ *   - `saveBlock` does a full PUT of the merged blocks list. The backend
+ *     response is treated as canonical and replaces the cached value.
+ *     Errors are re-thrown so the caller can show a toast and keep the
+ *     operator in edit mode with their unsaved changes intact (the
+ *     `SotKnowledgeCard` consumer relies on this throw-on-failure
+ *     contract; do NOT swallow errors here).
+ *
+ * No `localStorage`. No silent fallback. If the backend is unreachable
+ * the panel shows a clear error and Save is disabled until the GET
+ * recovers.
+ */
 export function useSot(): UseSotResult {
-  // Lazy initialiser: read once from localStorage on first render and keep
-  // the hydrated array in React state so subsequent edits show up
-  // immediately without re-reading storage.
-  const [blocks, setBlocks] = useState<SotBlock[]>(() => loadSot());
-  const [isSaving, setIsSaving] = useState(false);
+  const qc = useQueryClient();
+  const seededRef = useRef(false);
+  // Snapshot the slug for the lifetime of this hook instance. App.tsx
+  // remounts the route tree on tenant switch (sign in / deep link), so
+  // a stable per-mount slug is correct and avoids re-keying the query
+  // on every render.
+  const slug = getClientSlug();
+  const queryKey = useMemo(() => sotQueryKey(slug), [slug]);
 
-  const saveBlock = useCallback(async (updated: SotBlock) => {
-    setIsSaving(true);
-    try {
-      // Build the next array with the updated block in place. We never
-      // change block ordering or insert new blocks here — the editor is
-      // strictly an in-place editor for known sections.
-      const next = blocks.map((b) => (b.id === updated.id ? updated : b));
-      // No backend yet — persist locally and surface the failure to the
-      // caller so the UI can show an error state instead of a fake
-      // success. NOTE: we intentionally bypass `saveSotSync` here because
-      // it swallows storage errors for backwards-compat callers; the hook
-      // needs the raw exception so a quota / private-mode failure can be
-      // shown to the operator. When the API ships, swap this for a
-      // `PUT /api/unboks/source-of-truth` and only update local state on
-      // a 2xx.
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch (err) {
-        throw new Error(
-          err instanceof Error
-            ? err.message
-            : "Browser storage refused the write (it may be full or in private mode).",
-        );
-      }
-      // Only mirror the new array into React state after the write
-      // succeeded — on failure we keep the canonical pre-save value so
-      // the read view never shows data that wasn't actually persisted.
-      setBlocks(next);
-    } finally {
-      setIsSaving(false);
+  const query = useQuery({
+    queryKey,
+    queryFn: fetchSourceOfTruth,
+    staleTime: 30_000,
+    retry: 1,
+  });
+
+  const seedMutation = useMutation({
+    mutationFn: () => saveSourceOfTruth(DEFAULT_SOT),
+    onSuccess: (canonical) => {
+      qc.setQueryData<SotBlock[]>(queryKey, canonical);
+    },
+  });
+
+  // One-shot seed when the backend reports an empty workspace. We gate
+  // on `isSuccess` (not just `data`) so a still-loading or errored
+  // initial fetch never trips the seed path. Narrow deps to the
+  // mutation's stable callbacks (not the whole object, which is
+  // re-created every render) so the effect doesn't re-evaluate
+  // needlessly. The `seededRef` latch still belt-and-braces against
+  // React 18 StrictMode double-invoke.
+  const seedMutate = seedMutation.mutate;
+  const seedPending = seedMutation.isPending;
+  useEffect(() => {
+    if (
+      query.isSuccess &&
+      Array.isArray(query.data) &&
+      query.data.length === 0 &&
+      !seededRef.current &&
+      !seedPending
+    ) {
+      seededRef.current = true;
+      seedMutate();
     }
-  }, [blocks]);
+  }, [query.isSuccess, query.data, seedMutate, seedPending]);
 
-  return { blocks, source: "local", saveBlock, isSaving };
+  const saveMutation = useMutation({
+    mutationFn: async (next: SotBlock[]) => saveSourceOfTruth(next),
+    onSuccess: (canonical) => {
+      qc.setQueryData<SotBlock[]>(queryKey, canonical);
+    },
+  });
+
+  // No render-time fallback to DEFAULT_SOT. Earlier we returned
+  // DEFAULT_SOT while `query.isLoading` was true so the panel didn't
+  // flash empty, but that opened a window where Edit/Save could fire
+  // against fallback content with ids the real backend payload doesn't
+  // contain — losing the operator's edit silently or racing the
+  // seed-on-empty PUT. The Settings panel renders a "Loading..." state
+  // while `isLoading` is true (see Settings.tsx YourInfoKnowledge), so
+  // returning `[]` here is safe and removes the foot-gun entirely.
+  const blocks: SotBlock[] = query.data ?? [];
+
+  const saveBlock = useCallback(
+    async (updated: SotBlock) => {
+      // Optimistic merge so two concurrent saves on different cards
+      // don't clobber each other: each call reads the latest cache
+      // snapshot, applies its change, then writes the merged array
+      // back to the cache BEFORE awaiting the PUT. The second save's
+      // snapshot then includes the first's pending change. On success
+      // the backend's canonical response replaces the cache (in
+      // `saveMutation.onSuccess`); on failure we roll back to the
+      // pre-save snapshot so a rejected PUT doesn't leave optimistic
+      // data sitting in the panel.
+      const previous = qc.getQueryData<SotBlock[]>(queryKey) ?? [];
+      const next = previous.map((b) => (b.id === updated.id ? updated : b));
+      qc.setQueryData<SotBlock[]>(queryKey, next);
+      try {
+        // mutateAsync re-throws on failure so the caller
+        // (SotKnowledgeCard) can surface a toast and keep the
+        // operator in edit mode. Do not wrap this in a try/catch that
+        // swallows the error.
+        await saveMutation.mutateAsync(next);
+      } catch (err) {
+        qc.setQueryData<SotBlock[]>(queryKey, previous);
+        throw err;
+      }
+    },
+    [qc, queryKey, saveMutation],
+  );
+
+  return {
+    blocks,
+    saveBlock,
+    isSaving: saveMutation.isPending || seedMutation.isPending,
+    // Treat the in-flight seed PUT as "still loading" too — the cards
+    // would render with stale-empty data otherwise, and we want the
+    // panel to stay in its loading state until the canonical content
+    // is in the cache.
+    isLoading: query.isLoading || seedMutation.isPending,
+    loadError: (query.error as Error) ?? null,
+  };
 }
