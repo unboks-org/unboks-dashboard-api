@@ -18,7 +18,6 @@ import {
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { Switch } from "@/components/ui/switch";
 import { useEmailSettings } from "@/hooks/use-email-settings";
-import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import {
   useEscalationNotificationPrefs,
   type NotifyChannelKey,
@@ -676,7 +675,6 @@ export default function Settings() {
 
   // Hooks (unchanged behaviour) -------------------------
   const { emailClient, setEmailClient } = useEmailSettings();
-  const { label: bookingsLabel, setLabel: setBookingsLabel } = useBookingsLabel();
   const {
     prefs: notifyPrefs,
     save: saveNotifyPrefs,
@@ -799,11 +797,6 @@ export default function Settings() {
     }
   };
 
-  // Labels & Preferences --------------------------------
-  const [customLabel, setCustomLabel] = useState(bookingsLabel);
-  const [labelSaved, setLabelSaved] = useState(false);
-  const labelDirty = customLabel.trim().length > 0 && customLabel.trim() !== bookingsLabel;
-
   // Auto-clear "Saved" flashes
   useEffect(() => {
     if (!accountSaved) return;
@@ -815,12 +808,6 @@ export default function Settings() {
     const t = window.setTimeout(() => setNotifySaved(false), 1800);
     return () => window.clearTimeout(t);
   }, [notifySaved]);
-  useEffect(() => {
-    if (!labelSaved) return;
-    const t = window.setTimeout(() => setLabelSaved(false), 1800);
-    return () => window.clearTimeout(t);
-  }, [labelSaved]);
-
   const currentCategory = CATEGORIES.find((c) => c.id === active) ?? CATEGORIES[0];
 
   return (
@@ -1455,56 +1442,13 @@ export default function Settings() {
 
               {active === "preferences" && (
                 <div className="space-y-5">
-                  <Card
-                    title="Orders label"
-                    description="What this section is called in the sidebar."
-                    footer={
-                      <>
-                        <SavedFlash visible={labelSaved} />
-                        <PrimaryButton
-                          type="button"
-                          disabled={!labelDirty}
-                          onClick={() => {
-                            if (customLabel.trim().length === 0) return;
-                            setBookingsLabel(customLabel);
-                            setLabelSaved(true);
-                          }}
-                        >
-                          Save changes
-                        </PrimaryButton>
-                      </>
-                    }
-                  >
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap gap-2">
-                        {["Bookings", "Orders"].map((opt) => (
-                          <button
-                            key={opt}
-                            type="button"
-                            onClick={() => setCustomLabel(opt)}
-                            className={cn(
-                              "rounded-lg border px-3 py-1.5 text-[13px] font-medium transition-colors",
-                              customLabel.trim() === opt
-                                ? "border-[#1a73e8] bg-[#e8f0fe] text-[#1a73e8]"
-                                : "border-[#dadce0] bg-white text-[#5f6368] hover:bg-[#f6f8fc]",
-                            )}
-                          >
-                            {opt}
-                          </button>
-                        ))}
-                      </div>
-                      <label className="block">
-                        <FieldLabel>Custom label</FieldLabel>
-                        <TextInput
-                          type="text"
-                          value={customLabel}
-                          onChange={(e) => setCustomLabel(e.target.value)}
-                          placeholder="Custom label…"
-                        />
-                      </label>
-                    </div>
-                  </Card>
-
+                  {/* R2-39: the per-device "Bookings / Orders" label
+                      picker was removed. The workspace label is now a
+                      single constant in `use-bookings-label.ts` so the
+                      desktop sidebar and the mobile drawer can never
+                      drift. If tenant-level customisation is needed
+                      later, source the constant from a backend setting
+                      — every consumer already reads from the hook. */}
                   <Card
                     title="Email replies"
                     description="Choose how email replies are opened from the inbox."
