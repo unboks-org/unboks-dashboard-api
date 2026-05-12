@@ -152,6 +152,7 @@ export function useEscalationMutations() {
     qc.invalidateQueries({ queryKey: ["conversations"] });
     qc.invalidateQueries({ queryKey: ["conversation"] });
     qc.invalidateQueries({ queryKey: ["status"] });
+    qc.invalidateQueries({ queryKey: ["learning"] });
   };
 
   const resolve = useMutation({
@@ -295,6 +296,7 @@ export function useEmailReply() {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["conversations"] });
       qc.invalidateQueries({ queryKey: ["conversation", vars.conversationId] });
+      qc.invalidateQueries({ queryKey: ["learning"] });
     },
   });
 }

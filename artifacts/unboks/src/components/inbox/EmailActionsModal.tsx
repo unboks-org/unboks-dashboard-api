@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sparkles } from "lucide-react";
 import { ApiError } from "@/lib/error";
-import { useEmailReply, useEmailForward, useEmailDelete } from "@/hooks/use-client-api";
+import { useConfig, useEmailReply, useEmailForward, useEmailDelete } from "@/hooks/use-client-api";
 import {
   useHiddenConversations,
   collectConversationHideKeys,
@@ -22,6 +22,10 @@ import { toast } from "sonner";
 import type { Conversation } from "@/data/conversations";
 import { cn } from "@/lib/utils";
 import { AIEditorPanel } from "@/components/inbox/AIEditorPanel";
+import {
+  openPendingLearnings,
+  shouldShowInlineLearningConfirmation,
+} from "@/lib/learning-confirmation";
 
 /**
  * Translate any error from the email mutation hooks into calm operator copy.
@@ -66,9 +70,12 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
+  const [learningConfirmationVisible, setLearningConfirmationVisible] = useState(false);
+  const { data: config } = useConfig();
   const reply = useEmailReply();
   const subject = conversation?.subject?.trim() || conversation?.sender || "this email";
   const taRef = useRef<HTMLTextAreaElement | null>(null);
+  const canShowLearningConfirmation = shouldShowInlineLearningConfirmation(config);
 
   // Reset whenever the modal opens for a new conversation.
   useEffect(() => {
@@ -76,6 +83,7 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
       setBody("");
       setError(null);
       setAiOpen(false);
+      setLearningConfirmationVisible(false);
       // focus after the dialog mounts
       requestAnimationFrame(() => taRef.current?.focus());
     }
@@ -92,7 +100,8 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
         conversationId: conversation.conversationKey || conversation.id,
         payload: { body: body.trim(), mode: "direct", attachments: [] },
       });
-      onClose();
+      setBody("");
+      setLearningConfirmationVisible(canShowLearningConfirmation);
     } catch (err) {
       setError(describeError(err));
     }
@@ -175,7 +184,10 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
                 id="email-reply-body"
                 ref={taRef}
                 value={body}
-                onChange={(e) => setBody(e.target.value)}
+                onChange={(e) => {
+                  setBody(e.target.value);
+                  if (learningConfirmationVisible) setLearningConfirmationVisible(false);
+                }}
                 placeholder="Write your reply…"
                 className="box-border block min-h-[140px] w-full max-w-full min-w-0 resize-none text-[14px]"
                 disabled={reply.isPending}
@@ -199,6 +211,21 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
               </button>
               {error && (
                 <p role="alert" className="break-words text-[12px] text-[#c5221f]">{error}</p>
+              )}
+              {learningConfirmationVisible && (
+                <div
+                  role="status"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[#dfe6ee] bg-[#fbfcfe] px-3 py-2 text-[12px] text-[#3c4043]"
+                >
+                  <span>Saved as pending learning for review.</span>
+                  <button
+                    type="button"
+                    onClick={openPendingLearnings}
+                    className="font-medium text-[#1a73e8] hover:underline"
+                  >
+                    View pending learnings
+                  </button>
+                </div>
               )}
             </div>
             <DialogFooter className="flex flex-wrap justify-end gap-2">

@@ -55,11 +55,15 @@ import {
   useState,
 } from "react";
 import { Sparkles, VolumeX, Undo2, Send, Check } from "lucide-react";
-import { useEscalationMutations } from "@/hooks/use-client-api";
+import { useConfig, useEscalationMutations } from "@/hooks/use-client-api";
 import { ApiError } from "@/lib/error";
 import type { Channel } from "@/data/conversations";
 import { cn } from "@/lib/utils";
 import { AIEditorPanel } from "./AIEditorPanel";
+import {
+  openPendingLearnings,
+  shouldShowInlineLearningConfirmation,
+} from "@/lib/learning-confirmation";
 
 const NOT_CONNECTED_STATUSES = new Set([0, 404, 501, 503]);
 
@@ -108,6 +112,7 @@ export const EscalationReplyComposer = forwardRef<
     tone: "info" | "warning" | "error";
     text: string;
   } | null>(null);
+  const [learningConfirmationVisible, setLearningConfirmationVisible] = useState(false);
   // Tracks the combined "Send + resolve" / "Reply + resolve" flow so the
   // primary button can show step-aware loading copy ("Sending..." then
   // "Resolving...") and so we can disable the secondary actions while the
@@ -133,8 +138,10 @@ export const EscalationReplyComposer = forwardRef<
     isSoftRef.current = mode === "soft";
   }, [mode]);
 
+  const { data: config } = useConfig();
   const { guidance, reply, resolve, takeover, handback } = useEscalationMutations();
   const isSoft = mode === "soft";
+  const canShowLearningConfirmation = shouldShowInlineLearningConfirmation(config);
 
   // When the operator toggles soft/hard we deliberately keep `draft` and
   // `prevDraft` so an in-progress message survives the switch. We do reset
@@ -144,6 +151,7 @@ export const EscalationReplyComposer = forwardRef<
   useEffect(() => {
     setAiOpen(false);
     setNotice(null);
+    setLearningConfirmationVisible(false);
   }, [mode]);
   const empty = draft.trim().length === 0;
   const sendPending = isSoft ? guidance.isPending : reply.isPending;
@@ -161,6 +169,7 @@ export const EscalationReplyComposer = forwardRef<
     setPrevDraft(draft);
     setDraft(next);
     setNotice(null);
+    setLearningConfirmationVisible(false);
   };
 
   const onUndo = () => {
@@ -172,6 +181,7 @@ export const EscalationReplyComposer = forwardRef<
   const onSend = () => {
     if (empty || sendPending) return;
     setNotice(null);
+    setLearningConfirmationVisible(false);
     const trimmed = draft.trim();
 
     if (isSoft) {
@@ -184,6 +194,7 @@ export const EscalationReplyComposer = forwardRef<
           onSuccess: () => {
             setDraft("");
             setPrevDraft(null);
+            setLearningConfirmationVisible(canShowLearningConfirmation);
             onDone();
           },
           onError: (err) => {
@@ -213,6 +224,7 @@ export const EscalationReplyComposer = forwardRef<
         onSuccess: () => {
           setDraft("");
           setPrevDraft(null);
+          setLearningConfirmationVisible(canShowLearningConfirmation);
           onDone();
         },
         onError: (err) => {
@@ -256,6 +268,7 @@ export const EscalationReplyComposer = forwardRef<
   const onSendAndResolve = () => {
     if (empty || anyPending) return;
     setNotice(null);
+    setLearningConfirmationVisible(false);
     const trimmed = draft.trim();
 
     const runResolve = () => {
@@ -275,6 +288,7 @@ export const EscalationReplyComposer = forwardRef<
             setCombinedStep(null);
             setDraft("");
             setPrevDraft(null);
+            setLearningConfirmationVisible(canShowLearningConfirmation);
             onDone();
           },
           onError: (err) => {
@@ -536,6 +550,7 @@ export const EscalationReplyComposer = forwardRef<
           onChange={(e) => {
             setDraft(e.target.value);
             if (notice) setNotice(null);
+            if (learningConfirmationVisible) setLearningConfirmationVisible(false);
           }}
           placeholder={placeholder}
           rows={4}
@@ -594,6 +609,22 @@ export const EscalationReplyComposer = forwardRef<
           )}
         >
           {notice.text}
+        </div>
+      )}
+
+      {learningConfirmationVisible && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[#dfe6ee] bg-[#fbfcfe] px-3 py-2 text-[12px] text-[#3c4043]"
+        >
+          <span>Saved as pending learning for review.</span>
+          <button
+            type="button"
+            onClick={openPendingLearnings}
+            className="font-medium text-[#1a73e8] hover:underline"
+          >
+            View pending learnings
+          </button>
         </div>
       )}
 

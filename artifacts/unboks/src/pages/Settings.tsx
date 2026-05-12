@@ -34,6 +34,7 @@ import { DataRetentionSettings } from "@/components/settings/DataRetentionSettin
 import { DisconnectUnboksDanger } from "@/components/settings/DisconnectUnboksDanger";
 import { BlockedSendersList } from "@/components/settings/BlockedSendersList";
 import { useSot, type SotBlock, type SotSubsection } from "@/data/sot";
+import { useLearningEntries } from "@/hooks/use-client-api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +44,7 @@ const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2 MB
 // Matches the same shape used elsewhere (EmailForwardModal) so behaviour
 // is consistent across the app.
 const ALT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PENDING_LEARNING_FOCUS = "pending-learning";
 
 type CategoryId =
   | "workspace"
@@ -664,6 +666,24 @@ function SotBlockEditView({
 
 export default function Settings() {
   const [active, setActive] = useState<CategoryId>("workspace");
+  const [focusPendingLearning, setFocusPendingLearning] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("section") === "your-info") {
+      setActive("your-info");
+    }
+    if (params.get("focus") === PENDING_LEARNING_FOCUS) {
+      setActive("your-info");
+      setFocusPendingLearning(true);
+      window.setTimeout(() => {
+        document.getElementById("agent-learning-pending")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 120);
+    }
+  }, []);
 
   // Hooks (unchanged behaviour) -------------------------
   const { emailClient, setEmailClient } = useEmailSettings();
@@ -681,6 +701,12 @@ export default function Settings() {
   const { isChannelEnabled, toggleChannel } = useEnabledChannels();
   const { settings: account, save: saveAccount } = useAccountSettings();
   const { updates, addUpdate, setActive: setUpdateActive, removeUpdate } = useYourInfoUpdates();
+  const {
+    data: pendingLearnings,
+    isLoading: pendingLearningLoading,
+    isError: pendingLearningError,
+    error: pendingLearningErrorDetail,
+  } = useLearningEntries("suggested");
 
   const {
     blocks: sotBlocks,
@@ -1057,6 +1083,63 @@ export default function Settings() {
                           Save knowledge
                         </PrimaryButton>
                       </div>
+                    </div>
+                  </Card>
+
+                  <Card
+                    title="Agent learning"
+                    description="Pending learnings created from operator replies before your Agent can reuse them."
+                  >
+                    <div
+                      id="agent-learning-pending"
+                      className={cn(
+                        "scroll-mt-6 rounded-xl border p-3",
+                        focusPendingLearning
+                          ? "border-[#cfe2ff] bg-[#f8fbff]"
+                          : "border-[#e8eaed] bg-white",
+                      )}
+                    >
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <p className="text-[13px] font-semibold text-[#202124]">
+                          Pending learnings
+                        </p>
+                        <span className="rounded-full bg-[#f1f3f4] px-2 py-0.5 text-[11px] font-medium text-[#5f6368]">
+                          {pendingLearnings?.length ?? 0}
+                        </span>
+                      </div>
+                      {pendingLearningLoading ? (
+                        <p className="text-[13px] text-[#9aa0a6]">Loading pending learnings...</p>
+                      ) : pendingLearningError ? (
+                        <p role="alert" className="text-[13px] text-[#c5221f]">
+                          Could not load pending learnings
+                          {pendingLearningErrorDetail instanceof Error
+                            ? `: ${pendingLearningErrorDetail.message}`
+                            : "."}
+                        </p>
+                      ) : !pendingLearnings || pendingLearnings.length === 0 ? (
+                        <p className="text-[13px] text-[#9aa0a6]">No pending learnings.</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {pendingLearnings.map((entry) => (
+                            <li
+                              key={entry.id}
+                              className="rounded-lg border border-[#e8eaed] bg-white px-3 py-2"
+                            >
+                              <p className="break-words text-[13px] font-medium text-[#202124]">
+                                {entry.sourceQuestion || "Operator reply"}
+                              </p>
+                              <p className="mt-1 whitespace-pre-wrap break-words text-[12px] text-[#5f6368]">
+                                {entry.humanAnswer}
+                              </p>
+                              {entry.category && (
+                                <p className="mt-2 text-[11px] text-[#9aa0a6]">
+                                  {entry.category}
+                                </p>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   </Card>
 
