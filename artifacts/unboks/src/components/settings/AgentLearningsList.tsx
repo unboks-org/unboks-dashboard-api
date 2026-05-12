@@ -347,7 +347,7 @@ function AgentLearningPrefsCard() {
           <div className="min-w-0">
             <h3 className="text-[15px] font-semibold text-[#1f2937]">Behavior</h3>
             <p className="mt-0.5 text-[12.5px] text-[#5f6368] leading-snug">
-              Control how Unboks learns from operator replies. These settings only affect when pending learnings are created and when the suggestion card appears. Nothing is added to your Agent without your approval.
+              Control how Unboks learns from operator replies. This setting only affects when pending learnings are created. Nothing is added to your Agent without your approval.
             </p>
           </div>
           <SaveStatusBadge
@@ -368,14 +368,6 @@ function AgentLearningPrefsCard() {
             Could not load behaviour settings: {getErrorMessage(error)}
           </p>
         )}
-        <ToggleRow
-          id="show-suggestion-after-replies"
-          title="Show learning suggestion after replies"
-          description="When on, Unboks shows a Suggested Learning card after operator replies when the answer may be reusable."
-          checked={value.showSuggestionAfterReplies}
-          disabled={togglesDisabled}
-          onChange={(next) => update({ showSuggestionAfterReplies: next })}
-        />
         <ToggleRow
           id="create-pending-learning-from-operator-replies"
           title="Create pending learning from operator replies"

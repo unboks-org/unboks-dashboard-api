@@ -694,10 +694,9 @@ function categoryFromSearch(search: string): CategoryId | null {
 }
 
 export default function Settings() {
-  // R2-37 (Sonia #37, item 11): Settings supports `?category=<id>` deep
-  // links so other surfaces (e.g. SuggestedLearningCard's "View all
-  // pending learnings" link) can jump straight to the right tab. URL is
-  // the source of truth: clicks update the URL, the URL drives `active`.
+  // Settings supports `?category=<id>` deep links so other surfaces
+  // can jump straight to the right tab. URL is the source of truth:
+  // clicks update the URL, the URL drives `active`.
   const [, navigate] = useLocation();
   const search = useSearch();
   const urlCategory = categoryFromSearch(search);

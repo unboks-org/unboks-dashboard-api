@@ -54,14 +54,12 @@ import { toast } from "sonner";
 import type { ApiMessage, ConversationDetail } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { EscalationReplyComposer } from "@/components/inbox/EscalationReplyComposer";
-import { SuggestedLearningCard } from "@/components/inbox/SuggestedLearningCard";
 import {
   useEscalationLearningMutations,
   useAgentLearningPrefs,
 } from "@/hooks/use-client-api";
 import { DEFAULT_AGENT_LEARNING_PREFS } from "@/lib/api";
 import { useDashboardIdentity } from "@/hooks/use-dashboard-identity";
-import type { EscalationLearning } from "@/lib/api";
 import { BlockSenderModal } from "@/components/inbox/BlockSenderModal";
 import { useBlockedLookup } from "@/hooks/use-blocked-senders";
 import {
@@ -373,9 +371,8 @@ function ConversationDetailPane({
   // parent's filter state doesn't propagate cleanly (e.g. stale closure or
   // re-render timing). Both paths must agree before treating as active.
   const resolvedContext = resolvedContextProp || Boolean(conversation.resolvedEscalation);
-  // R2-37 (Sonia #37, item 11): we deep-link from SuggestedLearningCard
-  // to Settings → Agent learnings → Pending. wouter's useLocation gives
-  // us the navigator for that.
+  // wouter navigator — used for in-pane links to other dashboard
+  // surfaces (e.g. Settings → Agent learnings).
   const [, navigate] = useLocation();
   const { data: detail, isLoading, isError, error } = useConversation(conversation.id);
   const badgeColor = CHANNEL_BADGE_COLORS[conversation.channel] ?? "#9aa0a6";
@@ -464,22 +461,22 @@ function ConversationDetailPane({
   // existing mutation paths.
   const composerRef = useRef<EscalationReplyComposerHandle | null>(null);
 
-  // ----- Suggested learning flow (R2-32 / R2-34, Claudia #32) -----
+  // ----- Suggested learning flow (R2-32 / R2-34 / R2-42) -----
   //
-  // After Send / Send & Resolve / Resolve produces a non-empty answer,
-  // we POST it to /escalations/{id}/suggest-learning to create a pending
-  // learning candidate, then mount SuggestedLearningCard so the operator
-  // can Approve, Edit, or Dismiss it before the conversation closes.
+  // After Send / Send & Resolve / Resolve produces a non-empty answer
+  // AND the operator has opted in via Settings → Agent learnings →
+  // "Create pending learning from operator replies", we POST it to
+  // /escalations/{id}/suggest-learning to create a Pending row. The
+  // operator reviews / approves / dismisses it later from Settings.
+  //
+  // R2-42 removed all post-reply confirmation UI. The composer now
+  // closes normally on every path; the only visible signal that a row
+  // was created is its appearance in Settings → Agent learnings →
+  // Pending. No modal, no toast, no inline message.
+  //
   // For Resolve with no draft (or Takeover / Handback), the composer
-  // calls onDone with no ctx and we close immediately without prompting.
-  const [pendingLearning, setPendingLearning] =
-    useState<EscalationLearning | null>(null);
-  // Reset any in-flight suggestion when the operator navigates to a
-  // different conversation; otherwise a stale modal could appear over a
-  // new escalation.
-  useEffect(() => {
-    setPendingLearning(null);
-  }, [conversation.id]);
+  // calls onDone with no ctx and we close immediately without
+  // attempting to learn.
   const { suggest: suggestLearning } = useEscalationLearningMutations();
   const { identity } = useDashboardIdentity();
   const { data: learningPrefs } = useAgentLearningPrefs();
@@ -491,24 +488,9 @@ function ConversationDetailPane({
         onClose();
         return;
       }
-      // R2-35: respect the tenant-scoped behaviour toggles from
-      // Settings → Agent learnings (Claudia #35 backend).
-      //
-      //   createPendingLearningFromOperatorReplies = false
-      //     → never POST suggest-learning, never create a pending row,
-      //       close immediately. The reply still went to the customer;
-      //       the Agent simply does not learn from it.
-      //
-      //   showSuggestionAfterReplies = false
-      //     → still POST suggest-learning so the row exists in
-      //       Settings → Agent learnings → Pending for later review,
-      //       but skip the modal so the operator's flow is not
-      //       interrupted.
-      //
-      // Defaults are { showSuggestionAfterReplies: true,
-      //                createPendingLearningFromOperatorReplies: false }
-      // — used only as a fallback if the GET hasn't resolved yet.
-      // Critical rule: nothing here ever auto-approves a learning.
+      // Honour the tenant-scoped toggle. When OFF, never POST
+      // suggest-learning; the reply still went to the customer, the
+      // Agent simply does not learn from it.
       const prefs = learningPrefs ?? DEFAULT_AGENT_LEARNING_PREFS;
       if (!prefs.createPendingLearningFromOperatorReplies) {
         onClose();
@@ -517,76 +499,28 @@ function ConversationDetailPane({
       // Build the source-question payload from the latest customer
       // (role === "user") inbound message — same heuristic as
       // LatestCustomerMessagePreview, so the operator sees consistent
-      // context across the pane and the modal.
+      // context across the pane and the Pending row.
       const lastInbound = [...messages]
         .reverse()
         .find((m) => m.role === "user");
       const sourceQuestion = lastInbound?.content ?? "";
 
-      suggestLearning.mutate(
-        {
-          escalationId: dbId,
-          payload: {
-            suggestedText: ctx.sentText,
-            sourceQuestion,
-            channel: conversation.channel,
-            operator: identity,
-          },
+      // Fire-and-forget: the suggest mutation runs in the background
+      // and React Query invalidates the escalation-learnings cache on
+      // success, so the Pending tab will pick up the new row on next
+      // mount. We close the composer immediately either way — the
+      // operator's reply has already been delivered. No confirmation
+      // UI by design (R2-42).
+      suggestLearning.mutate({
+        escalationId: dbId,
+        payload: {
+          suggestedText: ctx.sentText,
+          sourceQuestion,
+          channel: conversation.channel,
+          operator: identity,
         },
-        {
-          onSuccess: (created) => {
-            // R2-37 fix (Sonia): when showSuggestionAfterReplies = ON,
-            // the operator must see visible confirmation. The R2-32/34
-            // modal mounts inside ConversationDetailPane, so on
-            // Send & Resolve (and any other path that resolves the
-            // escalation and removes it from the active list) the pane
-            // unmounts before the modal can render and the operator
-            // saw nothing — the original Sonia #37 partial-pass bug.
-            //
-            // Fix: emit a sonner toast with a "View pending learnings"
-            // action. Toasts mount at the page root via App.tsx's
-            // <Toaster>, so they survive any pane unmount. Also still
-            // set pendingLearning so the inline modal appears as a
-            // bonus when the pane is still mounted (e.g. plain Send on
-            // a not-yet-resolved escalation), preserving the inline
-            // Approve / Edit / Dismiss UX from R2-32/R2-34.
-            //
-            // When showSuggestionAfterReplies = OFF, the row still
-            // exists on the server (per the other toggle) but no
-            // visible UI fires — operator opted out of post-reply
-            // prompts.
-            if (prefs.showSuggestionAfterReplies) {
-              toast.success("Reply sent. Saved as pending learning for review.", {
-                action: {
-                  label: "View pending learnings",
-                  onClick: () => navigate("/settings?category=agent-learnings"),
-                },
-              });
-              setPendingLearning(created);
-            } else {
-              onClose();
-            }
-          },
-          onError: (err) => {
-            // R2-37 (Sonia #37, item 14 — honest errors): the reply to
-            // the customer already succeeded, but creating the pending
-            // learning row failed. Never block the close, but tell the
-            // operator the truth so they don't think a learning was
-            // saved when it wasn't. The Settings "Agent learnings" tab
-            // will also surface backend issues when re-fetched.
-            const msg =
-              err instanceof ApiError
-                ? err.message
-                : err instanceof Error
-                ? err.message
-                : "Couldn't save as pending learning.";
-            toast.error("Reply sent, but pending learning was not saved.", {
-              description: msg,
-            });
-            onClose();
-          },
-        },
-      );
+      });
+      onClose();
     },
     [
       dbId,
@@ -596,7 +530,6 @@ function ConversationDetailPane({
       onClose,
       suggestLearning,
       learningPrefs,
-      navigate,
     ],
   );
 
@@ -854,34 +787,8 @@ function ConversationDetailPane({
             />
           )}
 
-          {/* Suggested-learning modal (R2-32 / R2-34). Mounted only after
-              a Send / Send & Resolve / Resolve produces teachable text.
-              While it's open, we deliberately do NOT close the
-              conversation pane — the operator must explicitly Approve,
-              Edit + Save, or Dismiss the suggestion (or close the modal,
-              which leaves the row in pending so they can revisit it
-              later in Settings). */}
-          {pendingLearning && (
-            <SuggestedLearningCard
-              learning={pendingLearning}
-              onDone={() => {
-                setPendingLearning(null);
-                onClose();
-              }}
-              onViewAllPending={() => {
-                // R2-37 (Sonia #37, item 11): operator wants to see
-                // the full Pending list. Close this modal + the
-                // conversation pane and deep-link to Settings →
-                // Agent learnings → Pending. The pending row this
-                // modal was built from is already on the server, so
-                // no work is lost — Settings re-fetches the list on
-                // mount.
-                setPendingLearning(null);
-                onClose();
-                navigate("/settings?category=agent-learnings");
-              }}
-            />
-          )}
+          {/* R2-42: post-reply suggested-learning modal removed. Pending
+              rows are reviewed in Settings → Agent learnings → Pending. */}
 
           {/* Conversation trail — collapsed by default. The translation
               provider lives inside so its bar appears only when the
