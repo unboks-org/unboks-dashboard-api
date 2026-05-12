@@ -19,9 +19,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => Boolean(getToken()),
   );
 
-  // Register global 401 handler
+  // Register global 401 handler. Mirrors `ProtectedRoute`: capture the
+  // current router-relative path so the post-login bounce returns the
+  // operator to the page they were on (Appointments / Escalations /
+  // Settings) instead of dumping them on Inbox after a session-expired
+  // refresh.
   useEffect(() => {
     registerUnauthorizedHandler(() => {
+      try {
+        const here = window.location.pathname + window.location.search;
+        const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+        const inner =
+          base && here.startsWith(base) ? here.slice(base.length) || "/" : here;
+        if (!inner.startsWith("/login")) {
+          sessionStorage.setItem(LOGIN_REDIRECT_STORAGE_KEY, inner);
+        }
+      } catch {
+        // sessionStorage may be unavailable; missed redirect just means
+        // the operator lands on "/" after sign-in.
+      }
       setIsAuthenticated(false);
       toast.error("Session expired. Please sign in again.");
       navigate("/login");

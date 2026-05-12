@@ -39,8 +39,13 @@ class AppErrorBoundary extends Component<
           </pre>
           <button
             onClick={() => {
+              // Reload the current URL so the operator stays on the page they
+              // were on (Appointments / Escalations / Settings). Forcing
+              // `href = "/"` would dump every crash recovery back to Inbox,
+              // which is exactly the "after reset/refresh I lose my page"
+              // bug operators reported.
               this.setState({ error: null });
-              window.location.href = "/";
+              window.location.reload();
             }}
             style={{ marginTop: 16, padding: "8px 16px", background: "#1a73e8", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 14 }}
           >

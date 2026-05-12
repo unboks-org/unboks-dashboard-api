@@ -1,6 +1,11 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { useLocation } from "wouter";
-import { DashboardShell, PENDING_NAV_KEY } from "@/components/inbox/DashboardShell";
+import { useLocation, useSearch } from "wouter";
+import {
+  DashboardShell,
+  inboxContextUrl,
+  navIdFromInboxUrl,
+  PENDING_NAV_KEY,
+} from "@/components/inbox/DashboardShell";
 import { MessageRow } from "@/components/inbox/MessageRow";
 import type { Channel, Conversation } from "@/data/conversations";
 import {
@@ -876,12 +881,36 @@ function ConversationThreadBody({
 // ---------------------------------------------------------------------------
 
 export default function Inbox() {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  const search = useSearch();
+  const { isChannelEnabled } = useEnabledChannels();
   const [searchQuery, setSearchQueryState] = useState("");
-  const [activeNav, setActiveNavState] = useState<NavId>("inbox");
+  // activeNav is derived from the URL — that's how a refresh / crash
+  // recovery / 401 bounce restores the same view (Inbox / Escalations
+  // / channel filter) instead of dumping the operator on Inbox.
+  const [activeNav, setActiveNavState] = useState<NavId>(() =>
+    navIdFromInboxUrl(
+      typeof window !== "undefined" ? window.location.pathname.replace(
+        (import.meta.env.BASE_URL || "/").replace(/\/$/, ""),
+        "",
+      ) || "/" : "/",
+      typeof window !== "undefined" ? window.location.search : "",
+      isChannelEnabled,
+    ),
+  );
+
+  // Keep activeNav in lockstep with the URL: every navigate(...) the
+  // sidebar (or Inbox.handleNavSelect) makes updates the URL, this
+  // effect syncs local state, and the rendered view follows. Browser
+  // back/forward also "just works" — same path = same view.
+  useEffect(() => {
+    setActiveNavState((prev) => {
+      const next = navIdFromInboxUrl(location, search, isChannelEnabled);
+      return prev === next ? prev : next;
+    });
+  }, [location, search, isChannelEnabled]);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
   const [escalationFilter, setEscalationFilter] = useState<"all" | "soft" | "hard" | "resolved">("all");
-  const { isChannelEnabled } = useEnabledChannels();
 
   // Email-only persistent row actions. All three open dedicated modals
   // that call the real backend endpoints:
@@ -1029,21 +1058,25 @@ export default function Inbox() {
       .filter((c) => !isRowHidden(collectConversationHideKeys(c)));
   }, [rawResolvedEscalations, allConversations, isRowHidden]);
 
-  // Stable handler. Always updates local filter state for inbox-context ids,
-  // even when the route is already "/" (channel ↔ channel switches, or
-  // re-clicking the same channel). Functional setters avoid any reliance on
-  // a stale closure value.
+  // Stable handler. Inbox-context navigation now writes to the URL via
+  // `inboxContextUrl(id)` so a refresh / crash-recovery / 401 bounce
+  // restores the same view. The URL→activeNav effect above does the
+  // actual state update; here we only clear transient UI state
+  // (selected conversation + search box) so a channel switch feels
+  // like a fresh view.
   const handleNavSelect = useCallback((id: NavId) => {
     const externalRoute = EXTERNAL_ROUTES[id];
     if (externalRoute) {
       navigate(externalRoute);
       return;
     }
-    // Inbox / Escalations / channel:* — always reset local state.
-    setActiveNavState(() => id);
+    // Inbox / Escalations / channel:*: navigate to the canonical URL.
+    const target = inboxContextUrl(id);
+    const here = location + (search ? `?${search}` : "");
+    if (here !== target) navigate(target);
     setSearchQueryState(() => "");
     setSelectedConv(() => null);
-  }, [navigate]);
+  }, [navigate, location, search]);
 
   // Deep-link support for the Appointments page (and any future surface
   // that wants to open a specific conversation). Reading `?c=<key>` once
@@ -1101,9 +1134,9 @@ export default function Inbox() {
     }
     if (deepLink.kind !== "escalation") return;
 
-    // Tab switch: do this even when there's no id, so /escalations or
-    // ?view=escalations alone still lands on the Escalations list.
-    setActiveNavState((cur) => (cur === "escalations" ? cur : "escalations"));
+    // Tab switch is handled by the URL→activeNav effect above:
+    // /escalations and ?view=escalations alone resolve to "escalations"
+    // without any explicit setState call here.
 
     if (!deepLink.id) {
       // No id to resolve — clean up query fallback markers and bail.
@@ -1153,8 +1186,10 @@ export default function Inbox() {
     navigate,
   ]);
 
-  // Consume any cross-route nav intent parked by DashboardShell when the user
-  // clicked a channel/escalations item from Bookings/Analytics/Settings.
+  // Drain any leftover legacy PENDING_NAV_KEY parked by the previous
+  // build (sessionStorage entries from before nav became URL-driven).
+  // Translates the parked intent into a navigation, then clears the key
+  // so the next mount can't re-fire it.
   useEffect(() => {
     let pending: string | null = null;
     try {
@@ -1169,11 +1204,14 @@ export default function Inbox() {
       pending === "escalations" ||
       pending.startsWith("channel:")
     ) {
-      setActiveNavState(() => pending as NavId);
-      setSearchQueryState(() => "");
-      setSelectedConv(() => null);
+      const target = inboxContextUrl(pending as NavId);
+      const here = window.location.pathname + window.location.search;
+      const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+      const inner =
+        base && here.startsWith(base) ? here.slice(base.length) || "/" : here;
+      if (inner !== target) navigate(target);
     }
-  }, []);
+  }, [navigate]);
 
   const activeChannel: Channel | null = useMemo(() => {
     if (activeNav.startsWith("channel:")) return activeNav.split(":")[1] as Channel;

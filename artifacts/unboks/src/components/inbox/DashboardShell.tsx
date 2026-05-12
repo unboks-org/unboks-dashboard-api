@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback, ReactNode } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Header } from "@/components/inbox/Header";
 import { Drawer, NavId } from "@/components/inbox/Drawer";
-import type { Channel, Conversation } from "@/data/conversations";
+import { Channel, Conversation } from "@/data/conversations";
 import { useConversations, useEscalations } from "@/hooks/use-client-api";
 import { mapApiConversation, normalizeEscalation } from "@/lib/conversation-mapper";
 import { dedupeEscalations } from "@/lib/dedupe-escalations";
@@ -23,18 +23,77 @@ const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   analytics: "/analytics",
 };
 
-/** Inbox-context nav ids — they all live on "/" and are filtered locally. */
+/** Inbox-context nav ids — they all live on the Inbox surface (path "/"
+ *  or "/escalations") and the channel filter is encoded as `?channel=X`
+ *  so the URL — not local state — is the source of truth for which view
+ *  the operator is on. This is what makes refresh / crash-recovery /
+ *  post-login bounce land back on the same view rather than dumping the
+ *  operator to Inbox. */
 function isInboxContext(id: NavId): boolean {
   return id === "inbox" || id === "escalations" || id.startsWith("channel:");
 }
 
 /**
- * Cross-route nav intent. When the user clicks an inbox-context item from a
- * non-Inbox page (Bookings/Analytics/Settings), we navigate to "/" but the
- * Inbox page is not mounted yet, so calling onNavSelect is a no-op. We park
- * the intent in sessionStorage and Inbox consumes it on mount.
+ * Legacy cross-route nav intent. Inbox-context navigation is now URL-driven
+ * (see `inboxContextUrl` below) so this key is no longer written by the
+ * sidebar. Exported only so Inbox can drain any leftover value parked by
+ * a previous build, then it can be retired entirely.
  */
 export const PENDING_NAV_KEY = "unboks:pending-nav";
+
+/**
+ * Canonical URL for an inbox-context nav id. Used by both DashboardShell
+ * (sidebar clicks) and Inbox (in-page nav handler) so navigation always
+ * updates the URL — that's how a refresh restores the same view.
+ *
+ *   inbox          → /
+ *   escalations    → /escalations
+ *   channel:Email  → /?channel=Email
+ */
+export function inboxContextUrl(id: NavId): string {
+  if (id === "escalations") return "/escalations";
+  if (id.startsWith("channel:")) {
+    const ch = id.slice("channel:".length);
+    return `/?channel=${encodeURIComponent(ch)}`;
+  }
+  return "/";
+}
+
+/** Inverse of `inboxContextUrl`: derive the active nav id from the
+ *  current router-relative path + search string. Falls back to "inbox"
+ *  for unknown shapes. Kept here next to `inboxContextUrl` so the two
+ *  can never drift. */
+export function navIdFromInboxUrl(
+  pathname: string,
+  search: string,
+  isChannelEnabled: (ch: Channel) => boolean,
+): NavId {
+  if (pathname.startsWith("/escalations")) return "escalations";
+  if (pathname === "/" || pathname === "") {
+    try {
+      const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+      // Legacy query-string deep links from older alert email templates
+      // and hand-crafted bookmarks: `?view=escalations` (and the
+      // `?escalationId=...` shortcut) must still land on the
+      // Escalations tab. The deep-link effect in Inbox handles the
+      // row-open + query strip; here we only need the tab.
+      if (params.get("view") === "escalations" || params.get("escalationId")) {
+        return "escalations";
+      }
+      const ch = params.get("channel");
+      if (ch) {
+        const cap = ch as Channel;
+        // Only honour channels the workspace currently exposes — a stale
+        // bookmark to a disabled channel falls back to Inbox.
+        if (isChannelEnabled(cap)) return `channel:${cap}` as NavId;
+      }
+    } catch {
+      // ignore — fall through to inbox
+    }
+    return "inbox";
+  }
+  return "inbox";
+}
 
 interface DashboardShellProps {
   activeNav: NavId;
@@ -70,6 +129,7 @@ export function DashboardShell({
   children,
 }: DashboardShellProps) {
   const [location, navigate] = useLocation();
+  const search = useSearch();
   const { logout } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -195,22 +255,16 @@ export function DashboardShell({
         return;
       }
 
-      // Inbox-context (inbox / escalations / channel:*): all live on "/".
-      // Make sure we land on "/" first so the Inbox page is mounted, THEN
-      // unconditionally notify the page so it always updates its local
-      // filter state — even when re-clicking the same channel or switching
-      // back and forth between channels (no route change in that case).
+      // Inbox-context (inbox / escalations / channel:*): always navigate
+      // to the canonical URL so the URL is the source of truth for which
+      // view the operator is on. A refresh / crash-recovery / 401 bounce
+      // can then restore exactly the same view from the URL — instead of
+      // dumping the operator to Inbox the way the previous "park intent
+      // in sessionStorage" approach did.
       if (isInboxContext(id)) {
-        if (location !== "/") {
-          // Park the intent so Inbox can apply it on mount (since
-          // onNavSelect on the current page may not be wired).
-          try {
-            sessionStorage.setItem(PENDING_NAV_KEY, id);
-          } catch {
-            // sessionStorage unavailable — fall back to onNavSelect only.
-          }
-          navigate("/");
-        }
+        const target = inboxContextUrl(id);
+        const here = location + (search ? `?${search}` : "");
+        if (here !== target) navigate(target);
         onNavSelect?.(id);
         return;
       }
@@ -218,7 +272,7 @@ export function DashboardShell({
       // Fallback (shouldn't happen): just notify.
       onNavSelect?.(id);
     },
-    [location, navigate, onNavSelect],
+    [location, search, navigate, onNavSelect],
   );
 
   return (
