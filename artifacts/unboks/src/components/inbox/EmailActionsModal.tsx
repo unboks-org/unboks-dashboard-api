@@ -101,7 +101,11 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
         payload: { body: body.trim(), mode: "direct", attachments: [] },
       });
       setBody("");
-      setLearningConfirmationVisible(canShowLearningConfirmation);
+      if (canShowLearningConfirmation) {
+        setLearningConfirmationVisible(true);
+      } else {
+        onClose();
+      }
     } catch (err) {
       setError(describeError(err));
     }

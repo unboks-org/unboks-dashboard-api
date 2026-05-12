@@ -194,8 +194,7 @@ export const EscalationReplyComposer = forwardRef<
           onSuccess: () => {
             setDraft("");
             setPrevDraft(null);
-            setLearningConfirmationVisible(canShowLearningConfirmation);
-            onDone();
+            showLearningConfirmationOrFinish();
           },
           onError: (err) => {
             if (isNotConnected(err)) {
@@ -224,8 +223,7 @@ export const EscalationReplyComposer = forwardRef<
         onSuccess: () => {
           setDraft("");
           setPrevDraft(null);
-          setLearningConfirmationVisible(canShowLearningConfirmation);
-          onDone();
+          showLearningConfirmationOrFinish();
         },
         onError: (err) => {
           if (isNotConnected(err)) {
@@ -288,8 +286,7 @@ export const EscalationReplyComposer = forwardRef<
             setCombinedStep(null);
             setDraft("");
             setPrevDraft(null);
-            setLearningConfirmationVisible(canShowLearningConfirmation);
-            onDone();
+            showLearningConfirmationOrFinish();
           },
           onError: (err) => {
             setCombinedStep(null);
@@ -512,6 +509,14 @@ export const EscalationReplyComposer = forwardRef<
     ? "Example: Confirm Sunday at 08:00 and ask the customer to confirm their phone number."
     : "Write your reply...";
   const sendLabel = isSoft ? "Send to Agent" : "Reply to customer";
+
+  const showLearningConfirmationOrFinish = () => {
+    if (canShowLearningConfirmation) {
+      setLearningConfirmationVisible(true);
+      return;
+    }
+    onDone();
+  };
 
   return (
     <div
