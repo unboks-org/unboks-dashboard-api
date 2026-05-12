@@ -22,7 +22,10 @@ import { Sparkles, Loader2, Check, Pencil, X } from "lucide-react";
 import {
   useEscalationLearnings,
   useEscalationLearningMutations,
+  useAgentLearningPrefs,
+  useAgentLearningPrefsMutation,
 } from "@/hooks/use-client-api";
+import type { AgentLearningPrefs } from "@/lib/api";
 import { useDashboardIdentity } from "@/hooks/use-dashboard-identity";
 import { ApiError } from "@/lib/error";
 import type { EscalationLearning, EscalationLearningStatus } from "@/lib/api";
@@ -308,6 +311,109 @@ function ReadOnlyRow({ entry }: { entry: EscalationLearning }) {
   );
 }
 
+/**
+ * Behavior toggles for the suggested-learning flow.
+ *
+ * Both toggles default ON, which is the behaviour shipped in R2-34.
+ * Critical rule: neither toggle ever auto-approves a learning. The
+ * "automatic" path here means "create a row in PENDING for review",
+ * never "add to live Agent knowledge".
+ */
+function AgentLearningPrefsCard() {
+  const { data: prefs, isLoading: loadingPrefs } = useAgentLearningPrefs();
+  const mutation = useAgentLearningPrefsMutation();
+
+  const value: AgentLearningPrefs = prefs ?? {
+    showSuggestionAfterReply: true,
+    createPendingFromReplies: true,
+  };
+
+  const update = (patch: Partial<AgentLearningPrefs>) => {
+    if (mutation.isPending) return;
+    mutation.mutate({ ...value, ...patch });
+  };
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-[#e8eaed] bg-white">
+      <header className="px-4 sm:px-5 pt-4 pb-3 border-b border-[#e8eaed]">
+        <h3 className="text-[15px] font-semibold text-[#1f2937]">Behavior</h3>
+        <p className="mt-0.5 text-[12.5px] text-[#5f6368] leading-snug">
+          Control how Unboks learns from operator replies. These settings only affect when pending learnings are created and when the suggestion card appears. Nothing is added to your Agent without your approval.
+        </p>
+      </header>
+
+      <div className="px-4 sm:px-5 py-4 space-y-4">
+        <ToggleRow
+          id="show-suggestion-after-reply"
+          title="Show learning suggestion after replies"
+          description="When on, Unboks shows a Suggested Learning card after operator replies when the answer may be reusable."
+          checked={value.showSuggestionAfterReply}
+          disabled={loadingPrefs || mutation.isPending}
+          onChange={(next) => update({ showSuggestionAfterReply: next })}
+        />
+        <ToggleRow
+          id="create-pending-from-replies"
+          title="Create pending learning from operator replies"
+          description="When on, operator replies are saved as pending learnings for review. They are not used by the Agent until approved."
+          checked={value.createPendingFromReplies}
+          disabled={loadingPrefs || mutation.isPending}
+          onChange={(next) => update({ createPendingFromReplies: next })}
+        />
+        {mutation.isError && (
+          <p role="alert" className="text-[12.5px] text-[#5f1414] bg-[#fce8e6] border border-[#f6c6c2] rounded-md px-2.5 py-2">
+            {getErrorMessage(mutation.error)}
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+interface ToggleRowProps {
+  id: string;
+  title: string;
+  description: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (next: boolean) => void;
+}
+
+function ToggleRow({ id, title, description, checked, disabled, onChange }: ToggleRowProps) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0">
+        <label htmlFor={id} className="block text-[13.5px] font-medium text-[#1f2937] cursor-pointer">
+          {title}
+        </label>
+        <p className="mt-0.5 text-[12.5px] text-[#5f6368] leading-snug">{description}</p>
+      </div>
+      <button
+        id={id}
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={title}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+        className={cn(
+          "relative inline-flex h-[22px] w-[38px] flex-shrink-0 items-center rounded-full transition-colors mt-0.5",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-1",
+          checked ? "bg-[#1a73e8]" : "bg-[#dadce0]",
+          disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer",
+        )}
+      >
+        <span
+          aria-hidden="true"
+          className={cn(
+            "inline-block h-[18px] w-[18px] transform rounded-full bg-white shadow transition-transform",
+            checked ? "translate-x-[18px]" : "translate-x-[2px]",
+          )}
+        />
+      </button>
+    </div>
+  );
+}
+
 export function AgentLearningsList() {
   const [tab, setTab] = useState<EscalationLearningStatus>("pending");
   const { data, isLoading, isError, error } = useEscalationLearnings(tab);
@@ -315,7 +421,10 @@ export function AgentLearningsList() {
   const entries = data ?? [];
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-[#e8eaed] bg-white">
+    <div className="space-y-5">
+      <AgentLearningPrefsCard />
+
+      <section className="overflow-hidden rounded-2xl border border-[#e8eaed] bg-white">
       <header className="px-4 sm:px-5 pt-4 pb-3 border-b border-[#e8eaed]">
         <div className="flex items-start gap-2">
           <span aria-hidden="true" className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#f0f6ff] text-[#1a73e8] flex-shrink-0">
@@ -383,6 +492,7 @@ export function AgentLearningsList() {
           </ul>
         )}
       </div>
-    </section>
+      </section>
+    </div>
   );
 }

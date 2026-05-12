@@ -55,7 +55,10 @@ import type { ApiMessage, ConversationDetail } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { EscalationReplyComposer } from "@/components/inbox/EscalationReplyComposer";
 import { SuggestedLearningCard } from "@/components/inbox/SuggestedLearningCard";
-import { useEscalationLearningMutations } from "@/hooks/use-client-api";
+import {
+  useEscalationLearningMutations,
+  useAgentLearningPrefs,
+} from "@/hooks/use-client-api";
 import { useDashboardIdentity } from "@/hooks/use-dashboard-identity";
 import type { EscalationLearning } from "@/lib/api";
 import { BlockSenderModal } from "@/components/inbox/BlockSenderModal";
@@ -474,11 +477,35 @@ function ConversationDetailPane({
   }, [conversation.id]);
   const { suggest: suggestLearning } = useEscalationLearningMutations();
   const { identity } = useDashboardIdentity();
+  const { data: learningPrefs } = useAgentLearningPrefs();
   const handleComposerDone = useCallback(
     (ctx?: EscalationDoneContext) => {
       // No teachable text → close immediately. This covers Takeover,
       // Handback, and bare Resolve with no draft.
       if (!ctx || !ctx.sentText || !dbId) {
+        onClose();
+        return;
+      }
+      // R2-34 follow-up: respect tenant toggles.
+      //
+      // Toggle 2 (createPendingFromReplies) OFF
+      //   → never POST suggest-learning, never create a pending row,
+      //     close immediately. The reply still went to the customer;
+      //     the Agent simply does not learn from it.
+      //
+      // Toggle 1 (showSuggestionAfterReply) OFF
+      //   → still POST suggest-learning so the row exists in
+      //     Settings → Agent learnings → Pending for later review,
+      //     but skip the modal so the operator's flow isn't
+      //     interrupted. Closes immediately after the POST starts.
+      //
+      // Defaults are both ON (R2-34 baseline behaviour preserved).
+      // Critical rule: nothing here ever auto-approves a learning.
+      const prefs = learningPrefs ?? {
+        showSuggestionAfterReply: true,
+        createPendingFromReplies: true,
+      };
+      if (!prefs.createPendingFromReplies) {
         onClose();
         return;
       }
@@ -502,7 +529,17 @@ function ConversationDetailPane({
           },
         },
         {
-          onSuccess: (created) => setPendingLearning(created),
+          onSuccess: (created) => {
+            // Honour Toggle 1: when "Show learning suggestion after
+            // replies" is OFF, the row was created (per Toggle 2 ON)
+            // but the operator does NOT see the modal — it sits in
+            // Settings → Pending for later review.
+            if (prefs.showSuggestionAfterReply) {
+              setPendingLearning(created);
+            } else {
+              onClose();
+            }
+          },
           onError: () => {
             // Backend isn't ready or rejected the suggestion — never
             // block the operator. We swallow the error here (the post-
@@ -515,7 +552,15 @@ function ConversationDetailPane({
         },
       );
     },
-    [dbId, messages, conversation.channel, identity, onClose, suggestLearning],
+    [
+      dbId,
+      messages,
+      conversation.channel,
+      identity,
+      onClose,
+      suggestLearning,
+      learningPrefs,
+    ],
   );
 
 

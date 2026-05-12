@@ -1573,6 +1573,85 @@ export async function fetchStatus(): Promise<StatusResponse> {
 }
 
 // ---------------------------------------------------------------------------
+// Agent learning preferences (R2-34 follow-up)
+// ---------------------------------------------------------------------------
+//
+// Two tenant-level toggles that govern HOW intrusive the suggested-learning
+// flow is. They never auto-approve a learning — at most they create a
+// pending row that the operator must still review in Settings.
+//
+//   showSuggestionAfterReply
+//     ON  → after a teachable Send / Send & Resolve / Resolve, the
+//           Suggested Learning card appears over the conversation pane.
+//     OFF → the card never appears. If a pending row was created
+//           (depends on the second toggle) it is still visible in
+//           Settings → Agent learnings → Pending.
+//
+//   createPendingFromReplies
+//     ON  → operator replies are persisted as PENDING learning rows
+//           for later review.
+//     OFF → no pending row is created. The reply is only sent to the
+//           customer; the Agent does not learn from it unless the
+//           operator explicitly triggers a learning some other way.
+//
+// Backend contract Claudia needs to expose at
+//   GET  /api/{tenant}/dashboard/api/settings/agent-learnings
+//   PUT  /api/{tenant}/dashboard/api/settings/agent-learnings
+// Body shape (both directions):
+//   { "showSuggestionAfterReply": boolean,
+//     "createPendingFromReplies": boolean }
+// Status codes 0/404/501/503 are treated as "backend not connected yet"
+// and the client falls back to a per-browser localStorage copy so the
+// toggles still persist across refresh during the wiring window.
+
+export interface AgentLearningPrefs {
+  showSuggestionAfterReply: boolean;
+  createPendingFromReplies: boolean;
+}
+
+/**
+ * Default preferences. Both ON preserves the behaviour we shipped in
+ * R2-34: every teachable reply produces a pending row AND prompts the
+ * operator with the modal.
+ */
+export const DEFAULT_AGENT_LEARNING_PREFS: AgentLearningPrefs = {
+  showSuggestionAfterReply: true,
+  createPendingFromReplies: true,
+};
+
+function coerceAgentLearningPrefs(raw: unknown): AgentLearningPrefs {
+  if (!raw || typeof raw !== "object") return { ...DEFAULT_AGENT_LEARNING_PREFS };
+  const o = raw as Record<string, unknown>;
+  // Accept both camelCase (canonical) and snake_case (forward compat).
+  const show = o.showSuggestionAfterReply ?? o.show_suggestion_after_reply;
+  const create = o.createPendingFromReplies ?? o.create_pending_from_replies;
+  return {
+    showSuggestionAfterReply:
+      typeof show === "boolean" ? show : DEFAULT_AGENT_LEARNING_PREFS.showSuggestionAfterReply,
+    createPendingFromReplies:
+      typeof create === "boolean" ? create : DEFAULT_AGENT_LEARNING_PREFS.createPendingFromReplies,
+  };
+}
+
+export async function fetchAgentLearningPrefs(): Promise<AgentLearningPrefs> {
+  const raw = await apiFetch<unknown>("/settings/agent-learnings");
+  return coerceAgentLearningPrefs(raw);
+}
+
+export async function setAgentLearningPrefs(
+  prefs: AgentLearningPrefs,
+): Promise<AgentLearningPrefs> {
+  const raw = await apiFetch<unknown>("/settings/agent-learnings", {
+    method: "PUT",
+    body: JSON.stringify(prefs),
+  });
+  // Some implementations return 204 (parsed as null/undefined). In that
+  // case we trust the payload we just sent.
+  if (!raw || typeof raw !== "object") return { ...prefs };
+  return coerceAgentLearningPrefs(raw);
+}
+
+// ---------------------------------------------------------------------------
 // Dry-run
 // ---------------------------------------------------------------------------
 

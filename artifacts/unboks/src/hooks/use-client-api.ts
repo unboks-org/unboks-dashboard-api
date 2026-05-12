@@ -27,6 +27,10 @@ import {
   dismissEscalationLearning,
   type EscalationLearningStatus,
   type SuggestEscalationLearningPayload,
+  fetchAgentLearningPrefs,
+  setAgentLearningPrefs,
+  DEFAULT_AGENT_LEARNING_PREFS,
+  type AgentLearningPrefs,
   fetchAvailability,
   fetchConfig,
   fetchStatus,
@@ -46,6 +50,7 @@ import {
   type EmailForwardPayload,
   type EmailDeletePayload,
 } from "@/lib/api";
+import { ApiError } from "@/lib/error";
 
 // ------ Conversations ------
 
@@ -265,6 +270,123 @@ export function useEscalationLearningMutations() {
   });
 
   return { suggest, edit, approve, dismiss };
+}
+
+// ------ Agent learning preferences (R2-34 follow-up) ------
+//
+// Backend support for /settings/agent-learnings is not yet wired by
+// Claudia. Until it ships we treat 0 / 404 / 501 / 503 responses as
+// "backend not connected yet" and fall back to a per-browser
+// localStorage copy so the toggles still persist across refresh and
+// drive the in-app behaviour. Once the endpoint exists, the same hook
+// will transparently use the server value as the source of truth.
+
+const AGENT_LEARNING_PREFS_LS_KEY = "unboks.agentLearningPrefs.v1";
+const AGENT_LEARNING_PREFS_NOT_CONNECTED = new Set([0, 404, 501, 503]);
+
+function readPrefsFromLocalStorage(): AgentLearningPrefs {
+  if (typeof window === "undefined") return { ...DEFAULT_AGENT_LEARNING_PREFS };
+  try {
+    const raw = window.localStorage.getItem(AGENT_LEARNING_PREFS_LS_KEY);
+    if (!raw) return { ...DEFAULT_AGENT_LEARNING_PREFS };
+    const parsed = JSON.parse(raw);
+    return {
+      showSuggestionAfterReply:
+        typeof parsed?.showSuggestionAfterReply === "boolean"
+          ? parsed.showSuggestionAfterReply
+          : DEFAULT_AGENT_LEARNING_PREFS.showSuggestionAfterReply,
+      createPendingFromReplies:
+        typeof parsed?.createPendingFromReplies === "boolean"
+          ? parsed.createPendingFromReplies
+          : DEFAULT_AGENT_LEARNING_PREFS.createPendingFromReplies,
+    };
+  } catch {
+    return { ...DEFAULT_AGENT_LEARNING_PREFS };
+  }
+}
+
+function writePrefsToLocalStorage(prefs: AgentLearningPrefs): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      AGENT_LEARNING_PREFS_LS_KEY,
+      JSON.stringify(prefs),
+    );
+  } catch {
+    // Quota / private mode — ignore. The in-memory React-Query cache
+    // still drives current-session behaviour.
+  }
+}
+
+function isPrefsBackendNotConnected(err: unknown): boolean {
+  if (err instanceof ApiError) {
+    return AGENT_LEARNING_PREFS_NOT_CONNECTED.has(err.status);
+  }
+  return false;
+}
+
+export function useAgentLearningPrefs() {
+  return useQuery<AgentLearningPrefs>({
+    queryKey: ["agent-learning-prefs"],
+    queryFn: async () => {
+      try {
+        const server = await fetchAgentLearningPrefs();
+        // Mirror to localStorage so an offline / not-connected refresh
+        // a moment later still reflects the latest known value.
+        writePrefsToLocalStorage(server);
+        return server;
+      } catch (err) {
+        if (isPrefsBackendNotConnected(err)) {
+          return readPrefsFromLocalStorage();
+        }
+        throw err;
+      }
+    },
+    staleTime: 60_000,
+    retry: 1,
+    placeholderData: () => readPrefsFromLocalStorage(),
+  });
+}
+
+export function useAgentLearningPrefsMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (prefs: AgentLearningPrefs) => {
+      // Persist locally FIRST so the UI stays responsive and survives a
+      // refresh even if the backend write later fails. The optimistic
+      // value below already updates the React-Query cache; localStorage
+      // is the durability layer.
+      writePrefsToLocalStorage(prefs);
+      try {
+        return await setAgentLearningPrefs(prefs);
+      } catch (err) {
+        if (isPrefsBackendNotConnected(err)) {
+          // Backend not deployed yet. Treat the local write as
+          // authoritative for this browser; do not surface an error.
+          return prefs;
+        }
+        throw err;
+      }
+    },
+    // Optimistic update so the toggle flips instantly.
+    onMutate: async (prefs) => {
+      await qc.cancelQueries({ queryKey: ["agent-learning-prefs"] });
+      const prev = qc.getQueryData<AgentLearningPrefs>(["agent-learning-prefs"]);
+      qc.setQueryData(["agent-learning-prefs"], prefs);
+      return { prev };
+    },
+    onError: (_err, _prefs, ctx) => {
+      // Roll the React-Query cache back; localStorage stays at the
+      // attempted value, which is fine — the next successful read will
+      // overwrite it. We deliberately do NOT roll localStorage back
+      // because for the not-connected case the local write IS the
+      // authoritative one.
+      if (ctx?.prev) qc.setQueryData(["agent-learning-prefs"], ctx.prev);
+    },
+    onSuccess: (server) => {
+      qc.setQueryData(["agent-learning-prefs"], server);
+    },
+  });
 }
 
 // ------ Availability (Bookings) ------
