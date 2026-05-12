@@ -29,6 +29,7 @@ import {
   type SuggestEscalationLearningPayload,
   fetchAgentLearningPrefs,
   setAgentLearningPrefs,
+  DEFAULT_AGENT_LEARNING_PREFS,
   type AgentLearningPrefs,
   fetchAvailability,
   fetchConfig,
@@ -271,36 +272,27 @@ export function useEscalationLearningMutations() {
   return { suggest, edit, approve, dismiss };
 }
 
-// ------ Agent learning preferences (R2-34 follow-up) ------
+// ------ Agent learning preferences (R2-35 follow-up — backend live) ------
 //
-// These two toggles MUST be tenant-scoped and server-persisted so they
-// sync across browsers, devices, and teammates. There is no
-// localStorage fallback by design (per Calvin: "If backend endpoint is
-// missing, do not fake persistence").
+// Tenant-scoped, server-persisted via Claudia #35 at
+//   GET/PUT /api/{tenant}/dashboard/api/settings/agent-learnings
+// Server is source of truth. No localStorage fallback. State syncs
+// across browsers, devices, and teammates because every dashboard
+// instance reads the same tenant row and writes go straight back.
 //
-// While Claudia has not yet shipped GET/PUT
-// /api/{tenant}/dashboard/api/settings/agent-learnings, this hook will
-// surface that as `isError` with a 0/404/501/503 status. The Settings
-// UI uses that signal to render the toggles disabled with honest
-// "Awaiting backend support" copy. The Inbox flow keeps the R2-34
-// baseline behaviour (both behaviours ON) until the endpoint exists,
-// because we cannot honour preferences that aren't truly persisted.
-
-export const AGENT_LEARNING_PREFS_NOT_CONNECTED_STATUSES = new Set([0, 404, 501, 503]);
-
-export function isAgentLearningPrefsBackendMissing(err: unknown): boolean {
-  if (err instanceof ApiError) {
-    return AGENT_LEARNING_PREFS_NOT_CONNECTED_STATUSES.has(err.status);
-  }
-  return false;
-}
+// React Query refetches on mount and on window focus, so opening
+// Browser B (or returning to a previously-open tab) picks up changes
+// made elsewhere without a manual refresh.
 
 export function useAgentLearningPrefs() {
   return useQuery<AgentLearningPrefs>({
     queryKey: ["agent-learning-prefs"],
     queryFn: fetchAgentLearningPrefs,
-    staleTime: 60_000,
-    retry: false,
+    // Treat the value as immediately stale on focus so cross-device
+    // changes propagate as soon as the operator returns to the tab.
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    retry: 1,
   });
 }
 
@@ -309,7 +301,8 @@ export function useAgentLearningPrefsMutation() {
   return useMutation({
     mutationFn: setAgentLearningPrefs,
     // Optimistic update so the toggle flips instantly while the PUT is
-    // in flight. Rolled back on error.
+    // in flight. Rolled back on error so the UI never shows a value
+    // that isn't on the server.
     onMutate: async (prefs) => {
       await qc.cancelQueries({ queryKey: ["agent-learning-prefs"] });
       const prev = qc.getQueryData<AgentLearningPrefs>(["agent-learning-prefs"]);
@@ -324,6 +317,8 @@ export function useAgentLearningPrefsMutation() {
     },
   });
 }
+
+export { DEFAULT_AGENT_LEARNING_PREFS };
 
 // ------ Availability (Bookings) ------
 

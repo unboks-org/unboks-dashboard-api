@@ -1573,7 +1573,7 @@ export async function fetchStatus(): Promise<StatusResponse> {
 }
 
 // ---------------------------------------------------------------------------
-// Agent learning preferences (R2-34 follow-up)
+// Agent learning preferences (R2-35 follow-up — Claudia #35 backend live)
 // ---------------------------------------------------------------------------
 //
 // Two tenant-scoped, server-persisted toggles that govern how intrusive
@@ -1581,53 +1581,62 @@ export async function fetchStatus(): Promise<StatusResponse> {
 // at most they create a pending row that the operator must still review
 // in Settings.
 //
-//   showSuggestionAfterReplies
+//   showSuggestionAfterReplies (default true)
 //     ON  → after a teachable Send / Send & Resolve / Resolve, the
 //           Suggested Learning card appears over the conversation pane.
 //     OFF → the card never appears. If a pending row was created
 //           (depends on the second toggle) it is still visible in
 //           Settings → Agent learnings → Pending.
 //
-//   createPendingLearningFromOperatorReplies
+//   createPendingLearningFromOperatorReplies (default false)
 //     ON  → operator replies are persisted as PENDING learning rows
 //           for later review (never auto-approved).
 //     OFF → no pending row is created. The reply is only sent to the
 //           customer; the Agent does not learn from it unless the
 //           operator explicitly triggers a learning some other way.
 //
-// Backend contract Claudia needs to ship before this UI activates:
+// Backend (Claudia #35):
 //   GET  /api/{tenant}/dashboard/api/settings/agent-learnings
 //   PUT  /api/{tenant}/dashboard/api/settings/agent-learnings
 // Body shape (both directions):
 //   { "showSuggestionAfterReplies": boolean,
 //     "createPendingLearningFromOperatorReplies": boolean }
 // Tenant-scoped. Server persisted. Cross-browser, cross-device, team-wide.
-// No client-side fallback — if the endpoint is missing the toggles
-// render disabled with honest "Awaiting backend support" copy and the
-// Inbox flow uses the R2-34 baseline (both behaviours ON).
+// No client-side fallback. Server is source of truth.
 
 export interface AgentLearningPrefs {
   showSuggestionAfterReplies: boolean;
   createPendingLearningFromOperatorReplies: boolean;
 }
 
+/**
+ * Tenant defaults. Used only when the backend response is missing a
+ * key (contract violation) or when the Inbox needs a fallback before
+ * the first GET resolves. New tenants should be initialised by the
+ * backend with these same defaults.
+ */
+export const DEFAULT_AGENT_LEARNING_PREFS: AgentLearningPrefs = {
+  showSuggestionAfterReplies: true,
+  createPendingLearningFromOperatorReplies: false,
+};
+
 function coerceAgentLearningPrefs(raw: unknown): AgentLearningPrefs {
-  // Strict coercion. If a key is missing or non-boolean we treat it as
-  // a backend contract violation and surface it as `false` so the UI
-  // never silently invents a value.
+  // Missing / malformed → fall back to documented defaults rather than
+  // inventing values. This keeps the contract surface honest if Claudia
+  // ever ships a partial response.
   if (!raw || typeof raw !== "object") {
-    return {
-      showSuggestionAfterReplies: false,
-      createPendingLearningFromOperatorReplies: false,
-    };
+    return { ...DEFAULT_AGENT_LEARNING_PREFS };
   }
   const o = raw as Record<string, unknown>;
   const show = o.showSuggestionAfterReplies;
   const create = o.createPendingLearningFromOperatorReplies;
   return {
-    showSuggestionAfterReplies: typeof show === "boolean" ? show : false,
+    showSuggestionAfterReplies:
+      typeof show === "boolean" ? show : DEFAULT_AGENT_LEARNING_PREFS.showSuggestionAfterReplies,
     createPendingLearningFromOperatorReplies:
-      typeof create === "boolean" ? create : false,
+      typeof create === "boolean"
+        ? create
+        : DEFAULT_AGENT_LEARNING_PREFS.createPendingLearningFromOperatorReplies,
   };
 }
 

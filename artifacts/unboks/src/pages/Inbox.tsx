@@ -55,7 +55,11 @@ import type { ApiMessage, ConversationDetail } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { EscalationReplyComposer } from "@/components/inbox/EscalationReplyComposer";
 import { SuggestedLearningCard } from "@/components/inbox/SuggestedLearningCard";
-import { useEscalationLearningMutations } from "@/hooks/use-client-api";
+import {
+  useEscalationLearningMutations,
+  useAgentLearningPrefs,
+} from "@/hooks/use-client-api";
+import { DEFAULT_AGENT_LEARNING_PREFS } from "@/lib/api";
 import { useDashboardIdentity } from "@/hooks/use-dashboard-identity";
 import type { EscalationLearning } from "@/lib/api";
 import { BlockSenderModal } from "@/components/inbox/BlockSenderModal";
@@ -474,6 +478,7 @@ function ConversationDetailPane({
   }, [conversation.id]);
   const { suggest: suggestLearning } = useEscalationLearningMutations();
   const { identity } = useDashboardIdentity();
+  const { data: learningPrefs } = useAgentLearningPrefs();
   const handleComposerDone = useCallback(
     (ctx?: EscalationDoneContext) => {
       // No teachable text → close immediately. This covers Takeover,
@@ -482,14 +487,29 @@ function ConversationDetailPane({
         onClose();
         return;
       }
-      // R2-34 baseline: every teachable reply produces a pending row
-      // AND prompts the operator with the modal. The tenant-scoped
-      // behaviour toggles in Settings → Agent learnings will gate this
-      // flow once the backend endpoint
-      //   GET/PUT /api/{tenant}/dashboard/api/settings/agent-learnings
-      // ships. Until then there is no truly persistent preference to
-      // honour, so we do not branch on a per-browser fallback.
+      // R2-35: respect the tenant-scoped behaviour toggles from
+      // Settings → Agent learnings (Claudia #35 backend).
+      //
+      //   createPendingLearningFromOperatorReplies = false
+      //     → never POST suggest-learning, never create a pending row,
+      //       close immediately. The reply still went to the customer;
+      //       the Agent simply does not learn from it.
+      //
+      //   showSuggestionAfterReplies = false
+      //     → still POST suggest-learning so the row exists in
+      //       Settings → Agent learnings → Pending for later review,
+      //       but skip the modal so the operator's flow is not
+      //       interrupted.
+      //
+      // Defaults are { showSuggestionAfterReplies: true,
+      //                createPendingLearningFromOperatorReplies: false }
+      // — used only as a fallback if the GET hasn't resolved yet.
       // Critical rule: nothing here ever auto-approves a learning.
+      const prefs = learningPrefs ?? DEFAULT_AGENT_LEARNING_PREFS;
+      if (!prefs.createPendingLearningFromOperatorReplies) {
+        onClose();
+        return;
+      }
       // Build the source-question payload from the latest customer
       // (role === "user") inbound message — same heuristic as
       // LatestCustomerMessagePreview, so the operator sees consistent
@@ -510,7 +530,17 @@ function ConversationDetailPane({
           },
         },
         {
-          onSuccess: (created) => setPendingLearning(created),
+          onSuccess: (created) => {
+            // Honour showSuggestionAfterReplies: when OFF, the row was
+            // created (per the other toggle being ON) but the operator
+            // does NOT see the modal — it sits in Settings → Pending
+            // for later review.
+            if (prefs.showSuggestionAfterReplies) {
+              setPendingLearning(created);
+            } else {
+              onClose();
+            }
+          },
           onError: () => {
             // Backend isn't ready or rejected the suggestion — never
             // block the operator. We swallow the error here (the post-
@@ -523,7 +553,15 @@ function ConversationDetailPane({
         },
       );
     },
-    [dbId, messages, conversation.channel, identity, onClose, suggestLearning],
+    [
+      dbId,
+      messages,
+      conversation.channel,
+      identity,
+      onClose,
+      suggestLearning,
+      learningPrefs,
+    ],
   );
 
 

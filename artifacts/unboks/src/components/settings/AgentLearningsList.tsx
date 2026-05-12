@@ -17,16 +17,15 @@
  * No em dashes anywhere in user-visible copy.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sparkles, Loader2, Check, Pencil, X } from "lucide-react";
 import {
   useEscalationLearnings,
   useEscalationLearningMutations,
   useAgentLearningPrefs,
   useAgentLearningPrefsMutation,
-  isAgentLearningPrefsBackendMissing,
 } from "@/hooks/use-client-api";
-import type { AgentLearningPrefs } from "@/lib/api";
+import { DEFAULT_AGENT_LEARNING_PREFS, type AgentLearningPrefs } from "@/lib/api";
 import { useDashboardIdentity } from "@/hooks/use-dashboard-identity";
 import { ApiError } from "@/lib/error";
 import type { EscalationLearning, EscalationLearningStatus } from "@/lib/api";
@@ -313,61 +312,55 @@ function ReadOnlyRow({ entry }: { entry: EscalationLearning }) {
 }
 
 /**
- * Behavior toggles for the suggested-learning flow.
+ * Behavior toggles for the suggested-learning flow (R2-35).
  *
- * These preferences MUST be tenant-scoped and server-persisted so they
- * sync across browsers, devices, and teammates. There is deliberately
- * NO localStorage fallback — if the backend endpoint
+ * Backed by Claudia #35:
  *   GET/PUT /api/{tenant}/dashboard/api/settings/agent-learnings
- * is not yet shipped, the toggles render disabled with honest
- * "Awaiting backend support" copy and the Inbox flow uses the R2-34
- * baseline (both behaviours ON). This avoids faking persistence and
- * showing the operator a value that won't actually carry across.
+ * Tenant-scoped, server-persisted, no localStorage fallback. Server is
+ * the source of truth — every dashboard instance reads the same row,
+ * so the toggle state syncs across browsers, devices, and teammates.
  *
  * Critical rule: neither toggle ever auto-approves a learning. The
  * "automatic" path here means "create a row in PENDING for review",
  * never "add to live Agent knowledge".
  */
 function AgentLearningPrefsCard() {
-  const { data: prefs, isLoading, isError, error } = useAgentLearningPrefs();
+  const { data: prefs, isLoading, isError, error, isFetching } = useAgentLearningPrefs();
   const mutation = useAgentLearningPrefsMutation();
 
-  const backendMissing = isError && isAgentLearningPrefsBackendMissing(error);
-  // Show a value in the toggles even while the endpoint is missing so
-  // the operator can see what each option means. The values shown are
-  // the system defaults and are NOT considered authoritative — the
-  // toggles are disabled and the Inbox does not act on them.
-  const value: AgentLearningPrefs = prefs ?? {
-    showSuggestionAfterReplies: true,
-    createPendingLearningFromOperatorReplies: true,
-  };
+  // Until the first GET resolves we hide the toggles entirely behind a
+  // skeleton — better than showing a value the operator might think is
+  // authoritative.
+  const value: AgentLearningPrefs = prefs ?? DEFAULT_AGENT_LEARNING_PREFS;
 
   const update = (patch: Partial<AgentLearningPrefs>) => {
-    if (mutation.isPending || backendMissing || isError) return;
+    if (mutation.isPending) return;
     mutation.mutate({ ...value, ...patch });
   };
 
-  const togglesDisabled = isLoading || mutation.isPending || isError;
+  const togglesDisabled = isLoading || mutation.isPending || (isError && !prefs);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-[#e8eaed] bg-white">
       <header className="px-4 sm:px-5 pt-4 pb-3 border-b border-[#e8eaed]">
-        <h3 className="text-[15px] font-semibold text-[#1f2937]">Behavior</h3>
-        <p className="mt-0.5 text-[12.5px] text-[#5f6368] leading-snug">
-          Control how Unboks learns from operator replies. These settings only affect when pending learnings are created and when the suggestion card appears. Nothing is added to your Agent without your approval.
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-[15px] font-semibold text-[#1f2937]">Behavior</h3>
+            <p className="mt-0.5 text-[12.5px] text-[#5f6368] leading-snug">
+              Control how Unboks learns from operator replies. These settings only affect when pending learnings are created and when the suggestion card appears. Nothing is added to your Agent without your approval.
+            </p>
+          </div>
+          <SaveStatusBadge
+            isSaving={mutation.isPending}
+            isError={mutation.isError}
+            isSyncing={isFetching && !isLoading && !mutation.isPending}
+            lastSavedAt={mutation.isSuccess ? mutation.submittedAt : null}
+          />
+        </div>
       </header>
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
-        {backendMissing && (
-          <p
-            role="status"
-            className="text-[12.5px] text-[#5f3e00] bg-[#fef7e0] border border-[#fce293] rounded-md px-2.5 py-2"
-          >
-            Awaiting backend support. These toggles will activate once tenant-level sync is enabled. Until then the Agent uses the default behaviour (both options on, with no auto-approval).
-          </p>
-        )}
-        {isError && !backendMissing && (
+        {isError && !prefs && (
           <p
             role="alert"
             className="text-[12.5px] text-[#5f1414] bg-[#fce8e6] border border-[#f6c6c2] rounded-md px-2.5 py-2"
@@ -400,6 +393,73 @@ function AgentLearningPrefsCard() {
     </section>
   );
 }
+
+interface SaveStatusBadgeProps {
+  isSaving: boolean;
+  isError: boolean;
+  isSyncing: boolean;
+  lastSavedAt: number | null;
+}
+
+/**
+ * Compact, accessible status badge that surfaces the lifecycle of a
+ * PUT to /settings/agent-learnings.
+ *
+ *   - Saving        → shown while the PUT is in flight.
+ *   - Saved         → shown for ~2s after a successful PUT.
+ *   - Sync failed   → shown when the last PUT errored.
+ *   - Syncing       → shown when a background GET is refetching
+ *                     (e.g. window focus) so the operator knows the
+ *                     value may be about to update from another device.
+ *   - (nothing)     → idle.
+ */
+function SaveStatusBadge({ isSaving, isError, isSyncing, lastSavedAt }: SaveStatusBadgeProps) {
+  const lastShownAtRef = useRef<number | null>(null);
+  const [savedVisible, setSavedVisible] = useState(false);
+
+  useEffect(() => {
+    if (!lastSavedAt || lastSavedAt === lastShownAtRef.current) return;
+    lastShownAtRef.current = lastSavedAt;
+    setSavedVisible(true);
+    const t = window.setTimeout(() => setSavedVisible(false), 2000);
+    return () => window.clearTimeout(t);
+  }, [lastSavedAt]);
+
+  if (isSaving) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[12px] text-[#5f6368] flex-shrink-0">
+        <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
+        Saving
+      </span>
+    );
+  }
+  if (isError) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[12px] text-[#5f1414] flex-shrink-0" role="status">
+        <X className="w-3 h-3" aria-hidden="true" />
+        Sync failed
+      </span>
+    );
+  }
+  if (savedVisible) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[12px] text-[#1e7e34] flex-shrink-0" role="status">
+        <Check className="w-3 h-3" aria-hidden="true" />
+        Saved
+      </span>
+    );
+  }
+  if (isSyncing) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[12px] text-[#5f6368] flex-shrink-0">
+        <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
+        Syncing
+      </span>
+    );
+  }
+  return null;
+}
+
 
 interface ToggleRowProps {
   id: string;
