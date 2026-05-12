@@ -47,6 +47,14 @@ interface SuggestedLearningCardProps {
    * close the conversation pane).
    */
   onDone: () => void;
+  /**
+   * Optional deep-link hook (R2-37, Sonia #37 item 11). When provided,
+   * the modal renders a "View all pending learnings" link in the footer
+   * so the operator can jump to Settings → Agent learnings → Pending to
+   * review the full backlog instead of acting on this single row inline.
+   * The parent is responsible for the navigation + closing the modal.
+   */
+  onViewAllPending?: () => void;
 }
 
 function getErrorMessage(err: unknown): string {
@@ -55,7 +63,7 @@ function getErrorMessage(err: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
-export function SuggestedLearningCard({ learning, onDone }: SuggestedLearningCardProps) {
+export function SuggestedLearningCard({ learning, onDone, onViewAllPending }: SuggestedLearningCardProps) {
   const { identity } = useDashboardIdentity();
   const { edit, approve, dismiss } = useEscalationLearningMutations();
 
@@ -233,10 +241,35 @@ export function SuggestedLearningCard({ learning, onDone }: SuggestedLearningCar
         </div>
 
         <div
-          className="px-4 pt-3 pb-4 mt-3 border-t border-[#e8eaed] bg-[#fbfbfd] flex flex-wrap items-center justify-end gap-2"
+          className="px-4 pt-3 pb-4 mt-3 border-t border-[#e8eaed] bg-[#fbfbfd] flex flex-wrap items-center justify-between gap-2"
           role="group"
           aria-label="Suggested learning actions"
         >
+          {/* R2-37 (Sonia #37, item 11): give the operator a way to leave
+              the inline review and visit the full Pending list in
+              Settings. Rendered only when the parent provides the
+              navigation hook so the modal stays portable. */}
+          {onViewAllPending ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (anyPending) return;
+                onViewAllPending();
+              }}
+              disabled={anyPending}
+              className={cn(
+                "text-[12.5px] font-medium text-[#1a73e8] hover:underline",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-1 rounded",
+                "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:no-underline",
+              )}
+            >
+              View all pending learnings
+            </button>
+          ) : (
+            <span aria-hidden="true" />
+          )}
+
+          <div className="flex flex-wrap items-center justify-end gap-2">
           <button
             type="button"
             onClick={handleDismiss}
@@ -323,6 +356,7 @@ export function SuggestedLearningCard({ learning, onDone }: SuggestedLearningCar
               </button>
             </>
           )}
+          </div>
         </div>
       </div>
     </div>

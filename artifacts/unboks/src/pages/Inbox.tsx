@@ -373,6 +373,10 @@ function ConversationDetailPane({
   // parent's filter state doesn't propagate cleanly (e.g. stale closure or
   // re-render timing). Both paths must agree before treating as active.
   const resolvedContext = resolvedContextProp || Boolean(conversation.resolvedEscalation);
+  // R2-37 (Sonia #37, item 11): we deep-link from SuggestedLearningCard
+  // to Settings → Agent learnings → Pending. wouter's useLocation gives
+  // us the navigator for that.
+  const [, navigate] = useLocation();
   const { data: detail, isLoading, isError, error } = useConversation(conversation.id);
   const badgeColor = CHANNEL_BADGE_COLORS[conversation.channel] ?? "#9aa0a6";
   // Sort newest-first by parsed backend timestamp so the latest message is
@@ -541,13 +545,22 @@ function ConversationDetailPane({
               onClose();
             }
           },
-          onError: () => {
-            // Backend isn't ready or rejected the suggestion — never
-            // block the operator. We swallow the error here (the post-
-            // send flow already succeeded) and close the conversation
-            // as before. The Settings "Agent learnings" tab will
-            // surface backend issues separately when the operator
-            // browses pending entries.
+          onError: (err) => {
+            // R2-37 (Sonia #37, item 14 — honest errors): the reply to
+            // the customer already succeeded, but creating the pending
+            // learning row failed. Never block the close, but tell the
+            // operator the truth so they don't think a learning was
+            // saved when it wasn't. The Settings "Agent learnings" tab
+            // will also surface backend issues when re-fetched.
+            const msg =
+              err instanceof ApiError
+                ? err.message
+                : err instanceof Error
+                ? err.message
+                : "Couldn't save as pending learning.";
+            toast.error("Reply sent, but pending learning was not saved.", {
+              description: msg,
+            });
             onClose();
           },
         },
@@ -831,6 +844,18 @@ function ConversationDetailPane({
               onDone={() => {
                 setPendingLearning(null);
                 onClose();
+              }}
+              onViewAllPending={() => {
+                // R2-37 (Sonia #37, item 11): operator wants to see
+                // the full Pending list. Close this modal + the
+                // conversation pane and deep-link to Settings →
+                // Agent learnings → Pending. The pending row this
+                // modal was built from is already on the server, so
+                // no work is lost — Settings re-fetches the list on
+                // mount.
+                setPendingLearning(null);
+                onClose();
+                navigate("/settings?category=agent-learnings");
               }}
             />
           )}

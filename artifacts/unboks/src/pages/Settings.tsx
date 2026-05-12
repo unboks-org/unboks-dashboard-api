@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, ChangeEvent } from "react";
+import { useLocation, useSearch } from "wouter";
 import {
   Archive,
   Ban,
@@ -670,8 +671,49 @@ function SotBlockEditView({
 // Page
 // =====================================================
 
+const CATEGORY_IDS: ReadonlySet<string> = new Set<CategoryId>([
+  "workspace",
+  "your-info",
+  "agent-learnings",
+  "channels",
+  "escalation",
+  "data-retention",
+  "blocked-senders",
+  "preferences",
+]);
+
+function categoryFromSearch(search: string): CategoryId | null {
+  try {
+    const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+    const raw = params.get("category");
+    if (raw && CATEGORY_IDS.has(raw)) return raw as CategoryId;
+  } catch {
+    // ignore — fall through to null
+  }
+  return null;
+}
+
 export default function Settings() {
-  const [active, setActive] = useState<CategoryId>("workspace");
+  // R2-37 (Sonia #37, item 11): Settings supports `?category=<id>` deep
+  // links so other surfaces (e.g. SuggestedLearningCard's "View all
+  // pending learnings" link) can jump straight to the right tab. URL is
+  // the source of truth: clicks update the URL, the URL drives `active`.
+  const [, navigate] = useLocation();
+  const search = useSearch();
+  const urlCategory = categoryFromSearch(search);
+  const [active, setActive] = useState<CategoryId>(urlCategory ?? "workspace");
+  // Keep local state in sync if the URL changes from outside (deep link
+  // arrives, browser back/forward, etc.).
+  useEffect(() => {
+    if (urlCategory && urlCategory !== active) setActive(urlCategory);
+  }, [urlCategory, active]);
+  const selectCategory = (id: CategoryId) => {
+    setActive(id);
+    // Default tab keeps the URL clean; every other tab encodes itself
+    // in the query string so the deep link survives refresh + share.
+    if (id === "workspace") navigate("/settings");
+    else navigate(`/settings?category=${encodeURIComponent(id)}`);
+  };
 
   // Hooks (unchanged behaviour) -------------------------
   const { emailClient, setEmailClient } = useEmailSettings();
@@ -839,7 +881,7 @@ export default function Settings() {
                     role="tab"
                     type="button"
                     aria-selected={isActive}
-                    onClick={() => setActive(cat.id)}
+                    onClick={() => selectCategory(cat.id)}
                     className={cn(
                       "inline-flex flex-shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] transition-colors sm:px-4",
                       isActive

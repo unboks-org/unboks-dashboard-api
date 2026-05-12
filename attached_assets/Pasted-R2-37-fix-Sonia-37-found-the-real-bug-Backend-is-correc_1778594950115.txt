@@ -1,0 +1,87 @@
+R2-37-fix
+
+Sonia #37 found the real bug.
+
+Backend is correct. Frontend is missing the Agent learning API wiring.
+
+Build the frontend Agent learning UI properly.
+
+Scope:
+Project 2 dashboard frontend only.
+Do not touch backend.
+Do not touch Project 1.
+Do not touch Nr 3.
+
+Required backend endpoints already exist:
+
+GET /api/{tenant}/dashboard/api/settings/agent-learnings
+PUT /api/{tenant}/dashboard/api/settings/agent-learnings
+
+Shape:
+{
+  "showSuggestionAfterReplies": boolean,
+  "createPendingLearningFromOperatorReplies": boolean
+}
+
+GET /api/{tenant}/dashboard/api/escalation-learnings?status=pending|approved|dismissed
+
+PATCH /api/{tenant}/dashboard/api/escalation-learnings/{id}
+Body:
+{ "suggestedText": string }
+
+POST /api/{tenant}/dashboard/api/escalation-learnings/{id}/approve
+Body:
+{ "operator": string }
+
+POST /api/{tenant}/dashboard/api/escalation-learnings/{id}/dismiss
+
+Required UI:
+1. Settings → Agent learning card.
+2. Two server-backed toggles:
+   - Show suggestion after replies
+   - Create pending learning from operator replies
+3. Toggles must GET/PUT backend settings.
+4. No localStorage.
+5. Toggle state must survive refresh and sync across browsers/devices.
+6. Add Pending / Approved / Dismissed learning tabs or list in Settings.
+7. Pending tab must call GET /escalation-learnings?status=pending.
+8. Approved tab calls status=approved.
+9. Dismissed tab calls status=dismissed.
+10. Pending rows must support:
+    - Edit first
+    - Approve
+    - Dismiss / Do not save
+11. After operator reply succeeds and showSuggestionAfterReplies=true, show a small toast/card:
+    “Reply sent. Saved as pending learning for review.”
+    Link/action: View pending learnings.
+12. Refetch Pending list after successful reply/guidance/email reply.
+13. If createPendingLearningFromOperatorReplies=false, do not claim pending learning was created.
+14. Show honest errors if backend save/refetch fails.
+15. Build/typecheck clean.
+
+Acceptance:
+1. Open Settings → Agent learning.
+2. Turn ON Create pending learning from operator replies.
+3. Refresh.
+4. It stays ON.
+5. Open another browser/mobile.
+6. It is ON there too.
+7. Reply to an Email escalation using unique text.
+8. Toast/card appears.
+9. Pending tab shows the new learning.
+10. Approve moves it to Approved.
+11. Dismiss moves it to Dismissed.
+12. Turn OFF Create pending learning from operator replies.
+13. Reply again with unique text.
+14. No new Pending item is created.
+15. Build/typecheck clean.
+
+Final report:
+- files changed
+- hooks/components added
+- exact endpoints used
+- no localStorage confirmation
+- reply refetch/toast behavior
+- build/typecheck result
+- whether Calvin must republish
+- Calvin retest steps
