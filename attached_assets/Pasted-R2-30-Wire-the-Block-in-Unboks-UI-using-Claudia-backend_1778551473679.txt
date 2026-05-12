@@ -1,0 +1,95 @@
+R2-30
+
+Wire the Block in Unboks UI using Claudia backend #30.
+
+Goal:
+Add a universal “Block in Unboks” action for conversations/senders.
+
+Important:
+This is Unboks-level blocking only.
+Do NOT imply it blocks the contact inside WhatsApp itself.
+
+Backend endpoints:
+POST /api/{tenant}/dashboard/api/messages/conversations/{conversationId}/block
+Body:
+{
+  "reason": "spam" | "abusive" | "wrong_contact" | "other",
+  "blocked_by": "operator label"
+}
+
+Response:
+{
+  "ok": true,
+  "conversationId": string,
+  "blocked": true,
+  "reason": string,
+  "blockedBy": string
+}
+
+Unblock:
+POST /api/{tenant}/dashboard/api/messages/conversations/{conversationId}/unblock
+
+Blocked list:
+GET /api/{tenant}/dashboard/api/blocked-senders
+Response:
+{
+  "conversations": [
+    {
+      "conversationId": string,
+      "channel": string,
+      "updatedAt": string,
+      "reason": string,
+      "blockedBy": string
+    }
+  ]
+}
+
+Required UI:
+1. Add a Block in Unboks action/icon near existing archive/delete actions.
+2. Use a universal prohibited/circle-slash icon if available.
+3. Confirmation dialog copy:
+
+“Block this sender in Unboks?
+
+Future messages from this contact will not appear in the active inbox.
+Your Agent will not reply.
+Escalation alerts will not be triggered.
+
+This does not block the contact inside WhatsApp itself. To stop messages on the phone too, block the number in WhatsApp.”
+
+4. Add reason dropdown:
+- Spam
+- Abusive
+- Wrong contact
+- Other
+
+5. On confirm, call the block endpoint.
+6. After successful block, remove the conversation from active inbox/list.
+7. Add a Settings area/list for Blocked senders.
+8. Blocked senders list must show conversation/contact, channel, reason, blocked by, updated at.
+9. Add Unblock button in that list.
+10. On unblock, call unblock endpoint and refresh list.
+11. Do not delete historical messages.
+12. Do not expose secrets.
+13. Do not touch Project 1.
+14. Do not touch Nr 3.
+
+Acceptance:
+1. Open a conversation.
+2. Click Block in Unboks.
+3. Confirm with reason spam.
+4. Conversation disappears from active inbox.
+5. Settings → Blocked senders shows the sender with reason.
+6. Click Unblock.
+7. Sender disappears from blocked list.
+8. Future messages can appear again after unblock.
+9. Build/typecheck clean.
+
+Final report:
+- files changed
+- where Block button was added
+- where Blocked senders list was added
+- endpoints used
+- build/typecheck result
+- whether Calvin must republish
+- Calvin retest steps
