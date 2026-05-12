@@ -273,20 +273,38 @@ export default function Bookings() {
               pane (not 50% of the page); on mobile the list takes the
               full width when nothing is selected, since the empty
               placeholder is hidden below `md`. */}
+          {/* List column width logic. When the column has rows to
+              scroll we want the canonical 320px gutter on desktop so
+              the detail pane has room. When the column is empty (no
+              rows AND no selection — loading or zero appointments) we
+              drop the fixed width and the right border so the placeholder
+              centers across the entire workspace instead of inside a
+              narrow gutter on the far left of a wide page. The
+              right-pane "Select an appointment" placeholder is gated
+              on `appointments.length > 0` further down, so dropping
+              the border when empty doesn't leave a stranded divider. */}
           <div
             className={cn(
               "overflow-y-auto",
               selectedApt
                 ? "hidden md:flex md:flex-col md:w-[320px] md:flex-none md:border-r md:border-[#f1f3f4]"
-                : "flex-1 flex flex-col md:w-[320px] md:flex-none md:border-r md:border-[#f1f3f4]",
+                : appointments.length === 0
+                  ? "flex-1 flex flex-col"
+                  : "flex-1 flex flex-col md:w-[320px] md:flex-none md:border-r md:border-[#f1f3f4]",
             )}
           >
             {isLoading && appointments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+              // `flex-1` is required for the centering: without it the
+              // wrapper collapses to its content height and the
+              // `justify-center` is a no-op, leaving the message pinned
+              // to the top. With `flex-1` the wrapper fills the
+              // remaining column height and the message lands in the
+              // visual middle of the list pane on every viewport.
+              <div className="flex flex-1 flex-col items-center justify-center text-center px-6">
                 <p className="text-[14px] text-[#5f6368]">Loading appointments...</p>
               </div>
             ) : appointments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+              <div className="flex flex-1 flex-col items-center justify-center text-center px-6">
                 <Calendar className="w-8 h-8 text-[#9aa0a6] mb-3" />
                 <p className="text-[14px] text-[#5f6368]">No appointments yet.</p>
                 <p className="text-[12px] text-[#9aa0a6] mt-1 max-w-[360px]">
@@ -508,7 +526,15 @@ export default function Bookings() {
             />
           )}
 
-          {!selectedApt && (
+          {/* Right-pane "select an appointment" placeholder. Only shown
+              on desktop AND only when there are appointments to select —
+              otherwise the left column already explains the empty state
+              and showing two side-by-side empty messages on desktop
+              looked broken. The wrapper is the flex child here, so
+              `flex-1 items-center justify-center` actually centers
+              (the parent of this block is `flex flex-1 overflow-hidden`
+              which gives this child its full height). */}
+          {!selectedApt && appointments.length > 0 && (
             <div className="hidden md:flex flex-1 items-center justify-center text-center px-6">
               <div>
                 <Calendar className="w-8 h-8 text-[#9aa0a6] mx-auto mb-2" />
