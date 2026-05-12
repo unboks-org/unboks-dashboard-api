@@ -267,13 +267,18 @@ export default function Bookings() {
         )}
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Appointment list — hidden on mobile when detail is open */}
+          {/* Appointment list — hidden on mobile when detail is open.
+              On desktop the list is always a fixed 320px column so the
+              empty-detail placeholder centers inside the actual detail
+              pane (not 50% of the page); on mobile the list takes the
+              full width when nothing is selected, since the empty
+              placeholder is hidden below `md`. */}
           <div
             className={cn(
               "overflow-y-auto",
               selectedApt
                 ? "hidden md:flex md:flex-col md:w-[320px] md:flex-none md:border-r md:border-[#f1f3f4]"
-                : "flex-1 flex flex-col",
+                : "flex-1 flex flex-col md:w-[320px] md:flex-none md:border-r md:border-[#f1f3f4]",
             )}
           >
             {isLoading && appointments.length === 0 ? (
