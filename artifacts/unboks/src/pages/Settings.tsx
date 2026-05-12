@@ -1125,7 +1125,7 @@ export default function Settings() {
 
                   <Card
                     title="Connect cloud storage"
-                    description="Link folders from Google Drive, OneDrive, Dropbox, SharePoint, or Box so your Agent can use the documents inside."
+                    description="Link folders from Google Drive, OneDrive, or Dropbox so your Agent can use the documents inside."
                   >
                     <CloudKnowledgeConnections />
                   </Card>

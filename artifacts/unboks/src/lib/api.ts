@@ -277,6 +277,116 @@ export async function fetchAppointments(): Promise<AppointmentsResponse> {
 const APPOINTMENTS_NOT_CONNECTED = new Set([0, 404, 501, 503]);
 
 // ---------------------------------------------------------------------------
+// Cloud knowledge connections
+// ---------------------------------------------------------------------------
+//
+// Backend contract (issue unboks-org/unboks-dashboard-api#29):
+//   GET /api/{tenant}/dashboard/api/knowledge/cloud-connections
+//   200: { providers: CloudConnectionProvider[] }
+//
+// The backend is the single source of truth for which providers are even
+// shown — the frontend renders ONLY what it returns. SharePoint and Box
+// are intentionally absent from the product, so they are absent from the
+// response and the UI never mentions them.
+//
+// `status` drives the action button:
+//   - "connected"        → Connected badge + folder + last_synced
+//   - "setup_required"   → Setup required + Connect (may route to OAuth
+//                          when `needs_provider_app_registration` is
+//                          false; otherwise disabled with a help line)
+//   - "not_configured"   → Setup pending / Contact Unboks team
+//                          (Connect button always disabled)
+
+export type CloudConnectionStatus =
+  | "connected"
+  | "setup_required"
+  | "not_configured";
+
+export type CloudConnectionProviderId = "google_drive" | "onedrive" | "dropbox";
+
+export interface CloudConnectionProvider {
+  provider: CloudConnectionProviderId;
+  label: string;
+  blurb: string;
+  status: CloudConnectionStatus;
+  needs_provider_app_registration: boolean;
+  folder_name?: string | null;
+  last_synced_at?: string | null;
+}
+
+export interface CloudConnectionsResponse {
+  providers: CloudConnectionProvider[];
+}
+
+const ALLOWED_CLOUD_PROVIDERS: ReadonlySet<CloudConnectionProviderId> = new Set([
+  "google_drive",
+  "onedrive",
+  "dropbox",
+]);
+
+const ALLOWED_CLOUD_STATUSES: ReadonlySet<CloudConnectionStatus> = new Set([
+  "connected",
+  "setup_required",
+  "not_configured",
+]);
+
+export async function fetchCloudConnections(): Promise<CloudConnectionsResponse> {
+  const raw = await apiFetch<unknown>("/knowledge/cloud-connections");
+  return { providers: normalizeCloudConnections(raw) };
+}
+
+function normalizeCloudConnections(raw: unknown): CloudConnectionProvider[] {
+  let items: unknown[] = [];
+  if (Array.isArray(raw)) items = raw;
+  else if (raw && typeof raw === "object") {
+    const maybe = (raw as Record<string, unknown>).providers;
+    if (Array.isArray(maybe)) items = maybe;
+  }
+  const out: CloudConnectionProvider[] = [];
+  for (const it of items) {
+    if (!it || typeof it !== "object") continue;
+    const o = it as Record<string, unknown>;
+    const providerRaw = pickStr(o, "provider", "id");
+    if (!providerRaw) continue;
+    // Hard filter: never render SharePoint / Box even if the backend
+    // accidentally surfaces them. The product decision in #29 is
+    // explicit — only Google Drive, OneDrive, Dropbox.
+    if (!ALLOWED_CLOUD_PROVIDERS.has(providerRaw as CloudConnectionProviderId)) {
+      continue;
+    }
+    const statusRaw = (pickStr(o, "status") ?? "").toLowerCase();
+    const status: CloudConnectionStatus = ALLOWED_CLOUD_STATUSES.has(
+      statusRaw as CloudConnectionStatus,
+    )
+      ? (statusRaw as CloudConnectionStatus)
+      : "not_configured";
+    out.push({
+      provider: providerRaw as CloudConnectionProviderId,
+      label: pickStr(o, "label") ?? defaultProviderLabel(providerRaw as CloudConnectionProviderId),
+      blurb: pickStr(o, "blurb") ?? "",
+      status,
+      needs_provider_app_registration:
+        o.needs_provider_app_registration === true ||
+        o.needsProviderAppRegistration === true,
+      folder_name: pickStr(o, "folder_name", "folderName"),
+      last_synced_at: pickStr(o, "last_synced_at", "lastSyncedAt"),
+    });
+  }
+  return out;
+}
+
+function defaultProviderLabel(p: CloudConnectionProviderId): string {
+  switch (p) {
+    case "google_drive":
+      return "Google Drive";
+    case "onedrive":
+      return "OneDrive";
+    case "dropbox":
+      return "Dropbox";
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Confirm appointment
 // ---------------------------------------------------------------------------
 //

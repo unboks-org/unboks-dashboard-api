@@ -1,0 +1,86 @@
+R2-29
+
+Wire the cloud storage connector UI to Claudia’s backend #29 cloud-connections endpoint.
+
+Current live dashboard failure:
+Settings → cloud storage still shows old static list:
+- Google Drive
+- OneDrive
+- Dropbox
+- SharePoint
+- Box
+
+This is wrong.
+
+Product decision:
+Only show:
+- Google Drive
+- OneDrive
+- Dropbox
+
+Remove/hide:
+- SharePoint
+- Box
+
+Scope:
+Project 2 dashboard frontend.
+Do not touch backend.
+Do not touch Project 1.
+Do not touch Nr 3.
+
+Backend already added:
+GET /api/{tenant}/dashboard/api/knowledge/cloud-connections
+
+Expected response shape:
+{
+  providers: [
+    {
+      provider: "google_drive" | "onedrive" | "dropbox",
+      label: string,
+      blurb: string,
+      status: "connected" | "setup_required" | "not_configured",
+      needs_provider_app_registration: boolean,
+      folder_name?: string,
+      last_synced_at?: string
+    }
+  ]
+}
+
+Required UI behavior:
+1. Fetch the backend cloud-connections endpoint.
+2. Render only providers returned by backend.
+3. Do not show SharePoint.
+4. Do not show Box.
+5. Update header copy to say only:
+   “Link folders from Google Drive, OneDrive, or Dropbox so your Agent can use the documents inside.”
+6. For status connected:
+   show Connected, folder name if available, last synced if available.
+7. For status setup_required:
+   show Setup required.
+   For Google Drive, Connect button may route to Google OAuth if backend supports it.
+   For OneDrive/Dropbox, disable Connect if auth endpoints are not yet implemented.
+8. For status not_configured:
+   show Setup pending / Contact Unboks team.
+   Disable Connect button.
+9. No fake Connect buttons for unavailable providers.
+10. No secrets shown.
+11. Use existing dashboard API/auth helper patterns.
+12. Build/typecheck clean.
+
+Acceptance:
+1. Open Settings → cloud storage.
+2. Only Google Drive, OneDrive, Dropbox appear.
+3. SharePoint and Box are gone.
+4. Header copy no longer mentions SharePoint or Box.
+5. Buttons reflect real status.
+6. No fake available Connect button for not_configured providers.
+7. Build/typecheck clean.
+
+Final report:
+- files changed
+- endpoint used
+- provider filtering behavior
+- status/button behavior
+- build/typecheck result
+- whether Calvin must republish
+- Calvin retest steps
