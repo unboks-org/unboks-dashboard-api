@@ -1,0 +1,78 @@
+TASK: Add proper favicon for UNBOKS Project 2 customer dashboard.
+
+PROJECT SCOPE:
+Project 2 customer dashboard only.
+Do NOT touch Project 1 public website.
+Do NOT touch pricing.
+Do NOT touch backend/API.
+Do NOT modify artifacts/api-server.
+Frontend only.
+
+GOAL:
+The browser tab for the Project 2 customer dashboard must show a proper Unboks favicon instead of a default/random icon.
+
+WHAT:
+Add a clean favicon for the dashboard.
+
+The favicon should represent Unboks clearly at small browser-tab size.
+
+Preferred visual direction:
+- Simple Unboks-style mark
+- Clean, premium, minimal
+- Works at 16x16, 32x32, 48x48
+- Not busy
+- Not full text if it becomes unreadable
+- Use a simple “U” mark or Unboks icon-style mark
+- Should look good in light and dark browser themes
+
+REQUIRED FILES:
+Add favicon assets to the correct public/static location used by the Vite app.
+
+Preferred:
+- favicon.ico
+- favicon.svg
+- apple-touch-icon.png if easy
+- site.webmanifest only if already used or simple
+
+Likely locations:
+- artifacts/unboks/public/favicon.ico
+- artifacts/unboks/public/favicon.svg
+or whatever public folder the Vite app uses.
+
+Then update the HTML head if needed:
+- artifacts/unboks/index.html
+
+Add or update:
+<link rel="icon" href="/favicon.ico" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+IMPORTANT:
+- Do not touch Project 1 website favicon.
+- Do not change app branding elsewhere.
+- Do not touch dashboard layout.
+- Do not touch backend.
+- Do not add huge image files.
+- Do not use random generated assets if there is already an Unboks logo/icon available in the repo.
+- Search the repo for existing logo/icon assets first.
+
+INVESTIGATION:
+Search for:
+- favicon
+- logo
+- unboks
+- icon
+- public
+- index.html
+
+Use existing Unboks brand asset if available.
+If no asset exists, create a simple SVG favicon using a minimal Unboks “U” or small geometric mark.
+
+ACCEPTANCE:
+- Browser tab shows Unboks dashboard favicon.
+- Favicon works after refresh.
+- Favicon appears on Project 2 dashboard tab.
+- Project 1 public website untouched.
+- Build/typecheck clean.
+- Report exact files changed.
+- Do not commit.
+- Do not publish until reviewed.
