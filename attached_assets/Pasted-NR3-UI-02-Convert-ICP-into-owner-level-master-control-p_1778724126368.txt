@@ -1,0 +1,140 @@
+NR3-UI-02 — Convert ICP into owner-level master control panel
+
+Goal:
+The Nr 3 ICP must feel like the Unboks.org owner/master control panel.
+
+This is not a customer dashboard.
+This is not a limited operator panel.
+This is not a demo control surface.
+
+The owner/admin must feel in control of every tenant.
+
+Core rule:
+Warn, confirm, audit — but do not visually disempower the owner.
+
+Important distinction:
+- Do NOT fake backend execution.
+- Do NOT mutate production tenant data unless backend support already exists.
+- But DO make every owner control visible, active, clickable, and understandable.
+
+Required UX change:
+Replace dead/grey disabled buttons with active owner controls.
+
+Button states must become:
+
+1. SAFE READ ACTION
+Examples:
+- Open tenant dashboard
+- View Source of Truth
+- View activity log
+- View audit log
+- View knowledge items
+Behavior:
+- Button/link is active.
+- Opens the relevant page/view if available.
+- If page not built yet, opens “Not connected yet” modal.
+
+2. CONFIG / EDIT ACTION
+Examples:
+- Edit tenant info
+- Edit tone
+- Edit escalation rules
+- Configure channel
+- Invite operator
+- Change role
+- Upload files
+- Connect cloud directory
+- Sync now
+- Send onboarding link
+- Copy onboarding link
+- Review answers
+- Mark tenant ready
+Behavior:
+- Button is active.
+- If backend exists safely, use it.
+- If backend not connected, open modal:
+  Title: Backend not connected yet
+  Body: This control is planned for owner use. Backend wiring is not connected yet, so no tenant data was changed.
+  Show: target tenant + action name.
+
+3. DANGEROUS ACTION
+Examples:
+- Pause tenant
+- Suspend / cut off tenant
+- Disconnect channel
+- Remove operator
+- Cancel tenant
+- Push changes
+- Revert pending changes
+Behavior:
+- Button is active.
+- Uses warning/danger styling.
+- On click, open confirmation modal first.
+- Modal must show:
+  - action name
+  - tenant name
+  - consequence
+  - Cancel button
+  - Confirm button
+- On confirm:
+  - If backend is safely wired, execute.
+  - If backend is not wired, show:
+    “Action not executed. Backend not connected yet.”
+  - Do not silently fail.
+  - Do not mutate anything accidentally.
+
+4. UNSUPPORTED REAL PUSH
+For tenant-side pushes that Claudia marked unsupported:
+- Button active.
+- Click opens modal:
+  “Push backend not connected yet.”
+- Explain: “This action is visible because the owner must control it from ICP, but the real tenant-side write path has not been connected yet.”
+- Do not disable the button visually.
+
+Visual requirements:
+- No whole section should look greyed out.
+- No dead control surfaces.
+- No disabled-button wall.
+- Sections must look alive and operational.
+- Unknown data should show Unknown / Not configured, not disabled styling.
+- Danger zone stays visually separated but remains usable.
+- Buttons should feel clickable.
+- Use spartan premium admin styling.
+
+Owner-power principle:
+The ICP does not hide power.
+It exposes power with guardrails:
+- warning
+- confirmation
+- audit-ready messaging
+- honest backend state
+
+Implementation requirements:
+- Add reusable modal component in vanilla JS/CSS.
+- Add data-action attributes to buttons.
+- Add action handler that knows:
+  - action name
+  - tenant id/name
+  - action type: read / edit / dangerous / unsupported
+  - backend status: connected / not_connected
+- Replace disabled aria-disabled buttons with clickable buttons unless there is a real technical reason they cannot be clicked.
+- Keep accessibility sane:
+  - modal focus
+  - Escape closes modal
+  - Cancel closes modal
+- No React.
+- No Vite.
+- No backend rewiring unless already safe.
+- Tests pass.
+- Commit and push.
+
+Acceptance:
+1. Tenant workspace no longer looks like a disabled mockup.
+2. Owner controls are visible and clickable.
+3. Not-wired controls open an explanatory modal.
+4. Dangerous controls open a confirmation modal.
+5. Unsupported push actions show “Push backend not connected yet.”
+6. No production tenant data is mutated by this UI task.
+7. Existing read-only backend data still displays.
+8. Tests pass.
+9. Commit pushed.
