@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useEnabledChannels } from "@/hooks/use-enabled-channels";
+import { useIcpChannelVisibility } from "@/hooks/use-icp-channel-visibility";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import {
   Inbox as InboxIcon,
@@ -83,7 +83,7 @@ export function Drawer({
     { id: "inbox", icon: InboxIcon, label: "Inbox", count: inboxCount },
   ];
 
-  const { isChannelEnabled } = useEnabledChannels();
+  const { isChannelVisible } = useIcpChannelVisibility();
   const { label: bookingsLabel } = useBookingsLabel();
 
   const ALL_CHANNELS: NavItem[] = [
@@ -98,7 +98,7 @@ export function Drawer({
 
   const CHANNELS = ALL_CHANNELS.filter((item) => {
     const ch = item.id.split(":")[1];
-    return isChannelEnabled(ch as Parameters<typeof isChannelEnabled>[0]);
+    return isChannelVisible(ch as Parameters<typeof isChannelVisible>[0]);
   });
 
   const WORKSPACE: NavItem[] = [

@@ -27,7 +27,7 @@ import { dedupeEscalations } from "@/lib/dedupe-escalations";
 import { useDeepLink, clearDeepLinkQuery } from "@/lib/deep-link";
 import { CHANNEL_BADGE_COLORS } from "@/lib/channel-map";
 import type { NavId } from "@/components/inbox/Drawer";
-import { useEnabledChannels } from "@/hooks/use-enabled-channels";
+import { useIcpChannelVisibility } from "@/hooks/use-icp-channel-visibility";
 import {
   useHiddenConversations,
   collectConversationHideKeys,
@@ -991,7 +991,7 @@ function ConversationThreadBody({
 export default function Inbox() {
   const [location, navigate] = useLocation();
   const search = useSearch();
-  const { isChannelEnabled } = useEnabledChannels();
+  const { isChannelVisible } = useIcpChannelVisibility();
   const [searchQuery, setSearchQueryState] = useState("");
   // activeNav is derived from the URL — that's how a refresh / crash
   // recovery / 401 bounce restores the same view (Inbox / Escalations
@@ -1003,7 +1003,7 @@ export default function Inbox() {
         "",
       ) || "/" : "/",
       typeof window !== "undefined" ? window.location.search : "",
-      isChannelEnabled,
+      isChannelVisible,
     ),
   );
 
@@ -1013,10 +1013,10 @@ export default function Inbox() {
   // back/forward also "just works" — same path = same view.
   useEffect(() => {
     setActiveNavState((prev) => {
-      const next = navIdFromInboxUrl(location, search, isChannelEnabled);
+      const next = navIdFromInboxUrl(location, search, isChannelVisible);
       return prev === next ? prev : next;
     });
-  }, [location, search, isChannelEnabled]);
+  }, [location, search, isChannelVisible]);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
   const [escalationFilter, setEscalationFilter] = useState<"all" | "soft" | "hard" | "resolved">("all");
 
@@ -1399,7 +1399,7 @@ export default function Inbox() {
       // Archive is now server-backed: active list comes from /messages/conversations,
       // archived list from /messages/conversations/archived. No client-side split needed.
       const source = inboxView === "archived" ? archivedConversations : allConversations;
-      list = source.filter((c) => isChannelEnabled(c.channel));
+      list = source.filter((c) => isChannelVisible(c.channel));
       if (activeNav.startsWith("channel:")) {
         const ch = activeNav.split(":")[1] as Channel;
         list = list.filter((c) => c.channel === ch);
@@ -1425,7 +1425,7 @@ export default function Inbox() {
     escalationRows,
     activeNav,
     searchQuery,
-    isChannelEnabled,
+    isChannelVisible,
     escalationFilter,
     inboxView,
   ]);

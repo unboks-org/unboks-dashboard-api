@@ -67,7 +67,7 @@ export function inboxContextUrl(id: NavId): string {
 export function navIdFromInboxUrl(
   pathname: string,
   search: string,
-  isChannelEnabled: (ch: Channel) => boolean,
+  isChannelVisible: (ch: Channel) => boolean,
 ): NavId {
   if (pathname.startsWith("/escalations")) return "escalations";
   if (pathname === "/" || pathname === "") {
@@ -86,7 +86,7 @@ export function navIdFromInboxUrl(
         const cap = ch as Channel;
         // Only honour channels the workspace currently exposes — a stale
         // bookmark to a disabled channel falls back to Inbox.
-        if (isChannelEnabled(cap)) return `channel:${cap}` as NavId;
+        if (isChannelVisible(cap)) return `channel:${cap}` as NavId;
       }
     } catch {
       // ignore — fall through to inbox

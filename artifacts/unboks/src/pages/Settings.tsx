@@ -25,7 +25,7 @@ import {
   type DeliveryStatus,
 } from "@/hooks/use-escalation-notification-preferences";
 import { ApiError } from "@/lib/error";
-import { useEnabledChannels, TOGGLEABLE_CHANNELS } from "@/hooks/use-enabled-channels";
+import { useIcpChannelVisibility, ALL_TOGGLEABLE_CHANNELS } from "@/hooks/use-icp-channel-visibility";
 import { useAccountSettings, type AccountSettings } from "@/hooks/use-account-settings";
 import { useYourInfoUpdates, UPDATE_TYPES, type YourInfoUpdateType } from "@/hooks/use-your-info-updates";
 import { KnowledgeFileUploader } from "@/components/settings/KnowledgeFileUploader";
@@ -726,7 +726,7 @@ export default function Settings() {
     deliveryStatuses: notifyDeliveryStatuses,
     defaultEmailAddress: notifyDefaultEmail,
   } = useEscalationNotificationPrefs();
-  const { isChannelEnabled, toggleChannel } = useEnabledChannels();
+  const { isChannelVisible } = useIcpChannelVisibility();
   const { settings: account, save: saveAccount } = useAccountSettings();
   const { updates, addUpdate, setActive: setUpdateActive, removeUpdate } = useYourInfoUpdates();
 
@@ -1194,12 +1194,12 @@ export default function Settings() {
 
               {active === "channels" && (
                 <Card
-                  title="Visible channels"
-                  description="Channel visibility is controlled from the operator console (ICP). Flip a channel toggle there to show or hide it here. Read-only on this page."
+                  title="Channels"
+                  description="Channel visibility is managed in ICP."
                 >
                   <ul className="divide-y divide-[#f1f3f4]">
-                    {TOGGLEABLE_CHANNELS.map((ch) => {
-                      const visible = isChannelEnabled(ch);
+                    {ALL_TOGGLEABLE_CHANNELS.map((ch) => {
+                      const visible = isChannelVisible(ch);
                       return (
                         <li
                           key={ch}
@@ -1219,10 +1219,6 @@ export default function Settings() {
                       );
                     })}
                   </ul>
-                  <p className="mt-3 text-xs text-gray-500">
-                    Managed by ICP. To change, sign in to
-                    icp.unboks.org &rarr; this tenant &rarr; Channels.
-                  </p>
                 </Card>
               )}
 

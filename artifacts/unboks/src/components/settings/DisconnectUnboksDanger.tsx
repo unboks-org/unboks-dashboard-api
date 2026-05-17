@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { disconnectUnboks } from "@/lib/api";
 import { ApiError } from "@/lib/error";
-import { useEnabledChannels } from "@/hooks/use-enabled-channels";
+import { useIcpChannelVisibility } from "@/hooks/use-icp-channel-visibility";
 import { useDisconnectState } from "@/hooks/use-disconnect-state";
 
 /**
@@ -33,7 +33,7 @@ const CONFIRM_PHRASE = "DISCONNECT";
 export function DisconnectUnboksDanger() {
   const [open, setOpen] = useState(false);
   const { status, record, setConfirmed, setRequested } = useDisconnectState();
-  const { enabledChannels } = useEnabledChannels();
+  const { visibleChannels } = useIcpChannelVisibility();
 
   // ----- Disconnected / requested state: replace the CTA with an
   // honest banner so the operator can't double-click the action and
@@ -106,7 +106,7 @@ export function DisconnectUnboksDanger() {
       <DisconnectModal
         open={open}
         onClose={() => setOpen(false)}
-        connectedChannels={enabledChannels}
+        connectedChannels={visibleChannels}
         onConfirmed={(note) => {
           setConfirmed(note);
           setOpen(false);
