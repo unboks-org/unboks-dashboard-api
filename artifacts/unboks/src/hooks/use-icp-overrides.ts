@@ -45,7 +45,7 @@
  *     active" — consistent with the wtyj-agent backend semantics.
  */
 import { useQuery } from "@tanstack/react-query";
-import { getClientSlug, getToken } from "@/lib/tenant";
+import { getApiBase, getClientSlug, getToken } from "@/lib/tenant";
 
 export interface IcpFeatureToggle {
   value: boolean | null;
@@ -75,7 +75,10 @@ async function fetchIcpEnvelope(): Promise<IcpEnvelope> {
   const slug = getClientSlug();
   const token = getToken();
   if (!slug || !token) return EMPTY_ENVELOPE;
-  const url = `/api/${encodeURIComponent(slug)}/dashboard/api/icp-overrides`;
+  // Use getApiBase() so the request respects VITE_API_BASE_URL in
+  // production. A relative /api/... URL would hit the dashboard origin,
+  // not the API host, and silently return an empty envelope.
+  const url = `${getApiBase(slug)}/icp-overrides`;
   let resp: Response;
   try {
     resp = await fetch(url, {
@@ -85,24 +88,30 @@ async function fetchIcpEnvelope(): Promise<IcpEnvelope> {
     return EMPTY_ENVELOPE;
   }
   if (!resp.ok) return EMPTY_ENVELOPE;
+  let body: IcpEnvelope | undefined;
   try {
-    const body = (await resp.json()) as IcpEnvelope | undefined;
-    if (!body || typeof body !== "object") return EMPTY_ENVELOPE;
-    return {
-      available: !!body.available,
-      reason: body.reason,
-      tenant_id: body.tenant_id ?? null,
-      feature_toggles:
-        (body.feature_toggles && typeof body.feature_toggles === "object"
-          ? body.feature_toggles
-          : {}) as Record<string, IcpFeatureToggle>,
-      display_metadata: body.display_metadata,
-      sot_entries: body.sot_entries,
-      ai_agent_settings: body.ai_agent_settings,
-    };
+    body = (await resp.json()) as IcpEnvelope | undefined;
   } catch {
     return EMPTY_ENVELOPE;
   }
+  if (!body || typeof body !== "object") return EMPTY_ENVELOPE;
+  const envelope: IcpEnvelope = {
+    available: body.available !== false,
+    reason: body.reason,
+    tenant_id: body.tenant_id ?? null,
+    feature_toggles:
+      (body.feature_toggles && typeof body.feature_toggles === "object"
+        ? body.feature_toggles
+        : {}) as Record<string, IcpFeatureToggle>,
+    display_metadata: body.display_metadata,
+    sot_entries: body.sot_entries,
+    ai_agent_settings: body.ai_agent_settings,
+  };
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.debug("[ICP] envelope", envelope);
+  }
+  return envelope;
 }
 
 export function useIcpOverrides() {

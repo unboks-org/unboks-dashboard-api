@@ -180,11 +180,6 @@ export function Drawer({
                 onSelect={onSelect}
               />
             ))}
-            {CHANNELS.length === 0 && (
-              <div className="px-3 py-2 text-[12px] text-[#6b7280]">
-                No channels enabled yet.
-              </div>
-            )}
           </NavGroup>
 
           <SectionHeader label="Workspace" />
