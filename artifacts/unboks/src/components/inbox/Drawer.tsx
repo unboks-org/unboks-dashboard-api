@@ -13,6 +13,7 @@ import {
   Facebook,
   Video,
   Send,
+  MessageSquare,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -91,6 +92,7 @@ export function Drawer({
     { id: "channel:Email", icon: Mail, label: "Email", count: channelCounts.Email },
     { id: "channel:Instagram", icon: Instagram, label: "Instagram", count: channelCounts.Instagram },
     { id: "channel:Facebook", icon: Facebook, label: "Facebook", count: channelCounts.Facebook },
+    { id: "channel:Messenger", icon: MessageSquare, label: "Messenger", count: channelCounts.Messenger },
     { id: "channel:Telegram", icon: Send, label: "Telegram", count: channelCounts.Telegram },
     { id: "channel:TikTok", icon: Video, label: "TikTok", count: channelCounts.TikTok },
     { id: "channel:X", icon: XIcon, label: "X", count: channelCounts.X },

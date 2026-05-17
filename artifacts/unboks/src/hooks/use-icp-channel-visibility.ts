@@ -7,6 +7,7 @@ export type VisibleChannel =
   | "Email"
   | "Instagram"
   | "Facebook"
+  | "Messenger"
   | "Telegram"
   | "TikTok"
   | "X";
@@ -23,6 +24,7 @@ const CHANNEL_PREFIXES: Record<VisibleChannel, readonly string[]> = {
   Email: ["email"],
   Instagram: ["instagram"],
   Facebook: ["facebook"],
+  Messenger: ["messenger"],
   Telegram: ["telegram"],
   TikTok: ["tiktok"],
   X: ["x", "twitter"],
@@ -67,6 +69,7 @@ function classifyToggles(envelope?: IcpEnvelope) {
     Email: [],
     Instagram: [],
     Facebook: [],
+    Messenger: [],
     Telegram: [],
     TikTok: [],
     X: [],
@@ -97,6 +100,7 @@ function classifyToggles(envelope?: IcpEnvelope) {
     "Email",
     "Instagram",
     "Facebook",
+    "Messenger",
     "Telegram",
     "TikTok",
     "X",
