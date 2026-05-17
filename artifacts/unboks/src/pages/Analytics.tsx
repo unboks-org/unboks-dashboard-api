@@ -15,6 +15,7 @@ const CHANNEL_COLORS: Record<string, string> = {
   X: "#202124",
   TikTok: "#010101",
   Telegram: "#0088cc",
+  Messenger: "#0084ff",
   Unknown: "#9aa0a6",
 };
 

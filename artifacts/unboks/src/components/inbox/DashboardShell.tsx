@@ -193,7 +193,7 @@ export function DashboardShell({
     const counts: Record<Channel, number> = {
       All: hasConvData ? activeConversations.length : 0,
       WhatsApp: 0, Email: 0, Instagram: 0, Facebook: 0,
-      X: 0, TikTok: 0, Telegram: 0, Unknown: 0,
+      X: 0, TikTok: 0, Telegram: 0, Messenger: 0, Unknown: 0,
     };
     if (hasConvData) {
       activeConversations.forEach((c) => { counts[c.channel] = (counts[c.channel] || 0) + 1; });
