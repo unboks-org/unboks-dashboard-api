@@ -29,6 +29,15 @@ export const PLATFORMS: PlatformDef[] = [
   { key: "messenger", label: "Messenger", channel: "Messenger" },
 ];
 
+// =============================================================
+//  RULE: NEVER BUNDLE CHANNELS  (owner decision, 2026-05-17)
+//  Every channel is always separate. messenger MUST route to
+//  "Messenger" — never to "Facebook". Same for every other
+//  channel. No "Meta unification". No shared keys. No collapsing
+//  any two channels into one. If you are about to write
+//  `messenger: "Facebook"` or anything analogous, stop and ask
+//  Calvin first. This has been re-broken twice already.
+// =============================================================
 // Comprehensive platform alias map — covers all known API variants
 const PLATFORM_TO_CHANNEL: Record<string, Channel> = {
   // WhatsApp variants

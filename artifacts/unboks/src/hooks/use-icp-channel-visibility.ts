@@ -1,3 +1,12 @@
+// =============================================================
+//  RULE: NEVER BUNDLE CHANNELS  (owner decision, 2026-05-17)
+//  Eight channels (WhatsApp, Email, Instagram, Facebook, Messenger,
+//  Telegram, TikTok, X). Each is a separate visibility unit driven
+//  by its own ICP feature_toggle key. Do NOT collapse Messenger
+//  into Facebook, do NOT introduce a shared toggle that controls
+//  more than one channel, do NOT remove a channel from the union.
+//  If a new channel is added it joins this list as a new entry.
+// =============================================================
 import { useCallback, useEffect, useMemo } from "react";
 import type { Channel } from "@/data/conversations";
 import { useIcpOverrides, type IcpEnvelope } from "./use-icp-overrides";
