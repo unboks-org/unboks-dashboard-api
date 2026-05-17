@@ -44,7 +44,7 @@ export const DEFAULT_SOT: SotBlock[] = [
   {
     id: "channels",
     title: "Channels",
-    items: ["WhatsApp", "Email", "Instagram", "Facebook", "Telegram", "Messenger"],
+    items: ["WhatsApp", "Email", "Instagram", "Facebook", "Telegram", "TikTok", "X"],
   },
   {
     id: "core-functionality",
@@ -171,7 +171,7 @@ export const DEFAULT_SOT: SotBlock[] = [
   {
     id: "integrations",
     title: "Integrations",
-    items: ["WhatsApp", "Email", "Instagram", "Facebook", "Telegram", "Messenger"],
+    items: ["WhatsApp", "Email", "Instagram", "Facebook", "Telegram", "TikTok", "X"],
     subsections: [
       {
         title: "Internal note",

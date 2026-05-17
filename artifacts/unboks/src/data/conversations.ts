@@ -1,4 +1,4 @@
-export type Channel = "All" | "Email" | "WhatsApp" | "Instagram" | "Facebook" | "X" | "TikTok" | "Messenger" | "Telegram" | "Unknown";
+export type Channel = "All" | "Email" | "WhatsApp" | "Instagram" | "Facebook" | "X" | "TikTok" | "Telegram" | "Unknown";
 
 export type EscalationMode = "soft" | "hard" | null;
 export type LearningStatus = "none" | "suggested" | "approved" | "saved";
@@ -122,7 +122,7 @@ export const conversations: Conversation[] = [
   },
   {
     id: "7",
-    channel: "Messenger",
+    channel: "Facebook",
     sender: "Robert Downey",
     subject: "Refund request",
     preview: "I'd like to request a refund for the services rendered last month. They did not meet expectations.",
@@ -243,7 +243,7 @@ export const conversations: Conversation[] = [
   },
   {
     id: "18",
-    channel: "Messenger",
+    channel: "Facebook",
     sender: "Lisa Thomas",
     subject: "Update my email",
     preview: "Can you update the email on my account to this one? I lost access to the old one.",

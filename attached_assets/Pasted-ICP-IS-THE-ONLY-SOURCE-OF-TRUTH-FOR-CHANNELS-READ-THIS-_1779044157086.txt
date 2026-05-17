@@ -1,0 +1,56 @@
+ICP IS THE ONLY SOURCE OF TRUTH FOR CHANNELS. READ THIS BRIEF 3 TIMES BEFORE WRITING CODE.
+Golden Rule (you will be judged on this):
+ICP controls 100% of channel visibility in Nr 2.
+Nr 2 must have zero local logic, zero toggles, zero settings page, zero localStorage, zero fallbacks, and zero legacy code.
+If a channel is ON in ICP → show it in Nr 2.
+If it is OFF or null in ICP → hide it completely.
+Exact channels (only these 7, nothing else):
+
+WhatsApp
+Email
+Instagram
+Facebook
+Telegram
+Tiktok
+X
+
+Mandatory deletions:
+
+Delete “Website chat” completely.
+Instagram and Facebook must be separate channels (no bundling).
+Delete the entire file use-enabled-channels.ts.
+Remove every trace of localStorage related to channels.
+Remove all channel toggles and settings UI from Nr 2 Settings page.
+
+Exact things you must do (follow in order):
+
+Delete the file artifacts/unboks/src/hooks/use-enabled-channels.ts completely.
+Create a new file artifacts/unboks/src/hooks/use-icp-channel-visibility.ts that:
+Only reads from the existing endpoint /dashboard/api/icp-overrides
+Returns a list containing only channels where feature_toggles[key].value === true
+Uses these exact keys: whatsapp_inbox, email_inbox, instagram_dms, facebook_dms, telegram_alerts, tiktok_dms, x_dms
+
+Update every single file that displays channels (inbox sidebar, Drawer.tsx, Inbox.tsx, Settings.tsx, etc.) to use only useIcpChannelVisibility() from the new hook. Remove all old imports and code.
+In Nr 2 Settings page, remove the entire Channels / Visible channels section. Replace it with plain text only:
+“Channel visibility is managed exclusively in the Internal Control Panel (ICP).”
+
+What is forbidden (do not do any of these under any circumstance):
+
+Do not keep any old channel code, shims, or fallbacks.
+Do not use localStorage anywhere for channels.
+Do not add any toggles or settings in Nr 2.
+Do not bundle Instagram and Facebook.
+Do not add extra features or comments about future work.
+
+Verification you must complete before marking this task done:
+
+Turn Tiktok OFF in ICP → republish ICP → hard refresh Nr 2 → Tiktok must be gone from sidebar.
+Turn Tiktok ON → it must appear.
+Repeat exact test for Instagram, Facebook, and X.
+Nr 2 Settings page must have no channel toggles.
+Run grep for old hook names and localStorage across the entire project → must return zero results.
+Type check and build must pass with zero errors.
+
+Ship this as one single clean commit on unboks-dashboard-api main.
+Reply with the exact commit hash when finished.
+Start immediately. Follow this brief exactly. No extra code. No wandering. No hallucination.

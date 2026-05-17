@@ -79,7 +79,7 @@ function channelLabel(slug: string): string {
     case "facebook":
       return "Facebook";
     case "messenger":
-      return "Messenger";
+      return "Facebook";
     case "tiktok":
       return "TikTok";
     case "x":

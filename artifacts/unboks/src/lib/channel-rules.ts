@@ -12,7 +12,7 @@ import type { Channel } from "@/data/conversations";
  * (`DELETE /messages/conversations/:id/email?deleteMode=trash`, with a
  * POST `/email/delete` fallback). WhatsApp Business API has no delete
  * primitive at all — pretending otherwise would silently lose nothing
- * but operator trust. Instagram / Facebook / Messenger / X / TikTok
+ * but operator trust. Instagram / Facebook / X / TikTok / Telegram
  * are also archive-only until a real provider delete lands.
  *
  * If the backend grows true delete support for another channel, add it

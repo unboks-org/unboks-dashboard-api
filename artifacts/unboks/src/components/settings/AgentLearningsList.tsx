@@ -45,7 +45,7 @@ function formatChannel(channel: string): string {
     case "email": return "Email";
     case "instagram": return "Instagram";
     case "facebook": return "Facebook";
-    case "messenger": return "Messenger";
+    case "messenger": return "Facebook";
     case "tiktok": return "TikTok";
     case "x": return "X";
     default: return lower.charAt(0).toUpperCase() + lower.slice(1);

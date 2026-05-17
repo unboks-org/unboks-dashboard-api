@@ -8,8 +8,7 @@ export type PlatformKey =
   | "x"
   | "twitter"
   | "tiktok"
-  | "telegram"
-  | "messenger";
+  | "telegram";
 
 export interface PlatformDef {
   key: PlatformKey;
@@ -26,7 +25,6 @@ export const PLATFORMS: PlatformDef[] = [
   { key: "twitter", label: "X", channel: "X" },
   { key: "tiktok", label: "TikTok", channel: "TikTok" },
   { key: "telegram", label: "Telegram", channel: "Telegram" },
-  { key: "messenger", label: "Messenger", channel: "Messenger" },
 ];
 
 // Comprehensive platform alias map — covers all known API variants
@@ -62,9 +60,9 @@ const PLATFORM_TO_CHANNEL: Record<string, Channel> = {
   telegram: "Telegram",
   telegram_bot: "Telegram",
   tg: "Telegram",
-  // Messenger variants
-  messenger: "Messenger",
-  meta_messenger: "Messenger",
+  // Messenger variants route to Facebook (Meta unification)
+  messenger: "Facebook",
+  meta_messenger: "Facebook",
   // X / Twitter variants
   x: "X",
   twitter: "X",
@@ -101,7 +99,6 @@ export const CHANNEL_BADGE_COLORS: Record<Channel, string> = {
   Facebook: "#1877f2",
   X: "#202124",
   TikTok: "#010101",
-  Messenger: "#0084ff",
   Telegram: "#0088cc",
   Unknown: "#9aa0a6",
 };
