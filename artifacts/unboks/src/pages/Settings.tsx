@@ -1193,7 +1193,7 @@ export default function Settings() {
               {active === "channels" && (
                 <Card title="Channels">
                   <p className="text-sm text-[#3c4043]">
-                    Channel visibility is managed exclusively in the Internal Control Panel (ICP).
+                    Contact your admin to add more channels.
                   </p>
                 </Card>
               )}
