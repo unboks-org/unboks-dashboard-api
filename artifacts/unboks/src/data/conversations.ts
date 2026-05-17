@@ -1,4 +1,4 @@
-export type Channel = "All" | "Email" | "WhatsApp" | "Instagram" | "Facebook" | "X" | "TikTok" | "Messenger" | "Unknown";
+export type Channel = "All" | "Email" | "WhatsApp" | "Instagram" | "Facebook" | "X" | "TikTok" | "Messenger" | "Telegram" | "Unknown";
 
 export type EscalationMode = "soft" | "hard" | null;
 export type LearningStatus = "none" | "suggested" | "approved" | "saved";

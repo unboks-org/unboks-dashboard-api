@@ -12,7 +12,7 @@ import {
   Instagram,
   Facebook,
   Video,
-  MessageSquare,
+  Send,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -91,9 +91,9 @@ export function Drawer({
     { id: "channel:Email", icon: Mail, label: "Email", count: channelCounts.Email },
     { id: "channel:Instagram", icon: Instagram, label: "Instagram", count: channelCounts.Instagram },
     { id: "channel:Facebook", icon: Facebook, label: "Facebook", count: channelCounts.Facebook },
-    { id: "channel:X", icon: XIcon, label: "X", count: channelCounts.X },
+    { id: "channel:Telegram", icon: Send, label: "Telegram", count: channelCounts.Telegram },
     { id: "channel:TikTok", icon: Video, label: "TikTok", count: channelCounts.TikTok },
-    { id: "channel:Messenger", icon: MessageSquare, label: "Messenger", count: channelCounts.Messenger },
+    { id: "channel:X", icon: XIcon, label: "X", count: channelCounts.X },
   ];
 
   const CHANNELS = ALL_CHANNELS.filter((item) => {

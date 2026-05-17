@@ -25,7 +25,6 @@ import {
   type DeliveryStatus,
 } from "@/hooks/use-escalation-notification-preferences";
 import { ApiError } from "@/lib/error";
-import { useIcpChannelVisibility, ALL_TOGGLEABLE_CHANNELS } from "@/hooks/use-icp-channel-visibility";
 import { useAccountSettings, type AccountSettings } from "@/hooks/use-account-settings";
 import { useYourInfoUpdates, UPDATE_TYPES, type YourInfoUpdateType } from "@/hooks/use-your-info-updates";
 import { KnowledgeFileUploader } from "@/components/settings/KnowledgeFileUploader";
@@ -84,7 +83,7 @@ const CATEGORIES: {
   {
     id: "channels",
     label: "Channels",
-    description: "Choose which channels appear in your dashboard.",
+    description: "Channel visibility is managed in the Internal Control Panel.",
     icon: MessageSquare,
   },
   {
@@ -726,7 +725,6 @@ export default function Settings() {
     deliveryStatuses: notifyDeliveryStatuses,
     defaultEmailAddress: notifyDefaultEmail,
   } = useEscalationNotificationPrefs();
-  const { isChannelVisible } = useIcpChannelVisibility();
   const { settings: account, save: saveAccount } = useAccountSettings();
   const { updates, addUpdate, setActive: setUpdateActive, removeUpdate } = useYourInfoUpdates();
 
@@ -1193,32 +1191,10 @@ export default function Settings() {
               )}
 
               {active === "channels" && (
-                <Card
-                  title="Channels"
-                  description="Channel visibility is managed in ICP."
-                >
-                  <ul className="divide-y divide-[#f1f3f4]">
-                    {ALL_TOGGLEABLE_CHANNELS.map((ch) => {
-                      const visible = isChannelVisible(ch);
-                      return (
-                        <li
-                          key={ch}
-                          className="flex items-center justify-between py-2 text-sm"
-                        >
-                          <span>{ch}</span>
-                          <span
-                            className={
-                              visible
-                                ? "rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
-                                : "rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500"
-                            }
-                          >
-                            {visible ? "Visible" : "Hidden"}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                <Card title="Channels">
+                  <p className="text-sm text-[#3c4043]">
+                    Channel visibility is managed exclusively in the Internal Control Panel (ICP).
+                  </p>
                 </Card>
               )}
 
