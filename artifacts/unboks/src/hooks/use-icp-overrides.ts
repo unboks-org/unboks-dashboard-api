@@ -78,11 +78,18 @@ async function fetchIcpEnvelope(): Promise<IcpEnvelope> {
   // Use getApiBase() so the request respects VITE_API_BASE_URL in
   // production. A relative /api/... URL would hit the dashboard origin,
   // not the API host, and silently return an empty envelope.
-  const url = `${getApiBase(slug)}/icp-overrides`;
+  // Cache-bust on every request: browser/proxy HTTP caches were
+  // serving stale envelopes for ~60s, defeating the 3s React Query poll.
+  const url = `${getApiBase(slug)}/icp-overrides?_=${Date.now()}`;
   let resp: Response;
   try {
     resp = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+      },
     });
   } catch {
     return EMPTY_ENVELOPE;
@@ -125,5 +132,6 @@ export function useIcpOverrides() {
     refetchOnMount: true,
     refetchOnReconnect: true,
     refetchInterval: 3_000,
+    refetchIntervalInBackground: true,
   });
 }
