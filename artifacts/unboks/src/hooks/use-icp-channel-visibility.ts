@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { Channel } from "@/data/conversations";
 import { useIcpOverrides, type IcpEnvelope } from "./use-icp-overrides";
 
@@ -11,34 +11,26 @@ export type VisibleChannel =
   | "TikTok"
   | "X";
 
-// Each channel has one canonical ICP key plus a small set of synonyms.
-// The canonical key is what the brief specifies; synonyms exist because
-// real backend payloads sometimes use the bare platform name. If the
-// backend exposes ANY of these keys as truthy for a channel, that
-// channel is visible.
-const CHANNEL_KEYS: Record<VisibleChannel, readonly string[]> = {
-  WhatsApp: ["whatsapp_inbox", "whatsapp"],
-  Email: ["email_inbox", "email"],
-  Instagram: ["instagram_dms", "instagram"],
-  Facebook: ["facebook_dms", "facebook"],
-  Telegram: ["telegram_alerts", "telegram"],
-  TikTok: ["tiktok_dms", "tiktok"],
-  X: ["x_dms", "x", "twitter"],
+// Strict per-channel ICP key — no synonyms. ICP is the single source
+// of truth and these are the exact keys the brief specifies.
+const ICP_KEY_TO_CHANNEL: Record<string, VisibleChannel> = {
+  whatsapp_inbox: "WhatsApp",
+  email_inbox: "Email",
+  instagram_dms: "Instagram",
+  facebook_dms: "Facebook",
+  telegram_alerts: "Telegram",
+  tiktok_dms: "TikTok",
+  x_dms: "X",
 };
 
-// Accept any reasonable shape the backend might return for a single
-// toggle: bare boolean, { value }, { enabled }, { effective_value },
-// { override }. Everything else (null, undefined, false, missing) is OFF.
+// A toggle is ON only if its value is strictly true. We accept the
+// canonical shape `{ value: true }` from the wtyj-agent bridge and a
+// bare `true` for the rare case the backend flattens. Anything else
+// (null, false, missing, {value:null}, {value:false}) is OFF.
 function toggleIsOn(raw: unknown): boolean {
   if (raw === true) return true;
   if (!raw || typeof raw !== "object") return false;
-  const obj = raw as Record<string, unknown>;
-  return (
-    obj.value === true ||
-    obj.enabled === true ||
-    obj.effective_value === true ||
-    obj.override === true
-  );
+  return (raw as { value?: unknown }).value === true;
 }
 
 function visibleFromEnvelope(envelope?: IcpEnvelope): VisibleChannel[] {
@@ -48,12 +40,8 @@ function visibleFromEnvelope(envelope?: IcpEnvelope): VisibleChannel[] {
       ? (envelope.feature_toggles as Record<string, unknown>)
       : {}) as Record<string, unknown>;
   const visible: VisibleChannel[] = [];
-  for (const [channel, keys] of Object.entries(CHANNEL_KEYS) as [
-    VisibleChannel,
-    readonly string[],
-  ][]) {
-    const on = keys.some((key) => toggleIsOn(toggles[key]));
-    if (on) visible.push(channel);
+  for (const [key, channel] of Object.entries(ICP_KEY_TO_CHANNEL)) {
+    if (toggleIsOn(toggles[key])) visible.push(channel);
   }
   return visible;
 }
@@ -64,6 +52,23 @@ export function useIcpChannelVisibility() {
     () => visibleFromEnvelope(query.data),
     [query.data]
   );
+
+  // Always-on diagnostic so a hard refresh + open console shows the
+  // exact envelope keys/values vs the computed visible list. This is
+  // the fastest way to spot a backend key mismatch.
+  useEffect(() => {
+    if (!query.data) return;
+    // eslint-disable-next-line no-console
+    console.log(
+      "[ICP] visibility",
+      {
+        available: query.data.available,
+        tenant_id: query.data.tenant_id,
+        feature_toggles: query.data.feature_toggles,
+        visibleChannels,
+      },
+    );
+  }, [query.data, visibleChannels]);
 
   const isChannelVisible = useCallback(
     (channel: Channel) => {

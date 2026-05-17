@@ -107,10 +107,8 @@ async function fetchIcpEnvelope(): Promise<IcpEnvelope> {
     sot_entries: body.sot_entries,
     ai_agent_settings: body.ai_agent_settings,
   };
-  if (import.meta.env.DEV) {
-    // eslint-disable-next-line no-console
-    console.debug("[ICP] envelope", envelope);
-  }
+  // eslint-disable-next-line no-console
+  console.log("[ICP] envelope", envelope);
   return envelope;
 }
 
@@ -118,8 +116,14 @@ export function useIcpOverrides() {
   return useQuery({
     queryKey: ["icp-overrides", getClientSlug()],
     queryFn: fetchIcpEnvelope,
-    staleTime: 30_000,
+    // Sync must feel immediate: any ICP toggle flip should reflect in
+    // Nr 2 within a few seconds. Always treat data as stale, poll every
+    // 3s, and refetch on every focus / mount / reconnect.
+    staleTime: 0,
+    gcTime: 60_000,
     refetchOnWindowFocus: true,
-    refetchInterval: 60_000,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
+    refetchInterval: 3_000,
   });
 }
