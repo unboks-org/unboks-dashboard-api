@@ -1195,19 +1195,34 @@ export default function Settings() {
               {active === "channels" && (
                 <Card
                   title="Visible channels"
-                  description="Hidden channels won't appear in the inbox sidebar or filters. This doesn't disconnect any account."
+                  description="Channel visibility is controlled from the operator console (ICP). Flip a channel toggle there to show or hide it here. Read-only on this page."
                 >
                   <ul className="divide-y divide-[#f1f3f4]">
-                    {TOGGLEABLE_CHANNELS.map((ch) => (
-                      <li key={ch}>
-                        <ToggleRow
-                          label={ch}
-                          checked={isChannelEnabled(ch)}
-                          onChange={() => toggleChannel(ch)}
-                        />
-                      </li>
-                    ))}
+                    {TOGGLEABLE_CHANNELS.map((ch) => {
+                      const visible = isChannelEnabled(ch);
+                      return (
+                        <li
+                          key={ch}
+                          className="flex items-center justify-between py-2 text-sm"
+                        >
+                          <span>{ch}</span>
+                          <span
+                            className={
+                              visible
+                                ? "rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
+                                : "rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500"
+                            }
+                          >
+                            {visible ? "Visible" : "Hidden"}
+                          </span>
+                        </li>
+                      );
+                    })}
                   </ul>
+                  <p className="mt-3 text-xs text-gray-500">
+                    Managed by ICP. To change, sign in to
+                    icp.unboks.org &rarr; this tenant &rarr; Channels.
+                  </p>
                 </Card>
               )}
 
