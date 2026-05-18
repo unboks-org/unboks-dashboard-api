@@ -1,42 +1,65 @@
 // ---------------------------------------------------------------------------
-// Tenant + API Base URL handling (cleaned up for reliable welcome flow)
+// Tenant + API Base URL handling (runtime detection version)
 // ---------------------------------------------------------------------------
 //
-// The goal: when Calvin creates a tenant in ICP and sends a welcome email
-// with https://dashboard.unboks.org/{slug}, the user who clicks it should
-// land on Login with the workspace prefilled and be able to sign in
-// against the correct backend tenant without any "Load Failed" or
-// "workspace not recognized" friction.
+// Goal: Make the welcome email link flow work reliably without depending
+// on correct build-time environment variables in Replit.
+//
+// Strategy:
+//   - In production (dashboard.unboks.org), always use https://api.unboks.org
+//   - Allow override via VITE_API_BASE_URL for staging / testing
+//   - Fall back gracefully in development
+// ---------------------------------------------------------------------------
 
-// Production API host. This must point to the current nginx entrypoint
-// that does dynamic /api/{slug}/... routing to the wtyj-unboks container.
-const PRODUCTION_API_HOST = "https://api.unboks.org";
+/**
+ * Determine the correct API host at runtime.
+ * This removes the fragile dependency on VITE_API_BASE_URL being set correctly
+ * in every Replit deployment.
+ */
+function resolveApiHost(): string {
+  // 1. Explicit override (highest priority) - useful for staging or local testing
+  const envOverride = (import.meta.env.VITE_API_BASE_URL as string | undefined) || "";
+  if (envOverride) {
+    return envOverride.replace(/\/$/, ""); // remove trailing slash
+  }
 
-// Build-time override (useful for staging or special deploys).
-// Set VITE_API_BASE_URL in the Replit deployment environment.
-const ENV_API_HOST = (import.meta.env.VITE_API_BASE_URL as string | undefined) || "";
+  // 2. Runtime detection based on current hostname (production)
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
 
-// Final host used for all API calls.
-// Priority: explicit env var > production default.
-const API_HOST: string = ENV_API_HOST || PRODUCTION_API_HOST;
+    // Production dashboard
+    if (host === "dashboard.unboks.org" || host.endsWith(".dashboard.unboks.org")) {
+      return "https://api.unboks.org";
+    }
+
+    // Replit preview / dev domains (common patterns)
+    if (host.includes("replit") || host.includes("repl.co")) {
+      // In Replit dev/preview we usually want to hit the real backend
+      return "https://api.unboks.org";
+    }
+  }
+
+  // 3. Safe development default (relative path lets Vite proxy handle it)
+  return "";
+}
+
+const API_HOST: string = resolveApiHost();
 
 // ---------------------------------------------------------------------------
-// Deploy-time default tenant (used when no slug is in the URL or localStorage)
+// Default tenant when nothing else is specified
 // ---------------------------------------------------------------------------
 const DEPLOY_CLIENT: string =
   (import.meta.env.VITE_CLIENT_SLUG as string | undefined) || "unboks";
 
 // ---------------------------------------------------------------------------
-// One-time self-heal for stuck slugs on module load
+// Self-heal for stuck slugs
 // ---------------------------------------------------------------------------
 try {
   const _persistedSlug = localStorage.getItem("wtyj_client");
   if (_persistedSlug && !localStorage.getItem(`wtyj_token_${_persistedSlug}`)) {
     localStorage.removeItem("wtyj_client");
   }
-} catch {
-  // private mode / quota issues — ignore
-}
+} catch {}
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -68,21 +91,18 @@ export function clearAuth(): void {
 }
 
 /**
- * Returns the full base URL for dashboard API calls for a given tenant.
- *
- * Always produces paths of the form:
- *   https://api.unboks.org/api/{slug}/dashboard/api
- *
- * This must match the nginx dynamic routing we have on the VPS.
+ * Returns the full base URL for all dashboard API calls.
+ * Always produces: https://api.unboks.org/api/{slug}/dashboard/api (in production)
  */
 export function getApiBase(slug?: string): string {
   const effectiveSlug = slug ?? getClientSlug();
-  return `${API_HOST}/api/${effectiveSlug}/dashboard/api`;
+  const host = API_HOST ? API_HOST : ""; // empty = relative (dev proxy)
+  return `${host}/api/${effectiveSlug}/dashboard/api`;
 }
 
 /**
- * Returns the current API host (useful for diagnostics).
+ * Returns the resolved API host (useful for debugging in the console)
  */
 export function getApiHost(): string {
-  return API_HOST;
+  return API_HOST || "(relative - dev mode or proxy)";
 }
