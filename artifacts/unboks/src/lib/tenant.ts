@@ -20,6 +20,32 @@
 const DEPLOY_CLIENT: string =
   (import.meta.env.VITE_CLIENT_SLUG as string | undefined) || "unboks";
 
+// One-shot self-heal at module load.
+//
+// A persisted client slug without a paired auth token is dead weight:
+// every authenticated API call needs both, and the token is keyed by
+// slug. The stuck-slug state happens when a user visits a /<slug>
+// deep link (welcome email, shared URL, manual test) for a tenant
+// they have no session for — the slug sticks in localStorage, the
+// inbox tries to load against that backend, the API 404s, and the
+// dashboard shows "Couldn't load conversations" with no escape
+// except clearing localStorage by hand. Wiping the orphan slug here
+// makes recovery automatic on the next page load: getClientSlug
+// falls back to DEPLOY_CLIENT, AuthProvider re-checks the token, and
+// the user lands either on the working inbox (if a default-tenant
+// token exists) or on /login (clean slate).
+try {
+  const _persistedSlug = localStorage.getItem("wtyj_client");
+  if (_persistedSlug &&
+      !localStorage.getItem(`wtyj_token_${_persistedSlug}`)) {
+    localStorage.removeItem("wtyj_client");
+  }
+} catch {
+  // localStorage unavailable (private mode quotas, etc.); the worst
+  // case is the user keeps seeing the stuck-slug failure until they
+  // sign in to a real tenant.
+}
+
 export function getClientSlug(): string {
   return localStorage.getItem("wtyj_client") || DEPLOY_CLIENT;
 }
