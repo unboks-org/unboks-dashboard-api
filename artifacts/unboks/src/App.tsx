@@ -1,7 +1,7 @@
 import { Component, type ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect, useParams } from "wouter";
 import { setClientSlug, getClientSlug } from "@/lib/tenant";
-import { VALID_CLIENTS, type ValidClient } from "@/lib/api";
+import { isValidTenantSlug } from "@/lib/api";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -85,13 +85,16 @@ const queryClient = new QueryClient({
  * may be empty — always targets the correct tenant rather than falling back to
  * the deploy-time default.
  *
- * Guarded by VALID_CLIENTS so arbitrary single-segment paths (e.g. /favicon.ico)
- * don't silently overwrite the slug and redirect to the inbox; unrecognised
- * segments fall through to the NotFound page as before.
+ * Guarded by isValidTenantSlug so arbitrary single-segment paths (e.g.
+ * /favicon.ico) don't silently overwrite the slug and redirect to the
+ * inbox; unrecognised shapes still fall through to NotFound. We do NOT
+ * gate on a hardcoded tenant list - any slug that matches the ICP slug
+ * pattern is accepted, so a newly-created tenant in Nr 3 is reachable
+ * immediately without a frontend redeploy.
  */
 function TenantRootRedirect() {
   const { tenant } = useParams<{ tenant: string }>();
-  if (!tenant || !VALID_CLIENTS.includes(tenant as ValidClient)) {
+  if (!isValidTenantSlug(tenant)) {
     return <NotFound />;
   }
   if (tenant !== getClientSlug()) {
@@ -167,12 +170,13 @@ function Router() {
       <Route path="/:tenant/appointments/:id">
         <TenantDeepLinkRedirect section="appointments" />
       </Route>
-      {/* Bare tenant URL: e.g. dashboard.unboks.org/unboks sets the slug
+      {/* Bare tenant URL: e.g. dashboard.unboks.org/<slug> sets the slug
           from the URL path and redirects to the main inbox. Guarded by
-          VALID_CLIENTS so unknown single-segment paths still 404.
-          Must come after /:tenant/escalations/:id and /:tenant/appointments/:id
-          (Wouter named params don't cross slashes, so there's no shadowing,
-          but explicit ordering keeps the intent clear). */}
+          isValidTenantSlug() (regex match against the ICP slug pattern)
+          so unknown shapes still 404, but ANY validly-shaped slug
+          - including tenants created via the ICP wizard - is accepted
+          without a frontend redeploy. Must come after the more specific
+          /:tenant/escalations/:id and /:tenant/appointments/:id routes. */}
       <Route path="/:tenant">
         <TenantRootRedirect />
       </Route>
