@@ -1,108 +1,89 @@
-// ---------------------------------------------------------------------------
-// Tenant + API Base URL handling (runtime detection version)
-// ---------------------------------------------------------------------------
+// =====================================================
+// NEW CLEAN TENANT SYSTEM (Clean Slate - Nuclear Rewrite)
+// =====================================================
 //
-// Goal: Make the welcome email link flow work reliably without depending
-// on correct build-time environment variables in Replit.
-//
-// Strategy:
-//   - In production (dashboard.unboks.org), always use https://api.unboks.org
-//   - Allow override via VITE_API_BASE_URL for staging / testing
-//   - Fall back gracefully in development
-// ---------------------------------------------------------------------------
+// Goal: Make the ICP -> Welcome Email -> Login flow work reliably
+// with the absolute minimum logic.
+
+// Production API host - always use this in production
+const API_HOST = "https://api.unboks.org";
 
 /**
- * Determine the correct API host at runtime.
- * This removes the fragile dependency on VITE_API_BASE_URL being set correctly
- * in every Replit deployment.
+ * Get the current tenant slug.
+ * Priority for welcome links:
+ *   1. From URL path (e.g. /pepe or /pepe/login) - most important
+ *   2. From localStorage (last used tenant)
+ *   3. Default to "unboks"
  */
-function resolveApiHost(): string {
-  // 1. Explicit override (highest priority) - useful for staging or local testing
-  const envOverride = (import.meta.env.VITE_API_BASE_URL as string | undefined) || "";
-  if (envOverride) {
-    return envOverride.replace(/\/$/, ""); // remove trailing slash
-  }
-
-  // 2. Runtime detection based on current hostname (production)
+export function getCurrentSlug(): string {
+  // Highest priority: slug from the URL (critical for welcome emails)
   if (typeof window !== "undefined") {
-    const host = window.location.hostname;
-
-    // Production dashboard
-    if (host === "dashboard.unboks.org" || host.endsWith(".dashboard.unboks.org")) {
-      return "https://api.unboks.org";
-    }
-
-    // Replit preview / dev domains (common patterns)
-    if (host.includes("replit") || host.includes("repl.co")) {
-      // In Replit dev/preview we usually want to hit the real backend
-      return "https://api.unboks.org";
+    const pathParts = window.location.pathname.split("/").filter(Boolean);
+    if (pathParts.length > 0 && pathParts[0] !== "login") {
+      return pathParts[0];
     }
   }
 
-  // 3. Safe development default (relative path lets Vite proxy handle it)
-  return "";
+  // Fallback to localStorage
+  try {
+    const stored = localStorage.getItem("unboks_current_slug");
+    if (stored) return stored;
+  } catch {}
+
+  return "unboks";
 }
 
-const API_HOST: string = resolveApiHost();
-
-// ---------------------------------------------------------------------------
-// Default tenant when nothing else is specified
-// ---------------------------------------------------------------------------
-const DEPLOY_CLIENT: string =
-  (import.meta.env.VITE_CLIENT_SLUG as string | undefined) || "unboks";
-
-// ---------------------------------------------------------------------------
-// Self-heal for stuck slugs
-// ---------------------------------------------------------------------------
-try {
-  const _persistedSlug = localStorage.getItem("wtyj_client");
-  if (_persistedSlug && !localStorage.getItem(`wtyj_token_${_persistedSlug}`)) {
-    localStorage.removeItem("wtyj_client");
-  }
-} catch {}
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
-export function getClientSlug(): string {
-  return localStorage.getItem("wtyj_client") || DEPLOY_CLIENT;
+/**
+ * Persist the current tenant slug (called after successful login)
+ */
+export function setCurrentSlug(slug: string): void {
+  try {
+    localStorage.setItem("unboks_current_slug", slug);
+  } catch {}
 }
 
-export function setClientSlug(slug: string): void {
-  localStorage.setItem("wtyj_client", slug);
+/**
+ * Returns the full base URL for dashboard API calls
+ * Always returns: https://api.unboks.org/api/{slug}/dashboard/api
+ */
+export function getApiBase(slug?: string): string {
+  const effective = slug || getCurrentSlug();
+  return `${API_HOST}/api/${effective}/dashboard/api`;
 }
+
+// Per-tenant token storage
 
 export function getTokenKey(slug?: string): string {
-  return `wtyj_token_${slug ?? getClientSlug()}`;
+  return `unboks_token_${slug || getCurrentSlug()}`;
 }
 
 export function getToken(slug?: string): string | null {
-  return localStorage.getItem(getTokenKey(slug));
+  try {
+    return localStorage.getItem(getTokenKey(slug));
+  } catch {
+    return null;
+  }
 }
 
 export function setToken(token: string, slug?: string): void {
-  localStorage.setItem(getTokenKey(slug), token);
+  try {
+    localStorage.setItem(getTokenKey(slug), token);
+  } catch {}
 }
 
-export function clearAuth(): void {
-  const slug = getClientSlug();
-  localStorage.removeItem(getTokenKey(slug));
-}
-
-/**
- * Returns the full base URL for all dashboard API calls.
- * Always produces: https://api.unboks.org/api/{slug}/dashboard/api (in production)
- */
-export function getApiBase(slug?: string): string {
-  const effectiveSlug = slug ?? getClientSlug();
-  const host = API_HOST ? API_HOST : ""; // empty = relative (dev proxy)
-  return `${host}/api/${effectiveSlug}/dashboard/api`;
+export function clearToken(slug?: string): void {
+  try {
+    localStorage.removeItem(getTokenKey(slug));
+  } catch {}
 }
 
 /**
- * Returns the resolved API host (useful for debugging in the console)
+ * Simple check: does this slug have a stored token?
  */
-export function getApiHost(): string {
-  return API_HOST || "(relative - dev mode or proxy)";
+export function hasValidSession(slug: string): boolean {
+  try {
+    return !!localStorage.getItem(`unboks_token_${slug}`);
+  } catch {
+    return false;
+  }
 }
