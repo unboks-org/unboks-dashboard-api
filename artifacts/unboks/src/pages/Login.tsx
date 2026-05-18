@@ -3,14 +3,15 @@ import { useLocation, Redirect } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { Lock, Building2 } from "lucide-react";
 import { useAuth } from "@/components/auth/useAuth";
-import { isValidTenantSlug } from "@/lib/api";
+import { isValidTenantSlug, type ValidClient } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { motion } from "framer-motion";
 import unboksLogo from "@assets/unboks-login-logo-optimized_1778556585382.webp";
-import { getCurrentSlug } from "@/lib/tenant";
 
 function getLoginError(err: unknown): string {
-  if (err instanceof TypeError) return "Can't reach server. Check your connection or contact support.";
+  if (err instanceof TypeError) {
+    return "Can't reach server. Check your connection or contact support.";
+  }
   if (err instanceof ApiError) {
     if (err.status === 401 || err.status === 403) return "Invalid access key";
     if (err.status >= 500) return "Can't reach server. Check your connection or contact support.";
@@ -19,7 +20,50 @@ function getLoginError(err: unknown): string {
   return "Can't reach server. Check your connection or contact support.";
 }
 
-function resolveWorkspace(raw: string): string | null {
+// J3-N2-10: workspace slugs are fully dynamic. There is no hardcoded
+// list and no client-side membership check. We accept any URL-safe slug
+// shape (see isValidTenantSlug in lib/api.ts) and let the backend be
+// the sole authority on whether the tenant actually exists. An unknown
+// slug fails authentication with the same generic "Invalid access key"
+// message, so no information about valid tenants leaks from the form.
+//
+// Normalisation is deliberately minimal — only whitespace is stripped.
+// Case is preserved verbatim because the backend treats tenant slugs as
+// case-sensitive; previously we lowercased the input, which silently
+// broke any ICP tenant whose slug contained an uppercase letter.
+const WORKSPACE_HINT_KEY = "wtyj_workspace_hint";
+
+// J3-N2-11: welcome emails ship the slug as a query parameter on the
+// root URL (https://dashboard.unboks.org/?workspace=<slug>) instead of
+// a /<slug> path. The root URL is the one users' browsers cache
+// reliably, which avoids the stale-bundle "Load failed" path that hit
+// brand-new path segments on mobile. The Login component reads the
+// slug from either source, query param OR sessionStorage hint, so
+// both flows pre-fill the workspace field automatically.
+function readWorkspaceHint(): string {
+  // Priority 1: ?workspace=<slug> on the current URL (welcome-email
+  // entry point). Validated against the same ICP slug shape used
+  // elsewhere so a tampered URL can't pre-fill garbage.
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var fromUrl = params.get("workspace");
+    if (fromUrl && isValidTenantSlug(fromUrl)) return fromUrl;
+  } catch {
+    // window.location may be unavailable in non-browser contexts; fall
+    // through to the sessionStorage hint.
+  }
+  // Priority 2: sessionStorage hint stashed by TenantRootRedirect (the
+  // /<slug> bare-path flow from J3-N2-07).
+  try {
+    const hint = sessionStorage.getItem(WORKSPACE_HINT_KEY);
+    if (hint) sessionStorage.removeItem(WORKSPACE_HINT_KEY);
+    return hint || "";
+  } catch {
+    return "";
+  }
+}
+
+function resolveWorkspace(raw: string): ValidClient | null {
   const slug = raw.trim();
   return isValidTenantSlug(slug) ? slug : null;
 }
@@ -28,33 +72,36 @@ export default function Login() {
   const { isAuthenticated, login } = useAuth();
   const [, navigate] = useLocation();
   const [password, setPassword] = useState("");
-
-  // For welcome links (/pepe), getCurrentSlug() will already return "pepe" from the URL
-  const [workspaceInput, setWorkspaceInput] = useState(getCurrentSlug());
+  // Free-text workspace input. Replaces the previous dropdown that exposed
+  // every tenant name. Validation happens at submit time.
+  const [workspaceInput, setWorkspaceInput] = useState(readWorkspaceHint);
   const [loginError, setLoginError] = useState<string | null>(null);
 
+  // ⚠️ useMutation must be called BEFORE any early return to obey Rules of Hooks
   const mutation = useMutation({
-    mutationFn: ({ password, client }: { password: string; client: string }) => login(password, client),
+    mutationFn: ({ password, client }: { password: string; client: ValidClient }) =>
+      login(password, client),
     onError: (err: unknown) => setLoginError(getLoginError(err)),
   });
 
+  // If already authenticated, go straight to inbox
   if (isAuthenticated) return <Redirect to="/" />;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!password.trim() || !workspaceInput.trim()) return;
-
     const client = resolveWorkspace(workspaceInput);
     if (!client) {
+      // Generic copy: do NOT echo the typed value or hint at valid options.
       setLoginError("Workspace not recognized. Check the spelling or contact your admin.");
       return;
     }
-
     setLoginError(null);
     mutation.mutate({ password, client });
   };
 
-  const canSubmit = !mutation.isPending && password.trim().length > 0 && workspaceInput.trim().length > 0;
+  const canSubmit =
+    !mutation.isPending && password.trim().length > 0 && workspaceInput.trim().length > 0;
 
   return (
     <div className="min-h-[100dvh] bg-background sm:bg-muted flex flex-col items-center sm:justify-center font-sans">
@@ -65,6 +112,9 @@ export default function Login() {
         className="bg-card sm:rounded-2xl sm:shadow-sm sm:border border-border p-6 sm:p-10 w-full max-w-[400px] flex-1 sm:flex-none flex flex-col justify-center"
       >
         <div className="flex flex-col items-center mb-10">
+          {/* R2-35: optimised WebP envelope/channels logo (~5.3 KB).
+              Fixed 64x64 box reserves layout space so the card does not
+              jump while the image decodes. */}
           <img
             src={unboksLogo}
             alt="Unboks"
@@ -80,10 +130,18 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5" autoComplete="off">
+          {/* Workspace input. Free text, no dropdown, no preset list of
+              tenant names rendered in the DOM. The operator must know
+              their workspace identifier (e.g. provided by their admin)
+              and type it in. `autoComplete="off"` and the unusual
+              `name` discourage browsers from offering saved values. */}
           <div className="space-y-1.5">
             <label className="text-[13px] font-medium text-foreground ml-1">Workspace</label>
             <div className="relative">
-              <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <Building2
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
+                aria-hidden="true"
+              />
               <input
                 type="text"
                 name="workspace-id"
@@ -105,10 +163,14 @@ export default function Login() {
             </div>
           </div>
 
+          {/* Password input */}
           <div className="space-y-1.5">
             <label className="text-[13px] font-medium text-foreground ml-1">Password</label>
             <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <Lock
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
+                aria-hidden="true"
+              />
               <input
                 type="password"
                 name="password"

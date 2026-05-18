@@ -1,36 +1,17 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 
+export type EmailClient = "gmail" | "mailto";
 const STORAGE_KEY = "unboks_email_client";
-const DEFAULT = "gmail";
 
 export function useEmailSettings() {
-  const [client, setClientState] = useState<string>(() => {
-    if (typeof localStorage === "undefined") return DEFAULT;
-    try {
-      return localStorage.getItem(STORAGE_KEY) || DEFAULT;
-    } catch {
-      return DEFAULT;
-    }
+  const [emailClient, setEmailClientState] = useState<EmailClient>(() => {
+    return (localStorage.getItem(STORAGE_KEY) as EmailClient) ?? "gmail";
   });
 
-  useEffect(() => {
-    const sync = () => {
-      try {
-        const val = localStorage.getItem(STORAGE_KEY);
-        if (val) setClientState(val);
-      } catch {}
-    };
-    window.addEventListener("storage", sync);
-    return () => window.removeEventListener("storage", sync);
-  }, []);
+  const setEmailClient = (value: EmailClient) => {
+    localStorage.setItem(STORAGE_KEY, value);
+    setEmailClientState(value);
+  };
 
-  const setClient = useCallback((newClient: string) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, newClient);
-    } catch {}
-    setClientState(newClient);
-    window.dispatchEvent(new CustomEvent("unboks_email_client_changed"));
-  }, []);
-
-  return { client, setClient };
+  return { emailClient, setEmailClient };
 }

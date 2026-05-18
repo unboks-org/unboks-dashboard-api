@@ -1,6 +1,7 @@
 import { Component, type ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect, useParams } from "wouter";
-import { getCurrentSlug, setCurrentSlug, hasValidSession } from "@/lib/tenant";
+import { setClientSlug, getClientSlug } from "@/lib/tenant";
+import { isValidTenantSlug } from "@/lib/api";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,7 +17,7 @@ import Settings from "@/pages/Settings";
 import Analytics from "@/pages/Analytics";
 import Tasks from "@/pages/Tasks";
 
-// Top-level error boundary
+// Top-level error boundary — prevents white screen on any render crash
 class AppErrorBoundary extends Component<
   { children: ReactNode },
   { error: Error | null }
@@ -38,6 +39,11 @@ class AppErrorBoundary extends Component<
           </pre>
           <button
             onClick={() => {
+              // Reload the current URL so the operator stays on the page they
+              // were on (Appointments / Escalations / Settings). Forcing
+              // `href = "/"` would dump every crash recovery back to Inbox,
+              // which is exactly the "after reset/refresh I lose my page"
+              // bug operators reported.
               this.setState({ error: null });
               window.location.reload();
             }}
@@ -57,7 +63,13 @@ const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false,
       retry: (failureCount, error: unknown) => {
-        if (error && typeof error === "object" && "status" in error && (error as { status: number }).status === 401) return false;
+        if (
+          error &&
+          typeof error === "object" &&
+          "status" in error &&
+          (error as { status: number }).status === 401
+        )
+          return false;
         return failureCount < 2;
       },
     },
@@ -65,25 +77,80 @@ const queryClient = new QueryClient({
 });
 
 /**
- * Handles bare tenant URLs like /pepe (from welcome email).
- * New clean logic:
- * - If user already has a session for this slug → set it and go to Inbox
- * - Otherwise → go to Login (Login will read the slug from URL and prefill)
+ * Handles bare tenant URLs of the form:
+ *   https://dashboard.unboks.org/<slug>
+ *
+ * J3-N2-07: accepts ANY ICP-shaped slug — no hardcoded whitelist. A tenant
+ * created via the Nr 3 wizard becomes reachable from this URL on the next
+ * page load. Junk like /favicon.ico still 404s because it fails the shape
+ * check (isValidTenantSlug).
+ *
+ * Persistence rule (the lesson from J3-N2-06): a tenant slug is written
+ * to localStorage ONLY after a successful authenticated session for that
+ * tenant exists. If the URL slug matches an existing token, we treat it
+ * as a workspace switch (persist + go to inbox). If there is no token
+ * for the URL slug yet, we send the user to /login with the slug stored
+ * as a sessionStorage HINT so the workspace field can pre-fill; the
+ * persistent wtyj_client + wtyj_token_<slug> pair is only written by
+ * AuthProvider.login after the backend confirms credentials. This
+ * prevents the previous bug where visiting an unknown slug bricked
+ * every subsequent dashboard.unboks.org/ visit.
  */
+const WORKSPACE_HINT_KEY = "wtyj_workspace_hint";
+
 function TenantRootRedirect() {
-  const { tenant } = useParams<{ tenant: string }>(); 
-  if (!tenant) return <NotFound />;
-
-  const slug = tenant;
-
-  if (hasValidSession(slug)) {
-    setCurrentSlug(slug);
+  const { tenant } = useParams<{ tenant: string }>();
+  if (!isValidTenantSlug(tenant)) {
+    return <NotFound />;
+  }
+  const slug = tenant as string;
+  const hasTokenForSlug = (() => {
+    try {
+      return !!localStorage.getItem(`wtyj_token_${slug}`);
+    } catch {
+      return false;
+    }
+  })();
+  if (hasTokenForSlug) {
+    // Existing session for this slug — treat as workspace switch.
+    if (slug !== getClientSlug()) {
+      setClientSlug(slug);
+    }
     return <Redirect to="/" />;
   }
-
-  // No session yet for this new tenant → send to login
-  // The Login page will detect the slug from the URL and prefill the workspace
+  // No session yet for this slug. DO NOT touch localStorage — that was
+  // the J3-N2-06 bug. Pass the slug to /login via sessionStorage as a
+  // hint so the workspace field can pre-fill.
+  try {
+    sessionStorage.setItem(WORKSPACE_HINT_KEY, slug);
+  } catch {
+    // sessionStorage unavailable; login just renders with empty workspace.
+  }
   return <Redirect to="/login" />;
+}
+
+function TenantDeepLinkRedirect({ section }: { section: "escalations" | "appointments" }) {
+  const { tenant, id } = useParams<{ tenant: string; id: string }>();
+  if (!tenant || !id) return <Redirect to="/" />;
+  // J3-N2-10: shape-validate the tenant segment before persisting it.
+  // Without this, a junk URL like /favicon.ico/escalations/1 would
+  // poison localStorage with "favicon.ico" as the active client and
+  // break every subsequent API call. The persistence rule is the same
+  // as TenantRootRedirect: only update localStorage when the slug is
+  // shape-valid AND the user already has a token for it (i.e. they
+  // genuinely signed in to this tenant before).
+  if (!isValidTenantSlug(tenant)) return <NotFound />;
+  try {
+    const hasTokenForSlug = !!localStorage.getItem(`wtyj_token_${tenant}`);
+    if (hasTokenForSlug && tenant !== getClientSlug()) {
+      setClientSlug(tenant);
+    }
+  } catch {
+    // localStorage unavailable — let the deep link still navigate; the
+    // protected route will bounce to /login and the workspace hint
+    // path handles the unauthenticated case.
+  }
+  return <Redirect to={`/${section}/${encodeURIComponent(id)}`} />;
 }
 
 function Router() {
@@ -93,12 +160,21 @@ function Router() {
       <Route path="/bookings">
         <ProtectedRoute><Bookings /></ProtectedRoute>
       </Route>
+      {/* Renamed surface: /appointments is the new canonical path; the
+          /bookings route stays so existing bookmarks keep working. */}
       <Route path="/appointments">
         <ProtectedRoute><Bookings /></ProtectedRoute>
       </Route>
+      {/* Deep link from alert emails / WhatsApp: opens the
+          Appointments page and auto-highlights the matching row.
+          The id is decoded inside Bookings via `useDeepLink`. */}
       <Route path="/appointments/:id">
         <ProtectedRoute><Bookings /></ProtectedRoute>
       </Route>
+      {/* Deep links into Escalations. Both the bare /escalations
+          surface (used for `?view=escalations` style links) and the
+          path-with-id form are protected and rendered through Inbox,
+          which owns the Escalations list and detail panel. */}
       <Route path="/escalations">
         <ProtectedRoute><Inbox /></ProtectedRoute>
       </Route>
@@ -124,12 +200,26 @@ function Router() {
       <Route path="/">
         <ProtectedRoute><Inbox /></ProtectedRoute>
       </Route>
-
-      {/* Bare tenant URL from welcome email */}
+      {/* Tenant-prefixed deep links from backend alert emails.
+          These MUST come after all the specific short routes above so that
+          e.g. /escalations/25 is caught by /escalations/:id (above) and
+          not by /:tenant/escalations/:id with tenant="escalations". */}
+      <Route path="/:tenant/escalations/:id">
+        <TenantDeepLinkRedirect section="escalations" />
+      </Route>
+      <Route path="/:tenant/appointments/:id">
+        <TenantDeepLinkRedirect section="appointments" />
+      </Route>
+      {/* Bare tenant URL: e.g. dashboard.unboks.org/<slug> resolves
+          via TenantRootRedirect. Any ICP-shaped slug is accepted (no
+          hardcoded whitelist); junk shapes still 404 via the regex check
+          in isValidTenantSlug. New tenants from the ICP wizard work
+          here immediately without a frontend redeploy. Must come after
+          the more specific /:tenant/escalations/:id and
+          /:tenant/appointments/:id routes. */}
       <Route path="/:tenant">
         <TenantRootRedirect />
       </Route>
-
       <Route component={NotFound} />
     </Switch>
   );

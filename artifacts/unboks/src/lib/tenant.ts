@@ -1,89 +1,80 @@
-// =====================================================
-// NEW CLEAN TENANT SYSTEM (Clean Slate - Nuclear Rewrite)
-// =====================================================
+// ---------------------------------------------------------------------------
+// Deploy-time tenant
+// ---------------------------------------------------------------------------
 //
-// Goal: Make the ICP -> Welcome Email -> Login flow work reliably
-// with the absolute minimum logic.
+// VITE_CLIENT_SLUG is baked into the bundle at build time so the correct
+// tenant is wired in without relying on per-device localStorage. Set it in
+// .env.local (dev) or as an environment variable in the deployment runner:
+//
+//   VITE_CLIENT_SLUG=unboks
+//
+// Fallback chain (highest priority first):
+//   1. URL path / login flow via setClientSlug() → written to localStorage
+//   2. VITE_CLIENT_SLUG build-time constant → baked into the JS bundle
+//   3. Hard-coded "unboks" default → correct for the primary production deploy
+//
+// The result: a fresh mobile browser with empty localStorage always hits
+// the right tenant as long as the deploy was built with VITE_CLIENT_SLUG
+// or the user opens a URL that contains the tenant slug (see TenantRootRedirect
+// in App.tsx).
+const DEPLOY_CLIENT: string =
+  (import.meta.env.VITE_CLIENT_SLUG as string | undefined) || "unboks";
 
-// Production API host - always use this in production
-const API_HOST = "https://api.unboks.org";
-
-/**
- * Get the current tenant slug.
- * Priority for welcome links:
- *   1. From URL path (e.g. /pepe or /pepe/login) - most important
- *   2. From localStorage (last used tenant)
- *   3. Default to "unboks"
- */
-export function getCurrentSlug(): string {
-  // Highest priority: slug from the URL (critical for welcome emails)
-  if (typeof window !== "undefined") {
-    const pathParts = window.location.pathname.split("/").filter(Boolean);
-    if (pathParts.length > 0 && pathParts[0] !== "login") {
-      return pathParts[0];
-    }
+// One-shot self-heal at module load.
+//
+// A persisted client slug without a paired auth token is dead weight:
+// every authenticated API call needs both, and the token is keyed by
+// slug. The stuck-slug state happens when a user visits a /<slug>
+// deep link (welcome email, shared URL, manual test) for a tenant
+// they have no session for — the slug sticks in localStorage, the
+// inbox tries to load against that backend, the API 404s, and the
+// dashboard shows "Couldn't load conversations" with no escape
+// except clearing localStorage by hand. Wiping the orphan slug here
+// makes recovery automatic on the next page load: getClientSlug
+// falls back to DEPLOY_CLIENT, AuthProvider re-checks the token, and
+// the user lands either on the working inbox (if a default-tenant
+// token exists) or on /login (clean slate).
+try {
+  const _persistedSlug = localStorage.getItem("wtyj_client");
+  if (_persistedSlug &&
+      !localStorage.getItem(`wtyj_token_${_persistedSlug}`)) {
+    localStorage.removeItem("wtyj_client");
   }
-
-  // Fallback to localStorage
-  try {
-    const stored = localStorage.getItem("unboks_current_slug");
-    if (stored) return stored;
-  } catch {}
-
-  return "unboks";
+} catch {
+  // localStorage unavailable (private mode quotas, etc.); the worst
+  // case is the user keeps seeing the stuck-slug failure until they
+  // sign in to a real tenant.
 }
 
-/**
- * Persist the current tenant slug (called after successful login)
- */
-export function setCurrentSlug(slug: string): void {
-  try {
-    localStorage.setItem("unboks_current_slug", slug);
-  } catch {}
+export function getClientSlug(): string {
+  return localStorage.getItem("wtyj_client") || DEPLOY_CLIENT;
 }
 
-/**
- * Returns the full base URL for dashboard API calls
- * Always returns: https://api.unboks.org/api/{slug}/dashboard/api
- */
-export function getApiBase(slug?: string): string {
-  const effective = slug || getCurrentSlug();
-  return `${API_HOST}/api/${effective}/dashboard/api`;
+export function setClientSlug(slug: string): void {
+  localStorage.setItem("wtyj_client", slug);
 }
-
-// Per-tenant token storage
 
 export function getTokenKey(slug?: string): string {
-  return `unboks_token_${slug || getCurrentSlug()}`;
+  return `wtyj_token_${slug ?? getClientSlug()}`;
 }
 
 export function getToken(slug?: string): string | null {
-  try {
-    return localStorage.getItem(getTokenKey(slug));
-  } catch {
-    return null;
-  }
+  return localStorage.getItem(getTokenKey(slug));
 }
 
 export function setToken(token: string, slug?: string): void {
-  try {
-    localStorage.setItem(getTokenKey(slug), token);
-  } catch {}
+  localStorage.setItem(getTokenKey(slug), token);
 }
 
-export function clearToken(slug?: string): void {
-  try {
-    localStorage.removeItem(getTokenKey(slug));
-  } catch {}
+export function clearAuth(): void {
+  const slug = getClientSlug();
+  localStorage.removeItem(getTokenKey(slug));
 }
 
-/**
- * Simple check: does this slug have a stored token?
- */
-export function hasValidSession(slug: string): boolean {
-  try {
-    return !!localStorage.getItem(`unboks_token_${slug}`);
-  } catch {
-    return false;
-  }
+// In production set VITE_API_BASE_URL=https://api.unboks.org
+// In development leave it unset — relative /api/... is used automatically
+const API_HOST: string = import.meta.env.VITE_API_BASE_URL ?? "";
+
+export function getApiBase(slug?: string): string {
+  return `${API_HOST}/api/${slug ?? getClientSlug()}/dashboard/api`;
 }

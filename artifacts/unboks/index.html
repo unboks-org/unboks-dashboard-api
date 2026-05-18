@@ -3,6 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <!-- J3-N2-14: discourage intermediate caches from holding onto stale
+         index.html. The browser still owns the final say (HTTP response
+         headers from the static handler win when present), but proxies
+         and older CDNs honour these and they're free. The real fix is
+         the deploy emitting Cache-Control: no-cache for HTML and a real
+         404 for missing /assets/* paths — see the safety net below for
+         the client-side mitigation while that's outstanding. -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -13,177 +20,119 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
       // ===================================================================
-      // Stale-bundle safety net v3 (J3-N2-09 / J3-N2-10 / J3-N2-14)
+      // Stale-bundle safety net (J3-N2-09 / J3-N2-10).
       //
-      // This version is significantly more aggressive because Replit's
-      // static server returns index.html for missing /assets/* files.
+      // The dashboard.unboks.org Replit deployment serves index.html for
+      // ANY 404'd asset path instead of returning a real 404 (verified by
+      // direct curl against /assets/<old-hash>.js -> 200 OK, content-type
+      // text/html, ~730 bytes of HTML body). Every Vite build emits a
+      // content-hashed bundle filename; each deploy invalidates the
+      // previous filename on disk. Browsers that cached the OLD index.html
+      // keep requesting /assets/<old-hash>.js, get HTML back, try to parse
+      // HTML as JavaScript, and crash with SyntaxError "Unexpected token <"
+      // before any of our code runs. iOS Safari surfaces the result as
+      // "Load failed" in a system overlay. Chrome / Firefox show a blank
+      // page.
       //
-      // Strategy:
-      //   - Early checks (before main bundle parses)
-      //   - Multiple layered recovery attempts
-      //   - Visible recovery state for the user
-      //   - Stops infinite loops using both sessionStorage + in-memory flag
+      // This safety net catches FOUR failure modes:
+      //   1. A /assets/ script <script> tag fires an "error" event
+      //      (network / parse failure of a bundle URL).
+      //   2. A window-level uncaught error during initial bundle execution
+      //      (e.g. a module-load throw before React mounts).
+      //   3. An unhandled promise rejection during bundle bootstrap.
+      //   4. The bundle silently never executes (#root stays empty after
+      //      5 seconds) — covers iOS Safari's "Load failed" overlay where
+      //      no JS error fires because the script load itself was blocked
+      //      at the TLS / network layer.
+      //
+      // In every case we force a ONE-shot cache-bust reload (location with
+      // a fresh ?_cb=<timestamp>). A sessionStorage marker tracks that an
+      // auto-reload has been attempted in this tab; main.tsx clears the
+      // marker as the FIRST thing it does, so a successful bundle execute
+      // wipes the marker and the next stale-bundle event can recover the
+      // same way. If the reload itself fails (genuine bundle bug, not
+      // stale-cache), the marker survives and we surface the broken state
+      // instead of looping forever.
       // ===================================================================
       (function () {
-        var MARKER = "__unboks_stale_bundle_reload_v3";
-        var MAX_ATTEMPTS = 2; // allow one recovery reload, then show broken state
-        var LOG_PREFIX = "[Unboks StaleBundle]";
+        var MARKER = "__unboks_stale_bundle_reload";
+        var triggered = false;
 
-        function log(msg) {
-          try { console.warn(LOG_PREFIX, msg); } catch (_) {}
-        }
-
-        function getAttemptCount() {
+        function alreadyAttempted() {
           try {
-            return parseInt(sessionStorage.getItem(MARKER) || "0", 10);
+            return sessionStorage.getItem(MARKER) === "1";
           } catch (_) {
-            return 0;
+            return false;
           }
         }
 
-        function incrementAttempt() {
+        function markAttempted() {
           try {
-            var count = getAttemptCount() + 1;
-            sessionStorage.setItem(MARKER, String(count));
-            return count;
+            sessionStorage.setItem(MARKER, "1");
           } catch (_) {
-            return 1;
+            // sessionStorage unavailable -> we still reload once because
+            // `triggered` (in-memory) protects this tab from a same-tab
+            // infinite loop. A new tab will retry from scratch.
           }
         }
 
-        function shouldAttemptRecovery() {
-          return getAttemptCount() < MAX_ATTEMPTS;
-        }
-
-        function forceHardReload(reason) {
-          if (!shouldAttemptRecovery()) {
-            log("Max recovery attempts reached. Showing broken state. Reason: " + reason);
-            showBrokenState();
-            return;
-          }
-
-          var count = incrementAttempt();
-          log("Forcing hard recovery reload (#" + count + ") - " + reason);
-
+        function reload() {
+          if (triggered) return;
+          triggered = true;
+          if (alreadyAttempted()) return;
+          markAttempted();
           try {
             var url = new URL(window.location.href);
             url.searchParams.set("_cb", Date.now().toString());
-            // Use replace + extra cache-busting to fight aggressive caching
-            window.location.replace(url.toString() + "#" + Date.now());
+            window.location.replace(url.toString());
           } catch (_) {
             window.location.reload();
           }
         }
 
-        function showBrokenState() {
-          var root = document.getElementById("root");
-          if (root) {
-            root.innerHTML = `
-              <div style="padding: 40px 20px; font-family: system-ui, sans-serif; max-width: 420px; margin: 0 auto; text-align: center;">
-                <h2 style="margin: 0 0 12px; font-size: 20px; color: #d93025;">Couldn't load Unboks</h2>
-                <p style="margin: 0 0 20px; color: #5f6368; line-height: 1.4;">
-                  This usually happens after an update. Please force-refresh the page.
-                </p>
-                <button onclick="window.location.reload()" 
-                        style="background: #1a73e8; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; cursor: pointer;">
-                  Reload Unboks
-                </button>
-              </div>
-            `;
-          }
-        }
+        // 1. Asset load failure (the canonical stale-bundle path).
+        // Covers both <script src=/assets/...> and <link rel=stylesheet
+        // href=/assets/...> — a 404'd CSS falling back to HTML breaks
+        // styling without firing a script error, and the symptom is the
+        // same broken-app screen.
+        window.addEventListener(
+          "error",
+          function (e) {
+            var t = e && e.target;
+            if (!t) return;
+            var tag = t.tagName;
+            if (tag !== "SCRIPT" && tag !== "LINK") return;
+            var url = t.src || t.href || "";
+            if (url.indexOf("/assets/") === -1) return;
+            reload();
+          },
+          true
+        );
 
-        // === Early aggressive check ===
-        // Try to detect very early if the main script is going to fail.
-        function earlyAssetCheck() {
-          // If we're already on a cache-busted URL, don't trigger again immediately
-          if (window.location.search.includes("_cb=")) return;
-
-          // Check if the document is in a bad state very early
-          setTimeout(function () {
-            var scripts = document.getElementsByTagName("script");
-            var hasMainScript = false;
-            for (var i = 0; i < scripts.length; i++) {
-              if (scripts[i].src && scripts[i].src.indexOf("/assets/") > -1) {
-                hasMainScript = true;
-                break;
-              }
-            }
-            // If no hashed main script was found in the DOM, something is very wrong
-            if (!hasMainScript && document.readyState !== "complete") {
-              log("Early detection: no hashed main script found in DOM");
-              forceHardReload("early-missing-script");
-            }
-          }, 800);
-        }
-
-        // === Main recovery listeners ===
-        var triggered = false;
-
-        function triggerRecovery(reason) {
-          if (triggered) return;
-          triggered = true;
-          forceHardReload(reason);
-        }
-
-        // 1. Asset load failure (script or link from /assets/)
-        window.addEventListener("error", function (e) {
-          var t = e && e.target;
-          if (!t) return;
-          var tag = t.tagName;
-          if ((tag === "SCRIPT" || tag === "LINK") && (t.src || t.href || "").indexOf("/assets/") !== -1) {
-            log("Asset failed to load: " + (t.src || t.href));
-            triggerRecovery("asset-load-error");
-          }
-        }, true);
-
-        // 2. JS errors during initial bootstrap (before React mounts)
-        function rootIsStillEmpty() {
+        // 2 + 3. Uncaught errors / promise rejections during bundle
+        // bootstrap. Only triggers if #root is still empty (i.e. React
+        // never mounted) — once the app is running, app-level error
+        // boundaries handle their own failures.
+        function bootstrapStillBroken() {
           var r = document.getElementById("root");
           return !r || r.children.length === 0;
         }
-
         window.addEventListener("error", function () {
-          if (rootIsStillEmpty()) triggerRecovery("runtime-error");
+          if (bootstrapStillBroken()) reload();
         });
-
         window.addEventListener("unhandledrejection", function () {
-          if (rootIsStillEmpty()) triggerRecovery("unhandled-rejection");
+          if (bootstrapStillBroken()) reload();
         });
 
-        // 3. Silent failure detection (iOS Safari "Load Failed" etc.)
-        // We use two checkpoints for better coverage
-        function checkSilentFailure(label) {
-          if (rootIsStillEmpty() && shouldAttemptRecovery()) {
-            log("Silent failure detected at " + label);
-            triggerRecovery("silent-failure-" + label);
-          }
-        }
-
-        // Fast check (good for mobile)
-        setTimeout(function () { checkSilentFailure("fast"); }, 1600);
-        // Slower check (catches very slow connections)
-        setTimeout(function () { checkSilentFailure("slow"); }, 3200);
-
-        // 4. Last resort: if nothing has mounted after a long time
+        // 4. Silent failure: nothing threw, but the bundle never ran
+        // (e.g. iOS Safari's TLS-level "Load failed" where the request
+        // never reaches the JS parser). 1.5s is tight enough to beat
+        // the iOS system "Load failed" overlay (which fires after a
+        // couple of seconds of script-load stall) while still giving a
+        // real bundle on a slow 3G phone room to mount #root.
         setTimeout(function () {
-          if (rootIsStillEmpty() && shouldAttemptRecovery()) {
-            triggerRecovery("final-timeout");
-          } else if (rootIsStillEmpty()) {
-            showBrokenState();
-          }
-        }, 6500);
-
-        // Kick off early detection
-        if (document.readyState === "loading") {
-          document.addEventListener("DOMContentLoaded", earlyAssetCheck);
-        } else {
-          earlyAssetCheck();
-        }
-
-        try {
-          console.info("[Unboks] Stale-bundle safety net v3 active");
-        } catch (_) {}
+          if (bootstrapStillBroken()) reload();
+        }, 1500);
       })();
     </script>
   </head>
