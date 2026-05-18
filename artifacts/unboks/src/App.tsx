@@ -95,6 +95,10 @@ const queryClient = new QueryClient({
  * AuthProvider.login after the backend confirms credentials. This
  * prevents the previous bug where visiting an unknown slug bricked
  * every subsequent dashboard.unboks.org/ visit.
+ *
+ * Note: This file was rolled back to the stable J3-N2-14 routing logic
+ * as part of a targeted rollback to fix new tenant welcome email issues,
+ * while preserving all later mobile redesign and UI work.
  */
 const WORKSPACE_HINT_KEY = "wtyj_workspace_hint";
 
