@@ -3,6 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <!-- J3-N2-14: discourage intermediate caches from holding onto stale
+         index.html. The browser still owns the final say (HTTP response
+         headers from the static handler win when present), but proxies
+         and older CDNs honour these and they're free. The real fix is
+         the deploy emitting Cache-Control: no-cache for HTML and a real
+         404 for missing /assets/* paths — see the safety net below for
+         the client-side mitigation while that's outstanding. -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Unboks Inbox</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -80,14 +90,20 @@
           }
         }
 
-        // 1. Script-load failure (the canonical stale-bundle path).
+        // 1. Asset load failure (the canonical stale-bundle path).
+        // Covers both <script src=/assets/...> and <link rel=stylesheet
+        // href=/assets/...> — a 404'd CSS falling back to HTML breaks
+        // styling without firing a script error, and the symptom is the
+        // same broken-app screen.
         window.addEventListener(
           "error",
           function (e) {
             var t = e && e.target;
-            if (!t || t.tagName !== "SCRIPT") return;
-            var src = t.src || "";
-            if (src.indexOf("/assets/") === -1) return;
+            if (!t) return;
+            var tag = t.tagName;
+            if (tag !== "SCRIPT" && tag !== "LINK") return;
+            var url = t.src || t.href || "";
+            if (url.indexOf("/assets/") === -1) return;
             reload();
           },
           true
@@ -110,12 +126,13 @@
 
         // 4. Silent failure: nothing threw, but the bundle never ran
         // (e.g. iOS Safari's TLS-level "Load failed" where the request
-        // never reaches the JS parser). 5s is generous on a slow phone
-        // but still fast enough that the user doesn't sit on a blank
-        // screen for long.
+        // never reaches the JS parser). 1.5s is tight enough to beat
+        // the iOS system "Load failed" overlay (which fires after a
+        // couple of seconds of script-load stall) while still giving a
+        // real bundle on a slow 3G phone room to mount #root.
         setTimeout(function () {
           if (bootstrapStillBroken()) reload();
-        }, 5000);
+        }, 1500);
       })();
     </script>
   </head>
