@@ -1,24 +1,38 @@
-/**
- * Single source of truth for the workspace label that points at the
- * Appointments page. Both the desktop sidebar (Drawer in md+ mode) and
- * the mobile drawer/hamburger menu read from here, so they can never
- * disagree.
- *
- * R2-39: removed the per-device localStorage override and the Settings
- * "Bookings / Orders" picker. That mechanism only stored on whichever
- * device set it, so mobile and desktop drifted apart (mobile showed
- * "Orders", desktop showed "Appointments"). Per Calvin's "no fake
- * persistence" rule, until there is a tenant-scoped backend setting
- * for this label, the dashboard renders the canonical product name.
- *
- * If a tenant-configurable label is needed in the future, replace
- * BOOKINGS_LABEL below with a value sourced from a tenant-scoped
- * backend endpoint (e.g. /settings/workspace-labels) — every consumer
- * already routes through this hook, so no other file needs to change.
- */
+import { useState, useEffect, useCallback } from "react";
 
-export const BOOKINGS_LABEL = "Appointments";
+const STORAGE_KEY = "unboks_bookings_label";
+const DEFAULT_LABEL = "Bookings";
 
-export function useBookingsLabel(): { label: string } {
-  return { label: BOOKINGS_LABEL };
+export function useBookingsLabel() {
+  const [label, setLabelState] = useState<string>(() => {
+    if (typeof localStorage === "undefined") return DEFAULT_LABEL;
+    try {
+      return localStorage.getItem(STORAGE_KEY) || DEFAULT_LABEL;
+    } catch {
+      return DEFAULT_LABEL;
+    }
+  });
+
+  useEffect(() => {
+    const sync = () => {
+      try {
+        const val = localStorage.getItem(STORAGE_KEY);
+        if (val) setLabelState(val);
+      } catch {}
+    };
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, []);
+
+  const setLabel = useCallback((newLabel: string) => {
+    const trimmed = newLabel.trim();
+    if (!trimmed) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, trimmed);
+    } catch {}
+    setLabelState(trimmed);
+    window.dispatchEvent(new CustomEvent("unboks_bookings_label_changed"));
+  }, []);
+
+  return { label, setLabel };
 }
