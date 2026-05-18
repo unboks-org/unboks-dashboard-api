@@ -3,7 +3,7 @@ import { useLocation, Redirect } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { Lock, Building2 } from "lucide-react";
 import { useAuth } from "@/components/auth/useAuth";
-import { VALID_CLIENTS, type ValidClient } from "@/lib/api";
+import { isValidTenantSlug, type ValidClient } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { motion } from "framer-motion";
 import unboksLogo from "@assets/unboks-login-logo-optimized_1778556585382.webp";
@@ -20,22 +20,33 @@ function getLoginError(err: unknown): string {
   return "Can't reach server. Check your connection or contact support.";
 }
 
-// R2-35 follow-up: workspace slugs must NOT be exposed on the public login
-// page. We accept whatever the operator types, normalise it (trim, lowercase,
-// strip non-alphanumerics), then check membership in the private VALID_CLIENTS
-// set on submit. The set itself is bundled and could be discovered by a
-// determined visitor inspecting the JS — that's a backend concern, but the
-// DOM/UI surface no longer leaks any tenant names by default.
+// J3-N2-07: workspace slugs are no longer membership-checked against a
+// hardcoded list. We accept any shape the ICP wizard would accept
+// (^[a-z][a-z0-9_-]{1,49}$). The backend is the real authority on
+// tenant existence — an unknown slug fails authentication with the
+// same "Invalid access key" message, so we leak no extra information.
+// Hyphens and underscores survive normalisation because the ICP slug
+// pattern allows them; the previous all-alphanumeric strip would have
+// rejected e.g. "marina-bay" silently.
+const WORKSPACE_HINT_KEY = "wtyj_workspace_hint";
+
+function readWorkspaceHint(): string {
+  try {
+    const hint = sessionStorage.getItem(WORKSPACE_HINT_KEY);
+    if (hint) sessionStorage.removeItem(WORKSPACE_HINT_KEY);
+    return hint || "";
+  } catch {
+    return "";
+  }
+}
+
 function normaliseWorkspace(raw: string): string {
-  return raw.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+  return raw.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
 }
 
 function resolveWorkspace(raw: string): ValidClient | null {
   const slug = normaliseWorkspace(raw);
-  if (!slug) return null;
-  return (VALID_CLIENTS as readonly string[]).includes(slug)
-    ? (slug as ValidClient)
-    : null;
+  return isValidTenantSlug(slug) ? slug : null;
 }
 
 export default function Login() {
@@ -44,7 +55,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   // Free-text workspace input. Replaces the previous dropdown that exposed
   // every tenant name. Validation happens at submit time.
-  const [workspaceInput, setWorkspaceInput] = useState("");
+  const [workspaceInput, setWorkspaceInput] = useState(readWorkspaceHint);
   const [loginError, setLoginError] = useState<string | null>(null);
 
   // ⚠️ useMutation must be called BEFORE any early return to obey Rules of Hooks

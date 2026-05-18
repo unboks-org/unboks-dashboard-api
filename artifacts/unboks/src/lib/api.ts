@@ -3,17 +3,35 @@ import { getApiBase, getToken, clearAuth } from "@/lib/tenant";
 import { formatConversationTimestamp, parseTimestampMs } from "@/lib/conversation-mapper";
 
 // ---------------------------------------------------------------------------
-// Valid clients
+// Tenant slug validation (NO hardcoded list)
 // ---------------------------------------------------------------------------
+//
+// J3-N2-07: tenants are created in ICP (Nr 3) and become reachable from
+// Nr 2 without a frontend redeploy. The pattern below matches the slug
+// rule enforced by the ICP Add-New-Tenant wizard
+// (^[a-z][a-z0-9_-]{1,49}$). The backend (wtyj-agent) is the ACTUAL
+// authority on tenant existence — we only gate by SHAPE here so junk
+// like "/favicon.ico" still 404s without trying to load it as a tenant.
+//
+// J3-N2-06 retry: the FIRST attempt at dynamic slug support (commit
+// 8000929, reverted in bc68e46) shipped a related bug — TenantRootRedirect
+// silently persisted any URL slug to localStorage, which bricked anyone
+// visiting an unknown slug because the backend then 404'd every
+// subsequent API call. This time the rule is: shape-validate any slug,
+// but DO NOT persist it to localStorage until the user successfully
+// authenticates against it. See TenantRootRedirect in App.tsx.
 
-export const VALID_CLIENTS = [
-  "unboks",
-  "bluemarlin",
-  "adamus",
-  "consultadespertares",
-] as const;
+const TENANT_SLUG_PATTERN = /^[a-z][a-z0-9_-]{1,49}$/;
 
-export type ValidClient = (typeof VALID_CLIENTS)[number];
+export function isValidTenantSlug(slug: string | null | undefined): boolean {
+  if (!slug || typeof slug !== "string") return false;
+  return TENANT_SLUG_PATTERN.test(slug);
+}
+
+// Backward-compat string alias so existing call sites
+// (login(password, client: ValidClient)) compile without churn.
+// The actual shape check happens at the boundary via isValidTenantSlug().
+export type ValidClient = string;
 
 // ---------------------------------------------------------------------------
 // Types

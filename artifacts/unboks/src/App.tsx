@@ -1,7 +1,7 @@
 import { Component, type ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect, useParams } from "wouter";
 import { setClientSlug, getClientSlug } from "@/lib/tenant";
-import { VALID_CLIENTS, type ValidClient } from "@/lib/api";
+import { isValidTenantSlug } from "@/lib/api";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -78,26 +78,55 @@ const queryClient = new QueryClient({
 
 /**
  * Handles bare tenant URLs of the form:
- *   https://dashboard.unboks.org/unboks
+ *   https://dashboard.unboks.org/<slug>
  *
- * Sets the client slug from the URL (same as TenantDeepLinkRedirect) so that
- * opening a shared dashboard link on a fresh mobile browser — where localStorage
- * may be empty — always targets the correct tenant rather than falling back to
- * the deploy-time default.
+ * J3-N2-07: accepts ANY ICP-shaped slug — no hardcoded whitelist. A tenant
+ * created via the Nr 3 wizard becomes reachable from this URL on the next
+ * page load. Junk like /favicon.ico still 404s because it fails the shape
+ * check (isValidTenantSlug).
  *
- * Guarded by VALID_CLIENTS so arbitrary single-segment paths (e.g. /favicon.ico)
- * don't silently overwrite the slug and redirect to the inbox; unrecognised
- * segments fall through to the NotFound page as before.
+ * Persistence rule (the lesson from J3-N2-06): a tenant slug is written
+ * to localStorage ONLY after a successful authenticated session for that
+ * tenant exists. If the URL slug matches an existing token, we treat it
+ * as a workspace switch (persist + go to inbox). If there is no token
+ * for the URL slug yet, we send the user to /login with the slug stored
+ * as a sessionStorage HINT so the workspace field can pre-fill; the
+ * persistent wtyj_client + wtyj_token_<slug> pair is only written by
+ * AuthProvider.login after the backend confirms credentials. This
+ * prevents the previous bug where visiting an unknown slug bricked
+ * every subsequent dashboard.unboks.org/ visit.
  */
+const WORKSPACE_HINT_KEY = "wtyj_workspace_hint";
+
 function TenantRootRedirect() {
   const { tenant } = useParams<{ tenant: string }>();
-  if (!tenant || !VALID_CLIENTS.includes(tenant as ValidClient)) {
+  if (!isValidTenantSlug(tenant)) {
     return <NotFound />;
   }
-  if (tenant !== getClientSlug()) {
-    setClientSlug(tenant);
+  const slug = tenant as string;
+  const hasTokenForSlug = (() => {
+    try {
+      return !!localStorage.getItem(`wtyj_token_${slug}`);
+    } catch {
+      return false;
+    }
+  })();
+  if (hasTokenForSlug) {
+    // Existing session for this slug — treat as workspace switch.
+    if (slug !== getClientSlug()) {
+      setClientSlug(slug);
+    }
+    return <Redirect to="/" />;
   }
-  return <Redirect to="/" />;
+  // No session yet for this slug. DO NOT touch localStorage — that was
+  // the J3-N2-06 bug. Pass the slug to /login via sessionStorage as a
+  // hint so the workspace field can pre-fill.
+  try {
+    sessionStorage.setItem(WORKSPACE_HINT_KEY, slug);
+  } catch {
+    // sessionStorage unavailable; login just renders with empty workspace.
+  }
+  return <Redirect to="/login" />;
 }
 
 function TenantDeepLinkRedirect({ section }: { section: "escalations" | "appointments" }) {
@@ -167,12 +196,13 @@ function Router() {
       <Route path="/:tenant/appointments/:id">
         <TenantDeepLinkRedirect section="appointments" />
       </Route>
-      {/* Bare tenant URL: e.g. dashboard.unboks.org/unboks sets the slug
-          from the URL path and redirects to the main inbox. Guarded by
-          VALID_CLIENTS so unknown single-segment paths still 404.
-          Must come after /:tenant/escalations/:id and /:tenant/appointments/:id
-          (Wouter named params don't cross slashes, so there's no shadowing,
-          but explicit ordering keeps the intent clear). */}
+      {/* Bare tenant URL: e.g. dashboard.unboks.org/<slug> resolves
+          via TenantRootRedirect. Any ICP-shaped slug is accepted (no
+          hardcoded whitelist); junk shapes still 404 via the regex check
+          in isValidTenantSlug. New tenants from the ICP wizard work
+          here immediately without a frontend redeploy. Must come after
+          the more specific /:tenant/escalations/:id and
+          /:tenant/appointments/:id routes. */}
       <Route path="/:tenant">
         <TenantRootRedirect />
       </Route>
