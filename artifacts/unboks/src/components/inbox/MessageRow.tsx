@@ -88,13 +88,13 @@ export function MessageRow({
     <div
       onClick={() => onSelect?.(conversation)}
       className={cn(
-        "flex items-start gap-3 px-4 py-3 border-b border-[#f1f3f4] transition-colors",
-        onSelect ? "cursor-pointer" : "cursor-default",
+        "flex items-start gap-3 px-4 py-3 bg-white transition-all duration-200 ease-out",
+        onSelect ? "cursor-pointer active:scale-[0.98] active:opacity-80" : "cursor-default",
         isSelected
-          ? "bg-[#e8f0fe]"
+          ? "bg-[#e8f0fe] shadow-sm rounded-xl mx-2 my-1"
           : dimmed
-            ? "bg-[#fbfbfd] hover:bg-[#f6f8fc]"
-            : "bg-white hover:bg-[#f6f8fc] active:bg-[#eef1f6]",
+            ? "opacity-60"
+            : "hover:bg-[#f8f9fa] border-b border-[#f1f3f4]"
       )}
     >
       <div
