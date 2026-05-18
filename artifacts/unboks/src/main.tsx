@@ -2,14 +2,12 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-// J3-N2-09: the bundle parsed and is executing, so any stale-bundle
-// reload attempt from index.html's safety net was successful.
-// Clear the one-shot marker so a real future bundle bug doesn't get
-// silently swallowed by it.
+// Clear the stale-bundle recovery marker from the current safety net
+// so a future genuine bundle error isn't swallowed.
 try {
-  sessionStorage.removeItem("__unboks_stale_bundle_reload");
+  sessionStorage.removeItem("__unbuks_stale_bundle_reload_v3");
 } catch {
-  // sessionStorage unavailable — nothing to clear.
+  // sessionStorage unavailable
 }
 
 createRoot(document.getElementById("root")!).render(<App />);
