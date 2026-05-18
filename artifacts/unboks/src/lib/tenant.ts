@@ -1,6 +1,10 @@
 // ---------------------------------------------------------------------------
-// Deploy-time tenant
+// Deploy-time tenant (Restored to stable J3-N2-14 version)
 // ---------------------------------------------------------------------------
+//
+// This file was rolled back to the J3-N2-14 checkpoint logic as part of a
+// targeted rollback to fix new tenant welcome email flow issues.
+// Mobile redesign and UI work from later commits have been preserved.
 //
 // VITE_CLIENT_SLUG is baked into the bundle at build time so the correct
 // tenant is wired in without relying on per-device localStorage. Set it in
