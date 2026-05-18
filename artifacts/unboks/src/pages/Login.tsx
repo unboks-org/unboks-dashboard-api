@@ -33,7 +33,27 @@ function getLoginError(err: unknown): string {
 // broke any ICP tenant whose slug contained an uppercase letter.
 const WORKSPACE_HINT_KEY = "wtyj_workspace_hint";
 
+// J3-N2-11: welcome emails ship the slug as a query parameter on the
+// root URL (https://dashboard.unboks.org/?workspace=<slug>) instead of
+// a /<slug> path. The root URL is the one users' browsers cache
+// reliably, which avoids the stale-bundle "Load failed" path that hit
+// brand-new path segments on mobile. The Login component reads the
+// slug from either source, query param OR sessionStorage hint, so
+// both flows pre-fill the workspace field automatically.
 function readWorkspaceHint(): string {
+  // Priority 1: ?workspace=<slug> on the current URL (welcome-email
+  // entry point). Validated against the same ICP slug shape used
+  // elsewhere so a tampered URL can't pre-fill garbage.
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var fromUrl = params.get("workspace");
+    if (fromUrl && isValidTenantSlug(fromUrl)) return fromUrl;
+  } catch {
+    // window.location may be unavailable in non-browser contexts; fall
+    // through to the sessionStorage hint.
+  }
+  // Priority 2: sessionStorage hint stashed by TenantRootRedirect (the
+  // /<slug> bare-path flow from J3-N2-07).
   try {
     const hint = sessionStorage.getItem(WORKSPACE_HINT_KEY);
     if (hint) sessionStorage.removeItem(WORKSPACE_HINT_KEY);
