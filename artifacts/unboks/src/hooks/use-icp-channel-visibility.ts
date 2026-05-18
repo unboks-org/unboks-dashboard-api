@@ -2,10 +2,7 @@
 //  RULE: NEVER BUNDLE CHANNELS  (owner decision, 2026-05-17)
 //  Eight channels (WhatsApp, Email, Instagram, Facebook, Messenger,
 //  Telegram, TikTok, X). Each is a separate visibility unit driven
-//  by its own ICP feature_toggle key. Do NOT collapse Messenger
-//  into Facebook, do NOT introduce a shared toggle that controls
-//  more than one channel, do NOT remove a channel from the union.
-//  If a new channel is added it joins this list as a new entry.
+//  by its own ICP feature_toggle key.
 // =============================================================
 import { useCallback, useMemo } from "react";
 import type { Channel } from "@/data/conversations";
@@ -21,13 +18,6 @@ export type VisibleChannel =
   | "TikTok"
   | "X";
 
-// Channel name is the strict prefix. To stay tolerant of small backend
-// suffix differences (_inbox / _dms / _dm / _messages / _alerts /
-// _chat) without inviting cross-channel false positives, we accept any
-// key whose lower-cased form starts with the channel prefix followed by
-// "_". The bare prefix on its own is intentionally NOT accepted — that
-// was the source of the previous WhatsApp false-positive where a
-// generic "whatsapp" connection-state key bled into visibility.
 const CHANNEL_PREFIXES: Record<VisibleChannel, readonly string[]> = {
   WhatsApp: ["whatsapp"],
   Email: ["email"],
@@ -39,14 +29,7 @@ const CHANNEL_PREFIXES: Record<VisibleChannel, readonly string[]> = {
   X: ["x", "twitter"],
 };
 
-const ALLOWED_SUFFIXES = [
-  "inbox",
-  "dms",
-  "dm",
-  "messages",
-  "alerts",
-  "chat",
-];
+const ALLOWED_SUFFIXES = ["inbox", "dms", "dm", "messages", "alerts", "chat"];
 
 function keyMatchesChannel(key: string, prefixes: readonly string[]): boolean {
   const lower = key.toLowerCase();
@@ -58,9 +41,6 @@ function keyMatchesChannel(key: string, prefixes: readonly string[]): boolean {
   return false;
 }
 
-// A toggle is ON only if its value parses as strictly true. Canonical
-// shape is `{ value: true }`; we also accept a bare `true` for backends
-// that flatten. Anything else (null, false, missing, etc) is OFF.
 function toggleIsOn(raw: unknown): boolean {
   if (raw === true) return true;
   if (!raw || typeof raw !== "object") return false;
@@ -72,16 +52,11 @@ function classifyToggles(envelope?: IcpEnvelope) {
     (envelope?.feature_toggles && typeof envelope.feature_toggles === "object"
       ? (envelope.feature_toggles as Record<string, unknown>)
       : {}) as Record<string, unknown>;
+
   const visible: VisibleChannel[] = [];
   const matchedKeys: Record<VisibleChannel, string[]> = {
-    WhatsApp: [],
-    Email: [],
-    Instagram: [],
-    Facebook: [],
-    Messenger: [],
-    Telegram: [],
-    TikTok: [],
-    X: [],
+    WhatsApp: [], Email: [], Instagram: [], Facebook: [],
+    Messenger: [], Telegram: [], TikTok: [], X: [],
   };
   const truthyKeys: string[] = [];
   const unmatchedTruthyKeys: string[] = [];
@@ -90,10 +65,7 @@ function classifyToggles(envelope?: IcpEnvelope) {
     if (!toggleIsOn(raw)) continue;
     truthyKeys.push(key);
     let matched = false;
-    for (const [channel, prefixes] of Object.entries(CHANNEL_PREFIXES) as [
-      VisibleChannel,
-      readonly string[],
-    ][]) {
+    for (const [channel, prefixes] of Object.entries(CHANNEL_PREFIXES) as [VisibleChannel, readonly string[]][]) {
       if (keyMatchesChannel(key, prefixes)) {
         matched = true;
         matchedKeys[channel].push(key);
@@ -103,16 +75,9 @@ function classifyToggles(envelope?: IcpEnvelope) {
     if (!matched) unmatchedTruthyKeys.push(key);
   }
 
-  // Preserve canonical order (WhatsApp → X) in the sidebar.
   const canonicalOrder: VisibleChannel[] = [
-    "WhatsApp",
-    "Email",
-    "Instagram",
-    "Facebook",
-    "Messenger",
-    "Telegram",
-    "TikTok",
-    "X",
+    "WhatsApp", "Email", "Instagram", "Facebook",
+    "Messenger", "Telegram", "TikTok", "X",
   ];
   const visibleOrdered = canonicalOrder.filter((c) => visible.includes(c));
 
@@ -121,12 +86,10 @@ function classifyToggles(envelope?: IcpEnvelope) {
 
 export function useIcpChannelVisibility() {
   const query = useIcpOverrides();
-
   const visibleChannels = useMemo(
     () => classifyToggles(query.data).visible,
     [query.data]
   );
-
   const isChannelVisible = useCallback(
     (channel: Channel) => {
       if (channel === "All" || channel === "Unknown") return true;
@@ -134,6 +97,5 @@ export function useIcpChannelVisibility() {
     },
     [visibleChannels]
   );
-
   return { visibleChannels, isChannelVisible };
 }
