@@ -83,7 +83,7 @@ const CATEGORIES: {
   {
     id: "channels",
     label: "Channels",
-    description: "Contact your admin to add more channels.",
+    description: "Channel visibility is managed in the Internal Control Panel (ICP).",
     icon: MessageSquare,
   },
   {
@@ -1212,7 +1212,7 @@ export default function Settings() {
               {active === "channels" && (
                 <Card title="Channels">
                   <p className="text-sm text-[#3c4043]">
-                    Contact your admin to add more channels.
+                    Channel visibility is managed in the Internal Control Panel (ICP).
                   </p>
                 </Card>
               )}
