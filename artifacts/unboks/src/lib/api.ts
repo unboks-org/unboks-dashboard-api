@@ -3,28 +3,17 @@ import { getApiBase, getToken, clearAuth } from "@/lib/tenant";
 import { formatConversationTimestamp, parseTimestampMs } from "@/lib/conversation-mapper";
 
 // ---------------------------------------------------------------------------
-// Tenant slug validation
+// Valid clients
 // ---------------------------------------------------------------------------
-//
-// Any tenant created in ICP (Nr 3) is automatically reachable from this
-// dashboard - we do NOT keep a hardcoded whitelist of slugs. The pattern
-// below mirrors the slug rule enforced by the ICP Add-New-Tenant wizard
-// (^[a-z][a-z0-9_-]{1,49}$), so a slug accepted by ICP is accepted here.
-// The backend (wtyj-agent) is the actual authority: an unknown slug will
-// fail authentication / API calls, but the React app no longer blocks
-// based on a stale frontend list.
 
-const TENANT_SLUG_PATTERN = /^[a-z][a-z0-9_-]{1,49}$/;
+export const VALID_CLIENTS = [
+  "unboks",
+  "bluemarlin",
+  "adamus",
+  "consultadespertares",
+] as const;
 
-export function isValidTenantSlug(slug: string | null | undefined): boolean {
-  if (!slug || typeof slug !== "string") return false;
-  return TENANT_SLUG_PATTERN.test(slug);
-}
-
-// Kept as a string alias so existing call sites (login(password, client))
-// compile without churn. The slug-shape check happens at the boundary
-// via isValidTenantSlug().
-export type ValidClient = string;
+export type ValidClient = (typeof VALID_CLIENTS)[number];
 
 // ---------------------------------------------------------------------------
 // Types
