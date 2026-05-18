@@ -83,7 +83,7 @@ const CATEGORIES: {
   {
     id: "channels",
     label: "Channels",
-    description: "Channel visibility is managed in the Internal Control Panel.",
+    description: "Contact your admin to add more channels.",
     icon: MessageSquare,
   },
   {
