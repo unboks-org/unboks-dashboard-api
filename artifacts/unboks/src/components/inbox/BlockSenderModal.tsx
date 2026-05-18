@@ -14,6 +14,7 @@ import { BLOCK_REASONS, type BlockReason } from "@/lib/api";
 import { toast } from "sonner";
 import type { Conversation } from "@/data/conversations";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 interface BlockSenderModalProps {
   open: boolean;
@@ -88,7 +89,8 @@ export function BlockSenderModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && !block.isPending) onClose(); }}>
-      <DialogContent className="box-border w-[calc(100vw-32px)] max-w-[460px] overflow-hidden">
+      <DialogContent className="box-border w-full sm:w-[calc(100vw-32px)] max-w-[460px] overflow-hidden rounded-t-[1.5rem] rounded-b-none sm:rounded-xl p-5 sm:p-6 mb-0 sm:mb-auto self-end sm:self-center mt-auto sm:mt-auto">
+        <div className="absolute left-1/2 top-2 h-1 w-12 -translate-x-1/2 rounded-full bg-[#e8eaed] sm:hidden" aria-hidden="true" />
         <DialogHeader className="min-w-0">
           <DialogTitle className="break-words">Block this sender in Unboks?</DialogTitle>
           <DialogDescription className="sr-only">

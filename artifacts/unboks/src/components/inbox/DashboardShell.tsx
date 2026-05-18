@@ -17,6 +17,7 @@ import { useArchivedConversations } from "@/hooks/use-archived-conversations";
 import { useActiveConversationKeys } from "@/hooks/use-active-conversation-keys";
 import { filterActiveAppointments } from "@/lib/appointment-classifier";
 import { RefreshButton } from "@/components/inbox/RefreshButton";
+import { motion, AnimatePresence } from "framer-motion";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
@@ -299,7 +300,7 @@ export function DashboardShell({
   );
 
   return (
-    <div className="flex h-screen w-full bg-white overflow-hidden font-sans">
+    <div className="flex h-[100dvh] w-full bg-background overflow-hidden font-sans">
       <Drawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -312,14 +313,7 @@ export function DashboardShell({
         appointmentsCount={appointmentsCount}
       />
 
-      {/* Main column.
-          Previously capped to max-w-[480px] / sm:max-w-[560px] with a
-          drop shadow, which on real mobile + small-tablet widths
-          (375–767px) made the app render as a centered phone-frame
-          demo with side gutters instead of a full-bleed app. The cap
-          and shadow are removed below md so the app fills the device
-          width naturally; the desktop layout is unchanged. */}
-      <div className="flex flex-col flex-1 min-w-0 relative">
+      <div className="flex flex-col flex-1 min-w-0 relative bg-card shadow-[-4px_0_24px_rgba(0,0,0,0.02)] z-20">
         <Header
           title={pageTitle}
           subtitle={pageSubtitle ?? titleSuffix}
@@ -329,15 +323,13 @@ export function DashboardShell({
           rightSlot={hideRefresh ? null : <RefreshButton />}
         />
 
-        {/* Main content scroll region.
-            Bottom padding respects the iOS Safari safe-area inset so
-            content (and any sticky footer like the composer) is never
-            hidden under the browser chrome / home indicator. */}
         <main
-          className="flex-1 overflow-y-auto bg-white"
+          className="flex-1 overflow-x-hidden overflow-y-auto relative bg-background"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
-          {children}
+          <div className="h-full flex flex-col">
+            {children}
+          </div>
         </main>
       </div>
     </div>

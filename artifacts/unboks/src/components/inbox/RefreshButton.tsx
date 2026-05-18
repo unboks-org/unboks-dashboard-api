@@ -34,6 +34,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 const REFRESHED_KEYS: ReadonlyArray<readonly string[]> = [
   ["conversations"],
@@ -115,10 +116,12 @@ export function RefreshButton({ className }: { className?: string }) {
           {statusText}
         </span>
       )}
-      <button
+      <motion.button
         type="button"
         onClick={handleClick}
         disabled={isRefreshing}
+        whileTap={{ scale: 0.97, opacity: 0.8 }}
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
         aria-label={
           isRefreshing
             ? "Refreshing dashboard data"
@@ -141,7 +144,7 @@ export function RefreshButton({ className }: { className?: string }) {
           )}
           aria-hidden="true"
         />
-      </button>
+      </motion.button>
     </div>
   );
 }

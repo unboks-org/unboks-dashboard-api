@@ -21,10 +21,10 @@ const CHANNEL_COLORS: Record<string, string> = {
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="bg-white border border-[#e8eaed] rounded-xl p-5">
-      <p className="text-[12px] text-[#5f6368] uppercase tracking-wider">{label}</p>
-      <p className="text-[28px] font-semibold text-[#202124] mt-1">{value}</p>
-      {sub && <p className="text-[12px] text-[#5f6368] mt-0.5">{sub}</p>}
+    <div className="bg-card border border-border rounded-xl p-5 shadow-sm transition-all hover:shadow-md">
+      <p className="text-[12px] text-muted-foreground font-medium uppercase tracking-wider">{label}</p>
+      <p className="text-[28px] font-semibold text-foreground mt-1 tracking-tight">{value}</p>
+      {sub && <p className="text-[12px] text-muted-foreground mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -92,53 +92,53 @@ export default function Analytics() {
             : "Conversation and escalation insights"
       }
     >
-      <div className="px-4 py-5 max-w-4xl space-y-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="px-4 sm:px-6 py-6 max-w-5xl mx-auto space-y-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard label="Conversations" value={conversations.length} sub="total" />
           <StatCard label="Open escalations" value={status?.openEscalations ?? openEscalations} sub="pending review" />
           <StatCard label="Resolved" value={resolvedEscalations} sub="escalations closed" />
-          <StatCard label="Orders detected" value="—" sub="TODO: paid-order endpoint" />
+          <StatCard label="Orders detected" value="0" sub="TODO: paid-order endpoint" />
         </div>
 
-        <div>
-          <h3 className="text-[13px] font-medium text-[#5f6368] uppercase tracking-wider mb-3">Messages by channel</h3>
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+          <h3 className="text-[13px] font-medium text-muted-foreground uppercase tracking-wider mb-6">Messages by channel</h3>
           {channelData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={240}>
               <BarChart data={channelData.map(([ch, count]) => ({ channel: ch, count }))} barCategoryGap="30%">
-                <XAxis dataKey="channel" tick={{ fontSize: 12, fill: "#5f6368" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: "#5f6368" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip contentStyle={{ border: "1px solid #e8eaed", borderRadius: 8, fontSize: 13 }} cursor={{ fill: "#f6f8fc" }} />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                <XAxis dataKey="channel" tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} dy={10} />
+                <YAxis tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} allowDecimals={false} dx={-10} />
+                <Tooltip contentStyle={{ border: "1px solid var(--border)", borderRadius: 8, fontSize: 13, backgroundColor: "var(--card)", color: "var(--foreground)", boxShadow: "var(--shadow-sm)" }} cursor={{ fill: "var(--muted)" }} />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]}>
                   {channelData.map(([ch]) => (
-                    <Cell key={ch} fill={CHANNEL_COLORS[ch] ?? "#1a73e8"} />
+                    <Cell key={ch} fill={CHANNEL_COLORS[ch] ?? "var(--primary)"} />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-[13px] text-[#9aa0a6]">No channel data available.</p>
+            <p className="text-[13px] text-muted-foreground py-8 text-center">No channel data available.</p>
           )}
         </div>
 
-        <div>
-          <h3 className="text-[13px] font-medium text-[#5f6368] uppercase tracking-wider mb-3">14-day activity</h3>
-          <ResponsiveContainer width="100%" height={160}>
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+          <h3 className="text-[13px] font-medium text-muted-foreground uppercase tracking-wider mb-6">14-day activity</h3>
+          <ResponsiveContainer width="100%" height={200}>
             <BarChart data={trendData} barCategoryGap="20%">
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#9aa0a6" }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} dy={10} />
               <YAxis hide allowDecimals={false} />
-              <Tooltip contentStyle={{ border: "1px solid #e8eaed", borderRadius: 8, fontSize: 13 }} cursor={{ fill: "#f6f8fc" }} />
-              <Bar dataKey="count" fill="#1a73e8" radius={[3, 3, 0, 0]} />
+              <Tooltip contentStyle={{ border: "1px solid var(--border)", borderRadius: 8, fontSize: 13, backgroundColor: "var(--card)", color: "var(--foreground)", boxShadow: "var(--shadow-sm)" }} cursor={{ fill: "var(--muted)" }} />
+              <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {status && (
-          <div className="bg-[#f6f8fc] rounded-xl p-4">
-            <p className="text-[12px] font-medium text-[#5f6368] uppercase tracking-wider mb-2">System Status</p>
+          <div className="bg-muted rounded-xl p-5 border border-border/50">
+            <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider mb-3">System Status</p>
             <div className="flex items-center gap-3">
-              <span className={`w-2 h-2 rounded-full ${status.status === "ok" ? "bg-[#34a853]" : "bg-[#ea4335]"}`} />
-              <span className="text-[13px] text-[#202124] capitalize">{status.status}</span>
-              {status.uptime && <span className="text-[12px] text-[#5f6368]">• Uptime: {status.uptime}</span>}
+              <span className={`w-2.5 h-2.5 rounded-full ${status.status === "ok" ? "bg-[#10b981]" : "bg-destructive"}`} />
+              <span className="text-[13px] font-medium text-foreground capitalize">{status.status}</span>
+              {status.uptime && <span className="text-[13px] text-muted-foreground">• Uptime: {status.uptime}</span>}
             </div>
           </div>
         )}

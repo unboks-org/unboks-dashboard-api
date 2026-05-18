@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { Sparkles, Languages, Wand2, CheckCircle2, X, Loader2 } from "lucide-react";
 import { useAIEditor } from "@/hooks/use-client-api";
 import { ApiError } from "@/lib/error";
+import { motion, AnimatePresence } from "framer-motion";
 import type {
   AIEditorAction,
   AIEditorLanguage,
@@ -173,14 +174,15 @@ export function AIEditorPanel({
         <div className="flex items-center gap-2 px-4 py-3 border-b border-[#f1f3f4]">
           <Sparkles className="w-4 h-4 text-[#1a73e8]" />
           <h2 className="text-[14px] font-semibold text-[#202124] flex-1">Agent Editor</h2>
-          <button
+          <motion.button
+            whileTap={{ scale: 0.9 }}
             type="button"
             onClick={onClose}
             aria-label="Close Agent Editor"
-            className="grid h-7 w-7 place-items-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
+            className="grid h-7 w-7 place-items-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4] transition-colors"
           >
             <X className="w-4 h-4" />
-          </button>
+          </motion.button>
         </div>
 
         {/* Tabs */}
@@ -198,7 +200,7 @@ export function AIEditorPanel({
                   setNotConnected(false);
                 }}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium rounded-t-md transition-colors",
+                  "flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium rounded-t-md transition-all active:scale-[0.97]",
                   active
                     ? "text-[#1a73e8] border-b-2 border-[#1a73e8] -mb-px bg-white"
                     : "text-[#5f6368] hover:text-[#202124] hover:bg-[#f6f8fc]",

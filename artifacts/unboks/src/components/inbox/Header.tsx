@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { Menu, Search } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface HeaderProps {
   title?: ReactNode;
@@ -27,63 +28,60 @@ export function Header({
   const hasTitleBlock = Boolean(title) || Boolean(subtitle);
 
   return (
-    <header className="bg-white border-b border-[#eef0f3] flex-shrink-0">
-      <div className="flex items-center gap-3 px-3 sm:px-5 py-2.5 md:py-3">
+    <header className="bg-background border-b border-border flex-shrink-0 pt-[env(safe-area-inset-top)] z-30 relative">
+      <div className="flex items-center gap-3 px-3 sm:px-5 py-2.5 md:py-3 min-h-[56px] md:min-h-[64px]">
         {/* Mobile drawer toggle */}
-        <button
+        <motion.button
           aria-label="Open menu"
           onClick={onOpenDrawer}
-          className="w-9 h-9 -ml-1 rounded-full flex items-center justify-center text-[#5f6368] hover:bg-[#f1f3f4] transition-colors md:hidden flex-shrink-0"
+          whileTap={{ scale: 0.94, opacity: 0.8 }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          className="w-10 h-10 -ml-1.5 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors md:hidden flex-shrink-0"
         >
-          <Menu className="w-5 h-5" />
-        </button>
+          <Menu className="w-[22px] h-[22px]" strokeWidth={1.5} />
+        </motion.button>
 
-        {/* Title block — ALWAYS reserves the same vertical space so the
-             header height is identical across every page (no layout jump
-             when switching between Inbox/Channels/Escalations/Bookings/
-             Settings/Analytics). Empty title/subtitle render an invisible
-             non-breaking space placeholder to preserve line height. */}
-        <div className="flex-1 min-w-0">
-          <h1 className="text-[18px] md:text-[19px] font-semibold tracking-tight text-[#1f2937] leading-tight truncate">
+        {/* Title block */}
+        <div className="flex-1 min-w-0 flex flex-col justify-center">
+          <h1 className="text-[19px] md:text-[21px] font-medium tracking-tight text-foreground leading-none truncate">
             {title || "\u00A0"}
           </h1>
-          <div className="text-[12.5px] text-[#6b7280] leading-tight mt-0.5 truncate">
-            {subtitle || "\u00A0"}
-          </div>
+          {subtitle && (
+            <div className="text-[13px] font-medium text-muted-foreground mt-1 truncate">
+              {subtitle}
+            </div>
+          )}
         </div>
-        {/* hasTitleBlock retained for future use (e.g. variant headers) */}
         {!hasTitleBlock && null}
 
-        {/* Right-side slot (e.g. manual Refresh button). Rendered before
-            the search box so the search retains its anchored right edge. */}
         {rightSlot}
 
-        {/* Compact desktop search (right side) */}
+        {/* Compact desktop search */}
         {showSearch && (
-          <div className="hidden md:flex items-center h-9 w-[300px] lg:w-[340px] flex-shrink-0 rounded-lg border border-[#e2e6ec] bg-white px-2.5 focus-within:border-[#1a73e8] focus-within:ring-2 focus-within:ring-[#1a73e8]/15 transition-colors">
-            <Search className="w-4 h-4 text-[#6b7280] flex-shrink-0" />
+          <div className="hidden md:flex items-center h-[36px] w-[300px] lg:w-[340px] flex-shrink-0 rounded-full border border-border bg-card px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 transition-all shadow-sm">
+            <Search className="w-[15px] h-[15px] text-muted-foreground flex-shrink-0" strokeWidth={2} />
             <input
               type="search"
               value={searchQuery}
               onChange={(e) => onSearchChange?.(e.target.value)}
               placeholder="Search messages"
-              className="flex-1 min-w-0 bg-transparent text-[13.5px] text-[#1f2937] placeholder:text-[#9aa0a6] outline-none px-2"
+              className="flex-1 min-w-0 bg-transparent text-[14px] text-foreground placeholder:text-muted-foreground outline-none px-2.5"
             />
           </div>
         )}
       </div>
 
-      {/* Mobile search row (stacked under title) */}
+      {/* Mobile search row */}
       {showSearch && (
-        <div className="md:hidden px-3 pb-2.5">
-          <div className="flex items-center h-9 rounded-lg border border-[#e2e6ec] bg-white px-2.5 focus-within:border-[#1a73e8] focus-within:ring-2 focus-within:ring-[#1a73e8]/15 transition-colors">
-            <Search className="w-4 h-4 text-[#6b7280] flex-shrink-0" />
+        <div className="md:hidden px-3 pb-3">
+          <div className="flex items-center h-10 rounded-xl border border-border bg-card px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 transition-all shadow-sm">
+            <Search className="w-[15px] h-[15px] text-muted-foreground flex-shrink-0" strokeWidth={2} />
             <input
               type="search"
               value={searchQuery}
               onChange={(e) => onSearchChange?.(e.target.value)}
               placeholder="Search messages"
-              className="flex-1 min-w-0 bg-transparent text-[13.5px] text-[#1f2937] placeholder:text-[#9aa0a6] outline-none px-2"
+              className="flex-1 min-w-0 bg-transparent text-[15px] text-foreground placeholder:text-muted-foreground outline-none px-2.5"
             />
           </div>
         </div>

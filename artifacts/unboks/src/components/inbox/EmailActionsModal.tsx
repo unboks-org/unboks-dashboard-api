@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import type { Conversation } from "@/data/conversations";
 import { cn } from "@/lib/utils";
 import { AIEditorPanel } from "@/components/inbox/AIEditorPanel";
+import { motion } from "framer-motion";
 
 /**
  * Translate any error from the email mutation hooks into calm operator copy.
@@ -116,17 +117,11 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
     >
       <DialogContent
         className={cn(
-          "box-border w-[calc(100vw-32px)] max-w-[520px] overflow-hidden",
-          // When the Agent Editor is open: bound the height for the
-          // inline panel scroll, drop dialog padding so the panel fills
-          // edge-to-edge, and HIDE the dialog's built-in close X
-          // (DialogPrimitive.Close renders as the only direct <button>
-          // child of DialogContent — selector below targets it). The
-          // panel renders its own X in its header that correctly
-          // returns to the composer view instead of closing the modal.
+          "box-border w-full sm:w-[calc(100vw-32px)] max-w-[520px] overflow-hidden rounded-t-[1.5rem] rounded-b-none sm:rounded-xl transition-all duration-300 ease-out p-5 sm:p-6 mb-0 sm:mb-auto self-end sm:self-center mt-auto sm:mt-auto",
           aiOpen && "flex flex-col max-h-[85vh] p-0 gap-0 [&>button]:hidden",
         )}
       >
+        <div className="absolute left-1/2 top-2 h-1 w-12 -translate-x-1/2 rounded-full bg-[#e8eaed] sm:hidden" aria-hidden="true" />
         {aiOpen ? (
           // Render Agent Editor INSIDE this dialog (no nested modal, no
           // portal, no second focus trap). The host dialog already handles

@@ -18,21 +18,15 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Channel } from "@/data/conversations";
+import { motion, AnimatePresence } from "framer-motion";
 
-// X glyph (not Twitter bird)
 const XIcon = ({ className, strokeWidth: _sw }: { className?: string; strokeWidth?: number }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
   </svg>
 );
 
-export type NavId =
-  | "inbox"
-  | "escalations"
-  | "bookings"
-  | "settings"
-  | "analytics"
-  | `channel:${Channel}`;
+export type NavId = "inbox" | "escalations" | "bookings" | "settings" | "analytics" | `channel:${Channel}`;
 
 interface DrawerProps {
   open: boolean;
@@ -43,11 +37,6 @@ interface DrawerProps {
   inboxCount: number;
   escalationsCount: number;
   channelCounts: Record<Channel, number>;
-  /**
-   * Active appointment count (confirmed + pending team confirmation +
-   * detected). Same source the Appointments page uses, so the badge and
-   * the rendered list can never disagree. 0 hides the badge.
-   */
   appointmentsCount?: number;
 }
 
@@ -69,7 +58,6 @@ export function Drawer({
   channelCounts,
   appointmentsCount = 0,
 }: DrawerProps) {
-  // Close on Escape
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -77,8 +65,6 @@ export function Drawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // Escalations comes first: it's the most urgent operator function
-  // (an escalation needs human attention now, an inbox can wait).
   const PRIMARY: NavItem[] = [
     { id: "escalations", icon: AlertCircle, label: "Escalations", count: escalationsCount },
     { id: "inbox", icon: InboxIcon, label: "Inbox", count: inboxCount },
@@ -109,118 +95,105 @@ export function Drawer({
     { id: "settings", icon: SettingsIcon, label: "Settings" },
   ];
 
+  const content = (
+    <div className="flex flex-col h-full bg-[#fbfbfd]">
+      <div className="px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-4">
+        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-[13px] font-medium shadow-sm">
+          <span className="relative grid h-2 w-2 place-items-center">
+            <span className="absolute inline-block h-2 w-2 rounded-full bg-[#10b981] opacity-60 animate-ping" />
+            <span className="relative inline-block h-2 w-2 rounded-full bg-[#10b981]" />
+          </span>
+          <span className="text-foreground">Active</span>
+          <span className="text-muted-foreground" aria-hidden>·</span>
+          <span className="text-muted-foreground">Connected to Unboks</span>
+        </div>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto px-3 pb-[calc(1rem+env(safe-area-inset-bottom))]
+        [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <NavGroup>
+          {PRIMARY.map((item) => (
+            <NavRow key={item.id} item={item} active={active === item.id} onSelect={onSelect} />
+          ))}
+        </NavGroup>
+
+        <SectionHeader label="Channels" />
+        <NavGroup>
+          {CHANNELS.map((item) => (
+            <NavRow key={item.id} item={item} active={active === item.id} onSelect={onSelect} />
+          ))}
+        </NavGroup>
+
+        <SectionHeader label="Workspace" />
+        <NavGroup>
+          {WORKSPACE.map((item) => (
+            <NavRow key={item.id} item={item} active={active === item.id} onSelect={onSelect} />
+          ))}
+        </NavGroup>
+      </nav>
+
+      {onLogout && (
+        <div className="border-t border-border bg-card px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          <motion.button
+            onClick={onLogout}
+            whileTap={{ scale: 0.98, opacity: 0.8 }}
+            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+            className="w-full flex items-center gap-3 px-3 h-10 rounded-xl text-[14px] text-foreground hover:bg-muted transition-colors"
+          >
+            <LogOut className="w-[18px] h-[18px] text-muted-foreground" strokeWidth={1.75} />
+            <span className="font-medium">Sign out</span>
+          </motion.button>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <>
-      {/* Backdrop (mobile only) */}
-      <div
-        aria-hidden="true"
-        onClick={onClose}
-        className={cn(
-          "fixed inset-0 bg-black/40 z-40 transition-opacity md:hidden",
-          open ? "opacity-100" : "opacity-0 pointer-events-none",
-        )}
-      />
-
-      {/* Drawer panel: fixed overlay on mobile, static sidebar on md+ */}
-      <aside
-        aria-label="Navigation"
-        className={cn(
-          "flex flex-col bg-[#f8fafc]",
-          // Mobile (default): fixed overlay
-          "fixed top-0 left-0 h-full w-[296px] max-w-[85vw] z-50 shadow-xl transform transition-transform duration-200 ease-out",
-          open ? "translate-x-0" : "-translate-x-full",
-          // Desktop (md+): static sidebar always visible
-          "md:static md:h-auto md:translate-x-0 md:w-[260px] md:max-w-none md:shadow-none md:border-r md:border-[#e5e7eb] md:flex-shrink-0 md:z-auto",
-        )}
-      >
-        {/* Operational status pill — sits at the top of the sidebar now
-             that the brand/header block has been removed (top padding
-             absorbs the former brand block's space). */}
-        <div className="px-4 pt-4 pb-3">
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#d6e9dc] bg-[#ecf6ee] px-2.5 py-1 text-[12px] font-medium text-[#137333]">
-            <span className="relative grid h-1.5 w-1.5 place-items-center">
-              <span className="absolute inline-block h-1.5 w-1.5 rounded-full bg-[#34a853] opacity-60 animate-ping" />
-              <span className="relative inline-block h-1.5 w-1.5 rounded-full bg-[#34a853]" />
-            </span>
-            Active
-            <span className="text-[#137333]/60" aria-hidden>·</span>
-            <span className="font-normal text-[#1f6b35]">Connected to Unboks</span>
-          </div>
-        </div>
-
-        {/* Nav list */}
-        <nav
-          className={cn(
-            "flex-1 overflow-y-auto px-2 pt-1 pb-3",
-            // Subtle, non-harsh scrollbar
-            "[scrollbar-width:thin] [scrollbar-color:#d9dee7_transparent]",
-            "[&::-webkit-scrollbar]:w-1.5",
-            "[&::-webkit-scrollbar-track]:bg-transparent",
-            "[&::-webkit-scrollbar-thumb]:rounded-full",
-            "[&::-webkit-scrollbar-thumb]:bg-[#e5e7eb]",
-            "hover:[&::-webkit-scrollbar-thumb]:bg-[#d9dee7]",
+      {/* Mobile drawer */}
+      <div className="md:hidden">
+        <AnimatePresence>
+          {open && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                aria-hidden="true"
+                onClick={onClose}
+                className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40"
+              />
+              <motion.aside
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "spring", stiffness: 400, damping: 30, mass: 1 }}
+                aria-label="Navigation"
+                className="fixed top-0 left-0 h-full w-[300px] max-w-[85vw] z-50 shadow-2xl border-r border-border bg-background"
+              >
+                {content}
+              </motion.aside>
+            </>
           )}
-        >
-          <NavGroup>
-            {PRIMARY.map((item) => (
-              <NavRow
-                key={item.id}
-                item={item}
-                active={active === item.id}
-                onSelect={onSelect}
-              />
-            ))}
-          </NavGroup>
+        </AnimatePresence>
+      </div>
 
-          <SectionHeader label="Channels" />
-          <NavGroup>
-            {CHANNELS.map((item) => (
-              <NavRow
-                key={item.id}
-                item={item}
-                active={active === item.id}
-                onSelect={onSelect}
-              />
-            ))}
-          </NavGroup>
-
-          <SectionHeader label="Workspace" />
-          <NavGroup>
-            {WORKSPACE.map((item) => (
-              <NavRow
-                key={item.id}
-                item={item}
-                active={active === item.id}
-                onSelect={onSelect}
-              />
-            ))}
-          </NavGroup>
-        </nav>
-
-        {/* Footer / sign out */}
-        {onLogout && (
-          <div className="border-t border-[#e5e7eb] bg-white px-2 py-2">
-            <button
-              onClick={onLogout}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-[10px] text-[13.5px] text-[#1f2937] hover:bg-[#eef1f6] transition-colors"
-            >
-              <LogOut className="w-4 h-4 text-[#6b7280]" strokeWidth={1.75} />
-              <span className="font-medium">Sign out</span>
-            </button>
-          </div>
-        )}
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex md:flex-col md:w-[280px] md:flex-shrink-0 md:border-r md:border-border md:bg-background z-10">
+        {content}
       </aside>
     </>
   );
 }
 
 function NavGroup({ children }: { children: React.ReactNode }) {
-  return <div className="space-y-0.5">{children}</div>;
+  return <div className="space-y-1">{children}</div>;
 }
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <div className="px-3 pt-4 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#6b7280]">
+    <div className="px-3 pt-6 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
       {label}
     </div>
   );
@@ -238,33 +211,35 @@ function NavRow({
   const Icon = item.icon;
   const showCount = item.count !== undefined && item.count > 0;
   return (
-    <button
+    <motion.button
+      whileTap={{ scale: 0.98, opacity: 0.9 }}
+      transition={{ type: "spring", stiffness: 500, damping: 30 }}
       onClick={() => onSelect(item.id)}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "w-full flex items-center gap-3 pl-3 pr-2 h-9 rounded-[10px] text-[13.5px] transition-colors",
+        "w-full flex items-center gap-3 pl-3 pr-2 h-10 rounded-xl text-[14px] transition-colors relative group",
         active
-          ? "bg-[#e8f0fe] text-[#1a73e8] font-semibold"
-          : "text-[#1f2937] hover:bg-[#eef1f6]",
+          ? "bg-primary/10 text-primary font-medium"
+          : "text-foreground hover:bg-muted",
       )}
     >
       <Icon
-        className={cn("w-4 h-4 flex-shrink-0", active ? "text-[#1a73e8]" : "text-[#6b7280]")}
-        strokeWidth={1.75}
+        className={cn("w-[18px] h-[18px] flex-shrink-0 transition-colors", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")}
+        strokeWidth={active ? 2 : 1.75}
       />
       <span className="flex-1 text-left truncate">{item.label}</span>
       {showCount && (
         <span
           className={cn(
-            "min-w-[22px] h-[20px] px-1.5 inline-flex items-center justify-center rounded-full text-[11px] font-semibold leading-none",
+            "min-w-[24px] h-[22px] px-1.5 inline-flex items-center justify-center rounded-full text-[11.5px] font-semibold tracking-tight transition-colors shadow-sm",
             active
-              ? "bg-[#dbeafe] text-[#1a73e8]"
-              : "bg-[#eef2f7] text-[#4b5563]",
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted-foreground/10 text-foreground border border-border/50",
           )}
         >
           {item.count}
         </span>
       )}
-    </button>
+    </motion.button>
   );
 }

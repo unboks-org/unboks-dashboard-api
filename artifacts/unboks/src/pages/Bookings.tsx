@@ -337,12 +337,12 @@ export default function Bookings() {
                         }
                       }}
                       className={cn(
-                        "flex items-center gap-3 px-4 py-3 transition-colors cursor-pointer",
+                        "flex items-start gap-3 px-4 py-3 bg-card transition-all duration-200 ease-out cursor-pointer active:scale-[0.98] active:opacity-80 border-b border-border",
                         isSelected
-                          ? "bg-[#e8f0fe]"
+                          ? "bg-primary/10 shadow-sm rounded-xl mx-2 my-1 border-transparent"
                           : highlightedId === apt.id
-                            ? "bg-[#e8f0fe] ring-1 ring-inset ring-[#1a73e8]/30"
-                            : "hover:bg-[#fbfbfd]",
+                            ? "bg-primary/10 ring-1 ring-inset ring-primary/30 rounded-xl mx-2 my-1 border-transparent"
+                            : "hover:bg-muted"
                       )}
                     >
                       {/* Avatar */}

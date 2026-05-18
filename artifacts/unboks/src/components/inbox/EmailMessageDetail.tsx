@@ -4,6 +4,7 @@ import type { ApiMessage } from "@/lib/api";
 import { parseEmail, tokenizeInline } from "@/lib/email-parser";
 import { cn } from "@/lib/utils";
 import { MessageTranslationView } from "@/components/inbox/ConversationTranslation";
+import { motion, AnimatePresence } from "framer-motion";
 
 // ---------------------------------------------------------------------------
 // EmailMessageDetail
@@ -79,7 +80,10 @@ export function EmailMessageDetail({ msg }: EmailMessageDetailProps) {
   const LabelIcon = isOperator ? Users : isAssistant ? Bot : Mail;
 
   return (
-    <article
+    <motion.article
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 350, damping: 30, mass: 1 }}
       className={cn(
         "rounded-xl border px-5 py-4 shadow-[0_1px_2px_rgba(60,64,67,0.06)]",
         cardBorder,
@@ -122,11 +126,12 @@ export function EmailMessageDetail({ msg }: EmailMessageDetailProps) {
 
       {disclaimer && (
         <div className="mt-3 rounded-lg bg-[#f8f9fa] px-3 py-2">
-          <button
+          <motion.button
+            whileTap={{ scale: 0.98 }}
             type="button"
             onClick={() => setShowDisclaimer((v) => !v)}
             aria-expanded={showDisclaimer}
-            className="flex w-full items-center gap-2 text-left text-[12px] font-medium text-[#5f6368] hover:text-[#202124]"
+            className="flex w-full items-center gap-2 text-left text-[12px] font-medium text-[#5f6368] hover:text-[#202124] transition-colors"
           >
             {showDisclaimer ? (
               <ChevronDown className="h-3.5 w-3.5 flex-shrink-0" />
@@ -138,14 +143,21 @@ export function EmailMessageDetail({ msg }: EmailMessageDetailProps) {
             <span className="ml-auto text-[11px] font-normal text-[#9aa0a6]">
               {showDisclaimer ? "Hide" : "Show"}
             </span>
-          </button>
-          {showDisclaimer && (
-            <p className="mt-2 whitespace-pre-wrap break-words text-[11px] leading-[1.5] text-[#80868b]">
-              <InlineText value={disclaimer} />
-            </p>
-          )}
+          </motion.button>
+          <AnimatePresence>
+            {showDisclaimer && (
+              <motion.p 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-2 whitespace-pre-wrap break-words text-[11px] leading-[1.5] text-[#80868b] overflow-hidden"
+              >
+                <InlineText value={disclaimer} />
+              </motion.p>
+            )}
+          </AnimatePresence>
         </div>
       )}
-    </article>
+    </motion.article>
   );
 }

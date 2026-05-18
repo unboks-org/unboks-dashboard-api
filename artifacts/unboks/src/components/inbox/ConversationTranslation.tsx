@@ -59,6 +59,7 @@ import { translateMessage, type AIEditorLanguage, type ApiMessage } from "@/lib/
 import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const NOT_CONNECTED_STATUSES = new Set([0, 404, 501, 503]);
 
@@ -370,7 +371,8 @@ export function ConversationTranslationBar() {
         </div>
 
         {/* Translate action. Disabled while a run is in flight. */}
-        <button
+        <motion.button
+          whileTap={{ scale: 0.96 }}
           type="button"
           onClick={() => {
             void translateAll();
@@ -393,7 +395,7 @@ export function ConversationTranslationBar() {
               Translate
             </>
           )}
-        </button>
+        </motion.button>
 
         {/* Show / hide all translations. Only meaningful once at least one
             translation has been cached, so we hide it until then. */}

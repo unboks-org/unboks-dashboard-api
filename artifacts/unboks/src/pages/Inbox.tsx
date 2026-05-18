@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   DashboardShell,
   inboxContextUrl,
@@ -49,6 +50,7 @@ import {
   Ban,
   Users,
   Bot,
+  Inbox as InboxIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { ApiMessage, ConversationDetail } from "@/lib/api";
@@ -95,45 +97,38 @@ const NAV_LABELS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 function MessageBubble({ msg }: { msg: ApiMessage }) {
-  // Three roles, three distinct visual treatments:
-  //   - user      → left side, neutral grey  (inbound from customer)
-  //   - assistant → right side, blue tint    (Marina, the AI agent)
-  //   - operator  → right side, purple tint  (human teammate / takeover reply)
-  // Both outbound roles align right since they were sent to the customer,
-  // but the color + small role label keeps Marina vs. the human team
-  // unambiguous in the trail. Translation, when present for the current
-  // global target language and visibility, is rendered inline below the
-  // bubble by `MessageTranslationView`, which reads from the
-  // conversation-level translation context. There are no per-bubble
-  // Translate buttons — the single Translate Conversation toolbar at the
-  // top of the thread drives all translations.
   const isUser = msg.role === "user";
   const isOperator = msg.role === "operator";
   const isOutbound = !isUser;
 
   const bubbleClasses = isUser
-    ? "bg-[#f1f3f4] text-[#202124] rounded-bl-sm"
+    ? "bg-[#f1f3f4] text-[#1f2937] rounded-bl-[4px]"
     : isOperator
-      ? "bg-[#f3e8ff] text-[#5b3fa0] rounded-br-sm"
-      : "bg-[#e8f0fe] text-[#1a73e8] rounded-br-sm";
+      ? "bg-[#f3e8ff] text-[#5b3fa0] rounded-br-[4px]"
+      : "bg-primary text-primary-foreground rounded-br-[4px]";
 
   const roleLabel = isOperator ? "Team" : isUser ? null : "Agent";
   const roleLabelClass = isOperator
     ? "text-[#5b3fa0]"
-    : "text-[#1a73e8]";
+    : "text-primary";
 
   return (
-    <div className={cn("flex", isOutbound ? "justify-end" : "justify-start")}>
+    <motion.div 
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+      className={cn("flex w-full mb-3", isOutbound ? "justify-end" : "justify-start")}
+    >
       <div
         className={cn(
-          "flex max-w-[75%] flex-col",
+          "flex max-w-[85%] md:max-w-[75%] flex-col",
           isOutbound ? "items-end" : "items-start",
         )}
       >
         {roleLabel && (
           <span
             className={cn(
-              "mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em]",
+              "mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider",
               roleLabelClass,
             )}
           >
@@ -147,13 +142,18 @@ function MessageBubble({ msg }: { msg: ApiMessage }) {
         )}
         <div
           className={cn(
-            "px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed",
+            "px-3.5 py-2.5 rounded-[18px] text-[14px] leading-relaxed shadow-sm",
             bubbleClasses,
           )}
         >
           {msg.content}
           {msg.timestamp && (
-            <p className="text-[11px] mt-1 opacity-60">{msg.timestamp}</p>
+            <p className={cn(
+              "text-[10.5px] mt-1.5 font-medium",
+              isUser ? "text-[#5f6368]" : isOperator ? "text-[#5b3fa0]/70" : "text-primary-foreground/70"
+            )}>
+              {msg.timestamp}
+            </p>
           )}
         </div>
         {msg.id && (
@@ -163,7 +163,7 @@ function MessageBubble({ msg }: { msg: ApiMessage }) {
           />
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -267,51 +267,55 @@ function EscalationModeToggle({
       <div
         role="group"
         aria-label="Escalation mode"
-        className="inline-flex rounded-full border border-[#dadce0] p-0.5 bg-[#f8f9fa]"
+        className="inline-flex rounded-full border border-border p-0.5 bg-muted shadow-sm"
       >
-        <button
+        <motion.button
+          whileTap={{ scale: 0.97 }}
           type="button"
           onClick={() => apply("soft")}
           aria-pressed={isSoft}
           disabled={pendingMode === "soft"}
           className={cn(
-            "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11.5px] font-medium transition-colors",
+            "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium transition-all",
             isSoft
-              ? "bg-[#fef7e0] text-[#5f3e00] border border-[#feefc3] shadow-sm"
-              : "text-[#5f6368] hover:text-[#202124]",
+              ? "bg-white text-foreground shadow-sm ring-1 ring-border"
+              : "text-muted-foreground hover:text-foreground hover:bg-white/50",
           )}
         >
-          <AlertCircle className="w-3 h-3" />
+          <AlertCircle className={cn("w-3.5 h-3.5", isSoft ? "text-[#f59e0b]" : "")} />
           Agent needs help
-        </button>
-        <button
+        </motion.button>
+        <motion.button
+          whileTap={{ scale: 0.97 }}
           type="button"
           onClick={() => apply("hard")}
           aria-pressed={isHard}
           disabled={pendingMode === "hard"}
           className={cn(
-            "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11.5px] font-medium transition-colors",
+            "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium transition-all",
             isHard
-              ? "bg-[#fce8e6] text-[#5f1414] border border-[#f6c6c2] shadow-sm"
-              : "text-[#5f6368] hover:text-[#202124]",
+              ? "bg-white text-destructive shadow-sm ring-1 ring-border"
+              : "text-muted-foreground hover:text-foreground hover:bg-white/50",
           )}
         >
-          <AlertTriangle className="w-3 h-3" />
+          <AlertTriangle className={cn("w-3.5 h-3.5", isHard ? "text-destructive" : "")} />
           Human takeover
-        </button>
+        </motion.button>
       </div>
       {notice && (
-        <div
+        <motion.div
+          initial={{ opacity: 0, y: -4, height: 0 }}
+          animate={{ opacity: 1, y: 0, height: "auto" }}
           role="status"
           className={cn(
-            "mt-1.5 rounded-md border px-2.5 py-1 text-[11.5px]",
+            "mt-2 rounded-lg border px-3 py-2 text-[12px] font-medium max-w-sm",
             notice.tone === "info"
-              ? "border-[#cfe2ff] bg-[#f0f6ff] text-[#0b3b8c]"
-              : "border-[#f6c6c2] bg-[#fce8e6] text-[#5f1414]",
+              ? "border-primary/20 bg-primary/5 text-primary"
+              : "border-destructive/20 bg-destructive/5 text-destructive",
           )}
         >
           {notice.text}
-        </div>
+        </motion.div>
       )}
     </>
   );
@@ -565,47 +569,49 @@ function ConversationDetailPane({
                     (wraps cleanly so pills can never collide with the name)
           Desktop (md+): a single inline row — close · name+timestamp ·
           mode toggle · channel pill+summary · action icons. */}
-      <div className="border-b border-[#e8eaed] bg-white px-3 md:px-4 py-2 flex-shrink-0">
+      <div className="border-b border-border bg-card px-3 md:px-5 py-2.5 flex-shrink-0 z-10 shadow-sm">
         {/* Row 1 — identity + actions */}
         <div className="flex items-center gap-2 md:gap-3">
-          <button
+          <motion.button
+            whileTap={{ scale: 0.95 }}
             onClick={onClose}
             aria-label="Close conversation"
-            className="w-10 h-10 -ml-1 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#5f6368] md:hidden flex-shrink-0"
+            className="w-10 h-10 -ml-1 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground md:hidden flex-shrink-0"
           >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <button
+            <ArrowLeft className="w-[22px] h-[22px]" strokeWidth={1.5} />
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
             onClick={onClose}
             aria-label="Close conversation"
-            className="hidden md:flex w-7 h-7 items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368] flex-shrink-0"
+            className="hidden md:flex w-8 h-8 items-center justify-center rounded-full hover:bg-muted text-muted-foreground flex-shrink-0"
           >
-            <X className="w-4 h-4" />
-          </button>
+            <X className="w-[18px] h-[18px]" strokeWidth={2} />
+          </motion.button>
           <div className="flex-1 min-w-0">
-            <p className="text-[16px] md:text-[14px] font-semibold text-[#111827] truncate leading-tight">
+            <p className="text-[17px] md:text-[15px] font-semibold text-foreground truncate leading-tight">
               {conversation.sender}
             </p>
             {/* md+ inline meta: channel pill + timestamp + summary on one line */}
-            <div className="hidden md:flex items-center gap-2 mt-0.5 min-w-0">
+            <div className="hidden md:flex items-center gap-2 mt-1 min-w-0">
               <span
-                className="text-[11px] font-medium px-1.5 py-0.5 rounded-full text-white flex-shrink-0"
+                className="text-[11px] font-semibold px-2 py-0.5 rounded-full text-white flex-shrink-0 tracking-wide"
                 style={{ backgroundColor: badgeColor }}
               >
                 {conversation.channel}
               </span>
               {resolvedContext && (
-                <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 bg-[#e6f4ea] text-[#137333]">
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 bg-[#10b981]/10 text-[#10b981] tracking-wide">
                   Resolved escalation
                 </span>
               )}
               {conversation.timestamp && (
-                <span className="text-[11.5px] text-[#5f6368] flex-shrink-0">
+                <span className="text-[12px] font-medium text-muted-foreground flex-shrink-0">
                   {conversation.timestamp}
                 </span>
               )}
               {showBanner && !resolvedContext && detail?.escalationSummary && (
-                <p className="text-[12px] text-[#5f6368] truncate min-w-0" title={detail.escalationSummary}>
+                <p className="text-[12.5px] text-muted-foreground truncate min-w-0 ml-1 border-l border-border pl-3" title={detail.escalationSummary}>
                   {detail.escalationSummary}
                 </p>
               )}
@@ -614,7 +620,7 @@ function ConversationDetailPane({
           {/* Mode toggle: stays in row 1 on md+, moves to row 2 on mobile/tablet.
               Hidden in resolvedContext — resolved escalations are read-only. */}
           {showBanner && dbId && !resolvedContext && (
-            <div className="hidden md:block flex-shrink-0">
+            <div className="hidden md:block flex-shrink-0 ml-2">
               <EscalationModeToggle
                 conversationDbId={dbId}
                 selectedMode={selectedMode}
@@ -623,76 +629,82 @@ function ConversationDetailPane({
             </div>
           )}
           {(onArchive || onRestore) && (
-            <div className="flex items-center gap-1 flex-shrink-0">
+            <div className="flex items-center gap-1 flex-shrink-0 ml-2">
               {!archived && onArchive && (
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onArchive(conversation); }}
                   aria-label="Archive conversation"
                   title="Archive"
-                  className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full hover:bg-[#eef1f6] text-[#5f6368] hover:text-[#1f2937]"
+                  className="w-10 h-10 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <Archive className="w-5 h-5 md:w-4 md:h-4" />
-                </button>
+                  <Archive className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]" strokeWidth={1.5} />
+                </motion.button>
               )}
               {archived && onRestore && (
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onRestore(conversation); }}
                   aria-label="Restore to inbox"
                   title="Restore to inbox"
-                  className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full hover:bg-[#e8f0fe] text-[#5f6368] hover:text-[#1a73e8]"
+                  className="w-10 h-10 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
                 >
-                  <ArchiveRestore className="w-5 h-5 md:w-4 md:h-4" />
-                </button>
+                  <ArchiveRestore className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]" strokeWidth={1.5} />
+                </motion.button>
               )}
               {onBlock && !archived && (
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onBlock(conversation); }}
                   aria-label="Block in Unboks"
                   title="Block in Unboks"
-                  className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full hover:bg-[#fce8e6] text-[#5f6368] hover:text-[#c5221f]"
+                  className="w-10 h-10 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                 >
-                  <Ban className="w-5 h-5 md:w-4 md:h-4" />
-                </button>
+                  <Ban className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]" strokeWidth={1.5} />
+                </motion.button>
               )}
             </div>
           )}
           {conversation.channel === "Email" && (onEmailReply || onEmailForward || onEmailDelete) && (
-            <div className="flex items-center gap-1 flex-shrink-0">
+            <div className="flex items-center gap-1 flex-shrink-0 ml-1">
               {onEmailReply && (
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onEmailReply(conversation); }}
                   aria-label="Reply"
                   title="Reply"
-                  className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368]"
+                  className="w-10 h-10 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors"
                 >
-                  <Reply className="w-5 h-5 md:w-4 md:h-4" />
-                </button>
+                  <Reply className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]" strokeWidth={1.5} />
+                </motion.button>
               )}
               {onEmailForward && (
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onEmailForward(conversation); }}
                   aria-label="Forward"
                   title="Forward"
-                  className="hidden md:flex w-8 h-8 items-center justify-center rounded-full hover:bg-[#f6f8fc] text-[#5f6368]"
+                  className="hidden md:flex w-9 h-9 items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors"
                 >
-                  <Forward className="w-4 h-4" />
-                </button>
+                  <Forward className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                </motion.button>
               )}
               {onEmailDelete && (
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onEmailDelete(conversation); }}
                   aria-label="Delete"
                   title="Delete"
-                  className="hidden md:flex w-8 h-8 items-center justify-center rounded-full hover:bg-[#fce8e6] text-[#5f6368] hover:text-[#c5221f]"
+                  className="hidden md:flex w-9 h-9 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                 >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                  <Trash2 className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                </motion.button>
               )}
             </div>
           )}
@@ -701,15 +713,15 @@ function ConversationDetailPane({
         {/* Row 2 — channel + status (mobile + tablet only, below md). The
             channel pill never shares a line with the customer name on
             narrow screens, so it can never overlap. */}
-        <div className="mt-1.5 flex items-center gap-2 flex-wrap md:hidden">
+        <div className="mt-2 flex items-center gap-2.5 flex-wrap md:hidden">
           <span
-            className="text-[11px] font-medium px-2 py-0.5 rounded-full text-white flex-shrink-0"
+            className="text-[11.5px] font-semibold px-2.5 py-0.5 rounded-full text-white flex-shrink-0 tracking-wide shadow-sm"
             style={{ backgroundColor: badgeColor }}
           >
             {conversation.channel}
           </span>
           {resolvedContext && (
-            <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 bg-[#e6f4ea] text-[#137333]">
+            <span className="text-[11.5px] font-semibold px-2.5 py-0.5 rounded-full flex-shrink-0 bg-[#10b981]/10 text-[#10b981] tracking-wide shadow-sm">
               Resolved escalation
             </span>
           )}
@@ -721,7 +733,7 @@ function ConversationDetailPane({
             />
           )}
           {conversation.timestamp && (
-            <span className="text-[11.5px] text-[#5f6368] truncate">
+            <span className="text-[12px] font-medium text-muted-foreground truncate">
               {conversation.timestamp}
             </span>
           )}
@@ -729,7 +741,7 @@ function ConversationDetailPane({
 
         {/* Mobile/tablet: escalation summary on its own line — hidden for resolved context */}
         {showBanner && !resolvedContext && detail?.escalationSummary && (
-          <p className="md:hidden text-[12.5px] text-[#5f6368] mt-1.5 leading-snug" title={detail.escalationSummary}>
+          <p className="md:hidden text-[13.5px] text-muted-foreground mt-2.5 leading-snug" title={detail.escalationSummary}>
             {detail.escalationSummary}
           </p>
         )}
@@ -925,58 +937,74 @@ function ConversationThreadBody({
   return (
     <div
       className={cn(
-        "flex-1 overflow-y-auto px-4 py-4",
-        conversation.channel === "Email" ? "space-y-4 bg-[#f8f9fa]" : "space-y-3",
+        "flex-1 overflow-y-auto px-3 sm:px-4 py-4 pb-8",
+        conversation.channel === "Email" ? "space-y-4 bg-muted" : "bg-background",
       )}
     >
       {isLoading && (
-        <p className="text-[13px] text-[#5f6368] text-center py-8">Loading messages…</p>
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="flex gap-1.5 mb-3">
+            <div className="w-2 h-2 rounded-full bg-muted-foreground/30 animate-bounce [animation-delay:-0.3s]" />
+            <div className="w-2 h-2 rounded-full bg-muted-foreground/30 animate-bounce [animation-delay:-0.15s]" />
+            <div className="w-2 h-2 rounded-full bg-muted-foreground/30 animate-bounce" />
+          </div>
+          <p className="text-[13px] font-medium text-muted-foreground">Loading messages</p>
+        </div>
       )}
 
       {!isLoading && messages.length > 0 && (
-        conversation.channel === "Email"
-          ? messages.map((msg, i) => (
-              <EmailMessageDetail key={msg.id ?? i} msg={msg} />
-            ))
-          : messages.map((msg, i) => (
-              <MessageBubble key={msg.id ?? i} msg={msg} />
-            ))
+        <>
+          {conversation.channel === "Email"
+            ? messages.map((msg, i) => (
+                <EmailMessageDetail key={msg.id ?? i} msg={msg} />
+              ))
+            : messages.map((msg, i) => (
+                <MessageBubble key={msg.id ?? i} msg={msg} />
+              ))}
+        </>
       )}
 
       {!isLoading && messages.length === 0 && (
-        <div className="py-8 space-y-3">
-          {conversation.subject !== "No preview available" && (
-            <div className="bg-[#f1f3f4] rounded-2xl rounded-bl-sm px-4 py-2.5 text-[13px] text-[#202124] text-left max-w-[75%]">
-              <p className="font-medium">{conversation.subject}</p>
+        <div className="py-8 space-y-4 flex flex-col items-center justify-center min-h-[50vh]">
+          {conversation.subject !== "No preview available" && !errorDetail && (
+            <div className="bg-muted rounded-2xl rounded-bl-[4px] px-5 py-3.5 text-[14px] text-foreground text-left max-w-[85%] sm:max-w-[75%] border border-border shadow-sm">
+              <p className="font-semibold text-[14px]">{conversation.subject}</p>
               {conversation.preview && conversation.preview !== conversation.subject && (
-                <p className="text-[#5f6368] mt-1">{conversation.preview}</p>
+                <p className="text-muted-foreground mt-1.5 leading-relaxed">{conversation.preview}</p>
               )}
             </div>
           )}
 
           {errorDetail && (
-            <div
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
               role="alert"
-              className="mx-auto max-w-[420px] rounded-xl border border-[#fad2cf] bg-[#fce8e6] px-4 py-3 text-left"
+              className="mx-auto max-w-[320px] rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-center shadow-sm"
             >
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-[#c5221f] flex-shrink-0 mt-0.5" />
-                <div className="min-w-0">
-                  <p className="text-[13px] font-semibold text-[#5f1414]">
-                    Couldn't load conversation
-                  </p>
-                  <p className="mt-1 text-[12px] text-[#5f6368] break-words">
-                    {errorDetail.status
-                      ? `${errorDetail.status} · ${errorDetail.message}`
-                      : errorDetail.message}
-                  </p>
-                </div>
+              <div className="mx-auto w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center mb-3">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
               </div>
-            </div>
+              <p className="text-[14px] font-semibold text-destructive mb-1">
+                Couldn't load conversation
+              </p>
+              <p className="text-[13px] text-destructive/80 font-medium">
+                {errorDetail.status
+                  ? `${errorDetail.status} · ${errorDetail.message}`
+                  : errorDetail.message}
+              </p>
+            </motion.div>
           )}
 
           {!errorDetail && conversation.subject === "No preview available" && (
-            <p className="text-center text-[13px] text-[#9aa0a6]">No messages to display.</p>
+            <div className="flex flex-col items-center justify-center text-center">
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                <Bot className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <p className="text-[14px] font-medium text-foreground">No messages to display</p>
+              <p className="text-[13px] text-muted-foreground mt-1">This thread appears to be empty.</p>
+            </div>
           )}
         </div>
       )}
@@ -1480,103 +1508,138 @@ export default function Inbox() {
         >
           {activeNav === "escalations" ? (
             <div
-              className="flex items-center gap-1 px-3 py-2 border-b border-[#f1f3f4] bg-white sticky top-0 z-10 overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="flex items-center gap-1.5 px-3 py-2.5 border-b border-border bg-card/95 backdrop-blur-sm sticky top-0 z-10 overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               role="tablist"
               aria-label="Escalation filter"
             >
               {(["all", "soft", "hard", "resolved"] as const).map((m) => (
-                <button
+                <motion.button
                   key={m}
+                  whileTap={{ scale: 0.96 }}
                   type="button"
                   role="tab"
                   aria-selected={escalationFilter === m}
                   onClick={() => { setEscalationFilter(m); setSelectedConv(null); }}
                   className={cn(
-                    "px-3 py-1 text-[12px] rounded-full flex-shrink-0",
+                    "px-3.5 py-1.5 text-[12px] md:text-[13px] rounded-full flex-shrink-0 transition-all font-medium",
                     escalationFilter === m
-                      ? "bg-[#e8f0fe] text-[#1a73e8] font-medium"
-                      : "text-[#5f6368] hover:bg-[#f1f3f4]",
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
                   {m === "all" ? "All" : m === "soft" ? "Agent needs help" : m === "hard" ? "Human takeover" : "Resolved"}
-                </button>
+                </motion.button>
               ))}
             </div>
           ) : (
             // Active vs Archived view toggle. Archive is now server-backed
             // (Brief 249 / backend issue #18) — syncs across devices.
-            <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-[#f1f3f4] bg-white sticky top-0 z-10">
+            <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-border bg-card/95 backdrop-blur-sm sticky top-0 z-10">
               <div className="flex items-center gap-1">
-                {(["active", "archived"] as const).map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => { setInboxView(v); setSelectedConv(null); }}
-                    className={cn(
-                      "px-3 py-1 text-[12px] rounded-full inline-flex items-center gap-1.5",
-                      inboxView === v
-                        ? "bg-[#e8f0fe] text-[#1a73e8] font-medium"
-                        : "text-[#5f6368] hover:bg-[#f1f3f4]",
-                    )}
-                    aria-pressed={inboxView === v}
-                  >
-                    {v === "archived" && <Archive className="h-3 w-3" />}
-                    {v === "active" ? "Active" : "Archived"}
-                  </button>
-                ))}
+                <div className="inline-flex items-center rounded-full p-0.5 bg-muted border border-border shadow-sm">
+                  {(["active", "archived"] as const).map((v) => (
+                    <motion.button
+                      key={v}
+                      whileTap={{ scale: 0.96 }}
+                      type="button"
+                      onClick={() => { setInboxView(v); setSelectedConv(null); }}
+                      className={cn(
+                        "px-3.5 py-1 text-[12px] md:text-[13px] rounded-full inline-flex items-center gap-1.5 transition-all font-medium",
+                        inboxView === v
+                          ? "bg-background text-foreground shadow-sm ring-1 ring-border"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                      aria-pressed={inboxView === v}
+                    >
+                      {v === "archived" && <Archive className="h-3.5 w-3.5" />}
+                      {v === "active" ? "Active" : "Archived"}
+                    </motion.button>
+                  ))}
+                </div>
               </div>
               {inboxView === "archived" && archiveIsLoading && (
-                <span className="text-[10.5px] text-[#9aa0a6] truncate">Loading…</span>
+                <span className="text-[11px] font-medium text-muted-foreground truncate px-2">Loading…</span>
               )}
             </div>
           )}
           {(activeNav === "escalations" ? escIsLoading : inboxView === "archived" ? archiveIsLoading : isLoading) && filtered.length === 0 ? (
-            <div className="divide-y divide-[#f1f3f4]" aria-busy="true" aria-label="Loading conversations">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="flex items-center gap-3 px-4 py-4">
-                  <div className="h-9 w-9 flex-shrink-0 animate-pulse rounded-full bg-[#f1f3f4]" />
+            <div className="divide-y divide-border" aria-busy="true" aria-label="Loading conversations">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <motion.div 
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05, duration: 0.3 }}
+                  key={i} 
+                  className="flex items-center gap-3 px-4 py-4"
+                >
+                  <div className="h-10 w-10 flex-shrink-0 animate-pulse rounded-full bg-muted shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.18)]" />
                   <div className="flex-1 space-y-2">
-                    <div className="h-3 w-1/3 animate-pulse rounded bg-[#f1f3f4]" />
-                    <div className="h-3 w-3/4 animate-pulse rounded bg-[#f1f3f4]" />
+                    <div className="flex items-center justify-between">
+                      <div className="h-3.5 w-1/4 animate-pulse rounded-full bg-muted" />
+                      <div className="h-3 w-12 animate-pulse rounded-full bg-muted/50" />
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="h-3 w-3/4 animate-pulse rounded-full bg-muted/70" />
+                      <div className="h-4 w-12 animate-pulse rounded-full bg-muted/40" />
+                    </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           ) : filtered.length > 0 ? (
-            filtered.map((conv) => (
-              <MessageRow
+            filtered.map((conv, i) => (
+              <motion.div
                 key={conv.id}
-                conversation={conv}
-                isSelected={selectedConv?.id === conv.id}
-                hideChannel={Boolean(activeChannel)}
-                onSelect={setSelectedConv}
-                onReply={canDeleteChannel(conv.channel) ? handleEmailReply : undefined}
-                onForward={canDeleteChannel(conv.channel) ? handleEmailForward : undefined}
-                onDelete={canDeleteChannel(conv.channel) ? handleEmailDelete : undefined}
-                onArchive={escalationFilter === "resolved" ? undefined : handleArchive}
-                onRestore={escalationFilter === "resolved" ? undefined : handleRestore}
-                archived={inboxView === "archived"}
-                dimmed={escalationFilter === "resolved"}
-              />
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 400, damping: 30, delay: i * 0.03 }}
+              >
+                <MessageRow
+                  conversation={conv}
+                  isSelected={selectedConv?.id === conv.id}
+                  hideChannel={Boolean(activeChannel)}
+                  onSelect={setSelectedConv}
+                  onReply={canDeleteChannel(conv.channel) ? handleEmailReply : undefined}
+                  onForward={canDeleteChannel(conv.channel) ? handleEmailForward : undefined}
+                  onDelete={canDeleteChannel(conv.channel) ? handleEmailDelete : undefined}
+                  onArchive={escalationFilter === "resolved" ? undefined : handleArchive}
+                  onRestore={escalationFilter === "resolved" ? undefined : handleRestore}
+                  archived={inboxView === "archived"}
+                  dimmed={escalationFilter === "resolved"}
+                />
+              </motion.div>
             ))
           ) : (
-            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-              <p className="text-[14px] text-[#5f6368]">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              className="flex flex-col items-center justify-center py-24 px-6 text-center h-full min-h-[50vh]"
+            >
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                {activeNav === "escalations" ? (
+                  <AlertCircle className="w-7 h-7 text-muted-foreground" />
+                ) : (
+                  <InboxIcon className="w-7 h-7 text-muted-foreground" />
+                )}
+              </div>
+              <h3 className="text-[16px] font-semibold text-foreground mb-1">
+                {activeNav === "escalations"
+                  ? escIsError ? "Couldn't load escalations" : "All caught up"
+                  : isError ? "Couldn't load conversations" : "Inbox zero"}
+              </h3>
+              <p className="text-[14px] text-muted-foreground max-w-[260px] leading-relaxed">
                 {activeNav === "escalations"
                   ? escIsError
-                    ? `Couldn't load escalations${
-                        escError instanceof Error && escError.message
-                          ? `: ${escError.message}`
-                          : "."
-                      }`
+                    ? escError instanceof Error ? escError.message : "Please try again later."
                     : escalationFilter === "resolved"
                       ? "No resolved escalations yet."
                       : "No escalations to show."
                   : isError
-                    ? "Couldn't load conversations."
-                    : "No conversations to show."}
+                    ? "Please try again later."
+                    : "No conversations to show right now."}
               </p>
-            </div>
+            </motion.div>
           )}
         </div>
 

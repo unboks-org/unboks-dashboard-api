@@ -60,6 +60,7 @@ import { ApiError } from "@/lib/error";
 import type { Channel } from "@/data/conversations";
 import { cn } from "@/lib/utils";
 import { AIEditorPanel } from "./AIEditorPanel";
+import { motion } from "framer-motion";
 
 const NOT_CONNECTED_STATUSES = new Set([0, 404, 501, 503]);
 
@@ -681,10 +682,12 @@ export const EscalationReplyComposer = forwardRef<
         aria-label={isSoft ? "Escalation guidance actions" : "Escalation reply actions"}
       >
         {/* 1) Send — outline secondary */}
-        <button
+        <motion.button
           type="button"
           onClick={onSend}
           disabled={empty || sendPending || anyPending}
+          whileTap={{ scale: 0.96, opacity: 0.8 }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
           aria-label={
             isSoft
               ? "Send guidance to your Agent without resolving"
@@ -706,13 +709,15 @@ export const EscalationReplyComposer = forwardRef<
         >
           <Send className="h-3.5 w-3.5" />
           {sendPending && !combinedPending ? "Sending..." : "Send"}
-        </button>
+        </motion.button>
 
         {/* 2) Resolve — outline secondary */}
-        <button
+        <motion.button
           type="button"
           onClick={onMarkResolved}
           disabled={anyPending}
+          whileTap={{ scale: 0.96, opacity: 0.8 }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
           aria-label="Mark this escalation resolved without sending anything"
           title="Mark this escalation resolved without sending anything."
           className={cn(
@@ -726,16 +731,18 @@ export const EscalationReplyComposer = forwardRef<
         >
           <Check className="h-3.5 w-3.5" />
           {resolve.isPending && !combinedPending ? "Resolving..." : "Resolve"}
-        </button>
+        </motion.button>
 
         {/* 3) Send & Resolve — premium combined action.
             On mobile this spans both grid columns so it sits as a
             full-width row beneath Send + Resolve, matching the spec's
             preferred 2-row mobile layout. */}
-        <button
+        <motion.button
           type="button"
           onClick={onSendAndResolve}
           disabled={empty || anyPending}
+          whileTap={{ scale: 0.96, opacity: 0.8 }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
           aria-label={
             isSoft
               ? "Send guidance and mark resolved"
@@ -771,7 +778,7 @@ export const EscalationReplyComposer = forwardRef<
               <Check className="h-3.5 w-3.5 opacity-90" />
             </>
           )}
-        </button>
+        </motion.button>
 
         {/* Desktop-only takeover/handback link — mobile renders it
             above the button group instead. */}

@@ -112,14 +112,21 @@ const CATEGORIES: {
   },
 ];
 
+import { motion, type HTMLMotionProps } from "framer-motion";
+
 // ---------- Reusable presentation primitives ----------
 
 function CategoryHeader({ title, description }: { title: string; description: string }) {
   return (
-    <div className="mb-5">
-      <h2 className="text-[18px] font-semibold tracking-tight text-[#202124]">{title}</h2>
-      <p className="mt-1 text-[13px] text-[#5f6368]">{description}</p>
-    </div>
+    <motion.div 
+      initial={{ opacity: 0, y: 8 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      transition={{ type: "spring", stiffness: 350, damping: 30 }}
+      className="mb-6 px-1 sm:px-2"
+    >
+      <h2 className="text-[22px] font-medium tracking-tight text-[#202124]">{title}</h2>
+      <p className="mt-1 text-[15px] text-[#5f6368]">{description}</p>
+    </motion.div>
   );
 }
 
@@ -128,32 +135,41 @@ function Card({
   description,
   footer,
   children,
+  className,
 }: {
   title?: string;
   description?: string;
   footer?: React.ReactNode;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-[#e8eaed] bg-white">
+    <motion.section 
+      initial={{ opacity: 0, y: 8 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      transition={{ type: "spring", stiffness: 350, damping: 30 }}
+      className={cn("overflow-hidden rounded-[20px] border border-[#e8eaed] bg-white shadow-sm", className)}
+    >
       {(title || description) && (
-        <header className="border-b border-[#f1f3f4] px-5 py-4 sm:px-6">
-          {title && <h3 className="text-[14px] font-semibold text-[#202124]">{title}</h3>}
-          {description && <p className="mt-0.5 text-[13px] text-[#5f6368]">{description}</p>}
+        <header className="border-b border-[#e8eaed] px-5 py-4 sm:px-6">
+          {title && <h3 className="text-[15px] font-medium text-[#202124]">{title}</h3>}
+          {description && <p className="mt-1 text-[14px] text-[#5f6368]">{description}</p>}
         </header>
       )}
-      <div className="px-5 py-5 sm:px-6 sm:py-6">{children}</div>
+      <div className="p-0">
+        <div className="px-5 py-5 sm:px-6">{children}</div>
+      </div>
       {footer && (
-        <footer className="sticky bottom-0 z-10 flex items-center justify-end gap-3 border-t border-[#f1f3f4] bg-[#fafbfc] px-5 py-3 sm:px-6">
+        <footer className="sticky bottom-0 z-10 flex items-center justify-end gap-3 border-t border-[#e8eaed] bg-[#fbfbfd] px-5 py-4 sm:px-6">
           {footer}
         </footer>
       )}
-    </section>
+    </motion.section>
   );
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <span className="text-[12px] font-medium text-[#5f6368]">{children}</span>;
+  return <span className="text-[14px] font-medium text-[#3c4043]">{children}</span>;
 }
 
 function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
@@ -161,7 +177,7 @@ function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       className={cn(
-        "mt-1 w-full min-w-0 rounded-lg border border-[#dadce0] bg-white px-3 py-2 text-[13px] text-[#202124] outline-none transition-colors",
+        "mt-1.5 w-full min-w-0 rounded-[10px] border border-[#dadce0] bg-white px-4 py-2.5 text-[15px] text-[#202124] outline-none transition-all",
         "placeholder:text-[#9aa0a6] focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]",
         props.className,
       )}
@@ -172,35 +188,39 @@ function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
 function PrimaryButton({
   children,
   ...rest
-}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+}: HTMLMotionProps<"button">) {
   return (
-    <button
+    <motion.button
+      whileTap={{ scale: 0.97, opacity: 0.9 }}
+      transition={{ duration: 0.1 }}
       {...rest}
       className={cn(
-        "rounded-lg bg-[#1a73e8] px-4 py-2 text-[13px] font-medium text-white transition-colors",
-        "hover:bg-[#1765c1] disabled:cursor-not-allowed disabled:bg-[#c8d4e6]",
+        "rounded-[10px] bg-[#1a73e8] px-5 py-2.5 text-[14px] font-medium text-white transition-colors",
+        "hover:bg-[#1765c1] disabled:cursor-not-allowed disabled:bg-[#c8d4e6] disabled:active:scale-100",
         rest.className,
       )}
     >
       {children}
-    </button>
+    </motion.button>
   );
 }
 
 function GhostButton({
   children,
   ...rest
-}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+}: HTMLMotionProps<"button">) {
   return (
-    <button
+    <motion.button
+      whileTap={{ scale: 0.97, opacity: 0.9 }}
+      transition={{ duration: 0.1 }}
       {...rest}
       className={cn(
-        "rounded-lg border border-[#dadce0] bg-white px-3 py-1.5 text-[13px] text-[#3c4043] transition-colors hover:bg-[#f6f8fc]",
+        "rounded-[10px] border border-[#dadce0] bg-white px-4 py-2 text-[14px] font-medium text-[#3c4043] transition-colors hover:bg-[#f8f9fa] disabled:opacity-60 disabled:active:scale-100",
         rest.className,
       )}
     >
       {children}
-    </button>
+    </motion.button>
   );
 }
 
@@ -208,7 +228,7 @@ function SavedFlash({ visible }: { visible: boolean }) {
   return (
     <span
       className={cn(
-        "text-[12px] text-[#137333] transition-opacity duration-200",
+        "text-[14px] text-[#137333] transition-opacity duration-200",
         visible ? "opacity-100" : "opacity-0",
       )}
       aria-live="polite"
@@ -261,7 +281,7 @@ function DeliveryBadge({ status }: { status: DeliveryStatus }) {
   return (
     <span
       className={cn(
-        "flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
+        "flex-shrink-0 rounded-full px-2.5 py-0.5 text-[12px] font-medium",
         className,
       )}
     >
@@ -284,10 +304,10 @@ function ToggleRow({
   disabled?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-3">
+    <div className="flex items-center justify-between gap-4 py-4 active:bg-[#fbfbfd] transition-colors rounded-lg -mx-2 px-2 sm:-mx-3 sm:px-3">
       <div className="min-w-0">
-        <p className="text-[14px] text-[#202124]">{label}</p>
-        {description && <p className="mt-0.5 text-[12px] text-[#5f6368]">{description}</p>}
+        <p className="text-[15px] font-medium text-[#202124]">{label}</p>
+        {description && <p className="mt-1 text-[14px] text-[#5f6368]">{description}</p>}
       </div>
       <Switch
         checked={checked}
@@ -389,41 +409,40 @@ function SotKnowledgeCard({
   const isSaving = busy || isSavingExternal;
 
   return (
-    <div className="rounded-xl border border-[#e8eaed] bg-white p-4">
-      <div className="mb-2 flex items-start justify-between gap-3">
-        <p className="text-[13px] font-semibold text-[#202124]">{block.title}</p>
+    <div className="rounded-[16px] border border-[#e8eaed] bg-white p-4 sm:p-5 shadow-sm transition-all duration-200">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <p className="text-[15px] font-medium text-[#202124]">{block.title}</p>
         {!editing ? (
-          <button
+          <GhostButton
             type="button"
             onClick={() => setEditing(true)}
-            className="flex flex-shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium text-[#1a73e8] hover:bg-[#e8f0fe]"
+            className="flex flex-shrink-0 items-center gap-1.5 !px-3 !py-1.5 !bg-[#f8f9fa] !border-[#e8eaed] hover:!bg-[#f1f3f4] !text-[#3c4043]"
           >
             <Pencil className="h-3.5 w-3.5" />
             Edit
-          </button>
+          </GhostButton>
         ) : (
-          <div className="flex flex-shrink-0 items-center gap-1.5">
-            <button
+          <div className="flex flex-shrink-0 items-center gap-2">
+            <GhostButton
               type="button"
               onClick={handleCancel}
               disabled={isSaving}
-              className="rounded-md px-2 py-1 text-[12px] font-medium text-[#5f6368] hover:bg-[#f1f3f4] disabled:opacity-60"
+              className="!px-3 !py-1.5"
             >
               Cancel
-            </button>
-            <button
+            </GhostButton>
+            <PrimaryButton
               type="button"
               onClick={handleSave}
               disabled={!dirty || isSaving}
-              className="flex items-center gap-1.5 rounded-md bg-[#1a73e8] px-2.5 py-1 text-[12px] font-medium text-white hover:bg-[#1765cc] disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex items-center gap-1.5 !px-3 !py-1.5"
             >
               {isSaving ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving</>
               ) : (
-                <Check className="h-3.5 w-3.5" />
+                <><Check className="h-3.5 w-3.5" /> Save</>
               )}
-              Save changes
-            </button>
+            </PrimaryButton>
           </div>
         )}
       </div>
@@ -1441,11 +1460,11 @@ export default function Settings() {
                   </div>
                   <div className="mt-4 space-y-1 rounded-lg border border-[#e6e8eb] bg-[#fbfbfd] px-3 py-3 text-[11px] text-[#5f6368]">
                     <p className="font-medium text-[#3c4043]">Status guide</p>
-                    <p><span className="font-medium text-[#137333]">Active</span> — alerts are being sent.</p>
-                    <p><span className="font-medium text-[#7a5a00]">Pending activation</span> — configured and saved. Send START from your WhatsApp to the business number to finish activating.</p>
-                    <p><span className="font-medium text-[#5f6368]">Not yet sending</span> — settings are saved but no delivery yet. Contact your Unboks team if this persists.</p>
-                    <p><span className="font-medium text-[#7a5a00]">Not yet connected</span> — your Unboks team still needs to finish setup. No action needed on your end.</p>
-                    <p><span className="font-medium text-[#a50e0e]">Failed</span> — recent delivery failed. Check the number or contact your Unboks team.</p>
+                    <p><span className="font-medium text-[#137333]">Active</span>: alerts are being sent.</p>
+                    <p><span className="font-medium text-[#7a5a00]">Pending activation</span>: configured and saved. Send START from your WhatsApp to the business number to finish activating.</p>
+                    <p><span className="font-medium text-[#5f6368]">Not yet sending</span>: settings are saved but no delivery yet. Contact your Unboks team if this persists.</p>
+                    <p><span className="font-medium text-[#7a5a00]">Not yet connected</span>: your Unboks team still needs to finish setup. No action needed on your end.</p>
+                    <p><span className="font-medium text-[#a50e0e]">Failed</span>: recent delivery failed. Check the number or contact your Unboks team.</p>
                   </div>
                 </Card>
               )}

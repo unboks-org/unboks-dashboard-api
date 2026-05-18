@@ -25,6 +25,7 @@
  * No backend handlers change. No new data is invented.
  */
 
+import { motion } from "framer-motion";
 import type { ApiMessage } from "@/lib/api";
 import { buildEscalationBriefing } from "@/lib/escalation-summary";
 
@@ -88,8 +89,11 @@ export function EscalationReasonPanel({
       aria-label="Decision needed"
       className="bg-white px-3 sm:px-4 pt-3 pb-2 flex-shrink-0"
     >
-      <article
-        className="rounded-xl border border-[#e6e8eb] bg-[#fbfbfd] px-3.5 py-3 sm:px-5 sm:py-4"
+      <motion.article
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 350, damping: 30, mass: 1 }}
+        className="rounded-xl border border-[#e6e8eb] bg-[#fbfbfd] px-3.5 py-3 sm:px-5 sm:py-4 shadow-sm"
         aria-labelledby="decision-needed-title"
       >
         {/* Card title row.
@@ -119,7 +123,7 @@ export function EscalationReasonPanel({
           </Section>
           <Section label="Suggested next step">{briefing.marinaNeeds}</Section>
         </dl>
-      </article>
+      </motion.article>
     </section>
   );
 }

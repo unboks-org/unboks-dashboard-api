@@ -579,17 +579,17 @@ export default function Tasks() {
           : "No open tasks.";
 
   return (
-    <div className="min-h-screen bg-[#f6f8fb]">
-      <header className="sticky top-0 z-10 border-b border-[#dfe3ea] bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur pt-[env(safe-area-inset-top)]">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-[18px] font-semibold tracking-tight text-[#1f2937] sm:text-[20px]">
+              <h1 className="text-[19px] md:text-[21px] font-medium tracking-tight text-foreground leading-none truncate">
                 Tasks
               </h1>
               <StatusPill status={status} />
             </div>
-            <p className="mt-0.5 text-[12px] text-[#4b5563] sm:text-[13px]">
+            <p className="mt-1 text-[13px] font-medium text-muted-foreground truncate">
               Shared task board for Calvin and Jr.
             </p>
           </div>
