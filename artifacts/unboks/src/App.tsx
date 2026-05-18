@@ -131,11 +131,25 @@ function TenantRootRedirect() {
 
 function TenantDeepLinkRedirect({ section }: { section: "escalations" | "appointments" }) {
   const { tenant, id } = useParams<{ tenant: string; id: string }>();
-  // Synchronously update the client slug before the redirect commits.
-  if (tenant && tenant !== getClientSlug()) {
-    setClientSlug(tenant);
-  }
   if (!tenant || !id) return <Redirect to="/" />;
+  // J3-N2-10: shape-validate the tenant segment before persisting it.
+  // Without this, a junk URL like /favicon.ico/escalations/1 would
+  // poison localStorage with "favicon.ico" as the active client and
+  // break every subsequent API call. The persistence rule is the same
+  // as TenantRootRedirect: only update localStorage when the slug is
+  // shape-valid AND the user already has a token for it (i.e. they
+  // genuinely signed in to this tenant before).
+  if (!isValidTenantSlug(tenant)) return <NotFound />;
+  try {
+    const hasTokenForSlug = !!localStorage.getItem(`wtyj_token_${tenant}`);
+    if (hasTokenForSlug && tenant !== getClientSlug()) {
+      setClientSlug(tenant);
+    }
+  } catch {
+    // localStorage unavailable — let the deep link still navigate; the
+    // protected route will bounce to /login and the workspace hint
+    // path handles the unauthenticated case.
+  }
   return <Redirect to={`/${section}/${encodeURIComponent(id)}`} />;
 }
 

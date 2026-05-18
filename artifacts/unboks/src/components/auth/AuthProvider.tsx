@@ -46,9 +46,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (password: string, slug = "unboks") => {
+      // J3-N2-10: do NOT persist the slug until the backend confirms
+      // credentials. apiLogin accepts an explicit slug so the request
+      // targets the intended tenant without mutating localStorage. If
+      // the call throws (wrong password, unknown tenant, network), the
+      // persisted client + token pair is left untouched and the user's
+      // previous working session (if any) is preserved.
+      const { token } = await apiLogin(password, slug);
       setClientSlug(slug);
       setClientSlugState(slug);
-      const { token } = await apiLogin(password);
       setToken(token, slug);
       setIsAuthenticated(true);
       // Honour the path the user was trying to reach before the auth

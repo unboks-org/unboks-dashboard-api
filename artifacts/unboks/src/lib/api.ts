@@ -6,22 +6,28 @@ import { formatConversationTimestamp, parseTimestampMs } from "@/lib/conversatio
 // Tenant slug validation (NO hardcoded list)
 // ---------------------------------------------------------------------------
 //
-// J3-N2-07: tenants are created in ICP (Nr 3) and become reachable from
-// Nr 2 without a frontend redeploy. The pattern below matches the slug
-// rule enforced by the ICP Add-New-Tenant wizard
-// (^[a-z][a-z0-9_-]{1,49}$). The backend (wtyj-agent) is the ACTUAL
-// authority on tenant existence — we only gate by SHAPE here so junk
-// like "/favicon.ico" still 404s without trying to load it as a tenant.
+// J3-N2-10: tenants are created in ICP (Nr 3) and become reachable from
+// Nr 2 the moment the welcome email is clicked — no frontend redeploy, no
+// hardcoded list, no allowlist. The previous pattern
+// (^[a-z][a-z0-9_-]{1,49}$) was too narrow: any tenant slug that ICP
+// generated with an uppercase letter, a leading digit, or a length over
+// 50 was rejected at the URL level and never reached the backend, which
+// surfaced as "workspace not recognized" / "Load Failed" from a brand
+// new welcome link.
 //
-// J3-N2-06 retry: the FIRST attempt at dynamic slug support (commit
-// 8000929, reverted in bc68e46) shipped a related bug — TenantRootRedirect
-// silently persisted any URL slug to localStorage, which bricked anyone
-// visiting an unknown slug because the backend then 404'd every
-// subsequent API call. This time the rule is: shape-validate any slug,
-// but DO NOT persist it to localStorage until the user successfully
-// authenticates against it. See TenantRootRedirect in App.tsx.
+// The new rule is the loosest URL-safe shape that still distinguishes
+// a tenant segment from junk like "/favicon.ico" or "/robots.txt":
+//   - alphanumeric, underscore, or hyphen
+//   - 1 to 100 characters
+//   - no dots, no slashes, no extensions, no whitespace
+//
+// The backend (wtyj-agent) is the SOLE authority on whether a tenant
+// actually exists. An unknown slug fails at login with the same generic
+// error as a wrong password, so we leak no information about valid
+// tenants. See TenantRootRedirect in App.tsx for the persistence rule
+// (slug is only written to localStorage AFTER a successful login).
 
-const TENANT_SLUG_PATTERN = /^[a-z][a-z0-9_-]{1,49}$/;
+const TENANT_SLUG_PATTERN = /^[A-Za-z0-9_-]{1,100}$/;
 
 export function isValidTenantSlug(slug: string | null | undefined): boolean {
   if (!slug || typeof slug !== "string") return false;
@@ -775,15 +781,39 @@ async function apiFetch<T>(
 // Auth
 // ---------------------------------------------------------------------------
 
-export async function apiLogin(password: string): Promise<LoginResponse> {
-  // Login must NOT send an Authorization header
-  const result = await apiFetch<LoginResponse>("/login", {
-    method: "POST",
-    body: JSON.stringify({ password }),
-  }, true);
+export async function apiLogin(
+  password: string,
+  slug?: string,
+): Promise<LoginResponse> {
+  // J3-N2-10: callers may pass an explicit slug so the URL targets the
+  // intended tenant WITHOUT persisting it to localStorage first. The
+  // persistence invariant (slug + token are only written after the
+  // backend confirms credentials) lives in AuthProvider.login. When no
+  // slug is provided we fall back to the currently persisted client.
+  const base = slug ? getApiBase(slug) : getApiBase();
+  let res: Response;
+  try {
+    res = await fetch(`${base}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+  } catch (networkErr) {
+    throw new ApiError(0, networkErr instanceof Error ? networkErr.message : "Network error");
+  }
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try {
+      const body = await res.json();
+      msg = body.message ?? body.error ?? body.detail ?? msg;
+    } catch {
+      // ignore body parse failure — fall through with the status code message
+    }
+    throw new ApiError(res.status, msg);
+  }
   // A successful login starts a fresh session — re-arm the auth-failure latch
   _authFailureFired = false;
-  return result;
+  return (await res.json()) as LoginResponse;
 }
 
 // ---------------------------------------------------------------------------

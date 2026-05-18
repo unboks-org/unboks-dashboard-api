@@ -20,14 +20,17 @@ function getLoginError(err: unknown): string {
   return "Can't reach server. Check your connection or contact support.";
 }
 
-// J3-N2-07: workspace slugs are no longer membership-checked against a
-// hardcoded list. We accept any shape the ICP wizard would accept
-// (^[a-z][a-z0-9_-]{1,49}$). The backend is the real authority on
-// tenant existence — an unknown slug fails authentication with the
-// same "Invalid access key" message, so we leak no extra information.
-// Hyphens and underscores survive normalisation because the ICP slug
-// pattern allows them; the previous all-alphanumeric strip would have
-// rejected e.g. "marina-bay" silently.
+// J3-N2-10: workspace slugs are fully dynamic. There is no hardcoded
+// list and no client-side membership check. We accept any URL-safe slug
+// shape (see isValidTenantSlug in lib/api.ts) and let the backend be
+// the sole authority on whether the tenant actually exists. An unknown
+// slug fails authentication with the same generic "Invalid access key"
+// message, so no information about valid tenants leaks from the form.
+//
+// Normalisation is deliberately minimal — only whitespace is stripped.
+// Case is preserved verbatim because the backend treats tenant slugs as
+// case-sensitive; previously we lowercased the input, which silently
+// broke any ICP tenant whose slug contained an uppercase letter.
 const WORKSPACE_HINT_KEY = "wtyj_workspace_hint";
 
 function readWorkspaceHint(): string {
@@ -40,12 +43,8 @@ function readWorkspaceHint(): string {
   }
 }
 
-function normaliseWorkspace(raw: string): string {
-  return raw.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
-}
-
 function resolveWorkspace(raw: string): ValidClient | null {
-  const slug = normaliseWorkspace(raw);
+  const slug = raw.trim();
   return isValidTenantSlug(slug) ? slug : null;
 }
 
