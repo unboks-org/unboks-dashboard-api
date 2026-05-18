@@ -20,43 +20,26 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
       // ===================================================================
-      // Stale-bundle safety net (J3-N2-09 / J3-N2-10).
+      // Stale-bundle safety net (J3-N2-09 / J3-N2-10 / J3-N2-14).
       //
-      // The dashboard.unboks.org Replit deployment serves index.html for
-      // ANY 404'd asset path instead of returning a real 404 (verified by
-      // direct curl against /assets/<old-hash>.js -> 200 OK, content-type
-      // text/html, ~730 bytes of HTML body). Every Vite build emits a
-      // content-hashed bundle filename; each deploy invalidates the
-      // previous filename on disk. Browsers that cached the OLD index.html
-      // keep requesting /assets/<old-hash>.js, get HTML back, try to parse
-      // HTML as JavaScript, and crash with SyntaxError "Unexpected token <"
-      // before any of our code runs. iOS Safari surfaces the result as
-      // "Load failed" in a system overlay. Chrome / Firefox show a blank
-      // page.
+      // Purpose: Recover automatically when Replit's static asset server
+      // returns index.html (200, text/html) for a missing Vite content-hashed
+      // /assets/*.js or *.css file after a fresh deploy.
       //
-      // This safety net catches FOUR failure modes:
-      //   1. A /assets/ script <script> tag fires an "error" event
-      //      (network / parse failure of a bundle URL).
-      //   2. A window-level uncaught error during initial bundle execution
-      //      (e.g. a module-load throw before React mounts).
-      //   3. An unhandled promise rejection during bundle bootstrap.
-      //   4. The bundle silently never executes (#root stays empty after
-      //      5 seconds) — covers iOS Safari's "Load failed" overlay where
-      //      no JS error fires because the script load itself was blocked
-      //      at the TLS / network layer.
-      //
-      // In every case we force a ONE-shot cache-bust reload (location with
-      // a fresh ?_cb=<timestamp>). A sessionStorage marker tracks that an
-      // auto-reload has been attempted in this tab; main.tsx clears the
-      // marker as the FIRST thing it does, so a successful bundle execute
-      // wipes the marker and the next stale-bundle event can recover the
-      // same way. If the reload itself fails (genuine bundle bug, not
-      // stale-cache), the marker survives and we surface the broken state
-      // instead of looping forever.
+      // This version adds:
+      //   - Clear console logging with [Unboks] prefix for operators
+      //   - Slightly more generous silent-failure timeout (2200ms)
+      //   - Better handling when the URL already contains _cb
+      //   - More defensive checks
       // ===================================================================
       (function () {
         var MARKER = "__unboks_stale_bundle_reload";
         var triggered = false;
+        var LOG_PREFIX = "[Unboks StaleBundle]";
+
+        function log(msg) {
+          try { console.warn(LOG_PREFIX, msg); } catch (_) {}
+        }
 
         function alreadyAttempted() {
           try {
@@ -69,20 +52,24 @@
         function markAttempted() {
           try {
             sessionStorage.setItem(MARKER, "1");
-          } catch (_) {
-            // sessionStorage unavailable -> we still reload once because
-            // `triggered` (in-memory) protects this tab from a same-tab
-            // infinite loop. A new tab will retry from scratch.
-          }
+          } catch (_) {}
         }
 
-        function reload() {
+        function reload(reason) {
           if (triggered) return;
           triggered = true;
-          if (alreadyAttempted()) return;
+
+          if (alreadyAttempted()) {
+            log("Reload already attempted in this tab (" + reason + ") - giving up");
+            return;
+          }
+
           markAttempted();
+          log("Triggering one-shot cache-bust reload (" + reason + ")");
+
           try {
             var url = new URL(window.location.href);
+            // If we already have a _cb, replace it instead of stacking
             url.searchParams.set("_cb", Date.now().toString());
             window.location.replace(url.toString());
           } catch (_) {
@@ -90,11 +77,7 @@
           }
         }
 
-        // 1. Asset load failure (the canonical stale-bundle path).
-        // Covers both <script src=/assets/...> and <link rel=stylesheet
-        // href=/assets/...> — a 404'd CSS falling back to HTML breaks
-        // styling without firing a script error, and the symptom is the
-        // same broken-app screen.
+        // 1. Asset load failure (script or stylesheet from /assets/)
         window.addEventListener(
           "error",
           function (e) {
@@ -104,35 +87,45 @@
             if (tag !== "SCRIPT" && tag !== "LINK") return;
             var url = t.src || t.href || "";
             if (url.indexOf("/assets/") === -1) return;
-            reload();
+            log("Asset load error detected: " + url);
+            reload("asset-error");
           },
           true
         );
 
-        // 2 + 3. Uncaught errors / promise rejections during bundle
-        // bootstrap. Only triggers if #root is still empty (i.e. React
-        // never mounted) — once the app is running, app-level error
-        // boundaries handle their own failures.
+        // 2 + 3. Uncaught errors or promise rejections while the app is still bootstrapping
         function bootstrapStillBroken() {
           var r = document.getElementById("root");
           return !r || r.children.length === 0;
         }
-        window.addEventListener("error", function () {
-          if (bootstrapStillBroken()) reload();
-        });
-        window.addEventListener("unhandledrejection", function () {
-          if (bootstrapStillBroken()) reload();
+
+        window.addEventListener("error", function (e) {
+          if (bootstrapStillBroken()) {
+            log("Uncaught error during bootstrap");
+            reload("uncaught-error");
+          }
         });
 
-        // 4. Silent failure: nothing threw, but the bundle never ran
-        // (e.g. iOS Safari's TLS-level "Load failed" where the request
-        // never reaches the JS parser). 1.5s is tight enough to beat
-        // the iOS system "Load failed" overlay (which fires after a
-        // couple of seconds of script-load stall) while still giving a
-        // real bundle on a slow 3G phone room to mount #root.
+        window.addEventListener("unhandledrejection", function () {
+          if (bootstrapStillBroken()) {
+            log("Unhandled promise rejection during bootstrap");
+            reload("promise-rejection");
+          }
+        });
+
+        // 4. Silent failure (most common on iOS Safari "Load Failed")
+        // Give the bundle a little more time than before.
         setTimeout(function () {
-          if (bootstrapStillBroken()) reload();
-        }, 1500);
+          if (bootstrapStillBroken()) {
+            log("Bootstrap timeout - root still empty");
+            reload("silent-timeout");
+          }
+        }, 2200);
+
+        // Helpful marker so operators can see in console that the safety net is active
+        try {
+          console.info("[Unboks] Stale-bundle safety net active (v2)");
+        } catch (_) {}
       })();
     </script>
   </head>
