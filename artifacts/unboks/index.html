@@ -8,6 +8,59 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      // ===================================================================
+      // Stale-bundle safety net (J3-N2-09).
+      //
+      // The dashboard.unboks.org Replit deployment serves index.html for
+      // ANY 404'd asset path instead of returning a real 404. When the
+      // bundle hash changes between deploys, browsers that cached a
+      // reference to the old hash request the old /assets/index-XYZ.js
+      // URL, receive ~730 bytes of HTML with content-type text/html,
+      // try to parse it as JavaScript, and fail with "Unexpected token <"
+      // before any of our app code runs. The user sees a blank screen
+      // (or iOS Safari's "Load failed" overlay) and the only recovery
+      // was a manual hard-refresh / clear-cache.
+      //
+      // This catches that script-load failure and forces a one-shot
+      // cache-bust reload so the browser re-fetches a fresh index.html
+      // and discovers the current bundle hash. The sessionStorage marker
+      // is set before the reload and cleared by main.tsx once the bundle
+      // actually executes — so a genuine bundle bug can't loop forever.
+      // ===================================================================
+      (function () {
+        var MARKER = "__unboks_stale_bundle_reload";
+        function shouldReload(target) {
+          if (!target || target.tagName !== "SCRIPT") return false;
+          var src = target.src || "";
+          if (src.indexOf("/assets/") === -1) return false;
+          try {
+            if (sessionStorage.getItem(MARKER) === "1") return false;
+            sessionStorage.setItem(MARKER, "1");
+          } catch (_) {
+            // sessionStorage unavailable -> reload once anyway; the user
+            // worst-case sees a no-op reload, no infinite loop possible
+            // without persistent storage to mark a second attempt.
+          }
+          return true;
+        }
+        window.addEventListener(
+          "error",
+          function (e) {
+            if (!shouldReload(e.target)) return;
+            var url;
+            try {
+              url = new URL(window.location.href);
+              url.searchParams.set("_cb", Date.now().toString());
+              window.location.replace(url.toString());
+            } catch (_) {
+              window.location.reload();
+            }
+          },
+          true
+        );
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
