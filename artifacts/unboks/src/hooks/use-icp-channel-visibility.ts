@@ -7,7 +7,7 @@
 //  more than one channel, do NOT remove a channel from the union.
 //  If a new channel is added it joins this list as a new entry.
 // =============================================================
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Channel } from "@/data/conversations";
 import { useIcpOverrides, type IcpEnvelope } from "./use-icp-overrides";
 
@@ -122,31 +122,10 @@ function classifyToggles(envelope?: IcpEnvelope) {
 export function useIcpChannelVisibility() {
   const query = useIcpOverrides();
 
-  const { visibleChannels, debug } = useMemo(() => {
-    const classified = classifyToggles(query.data);
-    return {
-      visibleChannels: classified.visible,
-      debug: {
-        matchedKeys: classified.matchedKeys,
-        truthyKeys: classified.truthyKeys,
-        unmatchedTruthyKeys: classified.unmatchedTruthyKeys,
-      },
-    };
-  }, [query.data]);
-
-  useEffect(() => {
-    if (!query.data) return;
-    // eslint-disable-next-line no-console
-    console.log("[ICP] visibility", {
-      available: query.data.available,
-      tenant_id: query.data.tenant_id,
-      visibleChannels,
-      matchedKeys: debug.matchedKeys,
-      truthyKeys: debug.truthyKeys,
-      unmatchedTruthyKeys: debug.unmatchedTruthyKeys,
-      feature_toggles: query.data.feature_toggles,
-    });
-  }, [query.data, visibleChannels, debug]);
+  const visibleChannels = useMemo(
+    () => classifyToggles(query.data).visible,
+    [query.data]
+  );
 
   const isChannelVisible = useCallback(
     (channel: Channel) => {

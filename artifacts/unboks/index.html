@@ -10,55 +10,112 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
       // ===================================================================
-      // Stale-bundle safety net (J3-N2-09).
+      // Stale-bundle safety net (J3-N2-09 / J3-N2-10).
       //
       // The dashboard.unboks.org Replit deployment serves index.html for
-      // ANY 404'd asset path instead of returning a real 404. When the
-      // bundle hash changes between deploys, browsers that cached a
-      // reference to the old hash request the old /assets/index-XYZ.js
-      // URL, receive ~730 bytes of HTML with content-type text/html,
-      // try to parse it as JavaScript, and fail with "Unexpected token <"
-      // before any of our app code runs. The user sees a blank screen
-      // (or iOS Safari's "Load failed" overlay) and the only recovery
-      // was a manual hard-refresh / clear-cache.
+      // ANY 404'd asset path instead of returning a real 404 (verified by
+      // direct curl against /assets/<old-hash>.js -> 200 OK, content-type
+      // text/html, ~730 bytes of HTML body). Every Vite build emits a
+      // content-hashed bundle filename; each deploy invalidates the
+      // previous filename on disk. Browsers that cached the OLD index.html
+      // keep requesting /assets/<old-hash>.js, get HTML back, try to parse
+      // HTML as JavaScript, and crash with SyntaxError "Unexpected token <"
+      // before any of our code runs. iOS Safari surfaces the result as
+      // "Load failed" in a system overlay. Chrome / Firefox show a blank
+      // page.
       //
-      // This catches that script-load failure and forces a one-shot
-      // cache-bust reload so the browser re-fetches a fresh index.html
-      // and discovers the current bundle hash. The sessionStorage marker
-      // is set before the reload and cleared by main.tsx once the bundle
-      // actually executes — so a genuine bundle bug can't loop forever.
+      // This safety net catches FOUR failure modes:
+      //   1. A /assets/ script <script> tag fires an "error" event
+      //      (network / parse failure of a bundle URL).
+      //   2. A window-level uncaught error during initial bundle execution
+      //      (e.g. a module-load throw before React mounts).
+      //   3. An unhandled promise rejection during bundle bootstrap.
+      //   4. The bundle silently never executes (#root stays empty after
+      //      5 seconds) — covers iOS Safari's "Load failed" overlay where
+      //      no JS error fires because the script load itself was blocked
+      //      at the TLS / network layer.
+      //
+      // In every case we force a ONE-shot cache-bust reload (location with
+      // a fresh ?_cb=<timestamp>). A sessionStorage marker tracks that an
+      // auto-reload has been attempted in this tab; main.tsx clears the
+      // marker as the FIRST thing it does, so a successful bundle execute
+      // wipes the marker and the next stale-bundle event can recover the
+      // same way. If the reload itself fails (genuine bundle bug, not
+      // stale-cache), the marker survives and we surface the broken state
+      // instead of looping forever.
       // ===================================================================
       (function () {
         var MARKER = "__unboks_stale_bundle_reload";
-        function shouldReload(target) {
-          if (!target || target.tagName !== "SCRIPT") return false;
-          var src = target.src || "";
-          if (src.indexOf("/assets/") === -1) return false;
+        var triggered = false;
+
+        function alreadyAttempted() {
           try {
-            if (sessionStorage.getItem(MARKER) === "1") return false;
+            return sessionStorage.getItem(MARKER) === "1";
+          } catch (_) {
+            return false;
+          }
+        }
+
+        function markAttempted() {
+          try {
             sessionStorage.setItem(MARKER, "1");
           } catch (_) {
-            // sessionStorage unavailable -> reload once anyway; the user
-            // worst-case sees a no-op reload, no infinite loop possible
-            // without persistent storage to mark a second attempt.
+            // sessionStorage unavailable -> we still reload once because
+            // `triggered` (in-memory) protects this tab from a same-tab
+            // infinite loop. A new tab will retry from scratch.
           }
-          return true;
         }
+
+        function reload() {
+          if (triggered) return;
+          triggered = true;
+          if (alreadyAttempted()) return;
+          markAttempted();
+          try {
+            var url = new URL(window.location.href);
+            url.searchParams.set("_cb", Date.now().toString());
+            window.location.replace(url.toString());
+          } catch (_) {
+            window.location.reload();
+          }
+        }
+
+        // 1. Script-load failure (the canonical stale-bundle path).
         window.addEventListener(
           "error",
           function (e) {
-            if (!shouldReload(e.target)) return;
-            var url;
-            try {
-              url = new URL(window.location.href);
-              url.searchParams.set("_cb", Date.now().toString());
-              window.location.replace(url.toString());
-            } catch (_) {
-              window.location.reload();
-            }
+            var t = e && e.target;
+            if (!t || t.tagName !== "SCRIPT") return;
+            var src = t.src || "";
+            if (src.indexOf("/assets/") === -1) return;
+            reload();
           },
           true
         );
+
+        // 2 + 3. Uncaught errors / promise rejections during bundle
+        // bootstrap. Only triggers if #root is still empty (i.e. React
+        // never mounted) — once the app is running, app-level error
+        // boundaries handle their own failures.
+        function bootstrapStillBroken() {
+          var r = document.getElementById("root");
+          return !r || r.children.length === 0;
+        }
+        window.addEventListener("error", function () {
+          if (bootstrapStillBroken()) reload();
+        });
+        window.addEventListener("unhandledrejection", function () {
+          if (bootstrapStillBroken()) reload();
+        });
+
+        // 4. Silent failure: nothing threw, but the bundle never ran
+        // (e.g. iOS Safari's TLS-level "Load failed" where the request
+        // never reaches the JS parser). 5s is generous on a slow phone
+        // but still fast enough that the user doesn't sit on a blank
+        // screen for long.
+        setTimeout(function () {
+          if (bootstrapStillBroken()) reload();
+        }, 5000);
       })();
     </script>
   </head>

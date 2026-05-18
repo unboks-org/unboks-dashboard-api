@@ -114,8 +114,6 @@ async function fetchIcpEnvelope(): Promise<IcpEnvelope> {
     sot_entries: body.sot_entries,
     ai_agent_settings: body.ai_agent_settings,
   };
-  // eslint-disable-next-line no-console
-  console.log("[ICP] envelope", envelope);
   return envelope;
 }
 
