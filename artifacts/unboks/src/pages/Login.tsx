@@ -3,15 +3,14 @@ import { useLocation, Redirect } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { Lock, Building2 } from "lucide-react";
 import { useAuth } from "@/components/auth/useAuth";
-import { isValidTenantSlug, type ValidClient } from "@/lib/api";
+import { isValidTenantSlug } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { motion } from "framer-motion";
 import unboksLogo from "@assets/unboks-login-logo-optimized_1778556585382.webp";
+import { getCurrentSlug } from "@/lib/tenant";
 
 function getLoginError(err: unknown): string {
-  if (err instanceof TypeError) {
-    return "Can't reach server. Check your connection or contact support.";
-  }
+  if (err instanceof TypeError) return "Can't reach server. Check your connection or contact support.";
   if (err instanceof ApiError) {
     if (err.status === 401 || err.status === 403) return "Invalid access key";
     if (err.status >= 500) return "Can't reach server. Check your connection or contact support.";
@@ -20,43 +19,7 @@ function getLoginError(err: unknown): string {
   return "Can't reach server. Check your connection or contact support.";
 }
 
-// ---------------------------------------------------------------------------
-// Workspace hint reading for welcome email flow
-// ---------------------------------------------------------------------------
-//
-// When Calvin creates a tenant in ICP and sends a welcome email, the link
-// is https://dashboard.unboks.org/{slug}.
-//
-// TenantRootRedirect catches it, stores the slug in sessionStorage as a hint,
-// and sends the user to /login.
-//
-// This function reads that hint (plus supports the older ?workspace= query param).
-// We remove the hint after reading so it doesn't stick around.
-const WORKSPACE_HINT_KEY = "wtyj_workspace_hint";
-
-function readWorkspaceHint(): string {
-  // 1. ?workspace= query param (some older welcome email variants)
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const fromUrl = params.get("workspace");
-    if (fromUrl && isValidTenantSlug(fromUrl)) {
-      return fromUrl;
-    }
-  } catch {}
-
-  // 2. sessionStorage hint set by TenantRootRedirect when landing on /<slug>
-  try {
-    const hint = sessionStorage.getItem(WORKSPACE_HINT_KEY);
-    if (hint) {
-      sessionStorage.removeItem(WORKSPACE_HINT_KEY);
-      if (isValidTenantSlug(hint)) return hint;
-    }
-  } catch {}
-
-  return "";
-}
-
-function resolveWorkspace(raw: string): ValidClient | null {
+function resolveWorkspace(raw: string): string | null {
   const slug = raw.trim();
   return isValidTenantSlug(slug) ? slug : null;
 }
@@ -65,12 +28,13 @@ export default function Login() {
   const { isAuthenticated, login } = useAuth();
   const [, navigate] = useLocation();
   const [password, setPassword] = useState("");
-  const [workspaceInput, setWorkspaceInput] = useState(readWorkspaceHint);
+
+  // For welcome links (/pepe), getCurrentSlug() will already return "pepe" from the URL
+  const [workspaceInput, setWorkspaceInput] = useState(getCurrentSlug());
   const [loginError, setLoginError] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: ({ password, client }: { password: string; client: ValidClient }) =>
-      login(password, client),
+    mutationFn: ({ password, client }: { password: string; client: string }) => login(password, client),
     onError: (err: unknown) => setLoginError(getLoginError(err)),
   });
 
@@ -90,8 +54,7 @@ export default function Login() {
     mutation.mutate({ password, client });
   };
 
-  const canSubmit =
-    !mutation.isPending && password.trim().length > 0 && workspaceInput.trim().length > 0;
+  const canSubmit = !mutation.isPending && password.trim().length > 0 && workspaceInput.trim().length > 0;
 
   return (
     <div className="min-h-[100dvh] bg-background sm:bg-muted flex flex-col items-center sm:justify-center font-sans">
@@ -120,10 +83,7 @@ export default function Login() {
           <div className="space-y-1.5">
             <label className="text-[13px] font-medium text-foreground ml-1">Workspace</label>
             <div className="relative">
-              <Building2
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
-                aria-hidden="true"
-              />
+              <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
               <input
                 type="text"
                 name="workspace-id"
@@ -148,10 +108,7 @@ export default function Login() {
           <div className="space-y-1.5">
             <label className="text-[13px] font-medium text-foreground ml-1">Password</label>
             <div className="relative">
-              <Lock
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
-                aria-hidden="true"
-              />
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
               <input
                 type="password"
                 name="password"
