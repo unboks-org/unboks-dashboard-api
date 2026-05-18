@@ -1,50 +1,46 @@
 // ---------------------------------------------------------------------------
-// Deploy-time tenant
+// Tenant + API Base URL handling (cleaned up for reliable welcome flow)
 // ---------------------------------------------------------------------------
 //
-// VITE_CLIENT_SLUG is baked into the bundle at build time so the correct
-// tenant is wired in without relying on per-device localStorage. Set it in
-// .env.local (dev) or as an environment variable in the deployment runner:
-//
-//   VITE_CLIENT_SLUG=unboks
-//
-// Fallback chain (highest priority first):
-//   1. URL path / login flow via setClientSlug() → written to localStorage
-//   2. VITE_CLIENT_SLUG build-time constant → baked into the JS bundle
-//   3. Hard-coded "unboks" default → correct for the primary production deploy
-//
-// The result: a fresh mobile browser with empty localStorage always hits
-// the right tenant as long as the deploy was built with VITE_CLIENT_SLUG
-// or the user opens a URL that contains the tenant slug (see TenantRootRedirect
-// in App.tsx).
+// The goal: when Calvin creates a tenant in ICP and sends a welcome email
+// with https://dashboard.unboks.org/{slug}, the user who clicks it should
+// land on Login with the workspace prefilled and be able to sign in
+// against the correct backend tenant without any "Load Failed" or
+// "workspace not recognized" friction.
+
+// Production API host. This must point to the current nginx entrypoint
+// that does dynamic /api/{slug}/... routing to the wtyj-unboks container.
+const PRODUCTION_API_HOST = "https://api.unboks.org";
+
+// Build-time override (useful for staging or special deploys).
+// Set VITE_API_BASE_URL in the Replit deployment environment.
+const ENV_API_HOST = (import.meta.env.VITE_API_BASE_URL as string | undefined) || "";
+
+// Final host used for all API calls.
+// Priority: explicit env var > production default.
+const API_HOST: string = ENV_API_HOST || PRODUCTION_API_HOST;
+
+// ---------------------------------------------------------------------------
+// Deploy-time default tenant (used when no slug is in the URL or localStorage)
+// ---------------------------------------------------------------------------
 const DEPLOY_CLIENT: string =
   (import.meta.env.VITE_CLIENT_SLUG as string | undefined) || "unboks";
 
-// One-shot self-heal at module load.
-//
-// A persisted client slug without a paired auth token is dead weight:
-// every authenticated API call needs both, and the token is keyed by
-// slug. The stuck-slug state happens when a user visits a /<slug>
-// deep link (welcome email, shared URL, manual test) for a tenant
-// they have no session for — the slug sticks in localStorage, the
-// inbox tries to load against that backend, the API 404s, and the
-// dashboard shows "Couldn't load conversations" with no escape
-// except clearing localStorage by hand. Wiping the orphan slug here
-// makes recovery automatic on the next page load: getClientSlug
-// falls back to DEPLOY_CLIENT, AuthProvider re-checks the token, and
-// the user lands either on the working inbox (if a default-tenant
-// token exists) or on /login (clean slate).
+// ---------------------------------------------------------------------------
+// One-time self-heal for stuck slugs on module load
+// ---------------------------------------------------------------------------
 try {
   const _persistedSlug = localStorage.getItem("wtyj_client");
-  if (_persistedSlug &&
-      !localStorage.getItem(`wtyj_token_${_persistedSlug}`)) {
+  if (_persistedSlug && !localStorage.getItem(`wtyj_token_${_persistedSlug}`)) {
     localStorage.removeItem("wtyj_client");
   }
 } catch {
-  // localStorage unavailable (private mode quotas, etc.); the worst
-  // case is the user keeps seeing the stuck-slug failure until they
-  // sign in to a real tenant.
+  // private mode / quota issues — ignore
 }
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
 export function getClientSlug(): string {
   return localStorage.getItem("wtyj_client") || DEPLOY_CLIENT;
@@ -71,10 +67,22 @@ export function clearAuth(): void {
   localStorage.removeItem(getTokenKey(slug));
 }
 
-// In production set VITE_API_BASE_URL=https://api.unboks.org
-// In development leave it unset — relative /api/... is used automatically
-const API_HOST: string = import.meta.env.VITE_API_BASE_URL ?? "";
-
+/**
+ * Returns the full base URL for dashboard API calls for a given tenant.
+ *
+ * Always produces paths of the form:
+ *   https://api.unboks.org/api/{slug}/dashboard/api
+ *
+ * This must match the nginx dynamic routing we have on the VPS.
+ */
 export function getApiBase(slug?: string): string {
-  return `${API_HOST}/api/${slug ?? getClientSlug()}/dashboard/api`;
+  const effectiveSlug = slug ?? getClientSlug();
+  return `${API_HOST}/api/${effectiveSlug}/dashboard/api`;
+}
+
+/**
+ * Returns the current API host (useful for diagnostics).
+ */
+export function getApiHost(): string {
+  return API_HOST;
 }
