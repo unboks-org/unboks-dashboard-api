@@ -45,9 +45,15 @@ function readWorkspaceHint(): string {
   // entry point). Validated against the same ICP slug shape used
   // elsewhere so a tampered URL can't pre-fill garbage.
   try {
-    var params = new URLSearchParams(window.location.search);
-    var fromUrl = params.get("workspace");
-    if (fromUrl && isValidTenantSlug(fromUrl)) return fromUrl;
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get("workspace");
+    if (fromUrl && isValidTenantSlug(fromUrl)) {
+      // eslint-disable-next-line no-console
+      console.log("[tenant-nav]", "login.hint_from_url", {
+        slug: fromUrl, source: "?workspace=", ts: Date.now(),
+      });
+      return fromUrl;
+    }
   } catch {
     // window.location may be unavailable in non-browser contexts; fall
     // through to the sessionStorage hint.
@@ -57,6 +63,18 @@ function readWorkspaceHint(): string {
   try {
     const hint = sessionStorage.getItem(WORKSPACE_HINT_KEY);
     if (hint) sessionStorage.removeItem(WORKSPACE_HINT_KEY);
+    if (hint && isValidTenantSlug(hint)) {
+      // eslint-disable-next-line no-console
+      console.log("[tenant-nav]", "login.hint_from_session", {
+        slug: hint, source: "sessionStorage", ts: Date.now(),
+      });
+    } else if (!hint) {
+      // eslint-disable-next-line no-console
+      console.log("[tenant-nav]", "login.no_hint", {
+        reason: "no ?workspace= and no sessionStorage hint",
+        ts: Date.now(),
+      });
+    }
     return hint || "";
   } catch {
     return "";

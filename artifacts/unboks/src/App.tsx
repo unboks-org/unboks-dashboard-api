@@ -102,9 +102,40 @@ const queryClient = new QueryClient({
  */
 const WORKSPACE_HINT_KEY = "wtyj_workspace_hint";
 
+/**
+ * J3-BE-46: single structured-log entry point for every decision
+ * the tenant-URL routers make. Tagged "[tenant-nav]" so DevTools
+ * filtering is one click. Logs an object (not a printf string) so
+ * the panel can expand fields like `slug`, `hasTokenForSlug`,
+ * `branch`, and `next` independently. Each event name is unique
+ * so a grep over the bundle or a DevTools "preserve log" trace
+ * shows the full path the user took:
+ *
+ *   tenant_root.invalid_slug          → URL slug failed shape check
+ *   tenant_root.has_token             → existing session, switching
+ *   tenant_root.no_token_to_login     → first-time visit, /login bounce
+ *   tenant_deeplink.invalid_slug      → /<slug>/<section>/<id> bad slug
+ *   tenant_deeplink.no_id             → /<slug>/<section>/ missing id
+ *   tenant_deeplink.switch            → deep link + token present
+ *   tenant_deeplink.unauth            → deep link without token
+ */
+function logTenantNav(event: string, data: Record<string, unknown>) {
+  try {
+    // eslint-disable-next-line no-console
+    console.log("[tenant-nav]", event, { ...data, ts: Date.now() });
+  } catch {
+    // console may be unavailable in some headless test contexts.
+  }
+}
+
 function TenantRootRedirect() {
   const { tenant } = useParams<{ tenant: string }>();
   if (!isValidTenantSlug(tenant)) {
+    logTenantNav("tenant_root.invalid_slug", {
+      raw_tenant: tenant,
+      reason: "fails isValidTenantSlug shape check",
+      next: "NotFound",
+    });
     return <NotFound />;
   }
   const slug = tenant as string;
@@ -117,25 +148,42 @@ function TenantRootRedirect() {
   })();
   if (hasTokenForSlug) {
     // Existing session for this slug — treat as workspace switch.
-    if (slug !== getClientSlug()) {
+    const previousSlug = getClientSlug();
+    if (slug !== previousSlug) {
       setClientSlug(slug);
     }
+    logTenantNav("tenant_root.has_token", {
+      slug,
+      previous_slug: previousSlug,
+      switched: slug !== previousSlug,
+      next: "/",
+    });
     return <Redirect to="/" />;
   }
   // No session yet for this slug. DO NOT touch localStorage — that was
   // the J3-N2-06 bug. Pass the slug to /login via sessionStorage as a
   // hint so the workspace field can pre-fill.
+  let hintWritten = false;
   try {
     sessionStorage.setItem(WORKSPACE_HINT_KEY, slug);
+    hintWritten = true;
   } catch {
     // sessionStorage unavailable; login just renders with empty workspace.
   }
+  logTenantNav("tenant_root.no_token_to_login", {
+    slug,
+    workspace_hint_set: hintWritten,
+    next: "/login",
+  });
   return <Redirect to="/login" />;
 }
 
 function TenantDeepLinkRedirect({ section }: { section: "escalations" | "appointments" }) {
   const { tenant, id } = useParams<{ tenant: string; id: string }>();
-  if (!tenant || !id) return <Redirect to="/" />;
+  if (!tenant || !id) {
+    logTenantNav("tenant_deeplink.no_id", { section, tenant, id, next: "/" });
+    return <Redirect to="/" />;
+  }
   // J3-N2-10: shape-validate the tenant segment before persisting it.
   // Without this, a junk URL like /favicon.ico/escalations/1 would
   // poison localStorage with "favicon.ico" as the active client and
@@ -143,17 +191,35 @@ function TenantDeepLinkRedirect({ section }: { section: "escalations" | "appoint
   // as TenantRootRedirect: only update localStorage when the slug is
   // shape-valid AND the user already has a token for it (i.e. they
   // genuinely signed in to this tenant before).
-  if (!isValidTenantSlug(tenant)) return <NotFound />;
+  if (!isValidTenantSlug(tenant)) {
+    logTenantNav("tenant_deeplink.invalid_slug", {
+      raw_tenant: tenant, section, next: "NotFound",
+    });
+    return <NotFound />;
+  }
+  let switched = false;
+  let hasTokenForSlug = false;
   try {
-    const hasTokenForSlug = !!localStorage.getItem(`wtyj_token_${tenant}`);
+    hasTokenForSlug = !!localStorage.getItem(`wtyj_token_${tenant}`);
     if (hasTokenForSlug && tenant !== getClientSlug()) {
       setClientSlug(tenant);
+      switched = true;
     }
   } catch {
     // localStorage unavailable — let the deep link still navigate; the
     // protected route will bounce to /login and the workspace hint
     // path handles the unauthenticated case.
   }
+  logTenantNav(
+    hasTokenForSlug ? "tenant_deeplink.switch" : "tenant_deeplink.unauth",
+    {
+      slug: tenant,
+      section,
+      id,
+      has_token_for_slug: hasTokenForSlug,
+      switched,
+      next: `/${section}/${id}`,
+    });
   return <Redirect to={`/${section}/${encodeURIComponent(id)}`} />;
 }
 
