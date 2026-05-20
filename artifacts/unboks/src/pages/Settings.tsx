@@ -1099,23 +1099,30 @@ export default function Settings() {
                       <div>
                         <PrimaryButton
                           type="button"
-                          onClick={() => {
+                          onClick={async () => {
                             const text = updateText.trim();
                             if (!text) {
                               toast.error("Write a short note before adding the update.");
                               return;
                             }
-                            addUpdate({
-                              type: updateType,
-                              text,
-                              startDate: updateStart || undefined,
-                              endDate: updateEnd || undefined,
-                            });
-                            setUpdateText("");
-                            setUpdateStart("");
-                            setUpdateEnd("");
-                            setUpdateType("general");
-                            toast.success("Update added.");
+                            try {
+                              await addUpdate({
+                                type: updateType,
+                                text,
+                                startDate: updateStart || undefined,
+                                endDate: updateEnd || undefined,
+                              });
+                              setUpdateText("");
+                              setUpdateStart("");
+                              setUpdateEnd("");
+                              setUpdateType("general");
+                              toast.success("Update added.");
+                            } catch (err) {
+                              const msg = err instanceof Error && err.message
+                                ? err.message
+                                : "Could not save knowledge update.";
+                              toast.error(msg);
+                            }
                           }}
                         >
                           Save knowledge
@@ -1159,7 +1166,16 @@ export default function Settings() {
                                 </span>
                                 <button
                                   type="button"
-                                  onClick={() => removeUpdate(u.id)}
+                                  onClick={async () => {
+                                    try {
+                                      await removeUpdate(u.id);
+                                    } catch (err) {
+                                      const msg = err instanceof Error && err.message
+                                        ? err.message
+                                        : "Could not remove update.";
+                                      toast.error(msg);
+                                    }
+                                  }}
                                   aria-label="Remove update"
                                   className="ml-auto grid h-6 w-6 place-items-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
                                 >
@@ -1182,7 +1198,16 @@ export default function Settings() {
                                 {u.endDate && <span>Until {u.endDate}</span>}
                                 <button
                                   type="button"
-                                  onClick={() => setUpdateActive(u.id, !u.active)}
+                                  onClick={async () => {
+                                    try {
+                                      await setUpdateActive(u.id, !u.active);
+                                    } catch (err) {
+                                      const msg = err instanceof Error && err.message
+                                        ? err.message
+                                        : "Could not update status.";
+                                      toast.error(msg);
+                                    }
+                                  }}
                                   className="ml-auto text-[#1a73e8] hover:underline"
                                 >
                                   {u.active ? "Mark inactive" : "Reactivate"}

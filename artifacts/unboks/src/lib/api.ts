@@ -717,6 +717,29 @@ export interface AccountSettingsApiPayload {
   website?: string;
 }
 
+export interface InfoUpdateApiItem {
+  id: number | string;
+  type?: string | null;
+  text?: string | null;
+  active?: boolean | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface InfoUpdatesApiResponse {
+  updates?: InfoUpdateApiItem[];
+}
+
+export interface InfoUpdateCreatePayload {
+  text: string;
+  type: string;
+  active?: boolean;
+  startDate?: string | null;
+  endDate?: string | null;
+}
+
 // ---------------------------------------------------------------------------
 // Core fetch wrapper
 // ---------------------------------------------------------------------------
@@ -842,6 +865,35 @@ export async function saveAccountSettings(
   return apiFetch<AccountSettingsApiResponse>("/settings/your-info", {
     method: "PUT",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchInfoUpdates(): Promise<InfoUpdatesApiResponse> {
+  return apiFetch<InfoUpdatesApiResponse>("/settings/info-updates");
+}
+
+export async function createInfoUpdate(
+  payload: InfoUpdateCreatePayload,
+): Promise<{ ok: boolean; id: number | string }> {
+  return apiFetch<{ ok: boolean; id: number | string }>("/settings/info-updates", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function setInfoUpdateActive(
+  id: string,
+  active: boolean,
+): Promise<void> {
+  await apiFetch(`/settings/info-updates/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify({ active }),
+  });
+}
+
+export async function deleteInfoUpdate(id: string): Promise<void> {
+  await apiFetch(`/settings/info-updates/${encodeURIComponent(id)}`, {
+    method: "DELETE",
   });
 }
 
