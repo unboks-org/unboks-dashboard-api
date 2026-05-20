@@ -1,5 +1,5 @@
 import { ApiError } from "@/lib/error";
-import { getApiBase, getToken, clearAuth } from "@/lib/tenant";
+import { getApiBase, getToken, clearAuth, getClientSlug } from "@/lib/tenant";
 import { formatConversationTimestamp, parseTimestampMs } from "@/lib/conversation-mapper";
 
 // ---------------------------------------------------------------------------
@@ -919,6 +919,102 @@ async function apiFetch<T>(
 
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
+}
+
+// ---------------------------------------------------------------------------
+// Client profile (workspace display name + status)
+// ---------------------------------------------------------------------------
+//
+// J3-N2-15: render the tenant's business name in the sidebar so a new
+// operator opening a fresh dashboard sees "Pepe Test" / "Acme Corp" — not
+// the generic "Connected to Unboks" badge. The backend is expected to
+// expose `GET /client/profile` returning
+//
+//   { slug: string; name: string; business_name?: string; status?: string }
+//
+// where `business_name` is the brand name from `client.json` and `name` is
+// either the same value or the slug used to look the tenant up. If the
+// endpoint is missing we degrade gracefully to a slug-derived display
+// name so the dashboard ships the visual improvement TODAY, ahead of the
+// backend change. No fake placeholder data: the slug is what the operator
+// typed at login, so showing it title-cased is honest.
+
+export interface ClientProfile {
+  slug: string;
+  name: string;
+  status: "active" | "trial" | "suspended" | "unknown";
+}
+
+function prettifySlug(slug: string): string {
+  if (!slug) return "";
+  return slug
+    .split(/[-_]/g)
+    .filter(Boolean)
+    .map((part) => (part.length > 0 ? part[0].toUpperCase() + part.slice(1) : part))
+    .join(" ");
+}
+
+function normalizeClientProfile(raw: unknown, slug: string): ClientProfile {
+  const fallback: ClientProfile = {
+    slug,
+    name: prettifySlug(slug),
+    status: "unknown",
+  };
+  if (!raw || typeof raw !== "object") return fallback;
+  const r = raw as Record<string, unknown>;
+  const business =
+    typeof r.business === "object" && r.business
+      ? (r.business as Record<string, unknown>)
+      : null;
+  const candidates: unknown[] = [
+    business?.name,
+    business?.display_name,
+    r.business_name,
+    r.display_name,
+    r.name,
+  ];
+  const name = candidates.find(
+    (v) => typeof v === "string" && v.trim().length > 0,
+  ) as string | undefined;
+  const rawStatus = typeof r.status === "string" ? r.status.toLowerCase() : "";
+  const status: ClientProfile["status"] =
+    rawStatus === "active" || rawStatus === "trial" || rawStatus === "suspended"
+      ? rawStatus
+      : "unknown";
+  return {
+    slug,
+    name: name && name.trim().length > 0 ? name.trim() : fallback.name,
+    status,
+  };
+}
+
+export async function getClientProfile(): Promise<ClientProfile> {
+  const slug = getClientSlug();
+  try {
+    const raw = await apiFetch<unknown>("/client/profile");
+    return normalizeClientProfile(raw, slug);
+  } catch (err) {
+    // Two cases that justify a silent fallback to the slug-derived name:
+    //   1. Endpoint missing (404) — backend hasn't shipped /client/profile yet.
+    //   2. Network failure (ApiError status 0) — the operator is offline /
+    //      CORS preflight failed / DNS broke. Showing the slug is honest
+    //      and the rest of the dashboard will surface the network problem
+    //      via its own queries.
+    // Everything else (401/403 auth, 5xx server, malformed JSON, etc.)
+    // must propagate so a real server regression doesn't get masked by
+    // a permanently happy-looking sidebar.
+    if (
+      err instanceof ApiError &&
+      (err.status === 404 || err.status === 0)
+    ) {
+      return {
+        slug,
+        name: prettifySlug(slug),
+        status: "unknown",
+      };
+    }
+    throw err;
+  }
 }
 
 // ---------------------------------------------------------------------------
