@@ -178,6 +178,65 @@ function TenantRootRedirect() {
   return <Redirect to="/login" />;
 }
 
+/**
+ * Tenant-prefixed bare-section URLs: e.g. /unboks/tasks, /unboks/settings,
+ * /unboks/analytics. Same persistence rule as TenantRootRedirect (only
+ * touch localStorage when a token already exists for the slug). Sections
+ * outside the known set fall through to NotFound so junk URLs like
+ * /unboks/garbage still 404 rather than silently redirecting.
+ */
+const KNOWN_TENANT_SECTIONS = new Set([
+  "inbox",          // canonical home -> "/"
+  "tasks",
+  "settings",
+  "analytics",
+  "appointments",
+  "bookings",
+  "escalations",
+]);
+
+function TenantSectionRedirect() {
+  const { tenant, section } = useParams<{ tenant: string; section: string }>();
+  if (!isValidTenantSlug(tenant) || !KNOWN_TENANT_SECTIONS.has(section)) {
+    logTenantNav("tenant_section.invalid", {
+      raw_tenant: tenant, raw_section: section, next: "NotFound",
+    });
+    return <NotFound />;
+  }
+  const slug = tenant as string;
+  // "inbox" is rendered at "/"; every other section sits at "/<section>".
+  const target = section === "inbox" ? "/" : `/${section}`;
+  const hasTokenForSlug = (() => {
+    try {
+      return !!localStorage.getItem(`wtyj_token_${slug}`);
+    } catch {
+      return false;
+    }
+  })();
+  if (hasTokenForSlug) {
+    const previousSlug = getClientSlug();
+    if (slug !== previousSlug) {
+      setClientSlug(slug);
+    }
+    logTenantNav("tenant_section.has_token", {
+      slug, section, previous_slug: previousSlug,
+      switched: slug !== previousSlug, next: target,
+    });
+    return <Redirect to={target} />;
+  }
+  let hintWritten = false;
+  try {
+    sessionStorage.setItem(WORKSPACE_HINT_KEY, slug);
+    hintWritten = true;
+  } catch {
+    // sessionStorage unavailable; login renders with empty workspace.
+  }
+  logTenantNav("tenant_section.no_token_to_login", {
+    slug, section, workspace_hint_set: hintWritten, next: "/login",
+  });
+  return <Redirect to="/login" />;
+}
+
 function TenantDeepLinkRedirect({ section }: { section: "escalations" | "appointments" }) {
   const { tenant, id } = useParams<{ tenant: string; id: string }>();
   if (!tenant || !id) {
@@ -279,6 +338,17 @@ function Router() {
       </Route>
       <Route path="/:tenant/appointments/:id">
         <TenantDeepLinkRedirect section="appointments" />
+      </Route>
+      {/* Tenant-prefixed bare-section URL: e.g. /unboks/tasks,
+          /unboks/settings, /unboks/analytics. Calvin + JR bookmark
+          these. Switches workspace (if signed in) and redirects to the
+          equivalent app-relative path. Must come AFTER the deep-link
+          routes above (so /:tenant/escalations/:id still wins) but
+          BEFORE the bare /:tenant route (which only matches a single
+          path segment and would otherwise let /unboks/tasks fall
+          through to NotFound). */}
+      <Route path="/:tenant/:section">
+        <TenantSectionRedirect />
       </Route>
       {/* Bare tenant URL: e.g. dashboard.unboks.org/<slug> resolves
           via TenantRootRedirect. Any ICP-shaped slug is accepted (no
