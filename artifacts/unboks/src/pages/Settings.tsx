@@ -42,6 +42,7 @@ const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2 MB
 // Matches the same shape used elsewhere (EmailForwardModal) so behaviour
 // is consistent across the app.
 const ALT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const WEBSITE_LINKS_BLOCK_ID = "website-links";
 
 type CategoryId =
   | "workspace"
@@ -228,6 +229,39 @@ function SavedFlash({ visible }: { visible: boolean }) {
       Saved
     </span>
   );
+}
+
+function normalizeWebsiteUrl(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const url = new URL(withProtocol);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function websiteLinkItem(label: string, url: string): string {
+  const cleanLabel = label.trim();
+  return cleanLabel ? `${cleanLabel} - ${url}` : url;
+}
+
+function websiteLinkUrlFromItem(item: string): string {
+  const match = item.match(/https?:\/\/\S+/i);
+  return match ? match[0] : item;
+}
+
+function getWebsiteLinksBlock(blocks: SotBlock[]): SotBlock {
+  return blocks.find((block) => block.id === WEBSITE_LINKS_BLOCK_ID) ?? {
+    id: WEBSITE_LINKS_BLOCK_ID,
+    title: "Website links",
+    content: "Website pages the Agent can use as Source of Truth references.",
+    items: [],
+  };
 }
 
 /**
@@ -1122,6 +1156,14 @@ export default function Settings() {
                     </div>
                   </Card>
 
+                  <WebsiteLinksCard
+                    blocks={sotBlocks}
+                    onSaveBlock={saveSotBlock}
+                    isSavingBlock={sotSaving}
+                    isLoading={sotLoading}
+                    loadError={sotLoadError}
+                  />
+
                   <Card
                     title="Saved knowledge updates"
                     description="Notes you've added. Your Agent can use this information when replying to customers."
@@ -1543,6 +1585,161 @@ export default function Settings() {
         </div>
       </div>
     </DashboardShell>
+  );
+}
+
+function WebsiteLinksCard({
+  blocks,
+  onSaveBlock,
+  isSavingBlock,
+  isLoading,
+  loadError,
+}: {
+  blocks: SotBlock[];
+  onSaveBlock: (block: SotBlock) => Promise<void>;
+  isSavingBlock: boolean;
+  isLoading: boolean;
+  loadError: Error | null;
+}) {
+  const block = useMemo(() => getWebsiteLinksBlock(blocks), [blocks]);
+  const links = block.items ?? [];
+  const [url, setUrl] = useState("");
+  const [label, setLabel] = useState("");
+  const [busy, setBusy] = useState(false);
+  const disabled = busy || isSavingBlock || isLoading || Boolean(loadError);
+
+  const saveLinks = async (items: string[]) => {
+    await onSaveBlock({
+      ...block,
+      items,
+    });
+  };
+
+  const addLink = async () => {
+    const normalized = normalizeWebsiteUrl(url);
+    if (!normalized) {
+      toast.error("Enter a valid website link.");
+      return;
+    }
+    const duplicate = links.some(
+      (item) => websiteLinkUrlFromItem(item).replace(/\/$/, "") === normalized.replace(/\/$/, ""),
+    );
+    if (duplicate) {
+      toast.error("That link is already saved.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await saveLinks([websiteLinkItem(label, normalized), ...links]);
+      setUrl("");
+      setLabel("");
+      toast.success("Website link added to Source of Truth.");
+    } catch (err) {
+      const msg = err instanceof Error && err.message
+        ? err.message
+        : "Could not save website link.";
+      toast.error(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeLink = async (itemToRemove: string) => {
+    setBusy(true);
+    try {
+      await saveLinks(links.filter((item) => item !== itemToRemove));
+      toast.success("Website link removed.");
+    } catch (err) {
+      const msg = err instanceof Error && err.message
+        ? err.message
+        : "Could not remove website link.";
+      toast.error(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card
+      title="Website links"
+      description="Add website pages your Agent should treat as Source of Truth references."
+    >
+      <div className="space-y-4">
+        {loadError && (
+          <div
+            role="alert"
+            className="rounded-md border border-[#f6caca] bg-[#fce8e6] px-3 py-2 text-[12px] leading-relaxed text-[#a50e0e]"
+          >
+            Could not load Source of Truth: {loadError.message}. Refresh to retry.
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1.3fr_auto] sm:items-end">
+          <label className="block">
+            <FieldLabel>Label optional</FieldLabel>
+            <TextInput
+              type="text"
+              value={label}
+              disabled={disabled}
+              placeholder="Pricing, FAQ, menu"
+              onChange={(e) => setLabel(e.target.value)}
+            />
+          </label>
+          <label className="block">
+            <FieldLabel>Website link</FieldLabel>
+            <TextInput
+              type="url"
+              value={url}
+              disabled={disabled}
+              placeholder="https://example.com/pricing"
+              onChange={(e) => setUrl(e.target.value)}
+            />
+          </label>
+          <PrimaryButton
+            type="button"
+            disabled={disabled || !url.trim()}
+            onClick={addLink}
+            className="inline-flex items-center justify-center gap-1.5"
+          >
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+            Add link
+          </PrimaryButton>
+        </div>
+
+        {isLoading ? (
+          <p className="text-[13px] text-[#9aa0a6]">Loading website links...</p>
+        ) : links.length === 0 ? (
+          <p className="text-[13px] text-[#9aa0a6]">No website links added yet.</p>
+        ) : (
+          <ul className="divide-y divide-[#eef0f3] rounded-xl border border-[#e8eaed]">
+            {links.map((item) => {
+              const linkUrl = websiteLinkUrlFromItem(item);
+              return (
+                <li key={item} className="flex items-center gap-3 px-3 py-2.5">
+                  <a
+                    href={linkUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="min-w-0 flex-1 truncate text-[13px] text-[#1a73e8] hover:underline"
+                  >
+                    {item}
+                  </a>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => removeLink(item)}
+                    aria-label="Remove website link"
+                    className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4] disabled:opacity-50"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </Card>
   );
 }
 

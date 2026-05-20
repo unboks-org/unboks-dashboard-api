@@ -335,7 +335,10 @@ export function useSot(): UseSotResult {
       // pre-save snapshot so a rejected PUT doesn't leave optimistic
       // data sitting in the panel.
       const previous = qc.getQueryData<SotBlock[]>(queryKey) ?? [];
-      const next = previous.map((b) => (b.id === updated.id ? updated : b));
+      const exists = previous.some((b) => b.id === updated.id);
+      const next = exists
+        ? previous.map((b) => (b.id === updated.id ? updated : b))
+        : [...previous, updated];
       qc.setQueryData<SotBlock[]>(queryKey, next);
       try {
         // mutateAsync re-throws on failure so the caller
