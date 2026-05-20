@@ -8,7 +8,6 @@ import {
   Check,
   ChevronDown,
   Loader2,
-  MessageSquare,
   Pencil,
   Plus,
   Sparkles,
@@ -48,7 +47,6 @@ type CategoryId =
   | "workspace"
   | "your-info"
   | "agent-learnings"
-  | "channels"
   | "escalation"
   | "data-retention"
   | "blocked-senders"
@@ -79,12 +77,6 @@ const CATEGORIES: {
     description:
       "Review answers your team gave during escalations. Approved entries become part of your Agent's knowledge.",
     icon: Sparkles,
-  },
-  {
-    id: "channels",
-    label: "Channels",
-    description: "Channel visibility is managed in the Internal Control Panel (ICP).",
-    icon: MessageSquare,
   },
   {
     id: "escalation",
@@ -693,7 +685,6 @@ const CATEGORY_IDS: ReadonlySet<string> = new Set<CategoryId>([
   "workspace",
   "your-info",
   "agent-learnings",
-  "channels",
   "escalation",
   "data-retention",
   "blocked-senders",
@@ -875,7 +866,7 @@ export default function Settings() {
     <DashboardShell
       activeNav="settings"
       pageTitle="Settings"
-      pageSubtitle="Manage your workspace, Agent information, channels, and alerts."
+      pageSubtitle="Manage your workspace, Agent information, alerts, and preferences."
       hideRefresh
     >
       <div className="min-h-full bg-[#f8f9fb]">
@@ -1242,14 +1233,6 @@ export default function Settings() {
                     loadError={sotLoadError}
                   />
                 </div>
-              )}
-
-              {active === "channels" && (
-                <Card title="Channels">
-                  <p className="text-sm text-[#3c4043]">
-                    Channel visibility is managed in the Internal Control Panel (ICP).
-                  </p>
-                </Card>
               )}
 
               {active === "escalation" && (
