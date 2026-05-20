@@ -411,6 +411,100 @@ function defaultProviderLabel(p: CloudConnectionProviderId): string {
 }
 
 // ---------------------------------------------------------------------------
+// Knowledge files
+// ---------------------------------------------------------------------------
+//
+// Backend contract:
+//   GET    /api/{tenant}/dashboard/api/knowledge/files
+//   POST   /api/{tenant}/dashboard/api/knowledge/files
+//          multipart/form-data: file=<document>
+//   DELETE /api/{tenant}/dashboard/api/knowledge/files/{id}
+//
+// The backend stores the file, extracts readable text, and Marina reads
+// rows with status="ready" into the prompt as uploaded source-of-truth
+// material. The frontend does not keep a local fake list.
+
+export type KnowledgeFileStatus =
+  | "pending"
+  | "processing"
+  | "ready"
+  | "failed";
+
+export interface KnowledgeFile {
+  id: string;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  status: KnowledgeFileStatus;
+  uploadedAt: string;
+  lastUsedAt?: string;
+}
+
+const ALLOWED_KNOWLEDGE_FILE_STATUSES: ReadonlySet<KnowledgeFileStatus> = new Set([
+  "pending",
+  "processing",
+  "ready",
+  "failed",
+]);
+
+function normalizeKnowledgeFile(raw: unknown): KnowledgeFile | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const id = pickStr(o, "id");
+  const filename = pickStr(o, "filename", "name");
+  if (!id || !filename) return null;
+  const statusRaw = (pickStr(o, "status") ?? "pending").toLowerCase();
+  const status = ALLOWED_KNOWLEDGE_FILE_STATUSES.has(statusRaw as KnowledgeFileStatus)
+    ? (statusRaw as KnowledgeFileStatus)
+    : "pending";
+  return {
+    id,
+    filename,
+    mimeType: pickStr(o, "mimeType", "mime_type", "contentType", "content_type") ?? "",
+    sizeBytes: Number(o.sizeBytes ?? o.size_bytes ?? 0) || 0,
+    status,
+    uploadedAt: pickStr(o, "uploadedAt", "uploaded_at") ?? "",
+    lastUsedAt: pickStr(o, "lastUsedAt", "last_used_at") ?? undefined,
+  };
+}
+
+function normalizeKnowledgeFiles(raw: unknown): KnowledgeFile[] {
+  const items = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === "object" && Array.isArray((raw as Record<string, unknown>).files)
+      ? ((raw as Record<string, unknown>).files as unknown[])
+      : [];
+  return items
+    .map(normalizeKnowledgeFile)
+    .filter((f): f is KnowledgeFile => Boolean(f));
+}
+
+export async function fetchKnowledgeFiles(): Promise<KnowledgeFile[]> {
+  const raw = await apiFetch<unknown>("/knowledge/files");
+  return normalizeKnowledgeFiles(raw);
+}
+
+export async function uploadKnowledgeFile(file: File): Promise<KnowledgeFile> {
+  const body = new FormData();
+  body.append("file", file);
+  const raw = await apiFetch<unknown>("/knowledge/files", {
+    method: "POST",
+    body,
+  });
+  const normalized = normalizeKnowledgeFile(raw);
+  if (!normalized) {
+    throw new ApiError(500, "Upload completed, but the server returned an invalid file record.");
+  }
+  return normalized;
+}
+
+export async function deleteKnowledgeFile(fileId: string): Promise<void> {
+  await apiFetch<void>(`/knowledge/files/${encodeURIComponent(fileId)}`, {
+    method: "DELETE",
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Block sender (Unboks-level block)
 // ---------------------------------------------------------------------------
 //
@@ -775,9 +869,15 @@ async function apiFetch<T>(
   const token = getToken();
 
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
+    ...(options.headers as Record<string, string> | undefined),
   };
+
+  const hasContentType = Object.keys(headers).some(
+    (k) => k.toLowerCase() === "content-type",
+  );
+  if (!(options.body instanceof FormData) && !hasContentType) {
+    headers["Content-Type"] = "application/json";
+  }
 
   if (!skipAuth && token) headers["Authorization"] = `Bearer ${token}`;
 

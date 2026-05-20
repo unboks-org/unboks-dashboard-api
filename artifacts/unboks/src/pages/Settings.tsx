@@ -1255,7 +1255,7 @@ export default function Settings() {
 
                   <Card
                     title="Upload knowledge files"
-                    description="Documents, menus, price lists, FAQs, screenshots, and policies your Agent can use when replying."
+                    description="Documents, menus, price lists, FAQs, and policies your Agent can use when replying."
                   >
                     <KnowledgeFileUploader />
                   </Card>

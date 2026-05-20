@@ -1,6 +1,7 @@
 import { useRef, useState, ChangeEvent, DragEvent } from "react";
-import { FileText, Image as ImageIcon, Trash2, UploadCloud } from "lucide-react";
+import { FileText, Loader2, Trash2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
+import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import {
   KNOWLEDGE_FILE_ACCEPT,
@@ -11,41 +12,28 @@ import {
   type KnowledgeFileStatus,
 } from "@/hooks/use-knowledge-files";
 
-// Pre-backend phase: every locally registered file is forced to
-// `pending` by the hook, so only the "Queued" pill renders today. The
-// other branches stay defined so the UI lights up cleanly the moment
-// the upload endpoint is wired (status will then arrive from the
-// server, not from us).
 const STATUS_LABEL: Record<KnowledgeFileStatus, string> = {
-  pending: "Queued",
-  processing: "Processing",
-  ready: "Ready",
-  failed: "Upload failed",
+  pending: "Uploading",
+  processing: "Reading",
+  ready: "In Agent knowledge",
+  failed: "Could not read",
 };
 
 const STATUS_PILL: Record<KnowledgeFileStatus, string> = {
-  pending: "bg-[#fef7e0] text-[#a56300]",
+  pending: "bg-[#f1f3f4] text-[#5f6368]",
   processing: "bg-[#e8f0fe] text-[#1a73e8]",
   ready: "bg-[#e6f4ea] text-[#137333]",
   failed: "bg-[#fce8e6] text-[#c5221f]",
 };
 
-const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".webp"];
-
 function fileTypeLabel(f: KnowledgeFile): string {
   const lower = f.filename.toLowerCase();
   if (lower.endsWith(".pdf")) return "PDF";
-  if (lower.endsWith(".doc") || lower.endsWith(".docx")) return "Word";
-  if (lower.endsWith(".xls") || lower.endsWith(".xlsx")) return "Spreadsheet";
+  if (lower.endsWith(".docx")) return "Word";
+  if (lower.endsWith(".xlsx")) return "Spreadsheet";
   if (lower.endsWith(".csv")) return "CSV";
   if (lower.endsWith(".txt")) return "Text";
-  if (IMAGE_EXTS.some((e) => lower.endsWith(e))) return "Image";
   return "File";
-}
-
-function isImage(f: KnowledgeFile): boolean {
-  const lower = f.filename.toLowerCase();
-  return IMAGE_EXTS.some((e) => lower.endsWith(e));
 }
 
 function formatBytes(n: number): string {
@@ -65,21 +53,15 @@ function formatDate(iso: string): string {
 }
 
 /**
- * Knowledge file uploader. Frontend-only v1: file picker / drag-drop
- * surface accepts the spec'd file types and registers them locally with
- * status `"pending"`. We never claim a file is `"Ready"` to the AI on
- * our own — that flips only when the backend upload endpoint replies.
- *
- * When the user actually drops a file, we surface a calm one-liner
- * explaining the upload itself isn't wired yet, so they aren't misled
- * into thinking the AI can already read the file.
+ * Knowledge file uploader. Files go to the backend, text is extracted
+ * there, and `ready` files become source-of-truth context for Marina.
  */
 export function KnowledgeFileUploader() {
-  const { files, add, remove } = useKnowledgeFiles();
+  const { files, add, remove, isLoading, loadError, isUploading, isRemoving } = useKnowledgeFiles();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
-  function handlePicked(picked: FileList | File[] | null) {
+  async function handlePicked(picked: FileList | File[] | null) {
     if (!picked) return;
     const arr = Array.from(picked);
     if (arr.length === 0) return;
@@ -89,18 +71,38 @@ export function KnowledgeFileUploader() {
       (f) => isAllowedKnowledgeFile(f) && f.size > MAX_KNOWLEDGE_FILE_BYTES,
     );
 
-    const accepted = add(arr);
+    const uploadable = arr.filter(
+      (f) => isAllowedKnowledgeFile(f) && f.size <= MAX_KNOWLEDGE_FILE_BYTES,
+    );
 
-    if (accepted.length > 0) {
-      toast.success(
-        accepted.length === 1
-          ? `${accepted[0].filename} added.`
-          : `${accepted.length} files added.`,
-        {
-          description:
-            "File upload will be connected by the Unboks team. Files stay queued until then.",
-        },
-      );
+    if (uploadable.length > 0) {
+      try {
+        const uploaded = await add(uploadable);
+        const ready = uploaded.filter((f) => f.status === "ready");
+        const failed = uploaded.filter((f) => f.status === "failed");
+        if (ready.length > 0) {
+          toast.success(
+            ready.length === 1
+              ? `${ready[0].filename} added to Agent knowledge.`
+              : `${ready.length} files added to Agent knowledge.`,
+          );
+        }
+        if (failed.length > 0) {
+          toast.error(
+            failed.length === 1
+              ? `${failed[0].filename} uploaded, but text could not be read.`
+              : `${failed.length} files uploaded, but text could not be read.`,
+          );
+        }
+      } catch (err) {
+        const message =
+          err instanceof ApiError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : "Upload failed.";
+        toast.error(message || "Upload failed.");
+      }
     }
     if (rejectedType.length > 0) {
       toast.error(
@@ -153,22 +155,24 @@ export function KnowledgeFileUploader() {
           Drag and drop files here
         </p>
         <p className="mt-1 text-[12px] text-[#5f6368]">
-          Upload documents, menus, price lists, FAQs, screenshots, and policies.
+          Upload documents, menus, price lists, FAQs, and policies for your Agent to use.
         </p>
         <div className="mt-4">
           <button
             type="button"
+            disabled={isUploading}
             onClick={() => inputRef.current?.click()}
             className={cn(
-              "rounded-lg bg-[#1a73e8] px-4 py-2 text-[13px] font-medium text-white",
-              "hover:bg-[#1765c1]",
+              "inline-flex items-center gap-2 rounded-lg bg-[#1a73e8] px-4 py-2 text-[13px] font-medium text-white",
+              "hover:bg-[#1765c1] disabled:cursor-not-allowed disabled:opacity-60",
             )}
           >
-            Upload files
+            {isUploading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {isUploading ? "Uploading..." : "Upload files"}
           </button>
         </div>
         <p className="mt-3 text-[11px] text-[#9aa0a6]">
-          PDF, Word, TXT, CSV, Excel, PNG, JPG, WebP. Up to 25 MB each.
+          PDF, DOCX, TXT, CSV, XLSX. Up to 25 MB each.
         </p>
         <input
           ref={inputRef}
@@ -181,19 +185,27 @@ export function KnowledgeFileUploader() {
       </div>
 
       {/* File list ------------------------------------------------- */}
-      {files.length === 0 ? (
+      {loadError ? (
+        <p className="rounded-lg border border-[#f6caca] bg-[#fce8e6] px-3 py-2 text-[12px] text-[#a50e0e]">
+          Could not load uploaded knowledge files: {loadError.message}
+        </p>
+      ) : isLoading ? (
+        <p className="inline-flex items-center gap-2 text-[12px] text-[#9aa0a6]">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Loading uploaded files...
+        </p>
+      ) : files.length === 0 ? (
         <p className="text-[12px] text-[#9aa0a6]">No files added yet.</p>
       ) : (
         <ul className="space-y-2">
           {files.map((f) => {
-            const Icon = isImage(f) ? ImageIcon : FileText;
             return (
               <li
                 key={f.id}
                 className="flex items-center gap-3 rounded-xl border border-[#e8eaed] bg-white px-3 py-2.5"
               >
                 <div className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg bg-[#f1f3f4] text-[#5f6368]">
-                  <Icon className="h-4 w-4" />
+                  <FileText className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-medium text-[#202124]">
@@ -214,9 +226,20 @@ export function KnowledgeFileUploader() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => remove(f.id)}
+                  disabled={isRemoving}
+                  onClick={() => {
+                    remove(f.id).catch((err) => {
+                      const message =
+                        err instanceof ApiError
+                          ? err.message
+                          : err instanceof Error
+                            ? err.message
+                            : "Could not remove file.";
+                      toast.error(message || "Could not remove file.");
+                    });
+                  }}
                   aria-label={`Remove ${f.filename}`}
-                  className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
+                  className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
