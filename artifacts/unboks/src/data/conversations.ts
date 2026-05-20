@@ -41,6 +41,13 @@ export interface Conversation {
   timestampMs?: number;
   unread: boolean;
   escalated: boolean;
+  /**
+   * Lightweight inbox-row signal that the latest visible text contains
+   * a concrete appointment/date-time cue. This is a UI flag only; the
+   * canonical appointment rows still come from `/appointments` and the
+   * stricter appointment detector.
+   */
+  appointmentSignal?: boolean;
   hasAttachment: boolean;
   escalationMode?: EscalationMode;
   escalationSummary?: string | null;

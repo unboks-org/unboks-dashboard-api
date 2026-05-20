@@ -75,6 +75,12 @@ export interface ApiConversation {
   platform?: string;
   hasAttachment?: boolean;
   escalated?: boolean;
+  appointmentSignal?: boolean;
+  appointment_signal?: boolean;
+  appointmentDetected?: boolean;
+  appointment_detected?: boolean;
+  hasAppointment?: boolean;
+  has_appointment?: boolean;
   escalationMode?: EscalationMode;
   escalationSummary?: string | null;
   learningStatus?: LearningStatus;

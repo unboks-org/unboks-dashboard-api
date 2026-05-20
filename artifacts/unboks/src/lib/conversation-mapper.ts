@@ -1,5 +1,6 @@
 import type { ApiConversation } from "@/lib/api";
 import type { Channel, Conversation } from "@/data/conversations";
+import { hasSchedulingSignals } from "@/lib/appointment-detector";
 import { platformToChannel } from "@/lib/channel-map";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -487,6 +488,7 @@ export function escalationToConversationRow(
     timestampMs: tsMs,
     unread: enrich?.unread ?? false,
     escalated: true,
+    appointmentSignal: enrich?.appointmentSignal ?? hasSchedulingSignals(`${subject}\n${preview}`),
     hasAttachment: enrich?.hasAttachment ?? false,
     escalationMode: n.mode,
     escalationSummary: n.summary,
@@ -571,6 +573,17 @@ export function mapApiConversation(c: ApiConversation): Conversation {
     escalated:
       c.escalated ??
       (typeof c.status === "string" && /^escalated$/i.test(c.status)),
+    appointmentSignal:
+      pickBool(
+        c as unknown as Record<string, unknown>,
+        "appointmentSignal",
+        "appointment_signal",
+        "appointmentDetected",
+        "appointment_detected",
+        "hasAppointment",
+        "has_appointment",
+      ) === true ||
+      hasSchedulingSignals(`${subject}\n${preview}`),
     hasAttachment: c.hasAttachment ?? false,
     escalationMode: (c.escalationMode ?? null) as Conversation["escalationMode"],
     escalationSummary: c.escalationSummary ?? null,
