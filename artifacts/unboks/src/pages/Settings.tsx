@@ -757,6 +757,9 @@ export default function Settings() {
 
   // Workspace draft -------------------------------------
   const [accountDraft, setAccountDraft] = useState<AccountSettings>(account);
+  useEffect(() => {
+    setAccountDraft(account);
+  }, [account]);
   const [accountSaved, setAccountSaved] = useState(false);
   const accountDirty = useMemo(
     () => JSON.stringify(account) !== JSON.stringify(accountDraft),
@@ -936,9 +939,16 @@ export default function Settings() {
                       <PrimaryButton
                         type="button"
                         disabled={!accountDirty}
-                        onClick={() => {
-                          saveAccount(accountDraft);
-                          setAccountSaved(true);
+                        onClick={async () => {
+                          try {
+                            await saveAccount(accountDraft);
+                            setAccountSaved(true);
+                          } catch (err) {
+                            const msg = err instanceof Error && err.message
+                              ? err.message
+                              : "Could not save workspace settings.";
+                            toast.error(msg);
+                          }
                         }}
                       >
                         Save changes

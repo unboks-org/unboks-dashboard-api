@@ -701,6 +701,22 @@ export interface LoginResponse {
   token: string;
 }
 
+export interface AccountSettingsApiResponse {
+  name?: string | null;
+  email?: string | null;
+  support_email?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  website?: string | null;
+}
+
+export interface AccountSettingsApiPayload {
+  name?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Core fetch wrapper
 // ---------------------------------------------------------------------------
@@ -814,6 +830,19 @@ export async function apiLogin(
   // A successful login starts a fresh session — re-arm the auth-failure latch
   _authFailureFired = false;
   return (await res.json()) as LoginResponse;
+}
+
+export async function fetchAccountSettings(): Promise<AccountSettingsApiResponse> {
+  return apiFetch<AccountSettingsApiResponse>("/settings/your-info");
+}
+
+export async function saveAccountSettings(
+  payload: AccountSettingsApiPayload,
+): Promise<AccountSettingsApiResponse> {
+  return apiFetch<AccountSettingsApiResponse>("/settings/your-info", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
 }
 
 // ---------------------------------------------------------------------------
