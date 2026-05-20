@@ -604,9 +604,8 @@ import type { SotBlock } from "@/data/sot";
  *
  * Tolerant decoder: accepts the contracted `{ blocks: SotBlock[] }` shape,
  * a bare array (in case the backend skips the wrapper), or an empty body.
- * Returning `[]` on an unrecognised shape lets the seed-on-empty path in
- * `useSot` populate a fresh workspace with `DEFAULT_SOT` instead of
- * crashing the panel.
+ * Returning `[]` on an unrecognised shape keeps a fresh tenant blank
+ * instead of leaking another tenant's knowledge.
  */
 export async function fetchSourceOfTruth(): Promise<SotBlock[]> {
   const raw = await apiFetch<unknown>("/source-of-truth");
