@@ -204,15 +204,16 @@ export function MessageRow({
             {archived && onRestore && (
               <button
                 type="button"
-                aria-label="Restore to inbox"
-                title="Restore to inbox"
+                aria-label="Unarchive conversation"
+                title="Unarchive"
                 onClick={(e) => {
                   e.stopPropagation();
                   onRestore(conversation);
                 }}
-                className="grid h-10 w-10 sm:h-7 sm:w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#e8f0fe] hover:text-[#1a73e8]"
+                className="inline-flex h-10 sm:h-7 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium text-[#5f6368] transition-colors hover:bg-[#e8f0fe] hover:text-[#1a73e8]"
               >
                 <ArchiveRestore className="w-4 h-4" strokeWidth={1.5} />
+                <span className="hidden sm:inline">Unarchive</span>
               </button>
             )}
             <button

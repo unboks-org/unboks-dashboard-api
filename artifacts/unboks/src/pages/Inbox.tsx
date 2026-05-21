@@ -647,11 +647,12 @@ function ConversationDetailPane({
                   whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onRestore(conversation); }}
-                  aria-label="Restore to inbox"
-                  title="Restore to inbox"
-                  className="w-10 h-10 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                  aria-label="Unarchive conversation"
+                  title="Unarchive"
+                  className="h-10 md:h-9 inline-flex items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-semibold hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
                 >
                   <ArchiveRestore className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]" strokeWidth={1.5} />
+                  <span className="hidden sm:inline">Unarchive</span>
                 </motion.button>
               )}
               {onBlock && !archived && (
@@ -1130,12 +1131,18 @@ export default function Inbox() {
   const handleRestore = useCallback(
     async (conv: Conversation) => {
       const id = conv.conversationKey || conv.id;
-      if (!id) return;
+      if (!id) {
+        toast.error("Couldn't unarchive — no stable identifier on this row.");
+        return;
+      }
       try {
         await unarchiveMutation.mutateAsync(id);
-        toast.success("Restored to Active");
+        setSelectedConv((cur) => (cur?.id === conv.id ? null : cur));
+        toast.success("Unarchived", {
+          description: "Conversation is back in Active.",
+        });
       } catch {
-        toast.error("Couldn't restore — try again.");
+        toast.error("Couldn't unarchive — try again.");
       }
     },
     [unarchiveMutation],
