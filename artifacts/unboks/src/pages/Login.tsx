@@ -115,7 +115,7 @@ export default function Login() {
       return;
     }
     setLoginError(null);
-    mutation.mutate({ password, client });
+    mutation.mutate({ password: password.trim(), client });
   };
 
   const canSubmit =
