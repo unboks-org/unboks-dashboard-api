@@ -75,9 +75,13 @@ export function clearAuth(): void {
   localStorage.removeItem(getTokenKey(slug));
 }
 
-// In production set VITE_API_BASE_URL=https://api.unboks.org
-// In development leave it unset — relative /api/... is used automatically
-const API_HOST: string = import.meta.env.VITE_API_BASE_URL ?? "";
+// Production dashboard is served as static files from dashboard.unboks.org,
+// while tenant APIs live on api.unboks.org. Default production builds to the
+// API host so a missing build env cannot make login POST to the static site.
+// Development keeps the relative /api/... path so Vite's local proxy works.
+const API_HOST: string =
+  import.meta.env.VITE_API_BASE_URL ??
+  (import.meta.env.PROD ? "https://api.unboks.org" : "");
 
 export function getApiBase(slug?: string): string {
   return `${API_HOST}/api/${slug ?? getClientSlug()}/dashboard/api`;
