@@ -488,10 +488,10 @@ export function AgentPersonalityWizard() {
     return () => window.clearTimeout(t);
   }, [saved]);
 
-  const currentQuestion = QUESTIONS[step];
+  const inSimulation = step >= QUESTIONS.length;
+  const currentQuestion = QUESTIONS[Math.min(step, QUESTIONS.length - 1)];
   const currentAnswer = answers[currentQuestion.id] ?? EMPTY_ANSWER;
   const isLastQuestion = step === QUESTIONS.length - 1;
-  const inSimulation = step >= QUESTIONS.length;
   const progressValue = inSimulation
     ? 100
     : Math.round(((step + 1) / QUESTIONS.length) * 100);
