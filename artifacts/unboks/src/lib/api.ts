@@ -511,6 +511,101 @@ export async function deleteKnowledgeFile(fileId: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Knowledge media
+// ---------------------------------------------------------------------------
+//
+// Images are attached to saved knowledge items (for example a property,
+// product, menu item, or service). They are not OCR'd. The backend stores
+// tenant-scoped images and returns safe public links Marina can share when a
+// customer asks for photos.
+
+export interface KnowledgeMedia {
+  id: string;
+  knowledgeSource: string;
+  knowledgeId: string;
+  filename: string;
+  originalFilename: string;
+  mimeType: string;
+  sizeBytes: number;
+  caption: string;
+  url: string;
+  uploadedAt: string;
+  lastUsedAt?: string;
+}
+
+function normalizeKnowledgeMedia(raw: unknown): KnowledgeMedia | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const id = pickStr(o, "id");
+  const knowledgeId = pickStr(o, "knowledgeId", "knowledge_id");
+  if (!id || !knowledgeId) return null;
+  return {
+    id,
+    knowledgeSource: pickStr(o, "knowledgeSource", "knowledge_source") ?? "info_update",
+    knowledgeId,
+    filename: pickStr(o, "filename") ?? "",
+    originalFilename: pickStr(o, "originalFilename", "original_filename") ?? "",
+    mimeType: pickStr(o, "mimeType", "mime_type") ?? "image/jpeg",
+    sizeBytes: Number(o.sizeBytes ?? o.size_bytes ?? 0) || 0,
+    caption: pickStr(o, "caption") ?? "",
+    url: pickStr(o, "url") ?? "",
+    uploadedAt: pickStr(o, "uploadedAt", "uploaded_at") ?? "",
+    lastUsedAt: pickStr(o, "lastUsedAt", "last_used_at") ?? undefined,
+  };
+}
+
+function normalizeKnowledgeMediaList(raw: unknown): KnowledgeMedia[] {
+  const items = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === "object" && Array.isArray((raw as Record<string, unknown>).media)
+      ? ((raw as Record<string, unknown>).media as unknown[])
+      : [];
+  return items
+    .map(normalizeKnowledgeMedia)
+    .filter((m): m is KnowledgeMedia => Boolean(m));
+}
+
+export async function fetchKnowledgeMedia(
+  knowledgeId: string,
+  source = "info_update",
+): Promise<KnowledgeMedia[]> {
+  const params = new URLSearchParams({
+    knowledge_id: knowledgeId,
+    source,
+  });
+  const raw = await apiFetch<unknown>(`/knowledge/media?${params.toString()}`);
+  return normalizeKnowledgeMediaList(raw);
+}
+
+export async function uploadKnowledgeMedia(input: {
+  knowledgeId: string;
+  source?: string;
+  caption?: string;
+  file: File;
+}): Promise<KnowledgeMedia> {
+  const body = new FormData();
+  body.append("knowledge_id", input.knowledgeId);
+  body.append("source", input.source ?? "info_update");
+  body.append("caption", input.caption ?? "");
+  body.append("file", input.file);
+  const raw = await apiFetch<unknown>("/knowledge/media", {
+    method: "POST",
+    body,
+  });
+  const normalized = normalizeKnowledgeMedia(raw);
+  if (!normalized) {
+    throw new ApiError(500, "Upload completed, but the server returned an invalid image record.");
+  }
+  return normalized;
+}
+
+export async function deleteKnowledgeMedia(mediaId: string): Promise<void> {
+  await apiFetch<void>(`/knowledge/media/${encodeURIComponent(mediaId)}`, {
+    method: "DELETE",
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Block sender (Unboks-level block)
 // ---------------------------------------------------------------------------
 //

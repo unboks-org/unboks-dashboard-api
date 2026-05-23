@@ -27,6 +27,7 @@ import { ApiError } from "@/lib/error";
 import { useAccountSettings, type AccountSettings } from "@/hooks/use-account-settings";
 import { useYourInfoUpdates, UPDATE_TYPES, type YourInfoUpdateType } from "@/hooks/use-your-info-updates";
 import { KnowledgeFileUploader } from "@/components/settings/KnowledgeFileUploader";
+import { KnowledgeMediaAttachments } from "@/components/settings/KnowledgeMediaAttachments";
 import { CloudKnowledgeConnections } from "@/components/settings/CloudKnowledgeConnections";
 import { DataRetentionSettings } from "@/components/settings/DataRetentionSettings";
 import { DisconnectUnboksDanger } from "@/components/settings/DisconnectUnboksDanger";
@@ -1228,6 +1229,7 @@ export default function Settings() {
                               <p className="mt-2 whitespace-pre-wrap break-words text-[13px] text-[#202124]">
                                 {u.text}
                               </p>
+                              <KnowledgeMediaAttachments knowledgeId={u.id} />
                               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#5f6368]">
                                 <span>
                                   Added{" "}

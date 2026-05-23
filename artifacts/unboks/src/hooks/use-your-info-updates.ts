@@ -19,6 +19,8 @@ export type YourInfoUpdateType =
   | "hours"
   | "pricing"
   | "policy"
+  | "property"
+  | "product"
   | "other";
 
 export interface YourInfoUpdate {
@@ -38,6 +40,8 @@ export const UPDATE_TYPES: { value: YourInfoUpdateType; label: string }[] = [
   { value: "hours", label: "Hours" },
   { value: "pricing", label: "Pricing" },
   { value: "policy", label: "Policy" },
+  { value: "property", label: "Property" },
+  { value: "product", label: "Product" },
   { value: "other", label: "Other" },
 ];
 
