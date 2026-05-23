@@ -641,41 +641,41 @@ export function AgentPersonalityWizard() {
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-[#e8eaed] bg-white shadow-sm">
-      <header className="border-b border-[#e8eaed] bg-[#fbfbfd] px-5 py-5 sm:px-7">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#5f6368]">
+    <section className="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-sm">
+      <header className="border-b border-[#edf0f3] bg-[#fbfcfd] px-4 py-3 sm:px-5">
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6b7280]">
               {inSimulation
                 ? "Test your AI Agent"
                 : `Step ${step + 1} of ${QUESTIONS.length}`}
             </p>
-            <span className="rounded-full border border-[#dadce0] bg-white px-3 py-1 text-[12px] font-medium text-[#5f6368]">
+            <span className="rounded-full border border-[#d8dde3] bg-white px-2.5 py-0.5 text-[11px] font-medium text-[#6b7280]">
               {inSimulation ? "Ready to save" : `${progressValue}% complete`}
             </span>
           </div>
-          <Progress value={progressValue} className="h-2 bg-[#e8eaed]" />
+          <Progress value={progressValue} className="h-1.5 bg-[#e8eaed]" />
         </div>
       </header>
 
       {inSimulation ? (
-        <div className="mx-auto max-w-4xl px-5 py-7 sm:px-7">
-          <div className="mb-6">
-            <h3 className="text-[25px] font-semibold tracking-normal text-[#202124]">
+        <div className="mx-auto max-w-[760px] px-4 py-5 sm:px-5">
+          <div className="mb-4">
+            <h3 className="text-[20px] font-semibold tracking-normal text-[#202124]">
               Test your AI Agent before saving
             </h3>
-            <p className="mt-2 text-[14px] leading-6 text-[#5f6368]">
+            <p className="mt-1.5 text-[13px] leading-5 text-[#5f6368]">
               Type a sample message as if a client sent it. See how your AI
               Agent would reply.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-[#e8eaed] bg-[#f8fafd] p-4 sm:p-5">
-            <div className="min-h-[280px] space-y-4">
+          <div className="rounded-xl border border-[#e8eaed] bg-[#f8fafd] p-3 sm:p-4">
+            <div className="min-h-[220px] space-y-3">
               {chat.length === 0 ? (
-                <div className="flex min-h-[240px] flex-col items-center justify-center rounded-xl border border-dashed border-[#dadce0] bg-white px-5 text-center">
-                  <MessageCircle className="mb-3 h-7 w-7 text-[#9aa0a6]" />
-                  <p className="text-[14px] font-medium text-[#3c4043]">
+                <div className="flex min-h-[190px] flex-col items-center justify-center rounded-lg border border-dashed border-[#dadce0] bg-white px-4 text-center">
+                  <MessageCircle className="mb-2 h-5 w-5 text-[#9aa0a6]" />
+                  <p className="text-[13px] font-medium text-[#3c4043]">
                     Send a sample client message to test the style.
                   </p>
                 </div>
@@ -702,7 +702,7 @@ export function AgentPersonalityWizard() {
                       <div className="max-w-[78%]">
                         <div
                           className={cn(
-                            "rounded-2xl px-4 py-3 text-[14px] leading-6 shadow-sm",
+                            "rounded-xl px-3.5 py-2.5 text-[13px] leading-5 shadow-sm",
                             isAgent
                               ? "bg-[#1a73e8] text-white"
                               : "border border-[#e8eaed] bg-white text-[#202124]",
@@ -725,7 +725,7 @@ export function AgentPersonalityWizard() {
                                 variant="outline"
                                 disabled={isGenerating || isSaving}
                                 onClick={() => handleFeedback(label)}
-                                className="rounded-full bg-white text-[12px]"
+                                className="min-h-[30px] rounded-full bg-white px-2.5 text-[11px]"
                               >
                                 {label}
                               </Button>
@@ -736,7 +736,7 @@ export function AgentPersonalityWizard() {
                               variant="outline"
                               disabled={isGenerating || isSaving}
                               onClick={() => setCustomFeedbackOpen((v) => !v)}
-                              className="rounded-full bg-white text-[12px]"
+                              className="min-h-[30px] rounded-full bg-white px-2.5 text-[11px]"
                             >
                               Custom instruction
                             </Button>
@@ -750,23 +750,23 @@ export function AgentPersonalityWizard() {
             </div>
 
             {customFeedbackOpen && (
-              <div className="mt-4 rounded-xl border border-[#dadce0] bg-white p-3">
-                <label className="mb-2 block text-[13px] font-medium text-[#3c4043]">
+              <div className="mt-3 rounded-lg border border-[#dadce0] bg-white p-3">
+                <label className="mb-1.5 block text-[12px] font-medium text-[#3c4043]">
                   Custom instruction
                 </label>
                 <Textarea
                   value={customFeedback}
                   onChange={(event) => setCustomFeedback(event.target.value)}
-                  rows={3}
-                  className="resize-y bg-white text-[14px]"
+                  rows={2}
+                  className="resize-y bg-white text-[13px]"
                   placeholder="Example: Make this reply more relaxed and less sales-focused."
                 />
-                <div className="mt-3 flex justify-end">
+                <div className="mt-2 flex justify-end">
                   <Button
                     type="button"
                     disabled={!customFeedback.trim() || isGenerating}
                     onClick={() => handleSendMessage(customFeedback.trim())}
-                    className="rounded-lg bg-[#1a73e8] text-white"
+                    className="min-h-[34px] rounded-lg bg-[#1a73e8] px-3 text-[12px] text-white"
                   >
                     Apply instruction
                   </Button>
@@ -774,19 +774,19 @@ export function AgentPersonalityWizard() {
               </div>
             )}
 
-            <div className="mt-5 flex gap-3">
+            <div className="mt-4 flex gap-2.5">
               <Textarea
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
-                rows={3}
-                className="resize-y bg-white text-[14px]"
+                rows={2}
+                className="resize-y bg-white text-[13px]"
                 placeholder="Type a sample client message..."
               />
               <Button
                 type="button"
                 disabled={!message.trim() || isGenerating || isSaving}
                 onClick={() => handleSendMessage()}
-                className="h-auto min-w-[120px] rounded-xl bg-[#1a73e8] text-white"
+                className="h-auto min-w-[92px] rounded-lg bg-[#1a73e8] text-[13px] text-white"
               >
                 {isGenerating ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -797,13 +797,13 @@ export function AgentPersonalityWizard() {
             </div>
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <Button
               type="button"
               variant="outline"
               onClick={() => setStep(QUESTIONS.length - 1)}
               disabled={isGenerating || isSaving}
-              className="rounded-xl bg-white"
+              className="min-h-[34px] rounded-lg bg-white px-3 text-[13px]"
             >
               <ArrowLeft className="h-4 w-4" />
               Back
@@ -821,7 +821,7 @@ export function AgentPersonalityWizard() {
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving || isGenerating}
-                className="rounded-xl bg-[#1a73e8] px-5 text-white"
+                className="min-h-[36px] rounded-lg bg-[#1a73e8] px-4 text-[13px] text-white"
               >
                 {isSaving ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -834,14 +834,14 @@ export function AgentPersonalityWizard() {
           </div>
         </div>
       ) : (
-        <div className="mx-auto max-w-4xl px-5 py-7 sm:px-7">
-          <div className="mb-6">
-            <h3 className="text-[25px] font-semibold tracking-normal text-[#202124]">
+        <div className="mx-auto max-w-[760px] px-4 py-5 sm:px-5">
+          <div className="mb-4">
+            <h3 className="text-[20px] font-semibold tracking-normal text-[#202124]">
               {currentQuestion.question}
             </h3>
           </div>
 
-          <div className="grid gap-3">
+          <div className="grid gap-2">
             {currentQuestion.options.map((option) => {
               const selected = currentAnswer.selected === option.label;
               return (
@@ -855,30 +855,30 @@ export function AgentPersonalityWizard() {
                     })
                   }
                   className={cn(
-                    "flex w-full items-center justify-between rounded-2xl border px-4 py-4 text-left transition-colors",
+                    "flex w-full items-center justify-between rounded-xl border px-3.5 py-2.5 text-left transition-colors",
                     selected
                       ? "border-[#1a73e8] bg-[#e8f0fe]"
                       : "border-[#e8eaed] bg-white hover:bg-[#f8f9fa]",
                   )}
                 >
-                  <span className="text-[15px] font-medium text-[#202124]">
+                  <span className="text-[14px] font-medium text-[#202124]">
                     {option.label}
                   </span>
                   <span className="flex items-center gap-2">
                     {option.recommended && (
-                      <span className="rounded-full bg-[#e6f4ea] px-2.5 py-1 text-[11px] font-semibold text-[#137333]">
+                      <span className="rounded-full bg-[#e6f4ea] px-2 py-0.5 text-[10px] font-semibold text-[#137333]">
                         Recommended
                       </span>
                     )}
                     <span
                       className={cn(
-                        "grid h-5 w-5 place-items-center rounded-full border",
+                        "grid h-4 w-4 place-items-center rounded-full border",
                         selected
                           ? "border-[#1a73e8] bg-[#1a73e8] text-white"
                           : "border-[#dadce0] bg-white text-transparent",
                       )}
                     >
-                      <Check className="h-3.5 w-3.5" />
+                      <Check className="h-3 w-3" />
                     </span>
                   </span>
                 </button>
@@ -886,8 +886,8 @@ export function AgentPersonalityWizard() {
             })}
           </div>
 
-          <label className="mt-5 block">
-            <span className="mb-2 block text-[13px] font-medium text-[#3c4043]">
+          <label className="mt-4 block">
+            <span className="mb-1.5 block text-[12px] font-medium text-[#3c4043]">
               {currentQuestion.customLabel ?? "Or write your own answer"}
             </span>
             <Textarea
@@ -898,17 +898,17 @@ export function AgentPersonalityWizard() {
                   custom: event.target.value,
                 })
               }
-              rows={currentQuestion.customRows ?? 4}
-              className="resize-y bg-white text-[14px]"
+              rows={currentQuestion.customRows ?? 2}
+              className="min-h-[68px] resize-y bg-white text-[13px]"
               placeholder="Write your own answer..."
             />
           </label>
 
-          <div className="mt-6">
-            <p className="mb-3 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#5f6368]">
+          <div className="mt-5">
+            <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#5f6368]">
               Real-world reply examples
             </p>
-            <div className="grid gap-3 lg:grid-cols-3">
+            <div className="grid gap-2 lg:grid-cols-3">
               {currentQuestion.examples.map((example) => (
                 <button
                   key={example.label}
@@ -920,17 +920,17 @@ export function AgentPersonalityWizard() {
                     })
                   }
                   className={cn(
-                    "rounded-2xl border p-4 text-left transition-colors",
+                    "rounded-xl border p-3 text-left transition-colors",
                     currentAnswer.custom === example.text
                       ? "border-[#1a73e8] bg-[#e8f0fe]"
                       : "border-[#e8eaed] bg-[#fbfbfd] hover:border-[#1a73e8] hover:bg-[#f6faff]",
                   )}
                   aria-label={`Use ${example.label} as your answer`}
                 >
-                  <p className="mb-2 text-[12px] font-semibold text-[#1a73e8]">
+                  <p className="mb-1.5 text-[11px] font-semibold text-[#1a73e8]">
                     {example.label}
                   </p>
-                  <p className="text-[13px] leading-6 text-[#3c4043]">
+                  <p className="text-[12px] leading-5 text-[#3c4043]">
                     {example.text}
                   </p>
                 </button>
@@ -938,7 +938,7 @@ export function AgentPersonalityWizard() {
             </div>
           </div>
 
-          <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-[#e8eaed] pt-5">
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#e8eaed] pt-4">
             <Button
               type="button"
               variant="outline"
@@ -949,7 +949,7 @@ export function AgentPersonalityWizard() {
                   setStep((current) => current - 1);
                 }
               }}
-              className="rounded-xl bg-white"
+              className="min-h-[34px] rounded-lg bg-white px-3 text-[13px]"
             >
               <ArrowLeft className="h-4 w-4" />
               Back
@@ -958,7 +958,7 @@ export function AgentPersonalityWizard() {
               type="button"
               disabled={!canContinue}
               onClick={() => setStep((current) => current + 1)}
-              className="rounded-xl bg-[#1a73e8] px-5 text-white"
+              className="min-h-[34px] rounded-lg bg-[#1a73e8] px-4 text-[13px] text-white"
             >
               {isLastQuestion ? "Test your AI Agent" : "Next"}
               <ArrowRight className="h-4 w-4" />
