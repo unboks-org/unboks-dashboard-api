@@ -1775,6 +1775,11 @@ function YourInfoKnowledge({
   loadError: Error | null;
 }) {
   const [open, setOpen] = useState(false);
+  const starterBlock: SotBlock = {
+    id: "business-knowledge",
+    title: "Business knowledge",
+    content: "",
+  };
   return (
     <section className="overflow-hidden rounded-2xl border border-[#e8eaed] bg-white">
       <button
@@ -1827,7 +1832,18 @@ function YourInfoKnowledge({
           {isLoading ? (
             <p className="text-[13px] text-[#9aa0a6]">Loading your Agent knowledge...</p>
           ) : blocks.length === 0 ? (
-            <p className="text-[13px] text-[#9aa0a6]">No knowledge added yet.</p>
+            <>
+              <div className="rounded-xl border border-[#e8eaed] bg-[#f8fafd] px-4 py-3 text-[13px] leading-relaxed text-[#5f6368]">
+                Add the facts your Agent should use: services, products,
+                prices, locations, policies, FAQs, and rules. These details are
+                used in live replies after saving.
+              </div>
+              <SotKnowledgeCard
+                block={starterBlock}
+                onSave={onSaveBlock}
+                isSavingExternal={isSavingBlock}
+              />
+            </>
           ) : (
             blocks.map((block) => (
               <SotKnowledgeCard
