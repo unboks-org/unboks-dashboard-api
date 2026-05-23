@@ -910,9 +910,22 @@ export function AgentPersonalityWizard() {
             </p>
             <div className="grid gap-3 lg:grid-cols-3">
               {currentQuestion.examples.map((example) => (
-                <div
+                <button
                   key={example.label}
-                  className="rounded-2xl border border-[#e8eaed] bg-[#fbfbfd] p-4"
+                  type="button"
+                  onClick={() =>
+                    updateAnswer(currentQuestion.id, {
+                      selected: "",
+                      custom: example.text,
+                    })
+                  }
+                  className={cn(
+                    "rounded-2xl border p-4 text-left transition-colors",
+                    currentAnswer.custom === example.text
+                      ? "border-[#1a73e8] bg-[#e8f0fe]"
+                      : "border-[#e8eaed] bg-[#fbfbfd] hover:border-[#1a73e8] hover:bg-[#f6faff]",
+                  )}
+                  aria-label={`Use ${example.label} as your answer`}
                 >
                   <p className="mb-2 text-[12px] font-semibold text-[#1a73e8]">
                     {example.label}
@@ -920,7 +933,7 @@ export function AgentPersonalityWizard() {
                   <p className="text-[13px] leading-6 text-[#3c4043]">
                     {example.text}
                   </p>
-                </div>
+                </button>
               ))}
             </div>
           </div>
