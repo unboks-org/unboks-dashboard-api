@@ -87,7 +87,7 @@ function resolveWorkspace(raw: string): ValidClient | null {
 }
 
 export default function Login() {
-  const { isAuthenticated, login } = useAuth();
+  const { isAuthenticated, login, clientSlug } = useAuth();
   const [, navigate] = useLocation();
   const [password, setPassword] = useState("");
   // Free-text workspace input. Replaces the previous dropdown that exposed
@@ -102,8 +102,13 @@ export default function Login() {
     onError: (err: unknown) => setLoginError(getLoginError(err)),
   });
 
-  // If already authenticated, go straight to inbox
-  if (isAuthenticated) return <Redirect to="/" />;
+  // If the user clicks a welcome email for a different workspace while an
+  // old session still exists, do not dump them into that old inbox. Show
+  // the login form with the emailed workspace pre-filled.
+  const hintedWorkspace = workspaceInput.trim();
+  if (isAuthenticated && (!hintedWorkspace || hintedWorkspace === clientSlug)) {
+    return <Redirect to="/" />;
+  }
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();

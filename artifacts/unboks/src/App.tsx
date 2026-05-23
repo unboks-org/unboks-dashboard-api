@@ -326,9 +326,6 @@ function Router() {
       <Route path="/Tasks">
         <Redirect to="/tasks" />
       </Route>
-      <Route path="/">
-        <ProtectedRoute><Inbox /></ProtectedRoute>
-      </Route>
       {/* Tenant-prefixed deep links from backend alert emails.
           These MUST come after all the specific short routes above so that
           e.g. /escalations/25 is caught by /escalations/:id (above) and
@@ -359,6 +356,9 @@ function Router() {
           /:tenant/appointments/:id routes. */}
       <Route path="/:tenant">
         <TenantRootRedirect />
+      </Route>
+      <Route path="/">
+        <ProtectedRoute><Inbox /></ProtectedRoute>
       </Route>
       <Route component={NotFound} />
     </Switch>
