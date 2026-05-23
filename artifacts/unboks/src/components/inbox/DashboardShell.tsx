@@ -17,6 +17,7 @@ import { useArchivedConversations } from "@/hooks/use-archived-conversations";
 import { useActiveConversationKeys } from "@/hooks/use-active-conversation-keys";
 import { filterActiveAppointments } from "@/lib/appointment-classifier";
 import { RefreshButton } from "@/components/inbox/RefreshButton";
+import { OnboardingBanner } from "@/components/onboarding/OnboardingBanner";
 import { motion, AnimatePresence } from "framer-motion";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
@@ -328,6 +329,7 @@ export function DashboardShell({
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
           <div className="h-full flex flex-col">
+            <OnboardingBanner />
             {children}
           </div>
         </main>

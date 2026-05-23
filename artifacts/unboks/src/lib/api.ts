@@ -1902,6 +1902,104 @@ export async function fetchStatus(): Promise<StatusResponse> {
   return apiFetch<StatusResponse>("/status");
 }
 
+export interface OnboardingStatus {
+  tenantSlug: string;
+  businessName: string;
+  billingStatus: string;
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
+  trialDaysRemaining: number | null;
+  whatsappConnectUrl: string;
+}
+
+export async function fetchOnboardingStatus(): Promise<OnboardingStatus> {
+  const raw = await apiFetch<Partial<OnboardingStatus>>("/onboarding/status");
+  return {
+    tenantSlug: typeof raw.tenantSlug === "string" ? raw.tenantSlug : "",
+    businessName: typeof raw.businessName === "string" ? raw.businessName : "",
+    billingStatus: typeof raw.billingStatus === "string" ? raw.billingStatus : "",
+    trialStartedAt: typeof raw.trialStartedAt === "string" ? raw.trialStartedAt : null,
+    trialEndsAt: typeof raw.trialEndsAt === "string" ? raw.trialEndsAt : null,
+    trialDaysRemaining:
+      typeof raw.trialDaysRemaining === "number" ? raw.trialDaysRemaining : null,
+    whatsappConnectUrl:
+      typeof raw.whatsappConnectUrl === "string" ? raw.whatsappConnectUrl : "",
+  };
+}
+
+export interface AgentPersonalitySettings {
+  tone: string;
+  formality: string;
+  empathy: string;
+  appointmentStyle: string;
+  instructions: string;
+  examples: string[];
+}
+
+const EMPTY_AGENT_PERSONALITY: AgentPersonalitySettings = {
+  tone: "",
+  formality: "",
+  empathy: "",
+  appointmentStyle: "",
+  instructions: "",
+  examples: [],
+};
+
+function normalizeAgentPersonality(raw: unknown): AgentPersonalitySettings {
+  if (!raw || typeof raw !== "object") return { ...EMPTY_AGENT_PERSONALITY };
+  const o = raw as Record<string, unknown>;
+  const examples = Array.isArray(o.examples)
+    ? o.examples.map((x) => String(x).trim()).filter(Boolean)
+    : [];
+  return {
+    tone: typeof o.tone === "string" ? o.tone : "",
+    formality: typeof o.formality === "string" ? o.formality : "",
+    empathy: typeof o.empathy === "string" ? o.empathy : "",
+    appointmentStyle: typeof o.appointmentStyle === "string" ? o.appointmentStyle : "",
+    instructions: typeof o.instructions === "string" ? o.instructions : "",
+    examples,
+  };
+}
+
+export async function fetchAgentPersonality(): Promise<AgentPersonalitySettings> {
+  return normalizeAgentPersonality(
+    await apiFetch<unknown>("/settings/agent-personality"),
+  );
+}
+
+export async function generateAgentPersonalityExamples(
+  settings: AgentPersonalitySettings,
+): Promise<{ examples: string[]; model: string }> {
+  const raw = await apiFetch<unknown>("/settings/agent-personality/examples", {
+    method: "POST",
+    body: JSON.stringify(settings),
+  });
+  if (!raw || typeof raw !== "object") return { examples: [], model: "" };
+  const o = raw as Record<string, unknown>;
+  return {
+    examples: Array.isArray(o.examples)
+      ? o.examples.map((x) => String(x).trim()).filter(Boolean)
+      : [],
+    model: typeof o.model === "string" ? o.model : "",
+  };
+}
+
+export async function saveAgentPersonality(
+  settings: AgentPersonalitySettings,
+): Promise<AgentPersonalitySettings & { bridgeSaved?: boolean }> {
+  const raw = await apiFetch<unknown>("/settings/agent-personality", {
+    method: "PUT",
+    body: JSON.stringify(settings),
+  });
+  return {
+    ...normalizeAgentPersonality(raw),
+    bridgeSaved:
+      raw && typeof raw === "object" && "bridgeSaved" in raw
+        ? Boolean((raw as { bridgeSaved?: unknown }).bridgeSaved)
+        : undefined,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Agent learning preferences (R2-35 follow-up — Claudia #35 backend live)
 // ---------------------------------------------------------------------------

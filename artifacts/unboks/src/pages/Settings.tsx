@@ -32,6 +32,7 @@ import { DataRetentionSettings } from "@/components/settings/DataRetentionSettin
 import { DisconnectUnboksDanger } from "@/components/settings/DisconnectUnboksDanger";
 import { BlockedSendersList } from "@/components/settings/BlockedSendersList";
 import { AgentLearningsList } from "@/components/settings/AgentLearningsList";
+import { AgentPersonalityWizard } from "@/components/settings/AgentPersonalityWizard";
 import { useSot, type SotBlock, type SotSubsection } from "@/data/sot";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,7 @@ const WEBSITE_LINKS_BLOCK_ID = "website-links";
 type CategoryId =
   | "workspace"
   | "your-info"
+  | "agent-personality"
   | "agent-learnings"
   | "escalation"
   | "data-retention"
@@ -70,6 +72,13 @@ const CATEGORIES: {
     label: "Company knowledge",
     description:
       "Add business information, files, policies, offers, and cloud folders your Agent can use when answering customers.",
+    icon: Sparkles,
+  },
+  {
+    id: "agent-personality",
+    label: "Agent Personality",
+    description:
+      "Tune Marina's tone, appointment style, and example replies.",
     icon: Sparkles,
   },
   {
@@ -718,6 +727,7 @@ function SotBlockEditView({
 const CATEGORY_IDS: ReadonlySet<string> = new Set<CategoryId>([
   "workspace",
   "your-info",
+  "agent-personality",
   "agent-learnings",
   "escalation",
   "data-retention",
@@ -1544,6 +1554,12 @@ export default function Settings() {
               {active === "agent-learnings" && (
                 <div className="space-y-5">
                   <AgentLearningsList />
+                </div>
+              )}
+
+              {active === "agent-personality" && (
+                <div className="space-y-5">
+                  <AgentPersonalityWizard />
                 </div>
               )}
 
