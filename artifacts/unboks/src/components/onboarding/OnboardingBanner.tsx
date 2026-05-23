@@ -31,7 +31,7 @@ export function OnboardingBanner() {
             )}
           </div>
           <p className="mt-2 text-[13px] leading-relaxed text-[#5f6368]">
-            Finish the two setup steps: connect WhatsApp and tune Marina's style.
+            Finish the two setup steps: connect WhatsApp and tune your AI Agent's style.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

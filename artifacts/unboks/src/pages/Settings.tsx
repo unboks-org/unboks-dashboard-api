@@ -78,7 +78,7 @@ const CATEGORIES: {
     id: "agent-personality",
     label: "Agent Personality",
     description:
-      "Tune Marina's tone, appointment style, and example replies.",
+      "Tune your AI Agent's tone, appointment style, and example replies.",
     icon: Sparkles,
   },
   {
