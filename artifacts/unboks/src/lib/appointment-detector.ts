@@ -67,19 +67,19 @@
 import type { Appointment, AppointmentStatus, ConversationDetail, ApiMessage } from "@/lib/api";
 
 const DAY_RE =
-  /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|morgen|vandaag)\b/i;
+  /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|morgen|vandaag|lunes|martes|mi[eé]rcoles|jueves|viernes|s[áa]bado|domingo|ma[nñ]ana|hoy|pasado\s+ma[nñ]ana)\b/i;
 // 09:00 / 9:00 / 09.00 / 9.00 — must have minutes to count as concrete.
 const TIME_RE = /\b(\d{1,2})[:.](\d{2})\b/;
 // Schedule intent keywords. We accept intent on EITHER side — the
 // customer asking to meet, or the assistant proposing.
 const SCHEDULE_INTENT_RE =
-  /\b(meet|meeting|appointment|appt|intake|book|booking|schedule|reschedul\w*|activate|activation|demo|consult\w*|call|session|onboard\w*|kickoff|kick-off|afspraak|gesprek|kennismaking|intakegesprek|consult|consultatie|bellen|belafspraak|ingepland|gepland)\b/i;
+  /\b(meet|meeting|appointment|appt|intake|book|booking|schedule|reschedul\w*|activate|activation|demo|consult\w*|call|session|onboard\w*|kickoff|kick-off|afspraak|gesprek|kennismaking|intakegesprek|consult|consultatie|bellen|belafspraak|ingepland|gepland|cita|reserva|reservar|agendar|programar|consulta|consultorio|sesi[oó]n|reuni[oó]n|llamada)\b/i;
 // Availability-style phrasing from the customer.
 const AVAILABILITY_RE =
   /\b(available|availability|works for me|works for us|free|am free|i'?m free|those are my times|my availability|beschikbaar|beschikbaarheid|past voor mij|past voor ons|dat past|dat werkt|kan voor mij|kan voor ons)\b/i;
 
 const CONFIRMED_RE =
-  /\b(confirmed|all set|is set|see you (?:on |at )|see u (?:on |at )|locked in|booked|bevestigd|staat gepland|is gepland|staat ingepland|is ingepland|tot dan|tot ziens|we zien (?:u|je) dan)\b/i;
+  /\b(confirmed|all set|is set|see you(?:\s+\w+){0,4}\s+(?:on|at)|see u(?:\s+\w+){0,4}\s+(?:on|at)|we'?ve got everything we need|team will be ready|let the team know|locked in|booked|bevestigd|staat gepland|is gepland|staat ingepland|is ingepland|tot dan|tot ziens|we zien (?:u|je) dan|confirmad[oa]|queda confirmad[oa]|reservad[oa]|agendad[oa]|nos vemos|hasta (?:ma[nñ]ana|luego|entonces)|te esperamos|le esperamos)\b/i;
 const PENDING_RE =
   /\b(passed to the team|team will confirm|they'?ll confirm|they will confirm|will confirm shortly|handed (?:off|over) to the team|forwarded to the team)\b/i;
 // Customer-side confirmation language. Per the Marina prompt's
@@ -89,7 +89,7 @@ const PENDING_RE =
 // arrived AFTER the chosen day+time message, so isolated "ok"s
 // elsewhere in the thread don't false-positive.
 const CUSTOMER_CONFIRM_RE =
-  /\b(yes|yep|yeah|sure|ok(?:ay)?|confirmed?|works(?: for me| for us)?|that works|sounds good|perfect|great|deal|done|see you|will be there|i'?ll be there|ja|akkoord|prima|helemaal goed|dat werkt|dat past|past goed|tot dan|tot ziens|ik ben er|wij zijn er|we zijn er|ik zal er zijn|we zullen er zijn)\b/i;
+  /\b(yes|yep|yeah|sure|ok(?:ay)?|confirmed?|works(?: for me| for us)?|that works|sounds good|perfect|great|deal|done|see you|will be there|i'?ll be there|ja|akkoord|prima|helemaal goed|dat werkt|dat past|past goed|tot dan|tot ziens|ik ben er|wij zijn er|we zijn er|ik zal er zijn|we zullen er zijn|s[ií]|vale|de acuerdo|perfecto|perfecta|me va bien|nos va bien|me sirve|nos sirve|est[aá] bien|trato hecho|all[ií] estar[eé]|all[ií] estaremos|nos vemos|hasta ma[nñ]ana)\b/i;
 
 const TOPIC_RULES: Array<{ re: RegExp; title: string }> = [
   { re: /\bintake\b/i, title: "Intake meeting" },
@@ -306,7 +306,7 @@ function pickTopic(msgs: ApiMessage[]): string | null {
  * a backend row claiming "confirmed".
  */
 export function isMultiSlotOffer(content: string): boolean {
-  const dayMatches = content.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today)\b/gi) ?? [];
+  const dayMatches = content.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|morgen|vandaag|lunes|martes|mi[eé]rcoles|jueves|viernes|s[áa]bado|domingo|ma[nñ]ana|hoy|pasado\s+ma[nñ]ana)\b/gi) ?? [];
   const timeMatches = content.match(/\b\d{1,2}[:.]\d{2}\b/g) ?? [];
   return dayMatches.length > 1 || timeMatches.length > 1;
 }
