@@ -13,7 +13,6 @@ import {
   collectConversationHideKeys,
 } from "@/hooks/use-hidden-conversations";
 import { useBlockedLookup } from "@/hooks/use-blocked-senders";
-import { useArchivedConversations } from "@/hooks/use-archived-conversations";
 import { useActiveConversationKeys } from "@/hooks/use-active-conversation-keys";
 import { filterActiveAppointments } from "@/lib/appointment-classifier";
 import { RefreshButton } from "@/components/inbox/RefreshButton";
@@ -138,12 +137,11 @@ export function DashboardShell({
 
   const { data: apiConversations, isLoading: convLoading, isError } = useConversations();
   const { data: apiEscalations, isLoading: escLoading } = useEscalations();
-  // Sidebar counts must respect locally-hidden AND locally-archived
-  // rows so the badges never disagree with the lists rendered in
-  // Inbox / Escalations. Same hooks + key-collection helper used by
-  // the page filters in `pages/Inbox.tsx`.
+  // Sidebar counts must respect locally-hidden rows so the badges never
+  // disagree with rows removed through the delete/hide fallback. Archive
+  // state is server-backed now; do not consult the old local archive
+  // overlay here or a stale browser key can suppress valid server rows.
   const { isHidden: isRowHidden } = useHiddenConversations();
-  const { isArchived: isRowArchived } = useArchivedConversations();
   // Server-backed blocked senders. Same lookup the Inbox page filters
   // use, so the sidebar badges never count rows the lists hide as
   // "blocked in Unboks". The hook exposes a Set-backed predicate so
@@ -177,18 +175,14 @@ export function DashboardShell({
   const hasConvData = !convLoading && !isError && Boolean(apiConversations);
   const hasEscData = !escLoading && Boolean(apiEscalations);
 
-  // Active inbox subset = not deleted AND not archived. Mirrors the
-  // exact predicate the Inbox active view uses (line ~930 of Inbox.tsx),
-  // including the `c.timestampMs` arg so a fresh inbound auto-restores
-  // an archived row in both the list and the badge simultaneously.
-  // This is the source for every channel + inbox sidebar count, so the
-  // badge can never claim more rows than the active inbox actually shows.
+  // Active inbox subset = conversations returned by the server after
+  // local delete/hide and block filters. Archive state is intentionally
+  // not applied from localStorage; the backend archive endpoints are the
+  // source of truth and should decide whether a row appears in the
+  // active conversation list.
   const activeConversations = useMemo(
-    () =>
-      allConversations.filter(
-        (c) => !isRowArchived(collectConversationHideKeys(c), c.timestampMs),
-      ),
-    [allConversations, isRowArchived],
+    () => allConversations,
+    [allConversations],
   );
 
   const channelCounts = useMemo(() => {
@@ -210,9 +204,8 @@ export function DashboardShell({
   // Use the same normalizer AND the same dedup pass as the Escalations
   // list so the sidebar count and the rendered list can never disagree
   // (the backend can emit several rows per active conversation; the list
-  // collapses them, so the count must too). Also apply the archive
-  // overlay — archived escalations must NOT contribute to the badge,
-  // matching the persistence brief and the Escalations page filter.
+  // collapses them, so the count must too). Archive state is server-side;
+  // this count deliberately avoids the old local archive overlay.
   const escalationsCount = useMemo(() => {
     if (!hasEscData || !apiEscalations) return 0;
     const active = [];
@@ -220,13 +213,9 @@ export function DashboardShell({
       const e = normalizeEscalation(raw);
       if (e && !e.resolved) active.push(e);
     }
-    // Apply the same hide AND archive filters the Escalations page
-    // uses. We mirror `escalationToConversationRow`'s key derivation:
-    // routable phone (or synthesized `esc:<id>`), plus the escalation
-    // id itself. The archive check also receives the enrichment row's
-    // `timestampMs` so the auto-restore-on-new-inbound path stays in
-    // lockstep with the Inbox list (a fresh inbound un-archives the
-    // row in both surfaces on the same render).
+    // Apply the same hide and block filters the Escalations page uses.
+    // We mirror `escalationToConversationRow`'s key derivation: routable
+    // phone (or synthesized `esc:<id>`), plus the escalation id itself.
     // Enrichment lookup must be the pre-block-filter projection so
     // blocked email escalations still resolve to the right
     // `conversationKey` and get caught by the blocked predicate
@@ -239,10 +228,9 @@ export function DashboardShell({
       const keys = [conversationKey, id, n.id];
       if (isRowHidden(keys)) return false;
       if (isRowBlocked(keys)) return false;
-      if (isRowArchived(keys, enrich?.timestampMs)) return false;
       return true;
     }).length;
-  }, [apiEscalations, hasEscData, enrichmentConversations, isRowHidden, isRowArchived, isRowBlocked]);
+  }, [apiEscalations, hasEscData, enrichmentConversations, isRowHidden, isRowBlocked]);
 
   // Appointments sidebar count must use the same merged + de-duplicated
   // list the Appointments page renders, so the badge can never disagree

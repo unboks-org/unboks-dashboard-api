@@ -5,7 +5,6 @@ import {
   useHiddenConversations,
   collectConversationHideKeys,
 } from "@/hooks/use-hidden-conversations";
-import { useArchivedConversations } from "@/hooks/use-archived-conversations";
 
 /**
  * Shared "active conversation key set" derivation.
@@ -13,10 +12,8 @@ import { useArchivedConversations } from "@/hooks/use-archived-conversations";
  * Returns the union of every stable identifier (`id` and
  * `conversationKey`) for conversations that are currently part of the
  * active inbox — i.e. live conversations from the API that are NOT
- * hidden (deleted) and NOT archived. The archive check honours the
- * auto-restore-on-new-inbound semantics by passing each row's raw
- * `last_message_at` epoch, so a fresh inbound un-archives the row in
- * every consumer on the same render tick.
+ * hidden (deleted). Archive state is server-backed now, so this hook
+ * intentionally does not read the legacy local archive overlay.
  *
  * Why a hook (not inline math):
  * Multiple surfaces need to know "is this conversation still active?"
@@ -51,7 +48,6 @@ export interface ActiveConversationKeys {
 export function useActiveConversationKeys(): ActiveConversationKeys {
   const { data: apiConversations, isLoading, isError } = useConversations();
   const { isHidden: isRowHidden } = useHiddenConversations();
-  const { isArchived: isRowArchived } = useArchivedConversations();
 
   return useMemo<ActiveConversationKeys>(() => {
     const ready = !isLoading && !isError && Boolean(apiConversations);
@@ -63,10 +59,9 @@ export function useActiveConversationKeys(): ActiveConversationKeys {
       const c = mapApiConversation(raw);
       const hideKeys = collectConversationHideKeys(c);
       if (isRowHidden(hideKeys)) continue;
-      if (isRowArchived(hideKeys, c.timestampMs)) continue;
       if (c.id) out.add(c.id);
       if (c.conversationKey) out.add(c.conversationKey);
     }
     return { keys: out, ready };
-  }, [apiConversations, isLoading, isError, isRowHidden, isRowArchived]);
+  }, [apiConversations, isLoading, isError, isRowHidden]);
 }
