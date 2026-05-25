@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 // PORT and BASE_PATH are only needed when Vite is *serving* (dev or preview).
 // A production `vite build` only emits static assets to `dist/public` and
@@ -43,20 +42,6 @@ export default defineConfig(async ({ command }) => {
     plugins: [
       react(),
       tailwindcss(),
-      runtimeErrorOverlay(),
-      ...(process.env.NODE_ENV !== "production" &&
-      process.env.REPL_ID !== undefined
-        ? [
-            await import("@replit/vite-plugin-cartographer").then((m) =>
-              m.cartographer({
-                root: path.resolve(import.meta.dirname, ".."),
-              }),
-            ),
-            await import("@replit/vite-plugin-dev-banner").then((m) =>
-              m.devBanner(),
-            ),
-          ]
-        : []),
     ],
     resolve: {
       alias: {
@@ -78,12 +63,12 @@ export default defineConfig(async ({ command }) => {
       fs: {
         strict: true,
       },
-      // Dev / Replit-preview proxy. When VITE_API_BASE_URL is unset (the
-      // dev default so production builds don't carry a hardcoded host),
+      // Dev proxy. When VITE_API_BASE_URL is unset (the dev default so
+      // production builds don't carry a hardcoded host),
       // `lib/tenant.ts:getApiBase()` returns a relative /api/... path.
-      // Forward that to the real backend so the Replit dev preview can
-      // sign in and load conversations without an env var. No-op in
-      // production: vite serve isn't used to serve the built bundle.
+      // Forward that to the real backend so local dev can sign in and load
+      // conversations without an env var. No-op in production: vite serve
+      // isn't used to serve the built bundle.
       proxy: {
         "/api": {
           target: "https://api.unboks.org",

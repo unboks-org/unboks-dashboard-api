@@ -27,7 +27,6 @@ app.use(
 );
 
 const allowedOrigins = new Set([
-  "https://unboks-dashboard-api.replit.app",
   "https://api.unboks.org",
   "https://dashboard.unboks.org",
   "https://unboks.org",

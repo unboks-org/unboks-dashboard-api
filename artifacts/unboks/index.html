@@ -22,8 +22,8 @@
       // ===================================================================
       // Stale-bundle safety net (J3-N2-09 / J3-N2-10).
       //
-      // The dashboard.unboks.org Replit deployment serves index.html for
-      // ANY 404'd asset path instead of returning a real 404 (verified by
+      // Some static SPA deployments serve index.html for ANY 404'd asset path
+      // instead of returning a real 404 (previously verified by
       // direct curl against /assets/<old-hash>.js -> 200 OK, content-type
       // text/html, ~730 bytes of HTML body). Every Vite build emits a
       // content-hashed bundle filename; each deploy invalidates the
