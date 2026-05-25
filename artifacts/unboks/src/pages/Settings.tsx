@@ -30,7 +30,6 @@ import { KnowledgeFileUploader } from "@/components/settings/KnowledgeFileUpload
 import { KnowledgeMediaAttachments } from "@/components/settings/KnowledgeMediaAttachments";
 import { CloudKnowledgeConnections } from "@/components/settings/CloudKnowledgeConnections";
 import { DataRetentionSettings } from "@/components/settings/DataRetentionSettings";
-import { DisconnectUnboksDanger } from "@/components/settings/DisconnectUnboksDanger";
 import { BlockedSendersList } from "@/components/settings/BlockedSendersList";
 import { AgentLearningsList } from "@/components/settings/AgentLearningsList";
 import { AgentPersonalityWizard } from "@/components/settings/AgentPersonalityWizard";
@@ -1070,13 +1069,6 @@ export default function Settings() {
                     </div>
                   </div>
                 </Card>
-
-                {/* Danger zone — visually separated from everyday workspace
-                    settings. Multi-step typed-confirmation modal lives
-                    inside this component; backend-honest about whether
-                    the disconnect was actually executed or just recorded
-                    locally. See `DisconnectUnboksDanger` + `disconnectUnboks`. */}
-                <DisconnectUnboksDanger />
                 </div>
               )}
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Archive, Download, Trash2, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -138,34 +138,6 @@ function Select({
   );
 }
 
-function MiniButton({
-  children,
-  onClick,
-  variant = "default",
-  icon: Icon,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  variant?: "default" | "danger";
-  icon?: React.ComponentType<{ className?: string }>;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12.5px] font-medium transition-colors",
-        variant === "danger"
-          ? "border-[#f5c6c0] bg-white text-[#a50e0e] hover:bg-[#fce8e6]"
-          : "border-[#dadce0] bg-white text-[#3c4043] hover:bg-[#f6f8fc]",
-      )}
-    >
-      {Icon && <Icon className="h-3.5 w-3.5" />}
-      {children}
-    </button>
-  );
-}
-
 export function DataRetentionSettings() {
   const { settings, save } = useDataRetentionSettings();
   const [draft, setDraft] = useState<DataRetentionSettings>(settings);
@@ -195,10 +167,6 @@ export function DataRetentionSettings() {
     toast.success(
       "Saved locally. Backend retention automation will be connected by the Unboks team.",
     );
-  };
-
-  const showPlaceholder = (label: string) => {
-    toast(`${label}: data retention actions will be connected by the Unboks team.`);
   };
 
   // Honest status string: until the backend reports policyActive, we
@@ -326,31 +294,6 @@ export function DataRetentionSettings() {
             </Select>
           }
         />
-
-        <div className="border-t border-[#f1f3f4] px-4 py-3 sm:px-5">
-          <p className="text-[12px] font-medium text-[#5f6368]">Manual actions</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <MiniButton
-              icon={Archive}
-              onClick={() => showPlaceholder("Archive old conversations")}
-            >
-              Archive old conversations now
-            </MiniButton>
-            <MiniButton
-              icon={Download}
-              onClick={() => showPlaceholder("Export conversation data")}
-            >
-              Export conversation data
-            </MiniButton>
-            <MiniButton
-              icon={Trash2}
-              variant="danger"
-              onClick={() => showPlaceholder("Delete customer data")}
-            >
-              Delete customer data…
-            </MiniButton>
-          </div>
-        </div>
 
         <div className="border-t border-[#f1f3f4] bg-[#fafbfc] px-4 py-3 text-[12px] text-[#5f6368] sm:px-5">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
