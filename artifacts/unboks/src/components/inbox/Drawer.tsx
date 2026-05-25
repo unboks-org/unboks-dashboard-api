@@ -236,10 +236,9 @@ function WorkspaceBlock({ profile }: { profile: ClientProfile | undefined }) {
 }
 
 function WorkspaceStatusBadge({ status }: { status: ClientProfile["status"] }) {
-  // Map each backend status to a calm visual treatment. "unknown" still
-  // shows a connectivity dot so a brand-new tenant whose backend hasn't
-  // shipped `/client/profile` yet still gets the "I'm live" signal —
-  // which is the actual question this badge answers for the operator.
+  // Map each backend status to a calm visual treatment. Unknown must stay
+  // neutral: do not show a green "Connected" state unless the backend
+  // explicitly confirms an active tenant.
   const spec: Record<
     ClientProfile["status"],
     { label: string; dot: string; text: string; pulse: boolean }
@@ -247,7 +246,7 @@ function WorkspaceStatusBadge({ status }: { status: ClientProfile["status"] }) {
     active: { label: "Active", dot: "#10b981", text: "#1f2937", pulse: true },
     trial: { label: "Trial", dot: "#1a73e8", text: "#1f2937", pulse: true },
     suspended: { label: "Suspended", dot: "#ef4444", text: "#1f2937", pulse: false },
-    unknown: { label: "Connected", dot: "#10b981", text: "#1f2937", pulse: true },
+    unknown: { label: "Status unknown", dot: "#9aa0a6", text: "#5f6368", pulse: false },
   };
   const s = spec[status];
   return (
