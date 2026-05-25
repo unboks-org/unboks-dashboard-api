@@ -93,11 +93,10 @@ export default function Analytics() {
       }
     >
       <div className="px-4 sm:px-6 py-6 max-w-5xl mx-auto space-y-10">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard label="Conversations" value={conversations.length} sub="total" />
           <StatCard label="Open escalations" value={status?.openEscalations ?? openEscalations} sub="pending review" />
           <StatCard label="Resolved" value={resolvedEscalations} sub="escalations closed" />
-          <StatCard label="Orders detected" value="0" sub="TODO: paid-order endpoint" />
         </div>
 
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
