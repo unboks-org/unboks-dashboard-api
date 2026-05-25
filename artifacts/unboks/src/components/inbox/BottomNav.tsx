@@ -27,11 +27,11 @@ export function BottomNav({ active, onChange, mailBadge = 0, chatBadge = 0 }: Bo
             key={item.id}
             onClick={() => onChange(item.id)}
             aria-label={item.label}
-            className="relative flex flex-col items-center justify-center gap-1 px-4 py-2 w-full active:scale-95 active:opacity-80 transition-all duration-200"
+            className="relative flex min-h-[44px] flex-col items-center justify-center gap-1 px-4 py-2 w-full active:scale-95 active:opacity-80 transition-all duration-200"
           >
             <span
               className={cn(
-                "relative h-8 px-5 rounded-full flex items-center justify-center transition-all duration-300",
+                "relative min-h-[32px] px-5 rounded-full flex items-center justify-center transition-all duration-300",
                 isActive ? "bg-[#e8f0fe]" : "bg-transparent"
               )}
             >

@@ -196,7 +196,7 @@ export function MessageRow({
                   e.stopPropagation();
                   onArchive(conversation);
                 }}
-                className="grid h-10 w-10 sm:h-7 sm:w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#eef1f6] hover:text-[#1f2937]"
+                className="grid h-11 w-11 sm:h-7 sm:w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:bg-[#eef1f6] hover:text-[#1f2937]"
               >
                 <Archive className="w-4 h-4" strokeWidth={1.5} />
               </button>
@@ -210,7 +210,7 @@ export function MessageRow({
                   e.stopPropagation();
                   onRestore(conversation);
                 }}
-                className="inline-flex h-10 sm:h-7 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium text-[#5f6368] transition-colors hover:bg-[#e8f0fe] hover:text-[#1a73e8]"
+                className="inline-flex min-h-[44px] sm:min-h-0 sm:h-7 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium text-[#5f6368] transition-colors hover:bg-[#e8f0fe] hover:text-[#1a73e8]"
               >
                 <ArchiveRestore className="w-4 h-4" strokeWidth={1.5} />
                 <span className="hidden sm:inline">Unarchive</span>
@@ -224,7 +224,7 @@ export function MessageRow({
                 e.stopPropagation();
                 setStarred((s) => !s);
               }}
-              className="-mr-1 grid h-10 w-10 sm:h-7 sm:w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:text-[#202124]"
+              className="-mr-1 grid h-11 w-11 sm:h-7 sm:w-7 place-items-center rounded-full text-[#9aa0a6] transition-colors hover:text-[#202124]"
             >
               <Star
                 className={cn("w-4 h-4", starred && "text-[#f9a825]")}

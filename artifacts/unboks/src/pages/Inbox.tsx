@@ -576,7 +576,7 @@ function ConversationDetailPane({
             whileTap={{ scale: 0.95 }}
             onClick={onClose}
             aria-label="Close conversation"
-            className="w-10 h-10 -ml-1 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground md:hidden flex-shrink-0"
+            className="w-11 h-11 -ml-1 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground md:hidden flex-shrink-0"
           >
             <ArrowLeft className="w-[22px] h-[22px]" strokeWidth={1.5} />
           </motion.button>
@@ -637,7 +637,7 @@ function ConversationDetailPane({
                   onClick={(e) => { e.stopPropagation(); onArchive(conversation); }}
                   aria-label="Archive conversation"
                   title="Archive"
-                  className="w-10 h-10 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  className="w-11 h-11 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Archive className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]" strokeWidth={1.5} />
                 </motion.button>
@@ -649,7 +649,7 @@ function ConversationDetailPane({
                   onClick={(e) => { e.stopPropagation(); onRestore(conversation); }}
                   aria-label="Unarchive conversation"
                   title="Unarchive"
-                  className="h-10 md:h-9 inline-flex items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-semibold hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                  className="min-h-[44px] md:min-h-0 md:h-9 inline-flex items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-semibold hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
                 >
                   <ArchiveRestore className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]" strokeWidth={1.5} />
                   <span className="hidden sm:inline">Unarchive</span>
@@ -662,7 +662,7 @@ function ConversationDetailPane({
                   onClick={(e) => { e.stopPropagation(); onBlock(conversation); }}
                   aria-label="Block in Unboks"
                   title="Block in Unboks"
-                  className="w-10 h-10 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                  className="w-11 h-11 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                 >
                   <Ban className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]" strokeWidth={1.5} />
                 </motion.button>
@@ -678,7 +678,7 @@ function ConversationDetailPane({
                   onClick={(e) => { e.stopPropagation(); onEmailReply(conversation); }}
                   aria-label="Reply"
                   title="Reply"
-                  className="w-10 h-10 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors"
+                  className="w-11 h-11 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors"
                 >
                   <Reply className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]" strokeWidth={1.5} />
                 </motion.button>

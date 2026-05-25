@@ -36,7 +36,7 @@ export function Header({
           onClick={onOpenDrawer}
           whileTap={{ scale: 0.94, opacity: 0.8 }}
           transition={{ type: "spring", stiffness: 400, damping: 25 }}
-          className="w-10 h-10 -ml-1.5 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors md:hidden flex-shrink-0"
+          className="w-11 h-11 -ml-1.5 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors md:hidden flex-shrink-0"
         >
           <Menu className="w-[22px] h-[22px]" strokeWidth={1.5} />
         </motion.button>
@@ -74,7 +74,7 @@ export function Header({
       {/* Mobile search row */}
       {showSearch && (
         <div className="md:hidden px-3 pb-3">
-          <div className="flex items-center h-10 rounded-xl border border-border bg-card px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 transition-all shadow-sm">
+          <div className="flex items-center min-h-[44px] rounded-xl border border-border bg-card px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 transition-all shadow-sm">
             <Search className="w-[15px] h-[15px] text-muted-foreground flex-shrink-0" strokeWidth={2} />
             <input
               type="search"

@@ -331,7 +331,7 @@ export function ConversationTranslationBar() {
             aria-haspopup="listbox"
             aria-expanded={pickerOpen}
             aria-label={`Translation language: ${language}. Click to change.`}
-            className="inline-flex items-center gap-1 rounded-full border border-[#dadce0] bg-white px-2.5 py-0.5 text-[11.5px] font-medium text-[#202124] hover:bg-[#f1f3f4]"
+            className="inline-flex min-h-[36px] items-center gap-1 rounded-full border border-[#dadce0] bg-white px-2.5 py-0.5 text-[11.5px] font-medium text-[#202124] hover:bg-[#f1f3f4] md:min-h-0"
           >
             {language}
             <ChevronDown className="h-3 w-3" />
@@ -355,7 +355,7 @@ export function ConversationTranslationBar() {
                       setPickerOpen(false);
                     }}
                     className={cn(
-                      "flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-[13px]",
+                      "flex min-h-[40px] w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-[13px] md:min-h-0",
                       selected
                         ? "bg-[#f0f6ff] font-semibold text-[#0b3b8c]"
                         : "text-[#1f2937] hover:bg-[#f3f4f6]",
@@ -379,7 +379,7 @@ export function ConversationTranslationBar() {
           }}
           disabled={isLoading}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border px-3 py-0.5 text-[11.5px] font-semibold transition-colors",
+            "inline-flex min-h-[36px] items-center gap-1.5 rounded-full border px-3 py-0.5 text-[11.5px] font-semibold transition-colors md:min-h-0",
             "border-[#1a73e8] bg-[#e8f0fe] text-[#1a73e8] hover:bg-[#d2e3fc]",
             "disabled:cursor-not-allowed disabled:opacity-60",
           )}

@@ -408,7 +408,7 @@ export default function Bookings() {
                 <button
                   type="button"
                   onClick={() => setSelectedApt(null)}
-                  className="md:hidden w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#5f6368] flex-shrink-0"
+                  className="md:hidden w-11 h-11 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#5f6368] flex-shrink-0"
                   aria-label="Back to appointments"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -583,7 +583,7 @@ export default function Bookings() {
               onClick={() => setPendingConfirm(null)}
               disabled={confirmMutation.isPending}
               className={cn(
-                "inline-flex items-center justify-center h-9 rounded-lg border border-[#e2e6ec] bg-white px-3 text-[13px] font-medium text-[#1f2937] transition-colors",
+                "inline-flex items-center justify-center min-h-[44px] md:min-h-0 md:h-9 rounded-lg border border-[#e2e6ec] bg-white px-3 text-[13px] font-medium text-[#1f2937] transition-colors",
                 "hover:border-[#1a73e8] hover:text-[#1a73e8]",
                 "disabled:opacity-60 disabled:cursor-not-allowed",
               )}
@@ -595,7 +595,7 @@ export default function Bookings() {
               onClick={() => { if (pendingConfirm) confirmMutation.mutate(pendingConfirm.id); }}
               disabled={confirmMutation.isPending}
               className={cn(
-                "inline-flex items-center justify-center gap-1.5 h-9 rounded-lg border border-[#1a73e8] bg-[#1a73e8] px-3 text-[13px] font-medium text-white transition-colors",
+                "inline-flex items-center justify-center gap-1.5 min-h-[44px] md:min-h-0 md:h-9 rounded-lg border border-[#1a73e8] bg-[#1a73e8] px-3 text-[13px] font-medium text-white transition-colors",
                 "hover:bg-[#1664c1] hover:border-[#1664c1]",
                 "disabled:opacity-60 disabled:cursor-not-allowed",
               )}
@@ -687,7 +687,7 @@ function ConversationContextPane({
         <button
           type="button"
           onClick={onBack}
-          className="w-8 h-8 -ml-1 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#5f6368] flex-shrink-0"
+          className="w-11 h-11 -ml-1 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#5f6368] flex-shrink-0"
           aria-label="Back to appointment"
         >
           <ArrowLeft className="w-4 h-4" />

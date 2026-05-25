@@ -699,7 +699,7 @@ export const EscalationReplyComposer = forwardRef<
               : "Reply to the customer without resolving."
           }
           className={cn(
-            "inline-flex items-center justify-center gap-1.5 rounded-full border px-3.5 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-[13px] font-medium",
+            "inline-flex items-center justify-center gap-1.5 rounded-full border px-3.5 py-2 sm:py-1.5 min-h-[44px] sm:min-h-0 text-[13px] font-medium",
             "border-[#dadce0] bg-white text-[#3c4043]",
             "hover:bg-[#f8f9fa] hover:border-[#bdc1c6] active:bg-[#f1f3f4]",
             "transition-colors shadow-sm",
@@ -721,7 +721,7 @@ export const EscalationReplyComposer = forwardRef<
           aria-label="Mark this escalation resolved without sending anything"
           title="Mark this escalation resolved without sending anything."
           className={cn(
-            "inline-flex items-center justify-center gap-1.5 rounded-full border px-3.5 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-[13px] font-medium",
+            "inline-flex items-center justify-center gap-1.5 rounded-full border px-3.5 py-2 sm:py-1.5 min-h-[44px] sm:min-h-0 text-[13px] font-medium",
             "border-[#dadce0] bg-white text-[#3c4043]",
             "hover:bg-[#f8f9fa] hover:border-[#bdc1c6] active:bg-[#f1f3f4]",
             "transition-colors shadow-sm",
