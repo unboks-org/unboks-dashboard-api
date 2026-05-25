@@ -1,7 +1,18 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { Request, Response, NextFunction } from "express";
 
-const SECRET = process.env.SESSION_SECRET ?? "fallback-dev-secret";
+const DEV_SECRET = "fallback-dev-secret";
+
+function getSessionSecret(): string {
+  const secret = process.env["SESSION_SECRET"];
+  if (secret?.trim()) {
+    return secret;
+  }
+  if (process.env["NODE_ENV"] === "production") {
+    throw new Error("SESSION_SECRET is required in production.");
+  }
+  return DEV_SECRET;
+}
 
 function base64urlEncode(input: string): string {
   return Buffer.from(input, "utf8").toString("base64url");
@@ -26,7 +37,7 @@ export function createToken(clientSlug: string): string {
       exp: Math.floor(Date.now() / 1000) + 86400,
     }),
   );
-  const sig = createHmac("sha256", SECRET)
+  const sig = createHmac("sha256", getSessionSecret())
     .update(`${header}.${payload}`)
     .digest("base64url");
   return `${header}.${payload}.${sig}`;
@@ -37,7 +48,7 @@ export function verifyToken(token: string): TokenPayload | null {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
     const [header, payload, sig] = parts as [string, string, string];
-    const expected = createHmac("sha256", SECRET)
+    const expected = createHmac("sha256", getSessionSecret())
       .update(`${header}.${payload}`)
       .digest("base64url");
     // timing-safe comparison — pad to equal length

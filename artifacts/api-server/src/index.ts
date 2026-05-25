@@ -1,8 +1,11 @@
 import app from "./app.js";
 import { logger } from "./lib/logger.js";
 import { runMigrations } from "./lib/migrate.js";
+import { assertRuntimeCanStart } from "./lib/runtime-guard.js";
 
 const rawPort = process.env["PORT"];
+
+assertRuntimeCanStart();
 
 if (!rawPort) {
   throw new Error(

@@ -27,7 +27,8 @@ export function whichSignatureHeader(headers: IncomingHttpHeaders): string {
 /**
  * Verifies the Zernio HMAC-SHA256 webhook signature against the raw request body.
  *
- * - If ZERNIO_SIGNING_SECRET is not set, skips verification (logs a warning).
+ * - In production, a missing ZERNIO_SIGNING_SECRET rejects the request.
+ * - In development, a missing ZERNIO_SIGNING_SECRET skips verification with a warning.
  * - Expected header format: "sha256=<hex-digest>"
  */
 export function verifyZernioSignature(
@@ -37,6 +38,12 @@ export function verifyZernioSignature(
   const secret = process.env.ZERNIO_SIGNING_SECRET;
 
   if (!secret) {
+    if (process.env["NODE_ENV"] === "production") {
+      logger.error(
+        "ZERNIO_SIGNING_SECRET is not set — rejecting webhook in production.",
+      );
+      return false;
+    }
     logger.warn(
       "ZERNIO_SIGNING_SECRET is not set — skipping webhook signature verification. " +
         "Set this env var to enable security.",
