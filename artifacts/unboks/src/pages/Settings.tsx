@@ -45,6 +45,11 @@ const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2 MB
 // is consistent across the app.
 const ALT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const WEBSITE_LINKS_BLOCK_ID = "website-links";
+const ALERT_CHANNEL_SUPPORT: Record<NotifyChannelKey, "available" | "coming_soon"> = {
+  whatsapp: "available",
+  messenger: "coming_soon",
+  telegram: "coming_soon",
+};
 
 type CategoryId =
   | "workspace"
@@ -857,6 +862,7 @@ export default function Settings() {
       telegram: "Telegram",
     };
     for (const key of Object.keys(labels) as NotifyChannelKey[]) {
+      if (ALERT_CHANNEL_SUPPORT[key] !== "available") continue;
       const p = notifyDraft[key];
       if (p.enabled && p.destination.trim().length === 0) {
         return `Add a ${labels[key]} destination, or turn ${labels[key]} off.`;
@@ -1437,36 +1443,62 @@ export default function Settings() {
                       (row) => {
                         const pref = notifyDraft[row.key];
                         const status = notifyDeliveryStatuses[row.key];
+                        const supported = ALERT_CHANNEL_SUPPORT[row.key] === "available";
                         // WhatsApp shows its status badge in every state
                         // (Active / Pending activation / Not configured /
                         // Disabled) so the operator always knows where the
-                        // channel stands. Telegram and Messenger only show
-                        // a badge when enabled, since their disabled state
-                        // is conveyed by the toggle alone.
+                        // channel stands. Telegram and Messenger are
+                        // intentionally locked until real providers exist.
                         const showBadge =
                           status !== undefined &&
-                          (row.key === "whatsapp" || pref.enabled);
+                          (row.key === "whatsapp" || (supported && pref.enabled));
                         return (
-                          <div key={row.key} className="py-3">
+                          <div
+                            key={row.key}
+                            className={cn(
+                              "py-3",
+                              !supported && "rounded-lg bg-[#f8f9fa] px-3 opacity-85",
+                            )}
+                          >
                             <div className="flex items-center justify-between gap-4 py-3">
                               <div className="min-w-0">
-                                <p className="text-[14px] text-[#202124]">{row.label}</p>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className={cn("text-[14px]", supported ? "text-[#202124]" : "text-[#5f6368]")}>
+                                    {row.label}
+                                  </p>
+                                  {!supported && (
+                                    <span className="rounded-full border border-[#e0e3e7] bg-white px-2 py-0.5 text-[11px] font-medium text-[#6b7280]">
+                                      Coming soon
+                                    </span>
+                                  )}
+                                </div>
+                                {!supported && (
+                                  <p className="mt-1 max-w-[520px] text-[12px] leading-5 text-[#6b7280]">
+                                    Not active yet. We will enable this after the provider integration is wired and tested by Unboks.
+                                  </p>
+                                )}
                               </div>
                               <div className="flex flex-shrink-0 items-center gap-2">
                                 {showBadge && <DeliveryBadge status={status!} />}
                                 <Switch
-                                  checked={pref.enabled}
+                                  checked={supported ? pref.enabled : false}
                                   onCheckedChange={(v) =>
                                     setNotifyDraft({
                                       ...notifyDraft,
                                       [row.key]: { ...pref, enabled: v },
                                     })
                                   }
+                                  disabled={!supported || notifyLoading || notifySaving}
+                                  aria-label={
+                                    supported
+                                      ? `Enable ${row.label} alerts`
+                                      : `${row.label} alerts are coming soon`
+                                  }
                                   className="data-[state=checked]:bg-[#1a73e8] data-[state=unchecked]:bg-[#dadce0]"
                                 />
                               </div>
                             </div>
-                            {pref.enabled && (
+                            {supported && pref.enabled && (
                               <>
                                 <TextInput
                                   type="text"
