@@ -274,7 +274,7 @@ function getWebsiteLinksBlock(blocks: SotBlock[]): SotBlock {
   return blocks.find((block) => block.id === WEBSITE_LINKS_BLOCK_ID) ?? {
     id: WEBSITE_LINKS_BLOCK_ID,
     title: "Website links",
-    content: "Website pages the Agent can use as Source of Truth references.",
+    content: "Website page references saved in Source of Truth. Pages are not crawled or imported automatically.",
     items: [],
   };
 }
@@ -1683,7 +1683,7 @@ function WebsiteLinksCard({
       await saveLinks([websiteLinkItem(label, normalized), ...links]);
       setUrl("");
       setLabel("");
-      toast.success("Website link added to Source of Truth.");
+      toast.success("Website link saved as a Source of Truth reference.");
     } catch (err) {
       const msg = err instanceof Error && err.message
         ? err.message
@@ -1712,9 +1712,14 @@ function WebsiteLinksCard({
   return (
     <Card
       title="Website links"
-      description="Add website pages your Agent should treat as Source of Truth references."
+      description="Save important website pages as references. This does not crawl or import page content automatically."
     >
       <div className="space-y-4">
+        <div className="rounded-lg border border-[#dfe6f7] bg-[#f8fbff] px-3 py-2 text-[12px] leading-relaxed text-[#3c4043]">
+          Links are stored as Source of Truth references so your team and Agent know where information lives.
+          To use exact website content in replies, add the important text as knowledge or upload a file.
+        </div>
+
         {loadError && (
           <div
             role="alert"
@@ -1736,7 +1741,7 @@ function WebsiteLinksCard({
             />
           </label>
           <label className="block">
-            <FieldLabel>Website link</FieldLabel>
+            <FieldLabel>Website page link</FieldLabel>
             <TextInput
               type="url"
               value={url}
@@ -1759,7 +1764,7 @@ function WebsiteLinksCard({
         {isLoading ? (
           <p className="text-[13px] text-[#9aa0a6]">Loading website links...</p>
         ) : links.length === 0 ? (
-          <p className="text-[13px] text-[#9aa0a6]">No website links added yet.</p>
+          <p className="text-[13px] text-[#9aa0a6]">No website references added yet.</p>
         ) : (
           <ul className="divide-y divide-[#eef0f3] rounded-xl border border-[#e8eaed]">
             {links.map((item) => {
