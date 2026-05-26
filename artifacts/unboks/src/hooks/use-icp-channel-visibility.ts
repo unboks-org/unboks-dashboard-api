@@ -48,6 +48,17 @@ const ALLOWED_SUFFIXES = [
   "chat",
 ];
 
+const CANONICAL_CHANNELS: VisibleChannel[] = [
+  "WhatsApp",
+  "Email",
+  "Instagram",
+  "Facebook",
+  "Messenger",
+  "Telegram",
+  "TikTok",
+  "X",
+];
+
 function keyMatchesChannel(key: string, prefixes: readonly string[]): boolean {
   const lower = key.toLowerCase();
   for (const prefix of prefixes) {
@@ -104,17 +115,7 @@ function classifyToggles(envelope?: IcpEnvelope) {
   }
 
   // Preserve canonical order (WhatsApp → X) in the sidebar.
-  const canonicalOrder: VisibleChannel[] = [
-    "WhatsApp",
-    "Email",
-    "Instagram",
-    "Facebook",
-    "Messenger",
-    "Telegram",
-    "TikTok",
-    "X",
-  ];
-  const visibleOrdered = canonicalOrder.filter((c) => visible.includes(c));
+  const visibleOrdered = CANONICAL_CHANNELS.filter((c) => visible.includes(c));
 
   return { visible: visibleOrdered, matchedKeys, truthyKeys, unmatchedTruthyKeys };
 }
@@ -122,10 +123,11 @@ function classifyToggles(envelope?: IcpEnvelope) {
 export function useIcpChannelVisibility() {
   const query = useIcpOverrides();
 
-  const visibleChannels = useMemo(
-    () => classifyToggles(query.data).visible,
-    [query.data]
-  );
+  const bridgeUnavailable = query.data?.available === false;
+  const visibleChannels = useMemo(() => {
+    if (bridgeUnavailable) return CANONICAL_CHANNELS;
+    return classifyToggles(query.data).visible;
+  }, [query.data, bridgeUnavailable]);
 
   const isChannelVisible = useCallback(
     (channel: Channel) => {
@@ -135,5 +137,10 @@ export function useIcpChannelVisibility() {
     [visibleChannels]
   );
 
-  return { visibleChannels, isChannelVisible };
+  return {
+    visibleChannels,
+    isChannelVisible,
+    bridgeUnavailable,
+    bridgeUnavailableReason: bridgeUnavailable ? query.data?.reason : undefined,
+  };
 }

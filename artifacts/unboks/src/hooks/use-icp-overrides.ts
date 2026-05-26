@@ -40,9 +40,9 @@
  *
  * Failure behavior:
  *   - Network error, 401/403/404/5xx, non-JSON body, or
- *     bridge-unreachable response → returns EMPTY envelope
- *     (available: false). Callers MUST treat this as "no overrides
- *     active" — consistent with the wtyj-agent backend semantics.
+ *     bridge-unreachable response → returns an unavailable envelope
+ *     with a human-readable reason. Callers must surface that state
+ *     honestly instead of silently pretending the channel list is empty.
  */
 import { useQuery } from "@tanstack/react-query";
 import { getApiBase, getClientSlug, getToken } from "@/lib/tenant";
@@ -67,6 +67,7 @@ export interface IcpEnvelope {
 
 const EMPTY_ENVELOPE: IcpEnvelope = {
   available: false,
+  reason: "ICP overrides are not available.",
   tenant_id: null,
   feature_toggles: {},
 };
@@ -77,7 +78,9 @@ const ICP_OVERRIDE_POLL_MS = 15_000;
 async function fetchIcpEnvelope(): Promise<IcpEnvelope> {
   const slug = getClientSlug();
   const token = getToken();
-  if (!slug || !token) return EMPTY_ENVELOPE;
+  if (!slug || !token) {
+    return { ...EMPTY_ENVELOPE, reason: "Dashboard session is not authenticated." };
+  }
   // Use getApiBase() so the request respects VITE_API_BASE_URL in
   // production. A relative /api/... URL would hit the dashboard origin,
   // not the API host, and silently return an empty envelope.
@@ -93,16 +96,23 @@ async function fetchIcpEnvelope(): Promise<IcpEnvelope> {
       },
     });
   } catch {
-    return EMPTY_ENVELOPE;
+    return { ...EMPTY_ENVELOPE, reason: "Could not reach the ICP override endpoint." };
   }
-  if (!resp.ok) return EMPTY_ENVELOPE;
+  if (!resp.ok) {
+    return {
+      ...EMPTY_ENVELOPE,
+      reason: `ICP override endpoint returned HTTP ${resp.status}.`,
+    };
+  }
   let body: IcpEnvelope | undefined;
   try {
     body = (await resp.json()) as IcpEnvelope | undefined;
   } catch {
-    return EMPTY_ENVELOPE;
+    return { ...EMPTY_ENVELOPE, reason: "ICP override endpoint returned unreadable data." };
   }
-  if (!body || typeof body !== "object") return EMPTY_ENVELOPE;
+  if (!body || typeof body !== "object") {
+    return { ...EMPTY_ENVELOPE, reason: "ICP override endpoint returned an invalid envelope." };
+  }
   const envelope: IcpEnvelope = {
     available: body.available !== false,
     reason: body.reason,

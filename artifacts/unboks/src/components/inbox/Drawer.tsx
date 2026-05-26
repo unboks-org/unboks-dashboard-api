@@ -72,7 +72,8 @@ export function Drawer({
     { id: "inbox", icon: InboxIcon, label: "Inbox", count: inboxCount },
   ];
 
-  const { isChannelVisible } = useIcpChannelVisibility();
+  const { isChannelVisible, bridgeUnavailable, bridgeUnavailableReason } =
+    useIcpChannelVisibility();
   const { label: bookingsLabel } = useBookingsLabel();
 
   const ALL_CHANNELS: NavItem[] = [
@@ -112,6 +113,14 @@ export function Drawer({
         </NavGroup>
 
         <SectionHeader label="Channels" />
+        {bridgeUnavailable && (
+          <div className="mx-1 mb-2 rounded-xl border border-[#f6d48f] bg-[#fff8e1] px-3 py-2 text-[12px] leading-5 text-[#7a5a00]">
+            ICP channel sync unavailable. Showing all channels until it reconnects.
+            {bridgeUnavailableReason ? (
+              <span className="block text-[#8a6d1d]">{bridgeUnavailableReason}</span>
+            ) : null}
+          </div>
+        )}
         <NavGroup>
           {CHANNELS.map((item) => (
             <NavRow key={item.id} item={item} active={active === item.id} onSelect={onSelect} />
