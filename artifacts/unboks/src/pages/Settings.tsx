@@ -927,9 +927,25 @@ export default function Settings() {
             aria-label="Settings categories"
             className="mb-6 border-b border-[#e8eaed]"
           >
+            <label className="mb-3 block md:hidden">
+              <span className="mb-1.5 block text-[12px] font-medium text-[#5f6368]">
+                Settings section
+              </span>
+              <select
+                value={active}
+                onChange={(event) => selectCategory(event.target.value as CategoryId)}
+                className="w-full rounded-xl border border-[#dadce0] bg-white px-3 py-2.5 text-[14px] font-medium text-[#202124] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
+              >
+                {CATEGORIES.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <div
               role="tablist"
-              className="-mb-px flex gap-1 overflow-x-auto sm:gap-2"
+              className="-mb-px hidden gap-1 overflow-x-auto md:flex sm:gap-2"
               style={{ scrollbarWidth: "none" }}
             >
               {CATEGORIES.map((cat) => {

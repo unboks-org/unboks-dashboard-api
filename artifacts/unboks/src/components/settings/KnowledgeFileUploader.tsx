@@ -202,7 +202,7 @@ export function KnowledgeFileUploader() {
             return (
               <li
                 key={f.id}
-                className="flex items-center gap-3 rounded-xl border border-[#e8eaed] bg-white px-3 py-2.5"
+                className="flex flex-wrap items-center gap-3 rounded-xl border border-[#e8eaed] bg-white px-3 py-2.5 sm:flex-nowrap"
               >
                 <div className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg bg-[#f1f3f4] text-[#5f6368]">
                   <FileText className="h-4 w-4" />
@@ -218,7 +218,7 @@ export function KnowledgeFileUploader() {
                 </div>
                 <span
                   className={cn(
-                    "hidden flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium sm:inline-flex",
+                    "inline-flex flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
                     STATUS_PILL[f.status],
                   )}
                 >
@@ -239,7 +239,7 @@ export function KnowledgeFileUploader() {
                     });
                   }}
                   aria-label={`Remove ${f.filename}`}
-                  className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="ml-auto grid h-10 w-10 flex-shrink-0 place-items-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4] disabled:cursor-not-allowed disabled:opacity-50 sm:h-8 sm:w-8"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

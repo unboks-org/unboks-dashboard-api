@@ -774,7 +774,7 @@ export function AgentPersonalityWizard() {
               </div>
             )}
 
-            <div className="mt-4 flex gap-2.5">
+            <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
               <Textarea
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
@@ -786,7 +786,7 @@ export function AgentPersonalityWizard() {
                 type="button"
                 disabled={!message.trim() || isGenerating || isSaving}
                 onClick={() => handleSendMessage()}
-                className="h-auto min-w-[92px] rounded-lg bg-[#1a73e8] text-[13px] text-white"
+                className="min-h-[40px] w-full rounded-lg bg-[#1a73e8] text-[13px] text-white sm:h-auto sm:w-auto sm:min-w-[92px]"
               >
                 {isGenerating ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -797,21 +797,21 @@ export function AgentPersonalityWizard() {
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-4 flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
             <Button
               type="button"
               variant="outline"
               onClick={() => setStep(QUESTIONS.length - 1)}
               disabled={isGenerating || isSaving}
-              className="min-h-[34px] rounded-lg bg-white px-3 text-[13px]"
+              className="min-h-[36px] rounded-lg bg-white px-3 text-[13px]"
             >
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
               <span
                 className={cn(
-                  "text-[13px] text-[#137333] transition-opacity",
+                  "text-center text-[13px] text-[#137333] transition-opacity sm:text-left",
                   saved ? "opacity-100" : "opacity-0",
                 )}
               >
@@ -821,7 +821,7 @@ export function AgentPersonalityWizard() {
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving || isGenerating}
-                className="min-h-[36px] rounded-lg bg-[#1a73e8] px-4 text-[13px] text-white"
+                className="min-h-[40px] whitespace-normal rounded-lg bg-[#1a73e8] px-4 text-[13px] leading-5 text-white"
               >
                 {isSaving ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

@@ -24,6 +24,9 @@ import { cn } from "@/lib/utils";
 import { AIEditorPanel } from "@/components/inbox/AIEditorPanel";
 import { motion } from "framer-motion";
 
+const MOBILE_SHEET_CLASS =
+  "max-sm:left-0 max-sm:right-0 max-sm:bottom-0 max-sm:top-auto max-sm:translate-x-0 max-sm:translate-y-0 max-sm:w-full max-sm:max-w-none max-sm:max-h-[calc(100dvh-1rem)] max-sm:overflow-y-auto max-sm:rounded-t-2xl max-sm:rounded-b-none max-sm:border-b-0 max-sm:p-4";
+
 /**
  * Translate any error from the email mutation hooks into calm operator copy.
  *
@@ -118,6 +121,7 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
       <DialogContent
         className={cn(
           "box-border w-full sm:w-[calc(100vw-32px)] max-w-[520px] overflow-hidden rounded-t-[1.5rem] rounded-b-none sm:rounded-xl transition-all duration-300 ease-out p-5 sm:p-6 mb-0 sm:mb-auto self-end sm:self-center mt-auto sm:mt-auto",
+          MOBILE_SHEET_CLASS,
           aiOpen && "flex flex-col max-h-[85vh] p-0 gap-0 [&>button]:hidden",
         )}
       >
@@ -263,7 +267,12 @@ export function EmailForwardModal({ open, conversation, onClose }: EmailForwardM
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && !forward.isPending) onClose(); }}>
-      <DialogContent className="box-border w-[calc(100vw-32px)] max-w-[520px] overflow-hidden">
+      <DialogContent
+        className={cn(
+          "box-border w-[calc(100vw-32px)] max-w-[520px] overflow-hidden",
+          MOBILE_SHEET_CLASS,
+        )}
+      >
         <DialogHeader className="min-w-0">
           <DialogTitle className="break-words">Forward email</DialogTitle>
           <DialogDescription
@@ -408,7 +417,12 @@ export function EmailDeleteConfirm({ open, conversation, onClose, onDeleted }: E
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && !del.isPending) onClose(); }}>
-      <DialogContent className="box-border w-[calc(100vw-32px)] max-w-[420px] overflow-hidden">
+      <DialogContent
+        className={cn(
+          "box-border w-[calc(100vw-32px)] max-w-[420px] overflow-hidden",
+          MOBILE_SHEET_CLASS,
+        )}
+      >
         <DialogHeader className="min-w-0">
           <DialogTitle className="break-words">Remove this conversation?</DialogTitle>
           <DialogDescription className="break-words">

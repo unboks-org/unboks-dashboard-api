@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, ReactNode } from "react";
 import { useLocation, useSearch } from "wouter";
 import { Header } from "@/components/inbox/Header";
 import { Drawer, NavId } from "@/components/inbox/Drawer";
+import { BottomNav } from "@/components/inbox/BottomNav";
 import { Channel, Conversation } from "@/data/conversations";
 import { useConversations, useEscalations } from "@/hooks/use-client-api";
 import { mapApiConversation, normalizeEscalation } from "@/lib/conversation-mapper";
@@ -321,6 +322,12 @@ export function DashboardShell({
             {children}
           </div>
         </main>
+        <BottomNav
+          active={activeNav}
+          onChange={handleNavSelect}
+          inboxBadge={inboxCount}
+          appointmentsBadge={appointmentsCount}
+        />
       </div>
     </div>
   );
