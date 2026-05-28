@@ -1940,6 +1940,8 @@ export interface OnboardingStatus {
   trialStartedAt: string | null;
   trialEndsAt: string | null;
   trialDaysRemaining: number | null;
+  whatsappConnected: boolean;
+  whatsappConnectionStatus: string;
   whatsappConnectUrl: string;
 }
 
@@ -1953,6 +1955,12 @@ export async function fetchOnboardingStatus(): Promise<OnboardingStatus> {
     trialEndsAt: typeof raw.trialEndsAt === "string" ? raw.trialEndsAt : null,
     trialDaysRemaining:
       typeof raw.trialDaysRemaining === "number" ? raw.trialDaysRemaining : null,
+    whatsappConnected:
+      typeof raw.whatsappConnected === "boolean" ? raw.whatsappConnected : false,
+    whatsappConnectionStatus:
+      typeof raw.whatsappConnectionStatus === "string"
+        ? raw.whatsappConnectionStatus
+        : "",
     whatsappConnectUrl:
       typeof raw.whatsappConnectUrl === "string" ? raw.whatsappConnectUrl : "",
   };
