@@ -911,6 +911,14 @@ export interface AccountSettingsApiPayload {
   website?: string;
 }
 
+export interface AgentIdentitySettings {
+  defaultName: string;
+  tenantName: string | null;
+  adminOverrideName: string | null;
+  effectiveName: string;
+  source: "default" | "tenant" | "admin_override";
+}
+
 export interface InfoUpdateApiItem {
   id: number | string;
   type?: string | null;
@@ -1162,6 +1170,57 @@ export async function saveAccountSettings(
     method: "PUT",
     body: JSON.stringify(payload),
   });
+}
+
+function normalizeAgentIdentity(raw: unknown): AgentIdentitySettings {
+  const fallback: AgentIdentitySettings = {
+    defaultName: "Marina",
+    tenantName: null,
+    adminOverrideName: null,
+    effectiveName: "Marina",
+    source: "default",
+  };
+  if (!raw || typeof raw !== "object") return fallback;
+  const o = raw as Record<string, unknown>;
+  const effectiveName =
+    typeof o.effectiveName === "string" && o.effectiveName.trim()
+      ? o.effectiveName.trim()
+      : fallback.effectiveName;
+  const source =
+    o.source === "tenant" || o.source === "admin_override" || o.source === "default"
+      ? o.source
+      : fallback.source;
+  return {
+    defaultName:
+      typeof o.defaultName === "string" && o.defaultName.trim()
+        ? o.defaultName.trim()
+        : fallback.defaultName,
+    tenantName:
+      typeof o.tenantName === "string" && o.tenantName.trim()
+        ? o.tenantName.trim()
+        : null,
+    adminOverrideName:
+      typeof o.adminOverrideName === "string" && o.adminOverrideName.trim()
+        ? o.adminOverrideName.trim()
+        : null,
+    effectiveName,
+    source,
+  };
+}
+
+export async function fetchAgentIdentity(): Promise<AgentIdentitySettings> {
+  return normalizeAgentIdentity(await apiFetch<unknown>("/settings/agent-identity"));
+}
+
+export async function saveAgentIdentity(
+  agentName: string,
+): Promise<AgentIdentitySettings> {
+  return normalizeAgentIdentity(
+    await apiFetch<unknown>("/settings/agent-identity", {
+      method: "PUT",
+      body: JSON.stringify({ agentName }),
+    }),
+  );
 }
 
 export async function fetchInfoUpdates(): Promise<InfoUpdatesApiResponse> {
