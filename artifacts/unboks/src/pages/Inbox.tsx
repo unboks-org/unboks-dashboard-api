@@ -348,6 +348,7 @@ interface ConversationDetailPaneProps {
    *  level. Only surfaced when wired from the parent — typically every
    *  active inbox view, but never on the Resolved tab. */
   onBlock?: (conv: Conversation) => void;
+  onUnresolveSuccess?: (mode: "soft" | "hard" | null) => void;
   /**
    * When true the pane is rendering a resolved escalation from the Resolved
    * tab. Forces the non-escalation (read-only trail) layout regardless of
@@ -367,6 +368,7 @@ function ConversationDetailPane({
   onRestore,
   archived = false,
   onBlock,
+  onUnresolveSuccess,
   resolvedContext: resolvedContextProp = false,
 }: ConversationDetailPaneProps) {
   // Belt-and-suspenders: the prop is set by the parent when
@@ -379,6 +381,7 @@ function ConversationDetailPane({
   // surfaces (e.g. Settings → Agent learnings).
   const [, navigate] = useLocation();
   const { data: detail, isLoading, isError, error } = useConversation(conversation.id);
+  const { unresolve } = useEscalationMutations();
   const badgeColor = CHANNEL_BADGE_COLORS[conversation.channel] ?? "#9aa0a6";
   // Sort newest-first by parsed backend timestamp so the latest message is
   // always at the top of the thread (Inbox / Escalation trail / WhatsApp /
@@ -457,6 +460,30 @@ function ConversationDetailPane({
   useEffect(() => {
     setTrailOpen(false);
   }, [conversation.id]);
+
+  const onUnresolve = useCallback(() => {
+    const escalationId = conversation.escalationId;
+    if (!escalationId || unresolve.isPending) return;
+    if (!window.confirm("Reopen this escalation?")) return;
+    unresolve.mutate(
+      { id: escalationId },
+      {
+        onSuccess: () => {
+          toast.success("Escalation reopened");
+          onUnresolveSuccess?.(conversation.escalationMode ?? null);
+        },
+        onError: (err) => {
+          const msg = err instanceof Error ? err.message : "Please try again.";
+          toast.error("Couldn't reopen escalation", { description: msg });
+        },
+      },
+    );
+  }, [
+    conversation.escalationId,
+    conversation.escalationMode,
+    onUnresolveSuccess,
+    unresolve,
+  ]);
 
   // Imperative handle into the Escalation Reply composer so the option
   // chips in the Reason panel can drive it (insert/append draft text,
@@ -628,6 +655,20 @@ function ConversationDetailPane({
               />
             </div>
           )}
+          {resolvedContext && conversation.escalationId && (
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              type="button"
+              onClick={onUnresolve}
+              disabled={unresolve.isPending}
+              aria-label="Reopen this escalation"
+              title="Reopen this escalation"
+              className="min-h-[44px] md:min-h-0 md:h-9 inline-flex items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-semibold border border-[#d6e4ff] bg-white text-primary hover:bg-primary/10 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              <ArchiveRestore className="w-[18px] h-[18px]" strokeWidth={1.6} />
+              <span>{unresolve.isPending ? "Reopening..." : "Unresolve"}</span>
+            </motion.button>
+          )}
           {(onArchive || onRestore) && (
             <div className="flex items-center gap-1 flex-shrink-0 ml-2">
               {!archived && onArchive && (
@@ -725,6 +766,18 @@ function ConversationDetailPane({
             <span className="text-[11.5px] font-semibold px-2.5 py-0.5 rounded-full flex-shrink-0 bg-[#10b981]/10 text-[#10b981] tracking-wide shadow-sm">
               Resolved escalation
             </span>
+          )}
+          {resolvedContext && conversation.escalationId && (
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              type="button"
+              onClick={onUnresolve}
+              disabled={unresolve.isPending}
+              className="min-h-[36px] inline-flex items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-semibold border border-[#d6e4ff] bg-white text-primary disabled:opacity-60"
+            >
+              <ArchiveRestore className="w-[16px] h-[16px]" strokeWidth={1.6} />
+              <span>{unresolve.isPending ? "Reopening..." : "Unresolve"}</span>
+            </motion.button>
           )}
           {showBanner && dbId && !resolvedContext && (
             <EscalationModeToggle
@@ -1085,6 +1138,10 @@ export default function Inbox() {
     // itself is removed from the list by the blocked-set filter on the
     // next render once the query invalidates.
     setSelectedConv((cur) => (cur?.id === blockedId ? null : cur));
+  }, []);
+  const handleUnresolveSuccess = useCallback((mode: "soft" | "hard" | null) => {
+    setSelectedConv(null);
+    setEscalationFilter(mode === "hard" ? "hard" : mode === "soft" ? "soft" : "all");
   }, []);
 
   // Server-backed blocked senders. The lookup is cheap (Set.has), so
@@ -1666,6 +1723,7 @@ export default function Inbox() {
                 ? undefined
                 : handleBlock
             }
+            onUnresolveSuccess={handleUnresolveSuccess}
             resolvedContext={escalationFilter === "resolved"}
           />
         )}

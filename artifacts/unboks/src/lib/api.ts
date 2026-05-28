@@ -1636,6 +1636,12 @@ export async function resolveEscalation(
   });
 }
 
+export async function unresolveEscalation(id: string): Promise<Escalation> {
+  return apiFetch<Escalation>(`/escalations/${id}/unresolve`, {
+    method: "POST",
+  });
+}
+
 export async function replyEscalation(id: string, message: string): Promise<void> {
   return apiFetch<void>(`/escalations/${id}/reply`, {
     method: "POST",

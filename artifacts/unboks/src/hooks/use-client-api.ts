@@ -10,6 +10,7 @@ import {
   fetchEscalations,
   fetchResolvedEscalations,
   resolveEscalation,
+  unresolveEscalation,
   replyEscalation,
   deleteEscalation,
   submitGuidance,
@@ -171,6 +172,10 @@ export function useEscalationMutations() {
       resolveEscalation(id, payload),
     onSuccess: invalidate,
   });
+  const unresolve = useMutation({
+    mutationFn: ({ id }: { id: string }) => unresolveEscalation(id),
+    onSuccess: invalidate,
+  });
   const remove = useMutation({ mutationFn: deleteEscalation, onSuccess: invalidate });
   const reply = useMutation({
     mutationFn: ({ id, message }: { id: string; message: string }) =>
@@ -197,7 +202,7 @@ export function useEscalationMutations() {
     onSuccess: invalidate,
   });
 
-  return { resolve, remove, reply, guidance, takeover, setMode, handback };
+  return { resolve, unresolve, remove, reply, guidance, takeover, setMode, handback };
 }
 
 // ------ Learning entries ------
