@@ -12,6 +12,8 @@ import { FeatureTogglesProvider } from "@/lib/feature-toggles";
 import NotFound from "@/pages/not-found";
 import Inbox from "@/pages/Inbox";
 import Login from "@/pages/Login";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import Bookings from "@/pages/Bookings";
 import Settings from "@/pages/Settings";
 import Analytics from "@/pages/Analytics";
@@ -286,6 +288,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/bookings">
         <ProtectedRoute><Bookings /></ProtectedRoute>
       </Route>
