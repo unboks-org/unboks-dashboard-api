@@ -9,9 +9,11 @@ export function OnboardingBanner() {
 
   if (isLoading || isError || !data) return null;
 
+  if (data.whatsappConnected) return null;
+
   const showTrial = data.trialDaysRemaining !== null && data.trialDaysRemaining >= 0;
-  const hasWhatsapp = Boolean(data.whatsappConnectUrl);
-  if (!showTrial && !hasWhatsapp) return null;
+  const hasWhatsappConnectUrl = Boolean(data.whatsappConnectUrl);
+  if (!hasWhatsappConnectUrl) return null;
 
   return (
     <section className="border-b border-[#e8eaed] bg-[#fbfcff] px-4 py-3 sm:px-6">
@@ -31,24 +33,22 @@ export function OnboardingBanner() {
             )}
           </div>
           <p className="mt-2 text-[13px] leading-relaxed text-[#5f6368]">
-            Finish the two setup steps: connect WhatsApp and tune your AI Agent's style.
+            Connect WhatsApp to start receiving and replying to customer messages.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {hasWhatsapp && (
-            <a
-              href={data.whatsappConnectUrl}
-              target="_blank"
-              rel="noreferrer"
-              className={cn(
-                "inline-flex items-center justify-center gap-2 rounded-[10px] bg-[#1a73e8]",
-                "px-3.5 py-2 text-[13px] font-medium text-white hover:bg-[#1765c1]",
-              )}
-            >
-              <MessageCircle className="h-4 w-4" />
-              Connect WhatsApp
-            </a>
-          )}
+          <a
+            href={data.whatsappConnectUrl}
+            target="_blank"
+            rel="noreferrer"
+            className={cn(
+              "inline-flex items-center justify-center gap-2 rounded-[10px] bg-[#1a73e8]",
+              "px-3.5 py-2 text-[13px] font-medium text-white hover:bg-[#1765c1]",
+            )}
+          >
+            <MessageCircle className="h-4 w-4" />
+            Connect WhatsApp
+          </a>
           <button
             type="button"
             onClick={() => navigate("/settings?category=agent-personality")}
