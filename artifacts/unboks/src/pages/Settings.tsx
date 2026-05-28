@@ -31,6 +31,7 @@ import { KnowledgeMediaAttachments } from "@/components/settings/KnowledgeMediaA
 import { CloudKnowledgeConnections } from "@/components/settings/CloudKnowledgeConnections";
 import { DataRetentionSettings } from "@/components/settings/DataRetentionSettings";
 import { BlockedSendersList } from "@/components/settings/BlockedSendersList";
+import { AutoBlockRulesSettings } from "@/components/settings/AutoBlockRulesSettings";
 import { AgentLearningsList } from "@/components/settings/AgentLearningsList";
 import { AgentPersonalityWizard } from "@/components/settings/AgentPersonalityWizard";
 import { useSot, type SotBlock, type SotSubsection } from "@/data/sot";
@@ -57,6 +58,7 @@ type CategoryId =
   | "agent-learnings"
   | "escalation"
   | "data-retention"
+  | "auto-block"
   | "blocked-senders"
   | "preferences";
 
@@ -109,6 +111,12 @@ const CATEGORIES: {
     id: "blocked-senders",
     label: "Blocked senders",
     description: "Senders blocked from your active inbox at the Unboks dashboard layer.",
+    icon: Ban,
+  },
+  {
+    id: "auto-block",
+    label: "Auto-block",
+    description: "Automatically block severe abuse and repeated profanity with human review.",
     icon: Ban,
   },
   {
@@ -736,6 +744,7 @@ const CATEGORY_IDS: ReadonlySet<string> = new Set<CategoryId>([
   "agent-learnings",
   "escalation",
   "data-retention",
+  "auto-block",
   "blocked-senders",
   "preferences",
 ]);
@@ -1589,6 +1598,13 @@ export default function Settings() {
 
               {active === "blocked-senders" && (
                 <div className="space-y-5">
+                  <BlockedSendersList />
+                </div>
+              )}
+
+              {active === "auto-block" && (
+                <div className="space-y-5">
+                  <AutoBlockRulesSettings />
                   <BlockedSendersList />
                 </div>
               )}
