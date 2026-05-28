@@ -644,6 +644,27 @@ export interface BlockedSendersResponse {
   conversations: BlockedSender[];
 }
 
+export interface AutoBlockSettings {
+  enabled: boolean;
+  zero_tolerance: {
+    hate_speech: boolean;
+    severe_insult: boolean;
+    threat: boolean;
+    sexual_harassment: boolean;
+    fraud_scam: boolean;
+    severe_abuse: boolean;
+  };
+  repeated_profanity: {
+    enabled: boolean;
+    threshold: 2 | 3 | 5;
+    warn_before_block: boolean;
+    warning_message: string;
+    window_hours: number;
+  };
+  final_block_notice_enabled: boolean;
+  admin_override?: boolean;
+}
+
 export interface BlockConversationPayload {
   reason: BlockReason;
   blocked_by: string;
@@ -735,6 +756,17 @@ export async function saveSourceOfTruth(blocks: SotBlock[]): Promise<SotBlock[]>
 export async function fetchBlockedSenders(): Promise<BlockedSendersResponse> {
   const raw = await apiFetch<unknown>("/blocked-senders");
   return { conversations: normalizeBlockedSenders(raw) };
+}
+
+export async function fetchAutoBlockSettings(): Promise<AutoBlockSettings> {
+  return apiFetch<AutoBlockSettings>("/settings/auto-block");
+}
+
+export async function saveAutoBlockSettings(settings: AutoBlockSettings): Promise<AutoBlockSettings> {
+  return apiFetch<AutoBlockSettings>("/settings/auto-block", {
+    method: "PUT",
+    body: JSON.stringify(settings),
+  });
 }
 
 function normalizeBlockedSenders(raw: unknown): BlockedSender[] {
