@@ -1,5 +1,5 @@
 import { useState, FormEvent } from "react";
-import { useLocation, Redirect } from "wouter";
+import { useLocation, Redirect, Link } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { Lock, Building2 } from "lucide-react";
 import { useAuth } from "@/components/auth/useAuth";
@@ -231,6 +231,12 @@ export default function Login() {
           >
             {mutation.isPending ? "Signing in…" : "Sign in"}
           </motion.button>
+          <Link
+            href={`/forgot-password?workspace=${encodeURIComponent(workspaceInput.trim())}`}
+            className="text-center text-[13px] font-medium text-primary hover:underline"
+          >
+            Forgot password?
+          </Link>
         </form>
       </motion.div>
     </div>

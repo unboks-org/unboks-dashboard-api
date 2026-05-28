@@ -1151,6 +1151,55 @@ export async function apiLogin(
   return (await res.json()) as LoginResponse;
 }
 
+export async function requestPasswordReset(
+  slug: string,
+  email: string,
+): Promise<{ ok: boolean; message: string }> {
+  const base = getApiBase(slug);
+  let res: Response;
+  try {
+    res = await fetch(`${base}/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+  } catch (networkErr) {
+    throw new ApiError(0, networkErr instanceof Error ? networkErr.message : "Network error");
+  }
+  if (!res.ok) throw new ApiError(res.status, `HTTP ${res.status}`);
+  return (await res.json()) as { ok: boolean; message: string };
+}
+
+export async function resetPassword(
+  slug: string,
+  token: string,
+  newPassword: string,
+  confirmPassword: string,
+): Promise<{ ok: boolean; message: string }> {
+  const base = getApiBase(slug);
+  let res: Response;
+  try {
+    res = await fetch(`${base}/auth/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, newPassword, confirmPassword }),
+    });
+  } catch (networkErr) {
+    throw new ApiError(0, networkErr instanceof Error ? networkErr.message : "Network error");
+  }
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try {
+      const body = await res.json();
+      msg = body.message ?? body.error ?? body.detail ?? msg;
+    } catch {
+      // keep status message
+    }
+    throw new ApiError(res.status, msg);
+  }
+  return (await res.json()) as { ok: boolean; message: string };
+}
+
 export async function fetchAccountSettings(): Promise<AccountSettingsApiResponse> {
   return apiFetch<AccountSettingsApiResponse>("/settings/your-info");
 }
