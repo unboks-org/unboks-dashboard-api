@@ -25,6 +25,7 @@ import {
 } from "@/hooks/use-escalation-notification-preferences";
 import { ApiError } from "@/lib/error";
 import { useAccountSettings, type AccountSettings } from "@/hooks/use-account-settings";
+import { useAgentIdentity } from "@/hooks/use-agent-identity";
 import { useYourInfoUpdates, UPDATE_TYPES, type YourInfoUpdateType } from "@/hooks/use-your-info-updates";
 import { KnowledgeFileUploader } from "@/components/settings/KnowledgeFileUploader";
 import { KnowledgeMediaAttachments } from "@/components/settings/KnowledgeMediaAttachments";
@@ -242,6 +243,101 @@ function SavedFlash({ visible }: { visible: boolean }) {
     >
       Saved
     </span>
+  );
+}
+
+function AgentIdentityCard() {
+  const { settings, isLoading, loadError, save, isSaving } = useAgentIdentity();
+  const [draft, setDraft] = useState("");
+
+  useEffect(() => {
+    if (settings) setDraft(settings.tenantName ?? settings.effectiveName ?? "Marina");
+  }, [settings]);
+
+  const sourceLabel =
+    settings?.source === "admin_override"
+      ? "Admin override active"
+      : settings?.source === "tenant"
+        ? "Tenant-set"
+        : "Default";
+
+  const handleSave = async () => {
+    const next = draft.trim();
+    if (!next) {
+      toast.error("AI Agent name is required.");
+      return;
+    }
+    if (next.length > 40) {
+      toast.error("AI Agent name must be 40 characters or less.");
+      return;
+    }
+    try {
+      const saved = await save(next);
+      toast.success(`AI Agent name saved as ${saved.effectiveName}.`);
+    } catch (err) {
+      const msg = err instanceof Error && err.message
+        ? err.message
+        : "Could not save AI Agent name.";
+      toast.error(msg);
+    }
+  };
+
+  return (
+    <Card
+      title="AI Agent name"
+      description="Choose the name your AI assistant uses with customers."
+    >
+      <div className="space-y-4">
+        {loadError && (
+          <div
+            role="alert"
+            className="rounded-md border border-[#f6caca] bg-[#fce8e6] px-3 py-2 text-[12px] leading-relaxed text-[#a50e0e]"
+          >
+            Could not load AI Agent name: {loadError.message}
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-2 text-[13px] text-[#5f6368]">
+          <span>Current active name:</span>
+          <span className="rounded-full bg-[#eef3fb] px-2.5 py-1 font-medium text-[#202124]">
+            {settings?.effectiveName ?? "Marina"}
+          </span>
+          <span
+            className={cn(
+              "rounded-full px-2.5 py-1 text-[12px] font-medium",
+              settings?.source === "admin_override"
+                ? "bg-[#fce8e6] text-[#a50e0e]"
+                : "bg-[#e6f4ea] text-[#137333]",
+            )}
+          >
+            {sourceLabel}
+          </span>
+        </div>
+        {settings?.source === "admin_override" && (
+          <p className="text-[13px] leading-relaxed text-[#5f6368]">
+            Calvin has set an admin override in the Internal Control Panel. You can save a tenant value here, but the admin override remains active until it is cleared in Nr3.
+          </p>
+        )}
+        <label className="block">
+          <FieldLabel>AI Agent name</FieldLabel>
+          <TextInput
+            value={draft}
+            disabled={isLoading || isSaving}
+            maxLength={40}
+            placeholder="Marina"
+            onChange={(event) => setDraft(event.target.value)}
+          />
+        </label>
+        <div className="flex justify-end">
+          <PrimaryButton
+            type="button"
+            disabled={isLoading || isSaving || !draft.trim()}
+            onClick={handleSave}
+          >
+            {isSaving ? "Saving..." : "Save name"}
+          </PrimaryButton>
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -1601,6 +1697,7 @@ export default function Settings() {
 
               {active === "agent-personality" && (
                 <div className="space-y-5">
+                  <AgentIdentityCard />
                   <AgentPersonalityWizard />
                 </div>
               )}
