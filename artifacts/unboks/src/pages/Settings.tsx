@@ -872,6 +872,7 @@ export default function Settings() {
   const responseTiming = responseTimingSettings?.effective;
   const responseTimingTenant = responseTimingSettings?.tenantValue;
   const responseTimingOverrideActive = responseTimingSettings?.source === "admin_override";
+  const responseTimingMode = responseTimingTenant?.mode ?? "preset";
   const accountDirty = useMemo(
     () => JSON.stringify(account) !== JSON.stringify(accountDraft),
     [account, accountDraft],
@@ -1784,6 +1785,58 @@ export default function Settings() {
                           />
                         </div>
                         <div>
+                          <FieldLabel>Timing mode</FieldLabel>
+                          <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                            {[
+                              { key: "preset", label: "Preset", help: "Fast, balanced, or patient." },
+                              { key: "custom", label: "Custom", help: "Choose exact seconds." },
+                              { key: "random", label: "Random", help: "Random wait each batch." },
+                            ].map((mode) => (
+                              <button
+                                key={mode.key}
+                                type="button"
+                                disabled={saveResponseTiming.isPending || responseTimingOverrideActive}
+                                onClick={async () => {
+                                  try {
+                                    const next = {
+                                      ...responseTimingTenant,
+                                      mode: mode.key,
+                                      ...(mode.key === "custom"
+                                        ? {
+                                            custom_delay_seconds:
+                                              responseTimingTenant.custom_delay_seconds ?? responseTimingTenant.delay_seconds ?? 12,
+                                          }
+                                        : {}),
+                                      ...(mode.key === "random"
+                                        ? {
+                                            random_min_seconds: responseTimingTenant.random_min_seconds ?? 5,
+                                            random_max_seconds: responseTimingTenant.random_max_seconds ?? 25,
+                                          }
+                                        : {}),
+                                    };
+                                    await saveResponseTiming.mutateAsync(next);
+                                    toast.success("Response timing saved.");
+                                  } catch (err) {
+                                    toast.error(err instanceof Error ? err.message : "Could not save response timing.");
+                                  }
+                                }}
+                                className={cn(
+                                  "rounded-xl border px-4 py-3 text-left text-[13px] transition",
+                                  responseTimingMode === mode.key
+                                    ? "border-[#1a73e8] bg-[#e8f0fe] text-[#174ea6]"
+                                    : "border-[#e8eaed] bg-white text-[#202124] hover:border-[#cbd5e1]",
+                                  (saveResponseTiming.isPending || responseTimingOverrideActive) && "cursor-not-allowed opacity-60",
+                                )}
+                              >
+                                <span className="block font-medium">{mode.label}</span>
+                                <span className="text-[12px] text-[#5f6368]">{mode.help}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {responseTimingMode === "preset" && (
+                        <div>
                           <FieldLabel>Reply speed</FieldLabel>
                           <div className="mt-2 grid gap-2 sm:grid-cols-3">
                             {(responseTimingSettings?.presets ?? []).map((preset) => {
@@ -1797,6 +1850,7 @@ export default function Settings() {
                                     try {
                                       await saveResponseTiming.mutateAsync({
                                         ...responseTimingTenant,
+                                        mode: "preset",
                                         preset: preset.key,
                                         delay_seconds: preset.delay_seconds,
                                       });
@@ -1822,13 +1876,102 @@ export default function Settings() {
                             })}
                           </div>
                         </div>
+                        )}
+
+                        {responseTimingMode === "custom" && (
+                          <label className="block">
+                            <FieldLabel>Custom wait in seconds</FieldLabel>
+                            <input
+                              type="number"
+                              min={5}
+                              max={300}
+                              step={1}
+                              value={Math.round(responseTimingTenant.custom_delay_seconds ?? responseTimingTenant.delay_seconds ?? 12)}
+                              disabled={saveResponseTiming.isPending || responseTimingOverrideActive}
+                              onChange={async (event) => {
+                                const value = Math.max(5, Math.min(300, Number(event.target.value) || 12));
+                                try {
+                                  await saveResponseTiming.mutateAsync({
+                                    ...responseTimingTenant,
+                                    mode: "custom",
+                                    custom_delay_seconds: value,
+                                    delay_seconds: value,
+                                    max_wait_seconds: value,
+                                  });
+                                  toast.success("Response timing saved.");
+                                } catch (err) {
+                                  toast.error(err instanceof Error ? err.message : "Could not save response timing.");
+                                }
+                              }}
+                              className="mt-2 h-11 w-full rounded-xl border border-[#dadce0] bg-white px-3 text-[14px] text-[#202124] outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-[#1a73e8]/15 disabled:opacity-60"
+                            />
+                            <p className="mt-1 text-[12px] text-[#5f6368]">Allowed range: 5 to 300 seconds.</p>
+                          </label>
+                        )}
+
+                        {responseTimingMode === "random" && (
+                          <div className="rounded-xl border border-[#edf0f3] bg-[#fbfcfe] px-4 py-3">
+                            <FieldLabel>Random wait range</FieldLabel>
+                            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                              {[
+                                { key: "random_min_seconds", label: "Minimum", fallback: 5 },
+                                { key: "random_max_seconds", label: "Maximum", fallback: 25 },
+                              ].map((field) => {
+                                const value = Math.round(
+                                  Number(responseTimingTenant[field.key as "random_min_seconds" | "random_max_seconds"] ?? field.fallback),
+                                );
+                                return (
+                                  <label key={field.key} className="block">
+                                    <span className="text-[12px] font-medium text-[#202124]">
+                                      {field.label}: {value}s
+                                    </span>
+                                    <input
+                                      type="range"
+                                      min={5}
+                                      max={300}
+                                      step={1}
+                                      value={value}
+                                      disabled={saveResponseTiming.isPending || responseTimingOverrideActive}
+                                      onChange={async (event) => {
+                                        const nextValue = Math.max(5, Math.min(300, Number(event.target.value) || field.fallback));
+                                        const next = {
+                                          ...responseTimingTenant,
+                                          mode: "random",
+                                          random_min_seconds: responseTimingTenant.random_min_seconds ?? 5,
+                                          random_max_seconds: responseTimingTenant.random_max_seconds ?? 25,
+                                          [field.key]: nextValue,
+                                        };
+                                        if ((next.random_min_seconds ?? 5) > (next.random_max_seconds ?? 25)) {
+                                          if (field.key === "random_min_seconds") next.random_max_seconds = nextValue;
+                                          else next.random_min_seconds = nextValue;
+                                        }
+                                        try {
+                                          await saveResponseTiming.mutateAsync(next);
+                                          toast.success("Response timing saved.");
+                                        } catch (err) {
+                                          toast.error(err instanceof Error ? err.message : "Could not save response timing.");
+                                        }
+                                      }}
+                                      className="mt-2 w-full"
+                                    />
+                                  </label>
+                                );
+                              })}
+                            </div>
+                            <p className="mt-2 text-[12px] text-[#5f6368]">
+                              Marina picks one random wait value inside this range for each new message batch.
+                            </p>
+                          </div>
+                        )}
                         <div className="grid gap-3 text-[12px] text-[#5f6368] sm:grid-cols-2">
                           <p>
                             Current active timing:{" "}
                             <span className="font-medium text-[#202124]">
-                              {responseTiming.message_batching_enabled
-                                ? `${responseTiming.delay_seconds}s delay, ${responseTiming.max_wait_seconds}s max`
-                                : "Immediate replies"}
+                              {!responseTiming.message_batching_enabled
+                                ? "Immediate replies"
+                                : responseTiming.mode === "random"
+                                  ? `Random ${responseTiming.random_min_seconds}s-${responseTiming.random_max_seconds}s`
+                                  : `${responseTiming.delay_seconds}s delay`}
                             </span>
                           </p>
                           {responseTimingOverrideActive && (

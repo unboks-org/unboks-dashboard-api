@@ -953,9 +953,14 @@ export interface AgentNameSettings {
 
 export interface ResponseTimingValue {
   message_batching_enabled: boolean;
+  mode?: "preset" | "custom" | "random" | string;
   preset: "fast" | "balanced" | "patient" | string;
   delay_seconds: number;
   max_wait_seconds: number;
+  custom_delay_seconds?: number;
+  random_min_seconds?: number;
+  random_max_seconds?: number;
+  random_picked_seconds?: number;
   source?: string;
 }
 
