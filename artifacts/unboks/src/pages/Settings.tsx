@@ -26,6 +26,10 @@ import {
 import { ApiError } from "@/lib/error";
 import { useAccountSettings, type AccountSettings } from "@/hooks/use-account-settings";
 import { useAgentNameSettings } from "@/hooks/use-agent-name-settings";
+import {
+  useResponseTimingSettings,
+  useSaveResponseTimingSettings,
+} from "@/hooks/use-response-timing-settings";
 import { useYourInfoUpdates, UPDATE_TYPES, type YourInfoUpdateType } from "@/hooks/use-your-info-updates";
 import { KnowledgeFileUploader } from "@/components/settings/KnowledgeFileUploader";
 import { KnowledgeMediaAttachments } from "@/components/settings/KnowledgeMediaAttachments";
@@ -832,6 +836,12 @@ export default function Settings() {
     isLoading: agentNameLoading,
     save: saveAgentName,
   } = useAgentNameSettings();
+  const {
+    data: responseTimingSettings,
+    isLoading: responseTimingLoading,
+    isError: responseTimingError,
+  } = useResponseTimingSettings();
+  const saveResponseTiming = useSaveResponseTimingSettings();
   const { updates, addUpdate, setActive: setUpdateActive, removeUpdate } = useYourInfoUpdates();
 
   const {
@@ -859,6 +869,9 @@ export default function Settings() {
   const agentNameDirty = normalizedAgentNameDraft !== (agentNameSettings.tenantValue || "");
   const canSaveAgentName =
     !agentNameLoading && !agentNameOverrideActive && agentNameDirty && !agentNameError;
+  const responseTiming = responseTimingSettings?.effective;
+  const responseTimingTenant = responseTimingSettings?.tenantValue;
+  const responseTimingOverrideActive = responseTimingSettings?.source === "admin_override";
   const accountDirty = useMemo(
     () => JSON.stringify(account) !== JSON.stringify(accountDraft),
     [account, accountDraft],
@@ -1733,6 +1746,99 @@ export default function Settings() {
                         )}
                       </div>
                     </div>
+                  </Card>
+                  <Card
+                    title="Response timing"
+                    description="Wait briefly for quick follow-up messages, then reply once with the full context."
+                  >
+                    {responseTimingLoading ? (
+                      <p className="text-[13px] text-[#5f6368]">Loading response timing…</p>
+                    ) : responseTimingError || !responseTiming || !responseTimingTenant ? (
+                      <p className="text-[13px] text-[#c5221f]">Could not load response timing.</p>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between gap-4 rounded-xl border border-[#edf0f3] bg-[#fbfcfe] px-4 py-3">
+                          <div>
+                            <p className="text-[13px] font-medium text-[#202124]">
+                              Message batching
+                            </p>
+                            <p className="text-[12px] text-[#5f6368]">
+                              Marina waits for quick consecutive WhatsApp messages before replying.
+                            </p>
+                          </div>
+                          <Switch
+                            checked={responseTimingTenant.message_batching_enabled}
+                            disabled={saveResponseTiming.isPending || responseTimingOverrideActive}
+                            onCheckedChange={async (checked) => {
+                              try {
+                                await saveResponseTiming.mutateAsync({
+                                  ...responseTimingTenant,
+                                  message_batching_enabled: checked,
+                                });
+                                toast.success("Response timing saved.");
+                              } catch (err) {
+                                toast.error(err instanceof Error ? err.message : "Could not save response timing.");
+                              }
+                            }}
+                            aria-label="Message batching enabled"
+                          />
+                        </div>
+                        <div>
+                          <FieldLabel>Reply speed</FieldLabel>
+                          <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                            {(responseTimingSettings?.presets ?? []).map((preset) => {
+                              const selected = responseTimingTenant.preset === preset.key;
+                              return (
+                                <button
+                                  key={preset.key}
+                                  type="button"
+                                  disabled={saveResponseTiming.isPending || responseTimingOverrideActive}
+                                  onClick={async () => {
+                                    try {
+                                      await saveResponseTiming.mutateAsync({
+                                        ...responseTimingTenant,
+                                        preset: preset.key,
+                                        delay_seconds: preset.delay_seconds,
+                                      });
+                                      toast.success("Response timing saved.");
+                                    } catch (err) {
+                                      toast.error(err instanceof Error ? err.message : "Could not save response timing.");
+                                    }
+                                  }}
+                                  className={cn(
+                                    "rounded-xl border px-4 py-3 text-left text-[13px] transition",
+                                    selected
+                                      ? "border-[#1a73e8] bg-[#e8f0fe] text-[#174ea6]"
+                                      : "border-[#e8eaed] bg-white text-[#202124] hover:border-[#cbd5e1]",
+                                    (saveResponseTiming.isPending || responseTimingOverrideActive) && "cursor-not-allowed opacity-60",
+                                  )}
+                                >
+                                  <span className="block font-medium">{preset.label}</span>
+                                  <span className="text-[12px] text-[#5f6368]">
+                                    Waits about {preset.delay_seconds} seconds.
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div className="grid gap-3 text-[12px] text-[#5f6368] sm:grid-cols-2">
+                          <p>
+                            Current active timing:{" "}
+                            <span className="font-medium text-[#202124]">
+                              {responseTiming.message_batching_enabled
+                                ? `${responseTiming.delay_seconds}s delay, ${responseTiming.max_wait_seconds}s max`
+                                : "Immediate replies"}
+                            </span>
+                          </p>
+                          {responseTimingOverrideActive && (
+                            <p className="rounded-lg bg-[#fef7e0] px-3 py-2 text-[#7a5a00]">
+                              Admin override active. Contact Unboks to change this timing.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </Card>
                   <AgentPersonalityWizard />
                 </div>

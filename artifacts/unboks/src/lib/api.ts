@@ -951,6 +951,23 @@ export interface AgentNameSettings {
   source: "default" | "tenant" | "admin_override" | string;
 }
 
+export interface ResponseTimingValue {
+  message_batching_enabled: boolean;
+  preset: "fast" | "balanced" | "patient" | string;
+  delay_seconds: number;
+  max_wait_seconds: number;
+  source?: string;
+}
+
+export interface ResponseTimingSettings {
+  default: ResponseTimingValue;
+  tenantValue: ResponseTimingValue;
+  adminOverride: ResponseTimingValue | null;
+  effective: ResponseTimingValue;
+  source: "tenant" | "admin_override" | string;
+  presets: Array<{ key: string; label: string; delay_seconds: number }>;
+}
+
 export interface InfoUpdateApiItem {
   id: number | string;
   type?: string | null;
@@ -1212,6 +1229,19 @@ export async function saveAgentNameSettings(agentName: string): Promise<AgentNam
   return apiFetch<AgentNameSettings>("/settings/agent-name", {
     method: "PUT",
     body: JSON.stringify({ agent_name: agentName }),
+  });
+}
+
+export async function fetchResponseTimingSettings(): Promise<ResponseTimingSettings> {
+  return apiFetch<ResponseTimingSettings>("/settings/response-timing");
+}
+
+export async function saveResponseTimingSettings(
+  value: ResponseTimingValue,
+): Promise<ResponseTimingSettings> {
+  return apiFetch<ResponseTimingSettings>("/settings/response-timing", {
+    method: "PUT",
+    body: JSON.stringify(value),
   });
 }
 
