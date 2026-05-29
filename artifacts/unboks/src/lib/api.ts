@@ -943,6 +943,14 @@ export interface AccountSettingsApiPayload {
   website?: string;
 }
 
+export interface AgentNameSettings {
+  defaultName: string;
+  tenantValue: string;
+  adminOverride: string | null;
+  effectiveName: string;
+  source: "default" | "tenant" | "admin_override" | string;
+}
+
 export interface InfoUpdateApiItem {
   id: number | string;
   type?: string | null;
@@ -1193,6 +1201,17 @@ export async function saveAccountSettings(
   return apiFetch<AccountSettingsApiResponse>("/settings/your-info", {
     method: "PUT",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchAgentNameSettings(): Promise<AgentNameSettings> {
+  return apiFetch<AgentNameSettings>("/settings/agent-name");
+}
+
+export async function saveAgentNameSettings(agentName: string): Promise<AgentNameSettings> {
+  return apiFetch<AgentNameSettings>("/settings/agent-name", {
+    method: "PUT",
+    body: JSON.stringify({ agent_name: agentName }),
   });
 }
 
