@@ -125,6 +125,8 @@ export default function Login() {
 
   const canSubmit =
     !mutation.isPending && password.trim().length > 0 && workspaceInput.trim().length > 0;
+  const forgotPasswordUrl =
+    `https://icp.unboks.org/password/forgot?workspace=${encodeURIComponent(workspaceInput.trim())}`;
 
   return (
     <div className="min-h-[100dvh] bg-background sm:bg-muted flex flex-col items-center sm:justify-center font-sans">
@@ -231,6 +233,12 @@ export default function Login() {
           >
             {mutation.isPending ? "Signing in…" : "Sign in"}
           </motion.button>
+          <a
+            href={forgotPasswordUrl}
+            className="text-center text-[13px] font-medium text-primary hover:underline"
+          >
+            Forgot password?
+          </a>
         </form>
       </motion.div>
     </div>
