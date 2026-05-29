@@ -9,6 +9,7 @@ import {
   Calendar,
   Settings as SettingsIcon,
   BarChart2,
+  BookOpen,
   Mail,
   MessageCircle,
   Instagram,
@@ -28,7 +29,7 @@ const XIcon = ({ className, strokeWidth: _sw }: { className?: string; strokeWidt
   </svg>
 );
 
-export type NavId = "inbox" | "escalations" | "bookings" | "settings" | "analytics" | `channel:${Channel}`;
+export type NavId = "inbox" | "escalations" | "bookings" | "settings" | "analytics" | "help" | `channel:${Channel}`;
 
 interface DrawerProps {
   open: boolean;
@@ -95,6 +96,7 @@ export function Drawer({
   const WORKSPACE: NavItem[] = [
     { id: "bookings", icon: Calendar, label: bookingsLabel, count: appointmentsCount },
     { id: "analytics", icon: BarChart2, label: "Analytics" },
+    { id: "help", icon: BookOpen, label: "Help" },
     { id: "settings", icon: SettingsIcon, label: "Settings" },
   ];
 

@@ -24,6 +24,7 @@ const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
   settings: "/settings",
   analytics: "/analytics",
+  help: "/help",
 };
 
 /** Inbox-context nav ids — they all live on the Inbox surface (path "/"

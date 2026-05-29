@@ -1,4 +1,4 @@
-import { Calendar, Inbox, Settings } from "lucide-react";
+import { BookOpen, Calendar, Inbox, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavId } from "@/components/inbox/Drawer";
 
@@ -12,11 +12,12 @@ interface BottomNavProps {
 const ITEMS = [
   { id: "inbox" as const, label: "Inbox", icon: Inbox },
   { id: "bookings" as const, label: "Appointments", icon: Calendar },
+  { id: "help" as const, label: "Help", icon: BookOpen },
   { id: "settings" as const, label: "Settings", icon: Settings },
 ] satisfies { id: NavId; label: string; icon: typeof Inbox }[];
 
 function activeBottomId(active: NavId): NavId {
-  if (active === "bookings" || active === "settings") return active;
+  if (active === "bookings" || active === "help" || active === "settings") return active;
   return "inbox";
 }
 

@@ -16,6 +16,7 @@ import Bookings from "@/pages/Bookings";
 import Settings from "@/pages/Settings";
 import Analytics from "@/pages/Analytics";
 import Tasks from "@/pages/Tasks";
+import Help from "@/pages/Help";
 
 // Top-level error boundary — prevents white screen on any render crash
 class AppErrorBoundary extends Component<
@@ -190,6 +191,7 @@ const KNOWN_TENANT_SECTIONS = new Set([
   "tasks",
   "settings",
   "analytics",
+  "help",
   "appointments",
   "bookings",
   "escalations",
@@ -319,6 +321,9 @@ function Router() {
       </Route>
       <Route path="/analytics">
         <ProtectedRoute><Analytics /></ProtectedRoute>
+      </Route>
+      <Route path="/help">
+        <ProtectedRoute><Help /></ProtectedRoute>
       </Route>
       <Route path="/tasks">
         <ProtectedRoute><Tasks /></ProtectedRoute>
