@@ -25,6 +25,7 @@ import {
 } from "@/hooks/use-escalation-notification-preferences";
 import { ApiError } from "@/lib/error";
 import { useAccountSettings, type AccountSettings } from "@/hooks/use-account-settings";
+import { useAgentNameSettings } from "@/hooks/use-agent-name-settings";
 import { useYourInfoUpdates, UPDATE_TYPES, type YourInfoUpdateType } from "@/hooks/use-your-info-updates";
 import { KnowledgeFileUploader } from "@/components/settings/KnowledgeFileUploader";
 import { KnowledgeMediaAttachments } from "@/components/settings/KnowledgeMediaAttachments";
@@ -794,6 +795,11 @@ export default function Settings() {
     defaultEmailAddress: notifyDefaultEmail,
   } = useEscalationNotificationPrefs();
   const { settings: account, save: saveAccount } = useAccountSettings();
+  const {
+    settings: agentNameSettings,
+    isLoading: agentNameLoading,
+    save: saveAgentName,
+  } = useAgentNameSettings();
   const { updates, addUpdate, setActive: setUpdateActive, removeUpdate } = useYourInfoUpdates();
 
   const {
@@ -810,6 +816,11 @@ export default function Settings() {
     setAccountDraft(account);
   }, [account]);
   const [accountSaved, setAccountSaved] = useState(false);
+  const [agentNameDraft, setAgentNameDraft] = useState("Marina");
+  const [agentNameSaved, setAgentNameSaved] = useState(false);
+  useEffect(() => {
+    setAgentNameDraft(agentNameSettings.tenantValue || agentNameSettings.effectiveName || "Marina");
+  }, [agentNameSettings]);
   const accountDirty = useMemo(
     () => JSON.stringify(account) !== JSON.stringify(accountDraft),
     [account, accountDraft],
@@ -1092,6 +1103,65 @@ export default function Settings() {
                         </label>
                       ))}
                     </div>
+                  </div>
+                </Card>
+                <Card
+                  title="AI Agent identity"
+                  description="Choose the name your AI assistant uses with customers."
+                  footer={
+                    <>
+                      <SavedFlash visible={agentNameSaved} />
+                      <PrimaryButton
+                        type="button"
+                        disabled={
+                          agentNameLoading ||
+                          agentNameDraft.trim().length === 0 ||
+                          agentNameDraft.trim() === (agentNameSettings.tenantValue || "")
+                        }
+                        onClick={async () => {
+                          try {
+                            await saveAgentName(agentNameDraft);
+                            setAgentNameSaved(true);
+                            toast.success("AI Agent name saved.");
+                          } catch (err) {
+                            const msg = err instanceof Error && err.message
+                              ? err.message
+                              : "Could not save AI Agent name.";
+                            toast.error(msg);
+                          }
+                        }}
+                      >
+                        Save agent name
+                      </PrimaryButton>
+                    </>
+                  }
+                >
+                  <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                    <label className="block">
+                      <FieldLabel>AI Agent name</FieldLabel>
+                      <TextInput
+                        type="text"
+                        maxLength={40}
+                        value={agentNameDraft}
+                        placeholder="Marina"
+                        disabled={agentNameLoading || agentNameSettings.source === "admin_override"}
+                        onChange={(e) => setAgentNameDraft(e.target.value)}
+                      />
+                      <p className="mt-1 text-[12px] text-[#5f6368]">
+                        Current active name:{" "}
+                        <span className="font-medium text-[#202124]">
+                          {agentNameSettings.effectiveName || "Marina"}
+                        </span>
+                        {agentNameSettings.source === "admin_override" && (
+                          <span className="ml-2 rounded-full bg-[#fef7e0] px-2 py-0.5 text-[11px] font-medium text-[#7a5a00]">
+                            Admin override active
+                          </span>
+                        )}
+                      </p>
+                    </label>
+                    <p className="text-[12px] leading-5 text-[#5f6368] sm:max-w-[320px]">
+                      This is the display name, not the model/provider name. Your assistant will not claim to be human or a licensed professional.
+                    </p>
                   </div>
                 </Card>
                 </div>
