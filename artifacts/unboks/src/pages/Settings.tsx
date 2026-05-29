@@ -51,6 +51,38 @@ const ALERT_CHANNEL_SUPPORT: Record<NotifyChannelKey, "available" | "coming_soon
   messenger: "coming_soon",
   telegram: "coming_soon",
 };
+const AGENT_NAME_URL_RE = /https?:\/\/|www\.|[a-z0-9-]+\.[a-z]{2,}/i;
+const AGENT_NAME_EMOJI_RE = /[\u{1F300}-\u{1FAFF}\u{2700}-\u{27BF}\u{2600}-\u{26FF}]/u;
+const AGENT_NAME_BLOCKED_TERMS = [
+  "claude",
+  "anthropic",
+  "openai",
+  "chatgpt",
+  "human support",
+  "doctor",
+  "dr.",
+  "dr ",
+  "lawyer",
+  "attorney",
+  "therapist",
+  "psychologist",
+  "official support",
+  "official meta support",
+  "meta support",
+];
+
+function agentNameDraftError(value: string): string | null {
+  const name = value.trim().replace(/\s+/g, " ");
+  if (!name) return "Enter a name.";
+  if (name.length > 40) return "Use 40 characters or fewer.";
+  if (AGENT_NAME_URL_RE.test(name)) return "Do not use a URL.";
+  if (AGENT_NAME_EMOJI_RE.test(name)) return "Do not use emojis.";
+  const lowered = name.toLowerCase();
+  if (AGENT_NAME_BLOCKED_TERMS.some((term) => lowered.includes(term))) {
+    return "Choose a name that does not imply a provider, human role, or professional license.";
+  }
+  return null;
+}
 
 type CategoryId =
   | "workspace"
@@ -821,6 +853,12 @@ export default function Settings() {
   useEffect(() => {
     setAgentNameDraft(agentNameSettings.tenantValue || agentNameSettings.effectiveName || "Marina");
   }, [agentNameSettings]);
+  const normalizedAgentNameDraft = agentNameDraft.trim().replace(/\s+/g, " ");
+  const agentNameError = agentNameDraftError(agentNameDraft);
+  const agentNameOverrideActive = agentNameSettings.source === "admin_override";
+  const agentNameDirty = normalizedAgentNameDraft !== (agentNameSettings.tenantValue || "");
+  const canSaveAgentName =
+    !agentNameLoading && !agentNameOverrideActive && agentNameDirty && !agentNameError;
   const accountDirty = useMemo(
     () => JSON.stringify(account) !== JSON.stringify(accountDraft),
     [account, accountDraft],
@@ -1103,65 +1141,6 @@ export default function Settings() {
                         </label>
                       ))}
                     </div>
-                  </div>
-                </Card>
-                <Card
-                  title="AI Agent identity"
-                  description="Choose the name your AI assistant uses with customers."
-                  footer={
-                    <>
-                      <SavedFlash visible={agentNameSaved} />
-                      <PrimaryButton
-                        type="button"
-                        disabled={
-                          agentNameLoading ||
-                          agentNameDraft.trim().length === 0 ||
-                          agentNameDraft.trim() === (agentNameSettings.tenantValue || "")
-                        }
-                        onClick={async () => {
-                          try {
-                            await saveAgentName(agentNameDraft);
-                            setAgentNameSaved(true);
-                            toast.success("AI Agent name saved.");
-                          } catch (err) {
-                            const msg = err instanceof Error && err.message
-                              ? err.message
-                              : "Could not save AI Agent name.";
-                            toast.error(msg);
-                          }
-                        }}
-                      >
-                        Save agent name
-                      </PrimaryButton>
-                    </>
-                  }
-                >
-                  <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                    <label className="block">
-                      <FieldLabel>AI Agent name</FieldLabel>
-                      <TextInput
-                        type="text"
-                        maxLength={40}
-                        value={agentNameDraft}
-                        placeholder="Marina"
-                        disabled={agentNameLoading || agentNameSettings.source === "admin_override"}
-                        onChange={(e) => setAgentNameDraft(e.target.value)}
-                      />
-                      <p className="mt-1 text-[12px] text-[#5f6368]">
-                        Current active name:{" "}
-                        <span className="font-medium text-[#202124]">
-                          {agentNameSettings.effectiveName || "Marina"}
-                        </span>
-                        {agentNameSettings.source === "admin_override" && (
-                          <span className="ml-2 rounded-full bg-[#fef7e0] px-2 py-0.5 text-[11px] font-medium text-[#7a5a00]">
-                            Admin override active
-                          </span>
-                        )}
-                      </p>
-                    </label>
-                    <p className="text-[12px] leading-5 text-[#5f6368] sm:max-w-[320px]">
-                      This is the display name, not the model/provider name. Your assistant will not claim to be human or a licensed professional.
-                    </p>
                   </div>
                 </Card>
                 </div>
@@ -1687,6 +1666,74 @@ export default function Settings() {
 
               {active === "agent-personality" && (
                 <div className="space-y-5">
+                  <Card
+                    title="AI Agent identity"
+                    description="Choose the name your AI assistant uses with customers."
+                    footer={
+                      <>
+                        <SavedFlash visible={agentNameSaved} />
+                        <PrimaryButton
+                          type="button"
+                          disabled={!canSaveAgentName}
+                          onClick={async () => {
+                            if (!canSaveAgentName) return;
+                            try {
+                              await saveAgentName(normalizedAgentNameDraft);
+                              setAgentNameSaved(true);
+                              toast.success("AI Agent name saved.");
+                            } catch (err) {
+                              const msg = err instanceof Error && err.message
+                                ? err.message
+                                : "Could not save AI Agent name.";
+                              toast.error(msg);
+                            }
+                          }}
+                        >
+                          Save agent name
+                        </PrimaryButton>
+                      </>
+                    }
+                  >
+                    <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                      <label className="block">
+                        <FieldLabel>AI Agent name</FieldLabel>
+                        <TextInput
+                          type="text"
+                          maxLength={40}
+                          value={agentNameDraft}
+                          placeholder="Marina"
+                          disabled={agentNameLoading || agentNameOverrideActive}
+                          onChange={(e) => {
+                            setAgentNameDraft(e.target.value);
+                            setAgentNameSaved(false);
+                          }}
+                        />
+                        <p className="mt-1 text-[12px] text-[#5f6368]">
+                          Current active name:{" "}
+                          <span className="font-medium text-[#202124]">
+                            {agentNameSettings.effectiveName || "Marina"}
+                          </span>
+                          {agentNameOverrideActive && (
+                            <span className="ml-2 rounded-full bg-[#fef7e0] px-2 py-0.5 text-[11px] font-medium text-[#7a5a00]">
+                              Admin override active
+                            </span>
+                          )}
+                        </p>
+                        {agentNameError && !agentNameOverrideActive && (
+                          <p className="mt-1 text-[12px] text-[#a50e0e]">{agentNameError}</p>
+                        )}
+                      </label>
+                      <div className="text-[12px] leading-5 text-[#5f6368] sm:max-w-[360px]">
+                        <p>This is the display name, not the model/provider name.</p>
+                        <p>Your assistant will not claim to be human or a licensed professional.</p>
+                        {agentNameOverrideActive && (
+                          <p className="mt-2 rounded-lg bg-[#fef7e0] px-3 py-2 text-[#7a5a00]">
+                            Admin override active. Contact Unboks to change this name.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
                   <AgentPersonalityWizard />
                 </div>
               )}
