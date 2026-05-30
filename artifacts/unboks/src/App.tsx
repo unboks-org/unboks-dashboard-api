@@ -1,4 +1,4 @@
-import { Component, type ReactNode } from "react";
+import { Component, lazy, Suspense, type ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect, useParams } from "wouter";
 import { setClientSlug, getClientSlug } from "@/lib/tenant";
 import { isValidTenantSlug } from "@/lib/api";
@@ -10,13 +10,22 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SettingsErrorBoundary } from "@/components/SettingsErrorBoundary";
 import { FeatureTogglesProvider } from "@/lib/feature-toggles";
 import { DEBUG_LOGS_ENABLED, debugLog } from "@/lib/debug-log";
-import NotFound from "@/pages/not-found";
-import Inbox from "@/pages/Inbox";
-import Login from "@/pages/Login";
-import Bookings from "@/pages/Bookings";
-import Settings from "@/pages/Settings";
-import Analytics from "@/pages/Analytics";
-import Help from "@/pages/Help";
+
+const NotFound = lazy(() => import("@/pages/not-found"));
+const Inbox = lazy(() => import("@/pages/Inbox"));
+const Login = lazy(() => import("@/pages/Login"));
+const Bookings = lazy(() => import("@/pages/Bookings"));
+const Settings = lazy(() => import("@/pages/Settings"));
+const Analytics = lazy(() => import("@/pages/Analytics"));
+const Help = lazy(() => import("@/pages/Help"));
+
+function RouteLoading() {
+  return (
+    <div className="min-h-[100dvh] bg-background text-foreground flex items-center justify-center">
+      <div className="h-8 w-8 rounded-full border-2 border-muted border-t-primary animate-spin" />
+    </div>
+  );
+}
 
 // Top-level error boundary — prevents white screen on any render crash
 class AppErrorBoundary extends Component<
@@ -367,7 +376,9 @@ function App() {
           <TooltipProvider>
             <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
               <AuthProvider>
-                <Router />
+                <Suspense fallback={<RouteLoading />}>
+                  <Router />
+                </Suspense>
               </AuthProvider>
             </WouterRouter>
             <Toaster richColors position="top-right" />
