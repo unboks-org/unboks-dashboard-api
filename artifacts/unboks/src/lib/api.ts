@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/error";
+import { DEBUG_LOGS_ENABLED, debugInfo } from "@/lib/debug-log";
 import { getApiBase, getToken, clearAuth, getClientSlug } from "@/lib/tenant";
 import { formatConversationTimestamp, parseTimestampMs } from "@/lib/conversation-mapper";
 
@@ -1613,17 +1614,17 @@ export async function replyToEmail(
   const fallback = `/messages/conversations/${enc}/reply`;
   try {
     const result = await apiFetch<{ ok: boolean }>(primary, { method: "POST", body });
-    // eslint-disable-next-line no-console
-    console.info(`[unboks] email reply via ${primary}`);
+    if (DEBUG_LOGS_ENABLED) debugInfo(`[unboks] email reply via ${primary}`);
     return result;
   } catch (err) {
     if (err instanceof ApiError && (err.status === 404 || err.status === 405)) {
       try {
         const result = await apiFetch<{ ok: boolean }>(fallback, { method: "POST", body });
-        // eslint-disable-next-line no-console
-        console.info(
-          `[unboks] email reply via ${fallback} (fell back from ${primary} → HTTP ${err.status})`,
-        );
+        if (DEBUG_LOGS_ENABLED) {
+          debugInfo(
+            `[unboks] email reply via ${fallback} (fell back from ${primary} → HTTP ${err.status})`,
+          );
+        }
         return result;
       } catch (fallbackErr) {
         if (

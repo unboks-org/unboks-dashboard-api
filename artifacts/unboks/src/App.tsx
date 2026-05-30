@@ -9,6 +9,7 @@ import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SettingsErrorBoundary } from "@/components/SettingsErrorBoundary";
 import { FeatureTogglesProvider } from "@/lib/feature-toggles";
+import { DEBUG_LOGS_ENABLED, debugLog } from "@/lib/debug-log";
 import NotFound from "@/pages/not-found";
 import Inbox from "@/pages/Inbox";
 import Login from "@/pages/Login";
@@ -120,12 +121,8 @@ const WORKSPACE_HINT_KEY = "wtyj_workspace_hint";
  *   tenant_deeplink.unauth            → deep link without token
  */
 function logTenantNav(event: string, data: Record<string, unknown>) {
-  try {
-    // eslint-disable-next-line no-console
-    console.log("[tenant-nav]", event, { ...data, ts: Date.now() });
-  } catch {
-    // console may be unavailable in some headless test contexts.
-  }
+  if (!DEBUG_LOGS_ENABLED) return;
+  debugLog("[tenant-nav]", event, { ...data, ts: Date.now() });
 }
 
 function TenantRootRedirect() {

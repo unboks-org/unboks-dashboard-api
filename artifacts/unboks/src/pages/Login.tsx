@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Lock, Building2 } from "lucide-react";
 import { useAuth } from "@/components/auth/useAuth";
 import { isValidTenantSlug, type ValidClient } from "@/lib/api";
+import { DEBUG_LOGS_ENABLED, debugLog } from "@/lib/debug-log";
 import { ApiError } from "@/lib/error";
 import { motion } from "framer-motion";
 import unboksLogo from "@assets/unboks-login-logo-optimized_1778556585382.webp";
@@ -48,10 +49,11 @@ function readWorkspaceHint(): string {
     const params = new URLSearchParams(window.location.search);
     const fromUrl = params.get("workspace");
     if (fromUrl && isValidTenantSlug(fromUrl)) {
-      // eslint-disable-next-line no-console
-      console.log("[tenant-nav]", "login.hint_from_url", {
-        slug: fromUrl, source: "?workspace=", ts: Date.now(),
-      });
+      if (DEBUG_LOGS_ENABLED) {
+        debugLog("[tenant-nav]", "login.hint_from_url", {
+          slug: fromUrl, source: "?workspace=", ts: Date.now(),
+        });
+      }
       return fromUrl;
     }
   } catch {
@@ -64,16 +66,18 @@ function readWorkspaceHint(): string {
     const hint = sessionStorage.getItem(WORKSPACE_HINT_KEY);
     if (hint) sessionStorage.removeItem(WORKSPACE_HINT_KEY);
     if (hint && isValidTenantSlug(hint)) {
-      // eslint-disable-next-line no-console
-      console.log("[tenant-nav]", "login.hint_from_session", {
-        slug: hint, source: "sessionStorage", ts: Date.now(),
-      });
+      if (DEBUG_LOGS_ENABLED) {
+        debugLog("[tenant-nav]", "login.hint_from_session", {
+          slug: hint, source: "sessionStorage", ts: Date.now(),
+        });
+      }
     } else if (!hint) {
-      // eslint-disable-next-line no-console
-      console.log("[tenant-nav]", "login.no_hint", {
-        reason: "no ?workspace= and no sessionStorage hint",
-        ts: Date.now(),
-      });
+      if (DEBUG_LOGS_ENABLED) {
+        debugLog("[tenant-nav]", "login.no_hint", {
+          reason: "no ?workspace= and no sessionStorage hint",
+          ts: Date.now(),
+        });
+      }
     }
     return hint || "";
   } catch {

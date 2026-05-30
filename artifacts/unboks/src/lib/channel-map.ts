@@ -1,4 +1,5 @@
 import type { Channel } from "@/data/conversations";
+import { DEBUG_LOGS_ENABLED, debugWarn } from "@/lib/debug-log";
 
 export type PlatformKey =
   | "whatsapp"
@@ -88,8 +89,8 @@ export function platformToChannel(platform: string | null | undefined): Channel 
   const normalized = platform.trim().toLowerCase().replace(/[\s-]+/g, "_");
   const mapped = PLATFORM_TO_CHANNEL[normalized];
   if (!mapped) {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn(`[Unboks] Unknown platform value: "${platform}" — showing as Unknown`);
+    if (DEBUG_LOGS_ENABLED) {
+      debugWarn(`[Unboks] Unknown platform value: "${platform}" — showing as Unknown`);
     }
     return "Unknown";
   }
