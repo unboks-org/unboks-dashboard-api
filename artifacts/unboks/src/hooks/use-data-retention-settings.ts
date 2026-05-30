@@ -38,9 +38,9 @@ export const ARCHIVE_RETENTION_OPTIONS: { value: ArchiveRetentionMonths; label: 
 
 export type EndOfRetentionAction = "anonymize" | "delete" | "keep";
 export const END_OF_RETENTION_OPTIONS: { value: EndOfRetentionAction; label: string }[] = [
-  { value: "anonymize", label: "Anonymize customer data" },
-  { value: "delete", label: "Delete messages permanently" },
-  { value: "keep", label: "Keep forever" },
+  { value: "anonymize", label: "Would anonymize customer data" },
+  { value: "delete", label: "Would delete messages permanently" },
+  { value: "keep", label: "Would keep forever" },
 ];
 
 export type AuditLogRetentionMonths = 12 | 24 | 36 | 60;

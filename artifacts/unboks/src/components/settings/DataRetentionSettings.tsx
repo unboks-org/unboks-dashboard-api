@@ -164,9 +164,7 @@ export function DataRetentionSettings() {
     save(draft);
     setSavedFlash(true);
     window.setTimeout(() => setSavedFlash(false), 2200);
-    toast.success(
-      "Saved locally. Backend retention automation will be connected by the Unboks team.",
-    );
+    toast.success("Saved as a local preference only. No cleanup automation is active yet.");
   };
 
   // Honest status string: until the backend reports policyActive, we
@@ -174,7 +172,7 @@ export function DataRetentionSettings() {
   // running on their data.
   const policyLine = settings.status?.policyActive
     ? "Active"
-    : "Saved locally (automation pending)";
+    : "Not active yet (local preference only)";
   const nextCleanup = settings.status?.nextCleanupAt
     ? new Date(settings.status.nextCleanupAt).toLocaleString()
     : "Not scheduled yet";
@@ -183,17 +181,27 @@ export function DataRetentionSettings() {
     <section className="overflow-hidden rounded-2xl border border-[#e8eaed] bg-white">
       <header className="border-b border-[#f1f3f4] px-5 py-4 sm:px-6">
         <h3 className="text-[14px] font-semibold text-[#202124]">
-          Data retention & archive
+          Data retention preferences
         </h3>
         <p className="mt-0.5 text-[13px] text-[#5f6368]">
-          Control how long conversations stay active, archived, and searchable.
+          Prepare retention preferences for future automation.
         </p>
       </header>
 
       <div>
+        <div className="border-b border-[#f1f3f4] bg-[#fff8e1] px-4 py-3 text-[12.5px] leading-snug text-[#5f4b00] sm:px-5">
+          <p className="font-semibold text-[#3c4043]">
+            Not active yet: automatic archive, delete, and anonymize jobs are
+            not running.
+          </p>
+          <p className="mt-1">
+            These choices are saved on this browser as preferences only. Manual
+            Inbox archive and unarchive actions still work normally.
+          </p>
+        </div>
         <Row
           label="Archive inactive conversations after"
-          helper="Inactive conversations leave the daily inbox but remain searchable in the archive."
+          helper="Future preference only. This does not automatically move conversations today."
           htmlFor="dr-active-inbox"
           divider={false}
           control={
@@ -214,7 +222,7 @@ export function DataRetentionSettings() {
         />
         <Row
           label="Keep archived conversations for"
-          helper="Archived conversations stay available for history, disputes, and customer context."
+          helper="Future preference only. No automatic deletion currently runs."
           htmlFor="dr-archive-retention"
           control={
             <Select
@@ -234,7 +242,7 @@ export function DataRetentionSettings() {
         />
         <Row
           label="After the archive period"
-          helper="Anonymizing keeps useful statistics while removing personal customer details."
+          helper="Future preference only. This does not delete or anonymize data yet."
           htmlFor="dr-end-action"
           control={
             <Select
@@ -254,7 +262,7 @@ export function DataRetentionSettings() {
         />
         <Row
           label="Keep approved Agent answers after archive or delete"
-          helper="Approved answers and business knowledge can remain available to your Agent without keeping the full private conversation forever."
+          helper="Future preference only. Approved answers are not changed by this control today."
           htmlFor="dr-keep-learnings"
           control={
             <label
@@ -276,7 +284,7 @@ export function DataRetentionSettings() {
         />
         <Row
           label="Keep escalation and audit logs for"
-          helper="Useful for quality control and accountability."
+          helper="Future preference only. Audit log cleanup is not automated yet."
           htmlFor="dr-audit-logs"
           control={
             <Select
@@ -307,15 +315,15 @@ export function DataRetentionSettings() {
             </span>
           </div>
           <p className="mt-1.5">
-            Currently saved on this device only. The Unboks team will connect
-            backend automation, after which scheduled cleanups appear here.
+            Local preference only. No automatic retention, deletion, or
+            anonymization is enforced until backend automation is connected.
           </p>
         </div>
       </div>
 
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[#f1f3f4] bg-[#fafbfc] px-4 py-3 sm:px-5">
         <div className="text-[12px] text-[#5f6368]">
-          <p className="font-medium text-[#3c4043]">Effective values</p>
+          <p className="font-medium text-[#3c4043]">Saved local preferences</p>
           <p>
             {labelFor(ACTIVE_INBOX_OPTIONS, settings.activeInboxArchiveAfterDays)} ·{" "}
             {labelFor(ARCHIVE_RETENTION_OPTIONS, settings.archiveRetentionMonths)} ·{" "}
@@ -341,7 +349,7 @@ export function DataRetentionSettings() {
               "hover:bg-[#1765c1] disabled:cursor-not-allowed disabled:bg-[#c8d4e6]",
             )}
           >
-            Save changes
+            Save local preference
           </button>
         </div>
       </footer>
