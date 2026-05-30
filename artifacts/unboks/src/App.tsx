@@ -15,7 +15,6 @@ import Login from "@/pages/Login";
 import Bookings from "@/pages/Bookings";
 import Settings from "@/pages/Settings";
 import Analytics from "@/pages/Analytics";
-import Tasks from "@/pages/Tasks";
 import Help from "@/pages/Help";
 
 // Top-level error boundary — prevents white screen on any render crash
@@ -180,15 +179,14 @@ function TenantRootRedirect() {
 }
 
 /**
- * Tenant-prefixed bare-section URLs: e.g. /unboks/tasks, /unboks/settings,
- * /unboks/analytics. Same persistence rule as TenantRootRedirect (only
+ * Tenant-prefixed bare-section URLs: e.g. /unboks/settings, /unboks/analytics.
+ * Same persistence rule as TenantRootRedirect (only
  * touch localStorage when a token already exists for the slug). Sections
  * outside the known set fall through to NotFound so junk URLs like
  * /unboks/garbage still 404 rather than silently redirecting.
  */
 const KNOWN_TENANT_SECTIONS = new Set([
   "inbox",          // canonical home -> "/"
-  "tasks",
   "settings",
   "analytics",
   "help",
@@ -325,12 +323,6 @@ function Router() {
       <Route path="/help">
         <ProtectedRoute><Help /></ProtectedRoute>
       </Route>
-      <Route path="/tasks">
-        <ProtectedRoute><Tasks /></ProtectedRoute>
-      </Route>
-      <Route path="/Tasks">
-        <Redirect to="/tasks" />
-      </Route>
       {/* Tenant-prefixed deep links from backend alert emails.
           These MUST come after all the specific short routes above so that
           e.g. /escalations/25 is caught by /escalations/:id (above) and
@@ -341,13 +333,13 @@ function Router() {
       <Route path="/:tenant/appointments/:id">
         <TenantDeepLinkRedirect section="appointments" />
       </Route>
-      {/* Tenant-prefixed bare-section URL: e.g. /unboks/tasks,
-          /unboks/settings, /unboks/analytics. Calvin + JR bookmark
+      {/* Tenant-prefixed bare-section URL: e.g. /unboks/settings,
+          /unboks/analytics. Calvin + JR bookmark
           these. Switches workspace (if signed in) and redirects to the
           equivalent app-relative path. Must come AFTER the deep-link
           routes above (so /:tenant/escalations/:id still wins) but
           BEFORE the bare /:tenant route (which only matches a single
-          path segment and would otherwise let /unboks/tasks fall
+          path segment and would otherwise let /unboks/settings fall
           through to NotFound). */}
       <Route path="/:tenant/:section">
         <TenantSectionRedirect />
