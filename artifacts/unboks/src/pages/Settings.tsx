@@ -37,6 +37,7 @@ import { CloudKnowledgeConnections } from "@/components/settings/CloudKnowledgeC
 import { DataRetentionSettings } from "@/components/settings/DataRetentionSettings";
 import { BlockedSendersList } from "@/components/settings/BlockedSendersList";
 import { AutoBlockRulesSettings } from "@/components/settings/AutoBlockRulesSettings";
+import { ExcludedContactsSettings } from "@/components/settings/ExcludedContactsSettings";
 import { AgentLearningsList } from "@/components/settings/AgentLearningsList";
 import { AgentPersonalityWizard } from "@/components/settings/AgentPersonalityWizard";
 import { useSot, type SotBlock, type SotSubsection } from "@/data/sot";
@@ -95,6 +96,7 @@ type CategoryId =
   | "agent-learnings"
   | "escalation"
   | "data-retention"
+  | "excluded-contacts"
   | "auto-block"
   | "blocked-senders"
   | "preferences";
@@ -143,6 +145,12 @@ const CATEGORIES: {
     label: "Data retention & archive",
     description: "Control how long conversations stay active, archived, and searchable.",
     icon: Archive,
+  },
+  {
+    id: "excluded-contacts",
+    label: "Excluded Contacts",
+    description: "Contacts Unboks should fully ignore before replies, escalations, or alerts.",
+    icon: Ban,
   },
   {
     id: "blocked-senders",
@@ -781,6 +789,7 @@ const CATEGORY_IDS: ReadonlySet<string> = new Set<CategoryId>([
   "agent-learnings",
   "escalation",
   "data-retention",
+  "excluded-contacts",
   "auto-block",
   "blocked-senders",
   "preferences",
@@ -1662,6 +1671,12 @@ export default function Settings() {
               {active === "blocked-senders" && (
                 <div className="space-y-5">
                   <BlockedSendersList />
+                </div>
+              )}
+
+              {active === "excluded-contacts" && (
+                <div className="space-y-5">
+                  <ExcludedContactsSettings />
                 </div>
               )}
 

@@ -666,6 +666,67 @@ export interface AutoBlockSettings {
   admin_override?: boolean;
 }
 
+export interface IgnoredContact {
+  id: number;
+  name: string;
+  phone: string;
+  phoneNormalized: string;
+  email: string;
+  emailNormalized: string;
+  channel: string;
+  externalSenderId: string;
+  label: string;
+  note: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IgnoredContactPayload {
+  name?: string;
+  phone?: string;
+  email?: string;
+  channel?: string;
+  external_sender_id?: string;
+  label?: string;
+  note?: string;
+}
+
+export interface IgnoredContactsResponse {
+  contacts: IgnoredContact[];
+}
+
+export interface IgnoredContactImportPreviewContact {
+  clientId: string;
+  name: string;
+  phone: string;
+  phoneNormalized: string;
+  email: string;
+  emailNormalized: string;
+  channel: string;
+  externalSenderId: string;
+  label: string;
+  note: string;
+  valid: boolean;
+  duplicate: boolean;
+  alreadyIgnored: boolean;
+  selected: boolean;
+  errors: string[];
+}
+
+export interface IgnoredContactImportPreview {
+  summary: {
+    total: number;
+    valid: number;
+    duplicates: number;
+    invalid: number;
+    alreadyIgnored: number;
+    toAdd: number;
+    skipped: number;
+  };
+  contacts: IgnoredContactImportPreviewContact[];
+}
+
 export interface BlockConversationPayload {
   reason: BlockReason;
   blocked_by: string;
@@ -757,6 +818,150 @@ export async function saveSourceOfTruth(blocks: SotBlock[]): Promise<SotBlock[]>
 export async function fetchBlockedSenders(): Promise<BlockedSendersResponse> {
   const raw = await apiFetch<unknown>("/blocked-senders");
   return { conversations: normalizeBlockedSenders(raw) };
+}
+
+function normalizeIgnoredContact(raw: unknown): IgnoredContact | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const idRaw = o.id;
+  const id = typeof idRaw === "number" ? idRaw : Number(idRaw);
+  if (!Number.isFinite(id)) return null;
+  return {
+    id,
+    name: pickStr(o, "name") ?? "",
+    phone: pickStr(o, "phone", "phone_original") ?? "",
+    phoneNormalized: pickStr(o, "phoneNormalized", "phone_normalized") ?? "",
+    email: pickStr(o, "email", "email_original") ?? "",
+    emailNormalized: pickStr(o, "emailNormalized", "email_normalized") ?? "",
+    channel: pickStr(o, "channel") ?? "",
+    externalSenderId: pickStr(o, "externalSenderId", "external_sender_id") ?? "",
+    label: pickStr(o, "label") ?? "",
+    note: pickStr(o, "note") ?? "",
+    createdBy: pickStr(o, "createdBy", "created_by") ?? "",
+    createdAt: pickStr(o, "createdAt", "created_at") ?? "",
+    updatedAt: pickStr(o, "updatedAt", "updated_at") ?? "",
+  };
+}
+
+function normalizeImportPreview(raw: unknown): IgnoredContactImportPreview {
+  const fallback: IgnoredContactImportPreview = {
+    summary: {
+      total: 0,
+      valid: 0,
+      duplicates: 0,
+      invalid: 0,
+      alreadyIgnored: 0,
+      toAdd: 0,
+      skipped: 0,
+    },
+    contacts: [],
+  };
+  if (!raw || typeof raw !== "object") return fallback;
+  const r = raw as Record<string, unknown>;
+  const s = (r.summary && typeof r.summary === "object" ? r.summary : {}) as Record<string, unknown>;
+  const contactsRaw = Array.isArray(r.contacts) ? r.contacts : [];
+  return {
+    summary: {
+      total: Number(s.total ?? 0),
+      valid: Number(s.valid ?? 0),
+      duplicates: Number(s.duplicates ?? 0),
+      invalid: Number(s.invalid ?? 0),
+      alreadyIgnored: Number(s.alreadyIgnored ?? s.already_ignored ?? 0),
+      toAdd: Number(s.toAdd ?? s.to_add ?? 0),
+      skipped: Number(s.skipped ?? 0),
+    },
+    contacts: contactsRaw
+      .map((item) => {
+        if (!item || typeof item !== "object") return null;
+        const o = item as Record<string, unknown>;
+        return {
+          clientId: pickStr(o, "clientId", "client_id") ?? (
+            typeof crypto !== "undefined" && "randomUUID" in crypto
+              ? crypto.randomUUID()
+              : `import-${Math.random().toString(36).slice(2)}`
+          ),
+          name: pickStr(o, "name") ?? "",
+          phone: pickStr(o, "phone") ?? "",
+          phoneNormalized: pickStr(o, "phoneNormalized", "phone_normalized") ?? "",
+          email: pickStr(o, "email") ?? "",
+          emailNormalized: pickStr(o, "emailNormalized", "email_normalized") ?? "",
+          channel: pickStr(o, "channel") ?? "",
+          externalSenderId: pickStr(o, "externalSenderId", "external_sender_id") ?? "",
+          label: pickStr(o, "label") ?? "",
+          note: pickStr(o, "note") ?? "",
+          valid: o.valid === true,
+          duplicate: o.duplicate === true,
+          alreadyIgnored: o.alreadyIgnored === true || o.already_ignored === true,
+          selected: o.selected === true,
+          errors: Array.isArray(o.errors) ? o.errors.map(String) : [],
+        } satisfies IgnoredContactImportPreviewContact;
+      })
+      .filter((item): item is IgnoredContactImportPreviewContact => item !== null),
+  };
+}
+
+export async function fetchIgnoredContacts(): Promise<IgnoredContactsResponse> {
+  const raw = await apiFetch<unknown>("/ignored-contacts");
+  const items = raw && typeof raw === "object" && Array.isArray((raw as { contacts?: unknown }).contacts)
+    ? (raw as { contacts: unknown[] }).contacts
+    : [];
+  return { contacts: items.map(normalizeIgnoredContact).filter((x): x is IgnoredContact => x !== null) };
+}
+
+export async function addIgnoredContact(payload: IgnoredContactPayload): Promise<IgnoredContact> {
+  const raw = await apiFetch<unknown>("/ignored-contacts", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  const contact = normalizeIgnoredContact((raw as { contact?: unknown })?.contact);
+  if (!contact) throw new ApiError(500, "Invalid ignored contact response");
+  return contact;
+}
+
+export async function updateIgnoredContact(id: number, payload: IgnoredContactPayload): Promise<IgnoredContact> {
+  const raw = await apiFetch<unknown>(`/ignored-contacts/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+  const contact = normalizeIgnoredContact((raw as { contact?: unknown })?.contact);
+  if (!contact) throw new ApiError(500, "Invalid ignored contact response");
+  return contact;
+}
+
+export async function deleteIgnoredContact(id: number): Promise<void> {
+  return apiFetch<void>(`/ignored-contacts/${id}`, { method: "DELETE" });
+}
+
+export async function validateIgnoredContactsImport(file: File): Promise<IgnoredContactImportPreview> {
+  const form = new FormData();
+  form.append("file", file);
+  const raw = await apiFetch<unknown>("/ignored-contacts/import/validate", {
+    method: "POST",
+    body: form,
+  });
+  return normalizeImportPreview(raw);
+}
+
+export async function importIgnoredContacts(
+  contacts: IgnoredContactImportPreviewContact[],
+): Promise<{ added: IgnoredContact[]; skipped: unknown[] }> {
+  const raw = await apiFetch<unknown>("/ignored-contacts/import", {
+    method: "POST",
+    body: JSON.stringify({
+      contacts: contacts.map((c) => ({
+        name: c.name,
+        phone: c.phone,
+        email: c.email,
+        channel: c.channel,
+        external_sender_id: c.externalSenderId,
+        label: c.label,
+        note: c.note,
+      })),
+    }),
+  });
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const added = Array.isArray(r.added) ? r.added.map(normalizeIgnoredContact).filter((x): x is IgnoredContact => x !== null) : [];
+  return { added, skipped: Array.isArray(r.skipped) ? r.skipped : [] };
 }
 
 export async function fetchAutoBlockSettings(): Promise<AutoBlockSettings> {
