@@ -41,7 +41,7 @@ export type ChipAction =
   | { kind: "resolve" };
 
 interface EscalationReasonPanelProps {
-  mode: "soft" | "hard";
+  mode: "soft" | "hard" | "order";
   summary?: string | null;
   reason?: string | null;
   aiMuted?: boolean;
@@ -72,6 +72,7 @@ export function EscalationReasonPanel({
   operatorNeedsToDecide,
 }: EscalationReasonPanelProps) {
   const isSoft = mode === "soft";
+  const isOrder = mode === "order";
   const briefing = buildEscalationBriefing({
     mode,
     summary,
@@ -118,10 +119,10 @@ export function EscalationReasonPanel({
           <Section label="What happened" className="sm:col-span-2">
             {briefing.reason}
           </Section>
-          <Section label={isSoft ? "Customer wants" : "Customer needs"}>
+          <Section label={isOrder ? "Order status" : isSoft ? "Customer wants" : "Customer needs"}>
             {briefing.customerWants}
           </Section>
-          <Section label="Suggested next step">{briefing.marinaNeeds}</Section>
+          <Section label={isOrder ? "Operator next step" : "Suggested next step"}>{briefing.marinaNeeds}</Section>
         </dl>
       </motion.article>
     </section>

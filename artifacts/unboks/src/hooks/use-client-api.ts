@@ -135,7 +135,7 @@ export function useUnarchiveMutation() {
 
 // ------ Escalations ------
 
-export function useEscalations(mode?: "soft" | "hard" | "all") {
+export function useEscalations(mode?: "soft" | "hard" | "order" | "all") {
   return useQuery({
     queryKey: ["escalations", mode ?? "all"],
     queryFn: () => fetchEscalations(mode),
@@ -193,7 +193,7 @@ export function useEscalationMutations() {
     onSuccess: invalidate,
   });
   const setMode = useMutation({
-    mutationFn: ({ id, mode }: { id: string; mode: "soft" | "hard" }) =>
+    mutationFn: ({ id, mode }: { id: string; mode: "soft" | "hard" | "order" }) =>
       setEscalationMode(id, mode),
     onSuccess: invalidate,
   });

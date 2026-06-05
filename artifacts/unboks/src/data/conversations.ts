@@ -1,6 +1,6 @@
 export type Channel = "All" | "Email" | "WhatsApp" | "Instagram" | "Facebook" | "Messenger" | "Telegram" | "TikTok" | "X" | "Unknown";
 
-export type EscalationMode = "soft" | "hard" | null;
+export type EscalationMode = "soft" | "hard" | "order" | null;
 export type LearningStatus = "none" | "suggested" | "approved" | "saved";
 
 export interface Conversation {

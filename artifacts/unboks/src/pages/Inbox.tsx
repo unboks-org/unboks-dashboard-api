@@ -348,7 +348,7 @@ interface ConversationDetailPaneProps {
    *  level. Only surfaced when wired from the parent — typically every
    *  active inbox view, but never on the Resolved tab. */
   onBlock?: (conv: Conversation) => void;
-  onUnresolveSuccess?: (mode: "soft" | "hard" | null) => void;
+  onUnresolveSuccess?: (mode: "soft" | "hard" | "order" | null) => void;
   /**
    * When true the pane is rendering a resolved escalation from the Resolved
    * tab. Forces the non-escalation (read-only trail) layout regardless of
@@ -435,7 +435,7 @@ function ConversationDetailPane({
   // waiting for a backend round trip. We re-seed it whenever the open
   // conversation changes (the pane is reused across selections) or once the
   // backend value first becomes known.
-  const [selectedMode, setSelectedMode] = useState<"soft" | "hard">(() =>
+  const [selectedMode, setSelectedMode] = useState<"soft" | "hard" | "order">(() =>
     backendMode ?? (hasHardSignals ? "hard" : "soft"),
   );
   const lastSeedKey = useRef<string | null>(null);
@@ -646,7 +646,7 @@ function ConversationDetailPane({
           </div>
           {/* Mode toggle: stays in row 1 on md+, moves to row 2 on mobile/tablet.
               Hidden in resolvedContext — resolved escalations are read-only. */}
-          {showBanner && dbId && !resolvedContext && (
+          {showBanner && dbId && !resolvedContext && selectedMode !== "order" && (
             <div className="hidden md:block flex-shrink-0 ml-2">
               <EscalationModeToggle
                 conversationDbId={dbId}
@@ -779,7 +779,7 @@ function ConversationDetailPane({
               <span>{unresolve.isPending ? "Reopening..." : "Unresolve"}</span>
             </motion.button>
           )}
-          {showBanner && dbId && !resolvedContext && (
+          {showBanner && dbId && !resolvedContext && selectedMode !== "order" && (
             <EscalationModeToggle
               conversationDbId={dbId}
               selectedMode={selectedMode}
@@ -1100,7 +1100,7 @@ export default function Inbox() {
     });
   }, [location, search, isChannelVisible]);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
-  const [escalationFilter, setEscalationFilter] = useState<"all" | "soft" | "hard" | "resolved">("all");
+  const [escalationFilter, setEscalationFilter] = useState<"all" | "soft" | "hard" | "order" | "resolved">("all");
 
   // Email-only persistent row actions. All three open dedicated modals
   // that call the real backend endpoints:
@@ -1139,9 +1139,9 @@ export default function Inbox() {
     // next render once the query invalidates.
     setSelectedConv((cur) => (cur?.id === blockedId ? null : cur));
   }, []);
-  const handleUnresolveSuccess = useCallback((mode: "soft" | "hard" | null) => {
+  const handleUnresolveSuccess = useCallback((mode: "soft" | "hard" | "order" | null) => {
     setSelectedConv(null);
-    setEscalationFilter(mode === "hard" ? "hard" : mode === "soft" ? "soft" : "all");
+    setEscalationFilter(mode === "hard" ? "hard" : mode === "soft" ? "soft" : mode === "order" ? "order" : "all");
   }, []);
 
   // Server-backed blocked senders. The lookup is cheap (Set.has), so
@@ -1486,6 +1486,7 @@ export default function Inbox() {
         list = escalationRows;
         if (escalationFilter === "soft") list = list.filter((c) => c.escalationMode === "soft");
         else if (escalationFilter === "hard") list = list.filter((c) => c.escalationMode === "hard");
+        else if (escalationFilter === "order") list = list.filter((c) => c.escalationMode === "order");
       }
     } else {
       // Archive is now server-backed: active list comes from /messages/conversations,
@@ -1576,7 +1577,7 @@ export default function Inbox() {
               role="tablist"
               aria-label="Escalation filter"
             >
-              {(["all", "soft", "hard", "resolved"] as const).map((m) => (
+              {(["all", "soft", "hard", "order", "resolved"] as const).map((m) => (
                 <motion.button
                   key={m}
                   whileTap={{ scale: 0.96 }}
@@ -1591,7 +1592,7 @@ export default function Inbox() {
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
-                  {m === "all" ? "All" : m === "soft" ? "Agent needs help" : m === "hard" ? "Human takeover" : "Resolved"}
+                  {m === "all" ? "All" : m === "soft" ? "Agent needs help" : m === "hard" ? "Human takeover" : m === "order" ? "ORDER" : "Resolved"}
                 </motion.button>
               ))}
             </div>

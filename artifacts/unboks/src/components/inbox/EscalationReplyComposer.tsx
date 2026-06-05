@@ -95,7 +95,7 @@ interface EscalationReplyComposerProps {
   conversationDbId: string;
   /** Phone / external id of the conversation, passed as AI Editor context. */
   conversationId: string;
-  mode: "soft" | "hard";
+  mode: "soft" | "hard" | "order";
   channel: Channel;
   aiMuted?: boolean;
   /**

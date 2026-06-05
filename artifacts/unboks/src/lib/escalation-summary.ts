@@ -35,6 +35,8 @@
 
 import type { ApiMessage } from "./api";
 
+type EscalationModeForSummary = "soft" | "hard" | "order";
+
 export interface EscalationBriefing {
   reason: string;
   customerWants: string;
@@ -43,7 +45,7 @@ export interface EscalationBriefing {
 }
 
 interface BuildArgs {
-  mode: "soft" | "hard";
+  mode: EscalationModeForSummary;
   summary?: string | null;
   reason?: string | null;
   messages?: ApiMessage[];
@@ -477,11 +479,14 @@ function customerWantsLine(
 }
 
 function marinaNeedsLine(
-  mode: "soft" | "hard",
+  mode: EscalationModeForSummary,
   topics: Set<Topic>,
   slots: TimeSlot[],
   hasTimeHint: boolean,
 ): string {
+  if (mode === "order") {
+    return "Call the customer to confirm the order details and delivery, then mark the case resolved.";
+  }
   const isMeeting = topics.has("meeting") || topics.has("activation");
   if (isMeeting) {
     if (mode === "hard") {
@@ -521,10 +526,13 @@ function marinaNeedsLine(
 }
 
 function optionsList(
-  mode: "soft" | "hard",
+  mode: EscalationModeForSummary,
   topics: Set<Topic>,
   slots: TimeSlot[],
 ): string[] {
+  if (mode === "order") {
+    return ["Call customer to confirm order", "Add internal note", "Mark resolved"];
+  }
   const isMeeting = topics.has("meeting") || topics.has("activation");
   if (isMeeting) {
     // Concrete slot chips when we have them — operator can scan and pick.
@@ -621,11 +629,14 @@ function optionsList(
 
 function reasonLine(
   name: string,
-  mode: "soft" | "hard",
+  mode: EscalationModeForSummary,
   topics: Set<Topic>,
   slots: TimeSlot[],
   hasTimeHint: boolean,
 ): string {
+  if (mode === "order") {
+    return `${name} confirmed an order and is waiting for a human call to confirm delivery.`;
+  }
   const phrase = topicPhrase(topics);
   const isMeeting = topics.has("meeting") || topics.has("activation");
 
@@ -842,7 +853,10 @@ export function buildEscalationBriefing({
  * always uses the just-extracted `slots` (no backend hand-off chips
  * tailored to the original request).
  */
-function buildFreshOptions(mode: "soft" | "hard", slots: TimeSlot[]): string[] {
+function buildFreshOptions(mode: EscalationModeForSummary, slots: TimeSlot[]): string[] {
+  if (mode === "order") {
+    return ["Call customer to confirm order", "Add internal note", "Mark resolved"];
+  }
   const slotChips =
     slots.length > 0
       ? slots.map((s) => `Confirm ${s.pretty}`)

@@ -322,7 +322,7 @@ function inferChannel(c: ApiConversation, prefix: ParsedPrefix | null): Channel 
 export interface NormalizedEscalation {
   id: string;
   phone: string | null;
-  mode: "soft" | "hard" | null;
+  mode: "soft" | "hard" | "order" | null;
   resolved: boolean;
   customerName: string;
   platform: string;
@@ -377,9 +377,13 @@ function pickBool(o: Record<string, unknown>, ...keys: string[]): boolean | null
  * Returns null only if neither side has any signal — in which case the row
  * still appears in "All" (legacy behavior preserved).
  */
-function inferEscalationMode(o: Record<string, unknown>): "soft" | "hard" | null {
+function inferEscalationMode(o: Record<string, unknown>): "soft" | "hard" | "order" | null {
   const explicitMode = pickStr(o, "mode", "escalation_mode", "escalationMode");
   const explicitType = pickStr(o, "type", "escalation_type", "escalationType");
+
+  if (explicitMode === "order" || explicitType === "order") {
+    return "order";
+  }
 
   // --- Hard signals ---
   const hardFromMode = explicitMode === "hard" || explicitType === "hard";

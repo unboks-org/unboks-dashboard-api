@@ -44,7 +44,7 @@ export type ValidClient = string;
 // Types
 // ---------------------------------------------------------------------------
 
-export type EscalationMode = "soft" | "hard" | null;
+export type EscalationMode = "soft" | "hard" | "order" | null;
 export type LearningStatus = "none" | "suggested" | "approved" | "saved";
 
 export interface ApiConversation {
@@ -1928,7 +1928,7 @@ export async function suggestReply(phone: string): Promise<{ suggestion: string 
 // Escalations
 // ---------------------------------------------------------------------------
 
-export async function fetchEscalations(mode?: "soft" | "hard" | "all"): Promise<Escalation[]> {
+export async function fetchEscalations(mode?: "soft" | "hard" | "order" | "all"): Promise<Escalation[]> {
   const qs = mode && mode !== "all" ? `?mode=${mode}` : "";
   return apiFetch<Escalation[]>(`/escalations${qs}`);
 }
@@ -1983,7 +1983,7 @@ export async function takeoverEscalation(id: string, note?: string): Promise<voi
 
 export async function setEscalationMode(
   id: string,
-  mode: "soft" | "hard",
+  mode: "soft" | "hard" | "order",
 ): Promise<void> {
   return apiFetch<void>(`/escalations/${id}/mode`, {
     method: "POST",
@@ -2023,7 +2023,7 @@ export type AIEditorStyle =
 
 export interface AIEditorContext {
   conversationId?: string;
-  escalationMode?: "soft" | "hard";
+  escalationMode?: "soft" | "hard" | "order";
   channel?: string;
 }
 

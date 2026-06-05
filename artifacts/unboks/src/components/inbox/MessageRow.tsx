@@ -257,14 +257,18 @@ export function MessageRow({
                     ? "bg-[#fef7e0] text-[#a06800]"
                     : conversation.escalationMode === "hard"
                       ? "bg-[#fce8e6] text-[#c5221f]"
-                      : "bg-[#f1f3f4] text-[#5f6368]",
+                      : conversation.escalationMode === "order"
+                        ? "bg-[#e6f4ea] text-[#137333]"
+                        : "bg-[#f1f3f4] text-[#5f6368]",
                 )}
               >
                 {conversation.escalationMode === "soft"
                   ? "Agent needs help"
                   : conversation.escalationMode === "hard"
                     ? "Human takeover"
-                    : "Escalation"}
+                    : conversation.escalationMode === "order"
+                      ? "ORDER"
+                      : "Escalation"}
               </span>
             ) : null}
             <p
