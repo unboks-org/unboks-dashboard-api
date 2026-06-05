@@ -1,24 +1,47 @@
-/**
- * Single source of truth for the workspace label that points at the
- * Appointments page. Both the desktop sidebar (Drawer in md+ mode) and
- * the mobile drawer/hamburger menu read from here, so they can never
- * disagree.
- *
- * R2-39: removed the per-device localStorage override and the Settings
- * "Bookings / Orders" picker. That mechanism only stored on whichever
- * device set it, so mobile and desktop drifted apart (mobile showed
- * "Orders", desktop showed "Appointments"). Per Calvin's "no fake
- * persistence" rule, until there is a tenant-scoped backend setting
- * for this label, the dashboard renders the canonical product name.
- *
- * If a tenant-configurable label is needed in the future, replace
- * BOOKINGS_LABEL below with a value sourced from a tenant-scoped
- * backend endpoint (e.g. /settings/workspace-labels) — every consumer
- * already routes through this hook, so no other file needs to change.
- */
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  fetchWorkspaceLabelsSettings,
+  saveWorkspaceLabelsSettings,
+  type WorkspaceLabelsSettings,
+} from "@/lib/api";
 
-export const BOOKINGS_LABEL = "Appointments";
+export const DEFAULT_BOOKINGS_LABEL = "Appointments";
+const QUERY_KEY = ["workspace-labels"] as const;
 
-export function useBookingsLabel(): { label: string } {
-  return { label: BOOKINGS_LABEL };
+const FALLBACK: WorkspaceLabelsSettings = {
+  bookingsLabel: DEFAULT_BOOKINGS_LABEL,
+  defaultBookingsLabel: DEFAULT_BOOKINGS_LABEL,
+  presets: ["Appointments", "Bookings", "Orders"],
+};
+
+export function useWorkspaceLabels() {
+  return useQuery<WorkspaceLabelsSettings>({
+    queryKey: QUERY_KEY,
+    queryFn: fetchWorkspaceLabelsSettings,
+    staleTime: 30_000,
+    retry: 1,
+  });
+}
+
+export function useBookingsLabel(): { label: string; isLoading: boolean } {
+  const { data, isLoading } = useWorkspaceLabels();
+  return {
+    label: data?.bookingsLabel || DEFAULT_BOOKINGS_LABEL,
+    isLoading,
+  };
+}
+
+export function useSaveWorkspaceLabels() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (bookingsLabel: string) => saveWorkspaceLabelsSettings(bookingsLabel),
+    onSuccess: (settings) => {
+      qc.setQueryData(QUERY_KEY, settings);
+      qc.invalidateQueries({ queryKey: QUERY_KEY });
+    },
+  });
+}
+
+export function workspaceLabelsFallback(): WorkspaceLabelsSettings {
+  return FALLBACK;
 }

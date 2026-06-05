@@ -1,6 +1,7 @@
 import { BookOpen, Calendar, Inbox, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavId } from "@/components/inbox/Drawer";
+import { useBookingsLabel } from "@/hooks/use-bookings-label";
 
 interface BottomNavProps {
   active: NavId;
@@ -8,13 +9,6 @@ interface BottomNavProps {
   inboxBadge?: number;
   appointmentsBadge?: number;
 }
-
-const ITEMS = [
-  { id: "inbox" as const, label: "Inbox", icon: Inbox },
-  { id: "bookings" as const, label: "Appointments", icon: Calendar },
-  { id: "help" as const, label: "Help", icon: BookOpen },
-  { id: "settings" as const, label: "Settings", icon: Settings },
-] satisfies { id: NavId; label: string; icon: typeof Inbox }[];
 
 function activeBottomId(active: NavId): NavId {
   if (active === "bookings" || active === "help" || active === "settings") return active;
@@ -28,12 +22,19 @@ export function BottomNav({
   appointmentsBadge = 0,
 }: BottomNavProps) {
   const bottomActive = activeBottomId(active);
+  const { label: bookingsLabel } = useBookingsLabel();
+  const items = [
+    { id: "inbox" as const, label: "Inbox", icon: Inbox },
+    { id: "bookings" as const, label: bookingsLabel, icon: Calendar },
+    { id: "help" as const, label: "Help", icon: BookOpen },
+    { id: "settings" as const, label: "Settings", icon: Settings },
+  ] satisfies { id: NavId; label: string; icon: typeof Inbox }[];
   return (
     <nav
       aria-label="Primary mobile navigation"
       className="h-[calc(4rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] bg-white border-t border-[#e6e8eb] flex items-center justify-around flex-shrink-0 shadow-[0_-1px_10px_rgba(0,0,0,0.02)] md:hidden"
     >
-      {ITEMS.map((item) => {
+      {items.map((item) => {
         const Icon = item.icon;
         const isActive = bottomActive === item.id;
         const badge =

@@ -30,6 +30,11 @@ import {
   useResponseTimingSettings,
   useSaveResponseTimingSettings,
 } from "@/hooks/use-response-timing-settings";
+import {
+  useSaveWorkspaceLabels,
+  useWorkspaceLabels,
+  workspaceLabelsFallback,
+} from "@/hooks/use-bookings-label";
 import { useYourInfoUpdates, UPDATE_TYPES, type YourInfoUpdateType } from "@/hooks/use-your-info-updates";
 import { KnowledgeFileUploader } from "@/components/settings/KnowledgeFileUploader";
 import { KnowledgeMediaAttachments } from "@/components/settings/KnowledgeMediaAttachments";
@@ -851,6 +856,13 @@ export default function Settings() {
     isError: responseTimingError,
   } = useResponseTimingSettings();
   const saveResponseTiming = useSaveResponseTimingSettings();
+  const {
+    data: workspaceLabelsData,
+    isLoading: workspaceLabelsLoading,
+    isError: workspaceLabelsError,
+  } = useWorkspaceLabels();
+  const saveWorkspaceLabels = useSaveWorkspaceLabels();
+  const workspaceLabels = workspaceLabelsData ?? workspaceLabelsFallback();
   const { updates, addUpdate, setActive: setUpdateActive, removeUpdate } = useYourInfoUpdates();
 
   const {
@@ -867,6 +879,10 @@ export default function Settings() {
     setAccountDraft(account);
   }, [account]);
   const [accountSaved, setAccountSaved] = useState(false);
+  const [bookingsLabelDraft, setBookingsLabelDraft] = useState(workspaceLabels.bookingsLabel);
+  useEffect(() => {
+    setBookingsLabelDraft(workspaceLabels.bookingsLabel);
+  }, [workspaceLabels.bookingsLabel]);
   const [agentNameDraft, setAgentNameDraft] = useState("Marina");
   const [agentNameSaved, setAgentNameSaved] = useState(false);
   useEffect(() => {
@@ -2004,13 +2020,74 @@ export default function Settings() {
 
               {active === "preferences" && (
                 <div className="space-y-5">
-                  {/* R2-39: the per-device "Bookings / Orders" label
-                      picker was removed. The workspace label is now a
-                      single constant in `use-bookings-label.ts` so the
-                      desktop sidebar and the mobile drawer can never
-                      drift. If tenant-level customisation is needed
-                      later, source the constant from a backend setting
-                      — every consumer already reads from the hook. */}
+                  <Card
+                    title="Workspace menu label"
+                    description="Choose the label shown for the appointment/order workspace in the sidebar and mobile menu."
+                  >
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap gap-2">
+                        {workspaceLabels.presets.map((option) => (
+                          <button
+                            key={option}
+                            type="button"
+                            disabled={workspaceLabelsLoading || saveWorkspaceLabels.isPending}
+                            onClick={() => setBookingsLabelDraft(option)}
+                            className={cn(
+                              "rounded-lg border px-4 py-2 text-[13px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                              bookingsLabelDraft === option
+                                ? "border-[#1a73e8] bg-[#e8f0fe] text-[#1a73e8]"
+                                : "border-[#dadce0] bg-white text-[#5f6368] hover:bg-[#f6f8fc]",
+                            )}
+                          >
+                            {option}
+                          </button>
+                        ))}
+                      </div>
+                      <label className="block max-w-md">
+                        <FieldLabel>Custom label</FieldLabel>
+                        <TextInput
+                          value={bookingsLabelDraft}
+                          maxLength={24}
+                          disabled={workspaceLabelsLoading || saveWorkspaceLabels.isPending}
+                          placeholder="Appointments, Bookings, Orders..."
+                          onChange={(e) => setBookingsLabelDraft(e.target.value)}
+                        />
+                      </label>
+                      {workspaceLabelsError && (
+                        <p className="rounded-lg border border-[#f6d48f] bg-[#fff8e1] px-3 py-2 text-[12px] text-[#7a5a00]">
+                          Could not load the saved label. Showing the default until the dashboard reconnects.
+                        </p>
+                      )}
+                      <div className="flex flex-wrap items-center gap-3">
+                        <PrimaryButton
+                          type="button"
+                          disabled={
+                            workspaceLabelsLoading ||
+                            saveWorkspaceLabels.isPending ||
+                            !bookingsLabelDraft.trim() ||
+                            bookingsLabelDraft.trim() === workspaceLabels.bookingsLabel
+                          }
+                          onClick={async () => {
+                            try {
+                              const next = await saveWorkspaceLabels.mutateAsync(bookingsLabelDraft.trim());
+                              setBookingsLabelDraft(next.bookingsLabel);
+                              toast.success("Workspace label saved.");
+                            } catch (err) {
+                              toast.error(err instanceof Error ? err.message : "Could not save workspace label.");
+                            }
+                          }}
+                        >
+                          {saveWorkspaceLabels.isPending ? "Saving..." : "Save label"}
+                        </PrimaryButton>
+                        <p className="text-[12px] text-[#5f6368]">
+                          Current active label:{" "}
+                          <span className="font-medium text-[#202124]">
+                            {workspaceLabels.bookingsLabel}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
                   <Card
                     title="Email replies"
                     description="Choose how email replies are opened from the inbox."

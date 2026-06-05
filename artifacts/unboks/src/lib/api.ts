@@ -1179,6 +1179,12 @@ export interface ResponseTimingSettings {
   presets: Array<{ key: string; label: string; delay_seconds: number }>;
 }
 
+export interface WorkspaceLabelsSettings {
+  bookingsLabel: string;
+  defaultBookingsLabel: string;
+  presets: string[];
+}
+
 export interface InfoUpdateApiItem {
   id: number | string;
   type?: string | null;
@@ -1453,6 +1459,19 @@ export async function saveResponseTimingSettings(
   return apiFetch<ResponseTimingSettings>("/settings/response-timing", {
     method: "PUT",
     body: JSON.stringify(value),
+  });
+}
+
+export async function fetchWorkspaceLabelsSettings(): Promise<WorkspaceLabelsSettings> {
+  return apiFetch<WorkspaceLabelsSettings>("/settings/workspace-labels");
+}
+
+export async function saveWorkspaceLabelsSettings(
+  bookingsLabel: string,
+): Promise<WorkspaceLabelsSettings> {
+  return apiFetch<WorkspaceLabelsSettings>("/settings/workspace-labels", {
+    method: "PUT",
+    body: JSON.stringify({ bookings_label: bookingsLabel }),
   });
 }
 
