@@ -267,6 +267,24 @@ export interface Appointment {
   status: AppointmentStatus;
   source: AppointmentSource;
   createdAt: string;
+  order?: OrderDetails | null;
+}
+
+export interface OrderLine {
+  name: string;
+  quantity: number | null;
+  unitPrice?: number | null;
+  subtotal?: number | null;
+}
+
+export interface OrderDetails {
+  customerName: string;
+  phone: string;
+  address: string;
+  products: OrderLine[];
+  total: number | null;
+  currency: string;
+  comments?: string | null;
 }
 
 export interface AppointmentsResponse {

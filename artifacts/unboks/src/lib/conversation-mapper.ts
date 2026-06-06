@@ -327,6 +327,7 @@ export interface NormalizedEscalation {
   customerName: string;
   platform: string;
   summary: string | null;
+  body: string | null;
   createdAt: string | null;
 }
 
@@ -448,6 +449,7 @@ export function normalizeEscalation(raw: unknown): NormalizedEscalation | null {
       "Unknown contact",
     platform: pickStr(o, "platform", "channel") ?? "",
     summary: pickStr(o, "summary", "issue", "reason", "subject", "title"),
+    body: pickStr(o, "body", "message", "description", "text"),
     createdAt: pickStr(o, "createdAt", "created_at", "timestamp", "last_message_at"),
   };
 }

@@ -28,7 +28,7 @@
  * text. Em dash is freely allowed in code comments.
  */
 
-import { Calendar, MapPin, MessageCircle, ArrowLeft, Check, Loader2 } from "lucide-react";
+import { Calendar, MapPin, MessageCircle, ArrowLeft, Check, Loader2, Phone, Package, ReceiptText } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import { useAppointments } from "@/hooks/use-appointments";
@@ -37,6 +37,7 @@ import { useConversation } from "@/hooks/use-client-api";
 import { filterActiveAppointments } from "@/lib/appointment-classifier";
 import { sanitizeMessageContent } from "@/lib/message-sanitize";
 import { useMemo, useState, useEffect, useRef } from "react";
+import type { ReactNode } from "react";
 import { useDeepLink, clearDeepLinkQuery } from "@/lib/deep-link";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -469,18 +470,22 @@ export default function Bookings() {
                     );
                   })()}
 
-                  {/* Appointment info card */}
-                  <div className="rounded-lg border border-[#e6e8eb] bg-[#fbfbfd] p-3 space-y-2">
-                    <p className="text-[14px] font-medium text-[#1f2937]">{selectedApt.title}</p>
-                    <div className="flex items-center gap-2 text-[13px] text-[#202124]">
-                      <Calendar className="w-4 h-4 text-[#5f6368] flex-shrink-0" />
-                      <span>{selectedApt.dateTimeLabel}</span>
+                  {/* Appointment/order info card */}
+                  {selectedApt.source === "order_escalation" ? (
+                    <OrderDetailCard appointment={selectedApt} />
+                  ) : (
+                    <div className="rounded-lg border border-[#e6e8eb] bg-[#fbfbfd] p-3 space-y-2">
+                      <p className="text-[14px] font-medium text-[#1f2937]">{selectedApt.title}</p>
+                      <div className="flex items-center gap-2 text-[13px] text-[#202124]">
+                        <Calendar className="w-4 h-4 text-[#5f6368] flex-shrink-0" />
+                        <span>{selectedApt.dateTimeLabel}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[13px] text-[#5f6368]">
+                        <MapPin className="w-4 h-4 flex-shrink-0" />
+                        <span>{selectedApt.location ?? "Location not set"}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-[13px] text-[#5f6368]">
-                      <MapPin className="w-4 h-4 flex-shrink-0" />
-                      <span>{selectedApt.location ?? "Location not set"}</span>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Confirm action — shown when pending and backend-sourced */}
                   {selectedApt.source === "backend" && selectedApt.status !== "confirmed" && (
@@ -625,6 +630,127 @@ export default function Bookings() {
 
     </DashboardShell>
   );
+}
+
+function OrderDetailCard({ appointment }: { appointment: Appointment }) {
+  const order = appointment.order;
+  const lines = order?.products ?? [];
+  const total =
+    order?.total != null
+      ? `${order.currency ? `${order.currency} ` : ""}${formatMoney(order.total)}`
+      : "Price not captured";
+
+  return (
+    <div className="rounded-lg border border-[#dfe4ea] bg-white overflow-hidden">
+      <div className="border-b border-[#eef0f3] bg-[#fbfcfe] px-3 py-2.5">
+        <p className="text-[11px] uppercase tracking-wide text-[#5f6368] font-semibold">
+          Order summary
+        </p>
+        <p className="mt-0.5 text-[15px] font-semibold text-[#1f2937]">
+          {order?.customerName || appointment.customerName}
+        </p>
+      </div>
+
+      <div className="p-3 space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <OrderField label="Name" value={order?.customerName || appointment.customerName} />
+          <OrderField
+            label="Phone"
+            value={order?.phone || appointment.conversationId || "Phone not captured"}
+            icon={<Phone className="w-3.5 h-3.5" />}
+          />
+          <OrderField
+            label="Address"
+            value={order?.address || "Address not captured"}
+            icon={<MapPin className="w-3.5 h-3.5" />}
+            wide
+          />
+        </div>
+
+        <div className="rounded-md border border-[#eef0f3] bg-[#fbfbfd]">
+          <div className="flex items-center gap-1.5 border-b border-[#eef0f3] px-3 py-2">
+            <Package className="w-4 h-4 text-[#5f6368]" />
+            <p className="text-[12px] font-semibold uppercase tracking-wide text-[#5f6368]">
+              Order
+            </p>
+          </div>
+          {lines.length > 0 ? (
+            <ul className="divide-y divide-[#eef0f3]">
+              {lines.map((line, idx) => (
+                <li key={`${line.name}-${idx}`} className="flex items-start justify-between gap-3 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-[14px] font-medium text-[#1f2937] break-words">
+                      {line.quantity != null ? `${line.quantity} x ` : ""}
+                      {line.name}
+                    </p>
+                    {line.unitPrice != null && (
+                      <p className="text-[12px] text-[#5f6368]">
+                        Unit price: {order?.currency ? `${order.currency} ` : ""}{formatMoney(line.unitPrice)}
+                      </p>
+                    )}
+                  </div>
+                  {line.subtotal != null && (
+                    <p className="text-[13px] font-medium text-[#1f2937] whitespace-nowrap">
+                      {order?.currency ? `${order.currency} ` : ""}{formatMoney(line.subtotal)}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="px-3 py-3 text-[13px] text-[#5f6368]">Order details not captured.</p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between rounded-md border border-[#d6eadb] bg-[#f1f8f3] px-3 py-2.5">
+          <div className="flex items-center gap-2">
+            <ReceiptText className="w-4 h-4 text-[#188038]" />
+            <span className="text-[13px] font-medium text-[#1f2937]">Price</span>
+          </div>
+          <span className="text-[15px] font-semibold text-[#188038]">{total}</span>
+        </div>
+
+        {order?.comments && (
+          <div className="rounded-md border border-[#eef0f3] bg-white px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-[#5f6368] font-semibold">
+              Comments
+            </p>
+            <p className="mt-1 text-[13px] text-[#1f2937] whitespace-pre-wrap">
+              {order.comments}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function OrderField({
+  label,
+  value,
+  icon,
+  wide = false,
+}: {
+  label: string;
+  value: string;
+  icon?: ReactNode;
+  wide?: boolean;
+}) {
+  return (
+    <div className={cn("rounded-md border border-[#eef0f3] bg-[#fbfbfd] px-3 py-2", wide && "sm:col-span-2")}>
+      <p className="text-[11px] uppercase tracking-wide text-[#5f6368] font-semibold">
+        {label}
+      </p>
+      <p className="mt-1 flex items-start gap-1.5 text-[13px] font-medium text-[#1f2937] break-words">
+        {icon ? <span className="mt-0.5 text-[#5f6368] flex-shrink-0">{icon}</span> : null}
+        <span>{value}</span>
+      </p>
+    </div>
+  );
+}
+
+function formatMoney(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
 
 /**
