@@ -217,7 +217,7 @@ export function DashboardShell({
     const active = [];
     for (const raw of apiEscalations as unknown[]) {
       const e = normalizeEscalation(raw);
-      if (e && !e.resolved) active.push(e);
+      if (e && !e.resolved && e.mode !== "order") active.push(e);
     }
     // Apply the same hide and block filters the Escalations page uses.
     // We mirror `escalationToConversationRow`'s key derivation: routable

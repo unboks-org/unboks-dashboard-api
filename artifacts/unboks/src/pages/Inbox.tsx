@@ -1100,7 +1100,7 @@ export default function Inbox() {
     });
   }, [location, search, isChannelVisible]);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
-  const [escalationFilter, setEscalationFilter] = useState<"all" | "soft" | "hard" | "order" | "resolved">("all");
+  const [escalationFilter, setEscalationFilter] = useState<"all" | "soft" | "hard" | "resolved">("all");
 
   // Email-only persistent row actions. All three open dedicated modals
   // that call the real backend endpoints:
@@ -1141,7 +1141,7 @@ export default function Inbox() {
   }, []);
   const handleUnresolveSuccess = useCallback((mode: "soft" | "hard" | "order" | null) => {
     setSelectedConv(null);
-    setEscalationFilter(mode === "hard" ? "hard" : mode === "soft" ? "soft" : mode === "order" ? "order" : "all");
+    setEscalationFilter(mode === "hard" ? "hard" : mode === "soft" ? "soft" : "all");
   }, []);
 
   // Server-backed blocked senders. The lookup is cheap (Set.has), so
@@ -1258,6 +1258,7 @@ export default function Inbox() {
     for (const raw of rawEscalations as unknown[]) {
       const n = normalizeEscalation(raw);
       if (!n || n.resolved) continue;
+      if (n.mode === "order") continue;
       active.push(n);
     }
     const deduped = dedupeEscalations(active);
@@ -1293,6 +1294,7 @@ export default function Inbox() {
     for (const raw of rawResolvedEscalations as unknown[]) {
       const n = normalizeEscalation(raw);
       if (!n) continue;
+      if (n.mode === "order") continue;
       resolved.push(n);
     }
     const deduped = dedupeEscalations(resolved);
@@ -1486,7 +1488,6 @@ export default function Inbox() {
         list = escalationRows;
         if (escalationFilter === "soft") list = list.filter((c) => c.escalationMode === "soft");
         else if (escalationFilter === "hard") list = list.filter((c) => c.escalationMode === "hard");
-        else if (escalationFilter === "order") list = list.filter((c) => c.escalationMode === "order");
       }
     } else {
       // Archive is now server-backed: active list comes from /messages/conversations,
@@ -1577,7 +1578,7 @@ export default function Inbox() {
               role="tablist"
               aria-label="Escalation filter"
             >
-              {(["all", "soft", "hard", "order", "resolved"] as const).map((m) => (
+              {(["all", "soft", "hard", "resolved"] as const).map((m) => (
                 <motion.button
                   key={m}
                   whileTap={{ scale: 0.96 }}
@@ -1592,7 +1593,7 @@ export default function Inbox() {
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
-                  {m === "all" ? "All" : m === "soft" ? "Agent needs help" : m === "hard" ? "Human takeover" : m === "order" ? "ORDER" : "Resolved"}
+                  {m === "all" ? "All" : m === "soft" ? "Agent needs help" : m === "hard" ? "Human takeover" : "Resolved"}
                 </motion.button>
               ))}
             </div>
