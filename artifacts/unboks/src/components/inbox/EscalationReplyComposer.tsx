@@ -367,7 +367,7 @@ export const EscalationReplyComposer = forwardRef<
             }
             setNotice({
               tone: "error",
-              text: "Could not send. Escalation was not resolved.",
+              text: formatSendAndResolveFailure(err, false),
             });
           },
         },
@@ -391,7 +391,7 @@ export const EscalationReplyComposer = forwardRef<
           }
           setNotice({
             tone: "error",
-            text: "Could not send. Escalation was not resolved.",
+            text: formatSendAndResolveFailure(err, true),
           });
         },
       },
@@ -841,4 +841,12 @@ function isNotConnected(err: unknown): boolean {
   if (err instanceof ApiError) return NOT_CONNECTED_STATUSES.has(err.status);
   // Network failure / no response — also treat as not connected.
   return !(err instanceof Error) || err.name === "TypeError" || err.message === "Failed to fetch";
+}
+
+function formatSendAndResolveFailure(err: unknown, directCustomerReply: boolean): string {
+  const reason = err instanceof Error ? err.message : "Unknown error";
+  const target = directCustomerReply
+    ? "Message was not delivered through WhatsApp"
+    : "Guidance was not delivered to the AI Agent";
+  return `${target}. Escalation remains open. Reason: ${reason}`;
 }
