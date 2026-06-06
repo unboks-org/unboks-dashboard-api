@@ -5,7 +5,11 @@ import { Drawer, NavId } from "@/components/inbox/Drawer";
 import { BottomNav } from "@/components/inbox/BottomNav";
 import { Channel, Conversation } from "@/data/conversations";
 import { useConversations, useEscalations } from "@/hooks/use-client-api";
-import { mapApiConversation, normalizeEscalation } from "@/lib/conversation-mapper";
+import {
+  escalationToConversationRow,
+  mapApiConversation,
+  normalizeEscalation,
+} from "@/lib/conversation-mapper";
 import { dedupeEscalations } from "@/lib/dedupe-escalations";
 import { useAppointments } from "@/hooks/use-appointments";
 import { useAuth } from "@/components/auth/useAuth";
@@ -223,16 +227,23 @@ export function DashboardShell({
     // `conversationKey` and get caught by the blocked predicate
     // immediately below. See `enrichmentConversations` JSDoc above.
     const convoByPhone = new Map(enrichmentConversations.map((c) => [c.id, c]));
+    const query = searchQuery.trim().toLowerCase();
     return dedupeEscalations(active).filter((n) => {
       const enrich = n.phone ? convoByPhone.get(n.phone) ?? null : null;
-      const conversationKey = enrich?.conversationKey ?? n.phone ?? `esc:${n.id}`;
-      const id = n.phone || `esc:${n.id}`;
-      const keys = [conversationKey, id, n.id];
+      const row = escalationToConversationRow(n, enrich);
+      const keys = collectConversationHideKeys(row);
       if (isRowHidden(keys)) return false;
       if (isRowBlocked(keys)) return false;
+      if (query) {
+        return (
+          (row.sender ?? "").toLowerCase().includes(query) ||
+          (row.subject ?? "").toLowerCase().includes(query) ||
+          (row.preview ?? "").toLowerCase().includes(query)
+        );
+      }
       return true;
     }).length;
-  }, [apiEscalations, hasEscData, enrichmentConversations, isRowHidden, isRowBlocked]);
+  }, [apiEscalations, hasEscData, enrichmentConversations, isRowHidden, isRowBlocked, searchQuery]);
 
   // Appointments sidebar count must use the same merged + de-duplicated
   // list the Appointments page renders, so the badge can never disagree
