@@ -92,6 +92,29 @@ export function useAppointments(): UseAppointmentsResult {
     return set;
   }, [escalations.data]);
 
+  const orderEscalationRows = useMemo<Appointment[]>(() => {
+    const rows: Appointment[] = [];
+    const list = (escalations.data ?? []) as unknown[];
+    for (const raw of list) {
+      const n = normalizeEscalation(raw);
+      if (!n || n.resolved || n.mode !== "order") continue;
+      const title = orderTitle(n.summary);
+      rows.push({
+        id: `order-escalation:${n.id}`,
+        customerName: n.customerName,
+        channel: (n.platform || "unknown").toLowerCase(),
+        conversationId: n.phone ?? `esc:${n.id}`,
+        title,
+        dateTimeLabel: "Order pending",
+        location: null,
+        status: "pending",
+        source: "order_escalation",
+        createdAt: n.createdAt ?? new Date().toISOString(),
+      });
+    }
+    return rows;
+  }, [escalations.data]);
+
   // Filter candidates by the cheap preview-string signal so we only
   // fetch full detail for conversations that plausibly contain an
   // appointment.
@@ -150,7 +173,8 @@ export function useAppointments(): UseAppointmentsResult {
   const merged = useMemo<Appointment[]>(() => {
     const backendList = backend.data?.items ?? [];
     const seen = new Set<string>();
-    const key = (a: Appointment) => `${a.conversationId}|${a.dateTimeLabel}`;
+    const key = (a: Appointment) =>
+      a.source === "order_escalation" ? a.id : `${a.conversationId}|${a.dateTimeLabel}`;
     const result: Appointment[] = [];
     // Backend rows first so they take precedence on dedup — but each
     // one is run through `validateBackendAppointment` first. A backend
@@ -167,6 +191,12 @@ export function useAppointments(): UseAppointmentsResult {
       seen.add(k);
       result.push(validated);
     }
+    for (const a of orderEscalationRows) {
+      const k = key(a);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      result.push(a);
+    }
     for (const a of detected) {
       const k = key(a);
       if (seen.has(k)) continue;
@@ -174,9 +204,13 @@ export function useAppointments(): UseAppointmentsResult {
       result.push(a);
     }
     // Escalation guard — drop any row whose owning conversation is
-    // currently a live (unresolved) escalation. See `escalatedPhones`
-    // above for the rationale.
-    const guarded = result.filter((a) => !escalatedPhones.has(a.conversationId));
+    // currently a live (unresolved) escalation. Order escalations are
+    // the deliberate exception: Wibrandt-style Orders are represented
+    // as unresolved human-confirmation escalations and must remain
+    // visible in the renamed Orders workspace.
+    const guarded = result.filter(
+      (a) => a.source === "order_escalation" || !escalatedPhones.has(a.conversationId),
+    );
     // Newest first by createdAt.
     guarded.sort((a, b) => {
       const da = Date.parse(a.createdAt) || 0;
@@ -184,7 +218,7 @@ export function useAppointments(): UseAppointmentsResult {
       return db - da;
     });
     return guarded;
-  }, [backend.data, detected, detailByConvId, escalatedPhones]);
+  }, [backend.data, detected, detailByConvId, escalatedPhones, orderEscalationRows]);
 
   return {
     appointments: merged,
@@ -209,4 +243,10 @@ function previewText(c: ApiConversation): string {
   ]
     .filter((s): s is string => typeof s === "string" && s.length > 0)
     .join(" \n ");
+}
+
+function orderTitle(summary: string | null): string {
+  const clean = (summary ?? "").trim();
+  if (!clean) return "Order awaiting human confirmation";
+  return clean.replace(/^\[ORDER\]\s*/i, "").trim() || "Order awaiting human confirmation";
 }

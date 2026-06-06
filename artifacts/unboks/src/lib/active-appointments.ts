@@ -27,6 +27,12 @@ export function filterActiveAppointments(
   conversationsReady: boolean,
 ): Appointment[] {
   return appointments.filter((a) => {
+    // Order-mode escalations are intentionally unresolved while the
+    // team confirms the order by phone. They belong in the tenant's
+    // renamed Orders workspace even when the underlying conversation is
+    // not present in the active inbox projection.
+    if (a.source === "order_escalation") return true;
+
     // Defensive: the current `AppointmentStatus` union doesn't include
     // terminal states, but the backend may add them later. Compare via
     // a widened string so the predicate stays correct without forcing

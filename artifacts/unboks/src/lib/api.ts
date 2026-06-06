@@ -252,7 +252,7 @@ export interface LearningEntry {
 // rows can land alongside detected ones without losing fidelity.
 
 export type AppointmentStatus = "confirmed" | "pending" | "detected";
-export type AppointmentSource = "conversation" | "backend";
+export type AppointmentSource = "conversation" | "backend" | "order_escalation";
 
 export interface Appointment {
   id: string;

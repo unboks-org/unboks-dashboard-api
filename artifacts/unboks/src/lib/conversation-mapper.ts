@@ -447,7 +447,7 @@ export function normalizeEscalation(raw: unknown): NormalizedEscalation | null {
       pickStr(o, "customerName", "customer_name", "name", "sender", "from") ??
       "Unknown contact",
     platform: pickStr(o, "platform", "channel") ?? "",
-    summary: pickStr(o, "summary", "issue", "reason"),
+    summary: pickStr(o, "summary", "issue", "reason", "subject", "title"),
     createdAt: pickStr(o, "createdAt", "created_at", "timestamp", "last_message_at"),
   };
 }
