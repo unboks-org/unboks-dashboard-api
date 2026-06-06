@@ -143,6 +143,8 @@ export const EscalationReplyComposer = forwardRef<
   // button.
   const [combinedStep, setCombinedStep] = useState<null | "sending" | "resolving">(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const conversationKey = `${channel}:${conversationDbId}:${conversationId}`;
+  const previousConversationKey = useRef(conversationKey);
 
   // Mirror the latest draft into a ref so the imperative handle exposed
   // to the Escalation Reason chips always reads the current text — even
@@ -161,6 +163,19 @@ export const EscalationReplyComposer = forwardRef<
 
   const { guidance, reply, resolve, takeover, handback } = useEscalationMutations();
   const isSoft = mode === "soft";
+
+  // Safety: drafts are customer-specific. The parent keeps this composer
+  // mounted while the operator switches conversations, so local state would
+  // otherwise leak Charlotte's unsent text into Lisa's reply box.
+  useEffect(() => {
+    if (previousConversationKey.current === conversationKey) return;
+    previousConversationKey.current = conversationKey;
+    setDraft("");
+    setPrevDraft(null);
+    setAiOpen(false);
+    setNotice(null);
+    setCombinedStep(null);
+  }, [conversationKey]);
 
   // When the operator toggles soft/hard we deliberately keep `draft` and
   // `prevDraft` so an in-progress message survives the switch. We do reset
