@@ -51,7 +51,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  archiveConversation,
   confirmAppointment,
+  resolveEscalation,
   type Appointment,
   type AppointmentStatus,
 } from "@/lib/api";
@@ -163,6 +165,7 @@ export default function Bookings() {
   // tracking issue.
   const queryClient = useQueryClient();
   const [pendingConfirm, setPendingConfirm] = useState<Appointment | null>(null);
+  const [pendingProcessOrder, setPendingProcessOrder] = useState<Appointment | null>(null);
   const confirmMutation = useMutation({
     mutationFn: (appointmentId: string) =>
       confirmAppointment(appointmentId, { confirmedBy: "operator" }),
@@ -188,6 +191,33 @@ export default function Bookings() {
         return;
       }
       const msg = err instanceof Error ? err.message : "Could not confirm appointment.";
+      toast.error(msg);
+    },
+  });
+
+  const processOrderMutation = useMutation({
+    mutationFn: async (appointment: Appointment) => {
+      const escalationId = escalationIdFromOrderAppointment(appointment);
+      if (!escalationId) throw new Error("Order escalation id is missing.");
+      await resolveEscalation(escalationId, {
+        resolutionNote: "Order processed by operator.",
+        saveAsLearning: false,
+      });
+      await archiveConversation(appointment.conversationId);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      void queryClient.invalidateQueries({ queryKey: ["escalations"] });
+      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      void queryClient.invalidateQueries({ queryKey: ["conversations", "archived"] });
+      void queryClient.invalidateQueries({ queryKey: ["status"] });
+      toast.success("Order processed and archived");
+      setPendingProcessOrder(null);
+      setSelectedApt(null);
+      setRightPaneView("detail");
+    },
+    onError: (err) => {
+      const msg = err instanceof Error ? err.message : "Could not process this order.";
       toast.error(msg);
     },
   });
@@ -516,6 +546,33 @@ export default function Bookings() {
                   )}
 
                   {/* View conversation — secondary action */}
+                  {selectedApt.source === "order_escalation" && (
+                    <div className="rounded-lg border border-[#d6eadb] bg-[#f1f8f3] p-3">
+                      <p className="text-[13px] font-medium text-[#137333]">Order ready to close</p>
+                      <p className="text-[12px] text-[#3c6f47] mt-0.5">
+                        Use this after the goods are baked, delivered, and no further action is needed.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setPendingProcessOrder(selectedApt)}
+                        disabled={processOrderMutation.isPending}
+                        className={cn(
+                          "mt-2.5 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#188038] bg-[#188038] px-3 py-2 text-[13px] font-medium text-white transition-colors",
+                          "hover:bg-[#137333] hover:border-[#137333]",
+                          "focus:outline-none focus:ring-2 focus:ring-[#188038]/30",
+                          "disabled:opacity-60 disabled:cursor-not-allowed",
+                        )}
+                      >
+                        {processOrderMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Check className="w-4 h-4" />
+                        )}
+                        Order processed
+                      </button>
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     onClick={openConversation}
@@ -628,8 +685,74 @@ export default function Bookings() {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={pendingProcessOrder !== null}
+        onOpenChange={(v) => {
+          if (!v && !processOrderMutation.isPending) setPendingProcessOrder(null);
+        }}
+      >
+        <DialogContent className="box-border w-[calc(100vw-32px)] max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Mark order processed?</DialogTitle>
+            <DialogDescription className="text-[#5f6368]">
+              This removes the order from Orders, resolves the escalation, and archives the conversation.
+            </DialogDescription>
+          </DialogHeader>
+          {pendingProcessOrder && (
+            <div className="rounded-md border border-[#e6e8eb] bg-[#fbfbfd] px-3 py-2 text-[13px]">
+              <p className="font-medium text-[#1f2937]">{pendingProcessOrder.customerName}</p>
+              <p className="text-[#5f6368] mt-0.5">{pendingProcessOrder.title}</p>
+              {pendingProcessOrder.order?.address && (
+                <p className="text-[#5f6368] mt-1.5 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5" />
+                  {pendingProcessOrder.order.address}
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => setPendingProcessOrder(null)}
+              disabled={processOrderMutation.isPending}
+              className={cn(
+                "inline-flex items-center justify-center min-h-[44px] md:min-h-0 md:h-9 rounded-lg border border-[#e2e6ec] bg-white px-3 text-[13px] font-medium text-[#1f2937] transition-colors",
+                "hover:border-[#188038] hover:text-[#188038]",
+                "disabled:opacity-60 disabled:cursor-not-allowed",
+              )}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (pendingProcessOrder) processOrderMutation.mutate(pendingProcessOrder);
+              }}
+              disabled={processOrderMutation.isPending}
+              className={cn(
+                "inline-flex items-center justify-center gap-1.5 min-h-[44px] md:min-h-0 md:h-9 rounded-lg border border-[#188038] bg-[#188038] px-3 text-[13px] font-medium text-white transition-colors",
+                "hover:bg-[#137333] hover:border-[#137333]",
+                "disabled:opacity-60 disabled:cursor-not-allowed",
+              )}
+            >
+              {processOrderMutation.isPending ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Check className="w-3.5 h-3.5" />
+              )}
+              Yes, order processed
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </DashboardShell>
   );
+}
+
+function escalationIdFromOrderAppointment(appointment: Appointment): string | null {
+  const prefix = "order-escalation:";
+  return appointment.id.startsWith(prefix) ? appointment.id.slice(prefix.length) : null;
 }
 
 function OrderDetailCard({ appointment }: { appointment: Appointment }) {
