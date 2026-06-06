@@ -120,6 +120,9 @@ function statusPill(
 
 export default function Bookings() {
   const { label } = useBookingsLabel();
+  const isOrdersView = /\border/i.test(label);
+  const workspaceSingular = isOrdersView ? "order" : "appointment";
+  const workspacePlural = isOrdersView ? "orders" : "appointments";
   const { appointments: rawAppointments, isLoading, backendAvailable } =
     useAppointments();
   // Hide appointments whose owning conversation was archived or deleted
@@ -243,7 +246,11 @@ export default function Bookings() {
     <DashboardShell
       activeNav="bookings"
       pageTitle={label}
-      pageSubtitle="Scheduled customer appointments and confirmed follow-ups."
+      pageSubtitle={
+        isOrdersView
+          ? "Customer orders waiting for team confirmation."
+          : "Scheduled customer appointments and confirmed follow-ups."
+      }
     >
       <div className="flex h-full flex-col">
         {showPendingSyncHint && (
@@ -301,15 +308,16 @@ export default function Bookings() {
               // remaining column height and the message lands in the
               // visual middle of the list pane on every viewport.
               <div className="flex flex-1 flex-col items-center justify-center text-center px-6">
-                <p className="text-[14px] text-[#5f6368]">Loading appointments...</p>
+                <p className="text-[14px] text-[#5f6368]">Loading {workspacePlural}...</p>
               </div>
             ) : appointments.length === 0 ? (
               <div className="flex flex-1 flex-col items-center justify-center text-center px-6">
                 <Calendar className="w-8 h-8 text-[#9aa0a6] mb-3" />
-                <p className="text-[14px] text-[#5f6368]">No appointments yet.</p>
+                <p className="text-[14px] text-[#5f6368]">No {workspacePlural} yet.</p>
                 <p className="text-[12px] text-[#9aa0a6] mt-1 max-w-[360px]">
-                  Appointments will appear here when a customer schedules a
-                  meeting and a date, time, and location are confirmed.
+                  {isOrdersView
+                    ? "Orders will appear here when a customer confirms an order and your team needs to finalize it."
+                    : "Appointments will appear here when a customer schedules a meeting and a date, time, and location are confirmed."}
                 </p>
               </div>
             ) : (
@@ -413,7 +421,9 @@ export default function Bookings() {
                 >
                   <ArrowLeft className="w-4 h-4" />
                 </button>
-                <p className="text-[13px] font-medium text-[#202124] truncate">Appointment</p>
+                <p className="text-[13px] font-medium text-[#202124] truncate">
+                  {selectedApt.source === "order_escalation" ? "Order" : "Appointment"}
+                </p>
                 <button
                   type="button"
                   onClick={() => setSelectedApt(null)}
@@ -538,7 +548,9 @@ export default function Bookings() {
             <div className="hidden md:flex flex-1 items-center justify-center text-center px-6">
               <div>
                 <Calendar className="w-8 h-8 text-[#9aa0a6] mx-auto mb-2" />
-                <p className="text-[13px] text-[#5f6368]">Select an appointment to view details</p>
+                <p className="text-[13px] text-[#5f6368]">
+                  Select an {workspaceSingular} to view details
+                </p>
               </div>
             </div>
           )}
