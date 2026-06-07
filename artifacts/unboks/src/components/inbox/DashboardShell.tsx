@@ -12,6 +12,8 @@ import {
 } from "@/lib/conversation-mapper";
 import { dedupeEscalations } from "@/lib/dedupe-escalations";
 import { useAppointments } from "@/hooks/use-appointments";
+import { useOrders } from "@/hooks/use-orders";
+import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import { useAuth } from "@/components/auth/useAuth";
 import {
   useHiddenConversations,
@@ -257,14 +259,21 @@ export function DashboardShell({
   // conversation tied to a detected appointment leaves the badge stuck
   // at "1" while the page shows "No appointments yet" (the bug this
   // change fixes).
+  const { label: bookingsLabel } = useBookingsLabel();
+  const isOrdersWorkspace = /\border/i.test(bookingsLabel);
   const { appointments } = useAppointments();
+  const { orders } = useOrders();
   const { keys: activeConversationKeys, ready: convKeysReady } =
     useActiveConversationKeys();
   const appointmentsCount = useMemo(
     () =>
-      filterActiveAppointments(appointments, activeConversationKeys, convKeysReady)
+      filterActiveAppointments(
+        isOrdersWorkspace ? orders : appointments,
+        activeConversationKeys,
+        convKeysReady,
+      )
         .length,
-    [appointments, activeConversationKeys, convKeysReady],
+    [appointments, orders, isOrdersWorkspace, activeConversationKeys, convKeysReady],
   );
 
   const handleNavSelect = useCallback(

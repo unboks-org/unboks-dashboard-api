@@ -32,6 +32,7 @@ import { Calendar, MapPin, MessageCircle, ArrowLeft, Check, Loader2, Phone, Pack
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import { useAppointments } from "@/hooks/use-appointments";
+import { useOrders } from "@/hooks/use-orders";
 import { useActiveConversationKeys } from "@/hooks/use-active-conversation-keys";
 import { useConversation } from "@/hooks/use-client-api";
 import { filterActiveAppointments } from "@/lib/appointment-classifier";
@@ -121,6 +122,32 @@ function statusPill(
   };
 }
 
+function orderStatusPill(apt: Appointment) {
+  if (!apt.orderStatus) return null;
+  if (apt.orderStatus === "awaiting_human_confirmation") {
+    return {
+      label: "Pending team confirmation",
+      className: "bg-[#fef7e0] text-[#5f3e00] border border-[#feefc3]",
+    };
+  }
+  if (apt.orderStatus === "awaiting_customer_confirmation") {
+    return {
+      label: "Awaiting customer confirmation",
+      className: "bg-[#e8f0fe] text-[#174ea6] border border-[#d2e3fc]",
+    };
+  }
+  if (apt.orderStatus === "confirmed") {
+    return {
+      label: "Confirmed",
+      className: "bg-[#e6f4ea] text-[#137333] border border-[#ceead6]",
+    };
+  }
+  return {
+    label: "Order in progress",
+    className: "bg-[#f1f3f4] text-[#3c4043] border border-[#e8eaed]",
+  };
+}
+
 export default function Bookings() {
   const { label } = useBookingsLabel();
   const isOrdersView = /\border/i.test(label);
@@ -128,19 +155,24 @@ export default function Bookings() {
   const workspacePlural = isOrdersView ? "orders" : "appointments";
   const { appointments: rawAppointments, isLoading, backendAvailable } =
     useAppointments();
+  const { orders: rawOrders, isLoading: ordersLoading, backendAvailable: ordersBackendAvailable } =
+    useOrders();
   // Hide appointments whose owning conversation was archived or deleted
   // on this device. Same predicate the sidebar Appointments badge uses,
   // so the page and the badge can never disagree.
   const { keys: activeConversationKeys, ready: convKeysReady } =
     useActiveConversationKeys();
+  const visibleItems = isOrdersView ? rawOrders : rawAppointments;
+  const activeBackendAvailable = isOrdersView ? ordersBackendAvailable : backendAvailable;
+  const activeIsLoading = isOrdersView ? ordersLoading : isLoading;
   const appointments = useMemo(
     () =>
       filterActiveAppointments(
-        rawAppointments,
+        visibleItems,
         activeConversationKeys,
         convKeysReady,
       ),
-    [rawAppointments, activeConversationKeys, convKeysReady],
+    [visibleItems, activeConversationKeys, convKeysReady],
   );
   // R2-23 — clicking "View conversation" used to navigate to Inbox
   // (sidebar context loss), then briefly used a modal (awkward UX).
@@ -222,7 +254,7 @@ export default function Bookings() {
     },
   });
 
-  const showPendingSyncHint = !backendAvailable && appointments.length > 0;
+  const showPendingSyncHint = !activeBackendAvailable && appointments.length > 0;
 
   // ---- Deep-link handling (appointment links from alert emails / WhatsApp)
   //
@@ -286,8 +318,9 @@ export default function Bookings() {
       <div className="flex h-full flex-col">
         {showPendingSyncHint && (
           <div className="border-b border-[#e8eaed] bg-[#fbfbfd] px-4 py-2 text-[12px] text-[#5f6368]">
-            Showing detected appointments from your conversations. They will
-            sync once the appointments service is connected.
+            {isOrdersView
+              ? "Showing local order signals from your conversations. They will sync once the order service is connected."
+              : "Showing detected appointments from your conversations. They will sync once the appointments service is connected."}
           </div>
         )}
         {deepLinkNotFound && (
@@ -331,7 +364,7 @@ export default function Bookings() {
                   : "flex-1 flex flex-col md:w-[320px] md:flex-none md:border-r md:border-[#f1f3f4]",
             )}
           >
-            {isLoading && appointments.length === 0 ? (
+            {activeIsLoading && appointments.length === 0 ? (
               // `flex-1` is required for the centering: without it the
               // wrapper collapses to its content height and the
               // `justify-center` is a no-op, leaving the message pinned
@@ -354,7 +387,7 @@ export default function Bookings() {
             ) : (
               <ul className="divide-y divide-[#f1f3f4]">
                 {appointments.map((apt) => {
-                  const pill = statusPill(apt.status, apt.source, backendAvailable);
+                  const pill = orderStatusPill(apt) ?? statusPill(apt.status, apt.source, activeBackendAvailable);
                   const canConfirm = apt.source === "backend" && apt.status !== "confirmed";
                   const confirmingThis = confirmMutation.isPending && pendingConfirm?.id === apt.id;
                   const isSelected = selectedApt?.id === apt.id;
@@ -453,7 +486,7 @@ export default function Bookings() {
                   <ArrowLeft className="w-4 h-4" />
                 </button>
                 <p className="text-[13px] font-medium text-[#202124] truncate">
-                  {selectedApt.source === "order_escalation" ? "Order" : "Appointment"}
+                  {isOrderItem(selectedApt) ? "Order" : "Appointment"}
                 </p>
                 <button
                   type="button"
@@ -489,7 +522,7 @@ export default function Bookings() {
 
                   {/* Status pill */}
                   {(() => {
-                    const pill = statusPill(selectedApt.status, selectedApt.source, backendAvailable);
+                    const pill = orderStatusPill(selectedApt) ?? statusPill(selectedApt.status, selectedApt.source, activeBackendAvailable);
                     return (
                       <div className="flex items-center gap-2">
                         <span className="text-[12px] text-[#5f6368]">Status</span>
@@ -501,7 +534,7 @@ export default function Bookings() {
                   })()}
 
                   {/* Appointment/order info card */}
-                  {selectedApt.source === "order_escalation" ? (
+                  {isOrderItem(selectedApt) ? (
                     <OrderDetailCard appointment={selectedApt} />
                   ) : (
                     <div className="rounded-lg border border-[#e6e8eb] bg-[#fbfbfd] p-3 space-y-2">
@@ -546,7 +579,7 @@ export default function Bookings() {
                   )}
 
                   {/* View conversation — secondary action */}
-                  {selectedApt.source === "order_escalation" && (
+                  {isOrderItem(selectedApt) && escalationIdFromOrderAppointment(selectedApt) && (
                     <div className="rounded-lg border border-[#d6eadb] bg-[#f1f8f3] p-3">
                       <p className="text-[13px] font-medium text-[#137333]">Order ready to close</p>
                       <p className="text-[12px] text-[#3c6f47] mt-0.5">
@@ -750,7 +783,17 @@ export default function Bookings() {
   );
 }
 
+function isOrderItem(appointment: Appointment): boolean {
+  return Boolean(
+    appointment.order ||
+    appointment.orderStatus ||
+    appointment.source === "order_escalation" ||
+    appointment.source === "order_state",
+  );
+}
+
 function escalationIdFromOrderAppointment(appointment: Appointment): string | null {
+  if (appointment.escalationId) return appointment.escalationId;
   const prefix = "order-escalation:";
   return appointment.id.startsWith(prefix) ? appointment.id.slice(prefix.length) : null;
 }

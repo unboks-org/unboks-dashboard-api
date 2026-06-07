@@ -1485,7 +1485,7 @@ export default function Inbox() {
       if (escalationFilter === "resolved") {
         list = resolvedEscalationRows;
       } else {
-        list = escalationRows;
+        list = escalationRows.filter((c) => c.escalationMode !== "order");
         if (escalationFilter === "soft") list = list.filter((c) => c.escalationMode === "soft");
         else if (escalationFilter === "hard") list = list.filter((c) => c.escalationMode === "hard");
       }

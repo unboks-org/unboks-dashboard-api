@@ -498,6 +498,8 @@ export function escalationToConversationRow(
     appointmentSignal: orderLike
       ? false
       : enrich?.appointmentSignal ?? hasSchedulingSignals(`${subject}\n${preview}`),
+    orderStatus: n.mode === "order" ? "awaiting_human_confirmation" : enrich?.orderStatus ?? null,
+    badgeType: n.mode === "order" ? "order" : enrich?.badgeType ?? null,
     hasAttachment: enrich?.hasAttachment ?? false,
     escalationMode: n.mode,
     escalationSummary: n.summary,
@@ -564,7 +566,13 @@ export function mapApiConversation(c: ApiConversation): Conversation {
     "unknown";
 
   const explicitMode = (c.escalationMode ?? null) as Conversation["escalationMode"];
-  const orderLike = explicitMode === "order" || hasOrderSignals(`${subject}\n${preview}`);
+  const badgeType = pickStr(c as unknown as Record<string, unknown>, "badge_type", "badgeType");
+  const orderStatus = pickStr(c as unknown as Record<string, unknown>, "order_status", "orderStatus");
+  const orderLike =
+    explicitMode === "order" ||
+    badgeType === "order" ||
+    Boolean(orderStatus) ||
+    hasOrderSignals(`${subject}\n${preview}`);
   return {
     // `id` is kept identical to the routable key so existing call sites
     // (detail fetch, escalation lookup, deep-link `?c=` param) keep
@@ -596,6 +604,8 @@ export function mapApiConversation(c: ApiConversation): Conversation {
         "has_appointment",
       ) === true ||
       (!orderLike && hasSchedulingSignals(`${subject}\n${preview}`)),
+    orderStatus,
+    badgeType,
     hasAttachment: c.hasAttachment ?? false,
     escalationMode: explicitMode,
     escalationSummary: c.escalationSummary ?? null,

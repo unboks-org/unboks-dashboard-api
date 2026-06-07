@@ -48,6 +48,8 @@ export interface Conversation {
    * stricter appointment detector.
    */
   appointmentSignal?: boolean;
+  orderStatus?: string | null;
+  badgeType?: string | null;
   hasAttachment: boolean;
   escalationMode?: EscalationMode;
   escalationSummary?: string | null;

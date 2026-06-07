@@ -32,17 +32,15 @@ import {
   type Appointment,
   type ApiConversation,
   type ConversationDetail,
-  type OrderDetails,
-  type OrderLine,
 } from "@/lib/api";
-import { useConversations, useEscalations } from "@/hooks/use-client-api";
+import { useConversations } from "@/hooks/use-client-api";
 import {
   detectAppointment,
   hasSchedulingSignals,
   validateBackendAppointment,
 } from "@/lib/appointment-classifier";
 import { hasOrderSignals } from "@/lib/appointment-detector";
-import { mapApiConversation, normalizeEscalation } from "@/lib/conversation-mapper";
+import { mapApiConversation } from "@/lib/conversation-mapper";
 
 const APPOINTMENTS_KEY = ["appointments"] as const;
 
@@ -71,54 +69,6 @@ export function useAppointments(): UseAppointmentsResult {
   });
 
   const conversations = useConversations();
-
-  // Live escalations — used as an authoritative "do not show in
-  // Appointments" signal. Calvin observed a non-appointment escalation
-  // surfacing in the Appointments list (R2-23 problem B). The
-  // appointment-classifier lifecycle says any conversation in stages
-  // 3-4 (customer_proposed_slots / operator_selected_slot) belongs in
-  // Escalations, never Appointments. We treat the escalations endpoint
-  // as the source of truth for that: any unresolved escalation's
-  // conversation is excluded from the Appointments merge below, even
-  // if the backend appointment row claims "confirmed". When the
-  // escalation is later resolved (escalationResolved=true), the row
-  // drops out of `active` here and the appointment can re-appear.
-  const escalations = useEscalations("all");
-  const escalatedPhones = useMemo(() => {
-    const set = new Set<string>();
-    const list = (escalations.data ?? []) as unknown[];
-    for (const raw of list) {
-      const n = normalizeEscalation(raw);
-      if (!n || n.resolved) continue;
-      if (n.phone) set.add(n.phone);
-    }
-    return set;
-  }, [escalations.data]);
-
-  const orderEscalationRows = useMemo<Appointment[]>(() => {
-    const rows: Appointment[] = [];
-    const list = (escalations.data ?? []) as unknown[];
-    for (const raw of list) {
-      const n = normalizeEscalation(raw);
-      if (!n || n.resolved || n.mode !== "order") continue;
-      const order = parseOrderDetails(n.body, n.customerName, n.phone);
-      const title = orderTitle(n.summary);
-      rows.push({
-        id: `order-escalation:${n.id}`,
-        customerName: order?.customerName || n.customerName,
-        channel: (n.platform || "unknown").toLowerCase(),
-        conversationId: n.phone ?? `esc:${n.id}`,
-        title,
-        dateTimeLabel: order?.total != null ? formatOrderTotal(order) : "Order pending",
-        location: order?.address || null,
-        status: "pending",
-        source: "order_escalation",
-        createdAt: n.createdAt ?? new Date().toISOString(),
-        order,
-      });
-    }
-    return rows;
-  }, [escalations.data]);
 
   // Filter candidates by the cheap preview-string signal so we only
   // fetch full detail for conversations that plausibly contain an
@@ -181,8 +131,7 @@ export function useAppointments(): UseAppointmentsResult {
   const merged = useMemo<Appointment[]>(() => {
     const backendList = backend.data?.items ?? [];
     const seen = new Set<string>();
-    const key = (a: Appointment) =>
-      a.source === "order_escalation" ? a.id : `${a.conversationId}|${a.dateTimeLabel}`;
+    const key = (a: Appointment) => `${a.conversationId}|${a.dateTimeLabel}`;
     const result: Appointment[] = [];
     // Backend rows first so they take precedence on dedup — but each
     // one is run through `validateBackendAppointment` first. A backend
@@ -199,34 +148,20 @@ export function useAppointments(): UseAppointmentsResult {
       seen.add(k);
       result.push(validated);
     }
-    for (const a of orderEscalationRows) {
-      const k = key(a);
-      if (seen.has(k)) continue;
-      seen.add(k);
-      result.push(a);
-    }
     for (const a of detected) {
       const k = key(a);
       if (seen.has(k)) continue;
       seen.add(k);
       result.push(a);
     }
-    // Escalation guard — drop any row whose owning conversation is
-    // currently a live (unresolved) escalation. Order escalations are
-    // the deliberate exception: Wibrandt-style Orders are represented
-    // as unresolved human-confirmation escalations and must remain
-    // visible in the renamed Orders workspace.
-    const guarded = result.filter(
-      (a) => a.source === "order_escalation" || !escalatedPhones.has(a.conversationId),
-    );
     // Newest first by createdAt.
-    guarded.sort((a, b) => {
+    result.sort((a, b) => {
       const da = Date.parse(a.createdAt) || 0;
       const db = Date.parse(b.createdAt) || 0;
       return db - da;
     });
-    return guarded;
-  }, [backend.data, detected, detailByConvId, escalatedPhones, orderEscalationRows]);
+    return result;
+  }, [backend.data, detected, detailByConvId]);
 
   return {
     appointments: merged,
@@ -251,131 +186,4 @@ function previewText(c: ApiConversation): string {
   ]
     .filter((s): s is string => typeof s === "string" && s.length > 0)
     .join(" \n ");
-}
-
-function orderTitle(summary: string | null): string {
-  const clean = (summary ?? "").trim();
-  if (!clean) return "Order awaiting human confirmation";
-  return clean.replace(/^\[ORDER\]\s*/i, "").trim() || "Order awaiting human confirmation";
-}
-
-function parseOrderDetails(
-  body: string | null,
-  fallbackName: string,
-  fallbackPhone: string | null,
-): OrderDetails | null {
-  if (!body) return null;
-  const payload = extractOrderPayload(body);
-  if (payload) return normalizeOrderPayload(payload, fallbackName, fallbackPhone);
-  return parseLegacyOrderBody(body, fallbackName, fallbackPhone);
-}
-
-function extractOrderPayload(body: string): Record<string, unknown> | null {
-  const marker = "=== ORDER PAYLOAD ===";
-  const start = body.indexOf(marker);
-  if (start < 0) return null;
-  const after = body.slice(start + marker.length).trim();
-  const nextMarker = after.search(/\n\s*=== /);
-  const jsonText = (nextMarker >= 0 ? after.slice(0, nextMarker) : after).trim();
-  if (!jsonText) return null;
-  try {
-    const parsed = JSON.parse(jsonText);
-    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
-  } catch {
-    return null;
-  }
-}
-
-function normalizeOrderPayload(
-  raw: Record<string, unknown>,
-  fallbackName: string,
-  fallbackPhone: string | null,
-): OrderDetails {
-  const productsRaw = Array.isArray(raw.products) ? raw.products : [];
-  const products = productsRaw
-    .map((p): OrderLine | null => {
-      if (!p || typeof p !== "object") return null;
-      const item = p as Record<string, unknown>;
-      const name = typeof item.name === "string" ? item.name.trim() : "";
-      if (!name) return null;
-      return {
-        name,
-        quantity: numberOrNull(item.quantity),
-        unitPrice: numberOrNull(item.unit_price ?? item.unitPrice),
-        subtotal: numberOrNull(item.subtotal),
-      };
-    })
-    .filter((p): p is OrderLine => p !== null);
-
-  return {
-    customerName: stringOr(raw.customer_name ?? raw.customerName, fallbackName),
-    phone: stringOr(raw.phone, fallbackPhone ?? ""),
-    address: stringOr(raw.delivery_address ?? raw.deliveryAddress ?? raw.address, ""),
-    products,
-    total: numberOrNull(raw.total),
-    currency: stringOr(raw.currency, ""),
-    comments: stringOr(raw.comments, ""),
-  };
-}
-
-function parseLegacyOrderBody(
-  body: string,
-  fallbackName: string,
-  fallbackPhone: string | null,
-): OrderDetails | null {
-  const customerName = matchLine(body, /^Customer:\s*(.+)$/im) || fallbackName;
-  const phone = matchLine(body, /^Phone:\s*(.+)$/im) || fallbackPhone || "";
-  const address = matchLine(body, /^Delivery address:\s*(.+)$/im) || "";
-  const totalLine = matchLine(body, /^Total:\s*(.+)$/im) || "";
-  const totalMatch = totalLine.match(/^([A-Z]{2,4})?\s*([0-9]+(?:\.[0-9]+)?)$/i);
-  const currency = totalMatch?.[1]?.toUpperCase() ?? "";
-  const total = totalMatch ? Number(totalMatch[2]) : null;
-  const products = parseLegacyProducts(body);
-  if (!customerName && !phone && !address && products.length === 0 && total == null) return null;
-  return { customerName, phone, address, products, total, currency, comments: "" };
-}
-
-function parseLegacyProducts(body: string): OrderLine[] {
-  const marker = "=== PRODUCTS ===";
-  const start = body.indexOf(marker);
-  if (start < 0) return [];
-  const after = body.slice(start + marker.length);
-  const end = after.search(/\n\s*=== /);
-  const block = end >= 0 ? after.slice(0, end) : after;
-  return block
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith("-"))
-    .map((line) => {
-      const clean = line.replace(/^-\s*/, "");
-      const main = clean.split("|")[0]?.trim() ?? "";
-      const m = main.match(/^(\d+(?:\.\d+)?)\s*x\s*(.+)$/i);
-      if (m) return { quantity: Number(m[1]), name: m[2].trim() };
-      return { quantity: null, name: main };
-    })
-    .filter((p) => p.name);
-}
-
-function formatOrderTotal(order: OrderDetails): string {
-  if (order.total == null) return "Order pending";
-  return `${order.currency ? `${order.currency} ` : ""}${formatNumber(order.total)}`;
-}
-
-function formatNumber(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(2);
-}
-
-function numberOrNull(v: unknown): number | null {
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  if (typeof v === "string" && v.trim() && Number.isFinite(Number(v))) return Number(v);
-  return null;
-}
-
-function stringOr(v: unknown, fallback: string): string {
-  return typeof v === "string" && v.trim() ? v.trim() : fallback;
-}
-
-function matchLine(body: string, re: RegExp): string | null {
-  const m = body.match(re);
-  return m?.[1]?.trim() || null;
 }

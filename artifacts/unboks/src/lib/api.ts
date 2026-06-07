@@ -83,6 +83,21 @@ export interface ApiConversation {
   hasAppointment?: boolean;
   has_appointment?: boolean;
   escalationMode?: EscalationMode;
+  intent?: string | null;
+  is_order?: boolean;
+  isOrder?: boolean;
+  order_status?: string | null;
+  orderStatus?: string | null;
+  order_payload?: Record<string, unknown> | null;
+  orderPayload?: Record<string, unknown> | null;
+  badge_type?: string | null;
+  badgeType?: string | null;
+  queue_type?: string | null;
+  queueType?: string | null;
+  human_action_required?: boolean;
+  humanActionRequired?: boolean;
+  next_operator_action?: string | null;
+  nextOperatorAction?: string | null;
   escalationSummary?: string | null;
   learningStatus?: LearningStatus;
   aiMuted?: boolean;
@@ -252,7 +267,7 @@ export interface LearningEntry {
 // rows can land alongside detected ones without losing fidelity.
 
 export type AppointmentStatus = "confirmed" | "pending" | "detected";
-export type AppointmentSource = "conversation" | "backend" | "order_escalation";
+export type AppointmentSource = "conversation" | "backend" | "order_escalation" | "order_state";
 
 export interface Appointment {
   id: string;
@@ -268,6 +283,10 @@ export interface Appointment {
   source: AppointmentSource;
   createdAt: string;
   order?: OrderDetails | null;
+  orderStatus?: OrderQueueStatus | null;
+  humanActionRequired?: boolean;
+  nextOperatorAction?: string | null;
+  escalationId?: string | null;
 }
 
 export interface OrderLine {
@@ -280,12 +299,21 @@ export interface OrderLine {
 export interface OrderDetails {
   customerName: string;
   phone: string;
+  channel?: string | null;
   address: string;
   products: OrderLine[];
   total: number | null;
   currency: string;
   comments?: string | null;
 }
+
+export type OrderQueueStatus =
+  | "collecting_details"
+  | "awaiting_customer_confirmation"
+  | "awaiting_human_confirmation"
+  | "confirmed"
+  | "rejected"
+  | "resolved";
 
 export interface AppointmentsResponse {
   /**
@@ -294,6 +322,11 @@ export interface AppointmentsResponse {
    * 503 / network). Drives the "Pending sync" copy on the page so an
    * empty-but-connected backend never gets mislabelled as not connected.
    */
+  connected: boolean;
+  items: Appointment[];
+}
+
+export interface OrdersResponse {
   connected: boolean;
   items: Appointment[];
 }
@@ -324,6 +357,21 @@ export async function fetchAppointments(): Promise<AppointmentsResponse> {
 }
 
 const APPOINTMENTS_NOT_CONNECTED = new Set([0, 404, 501, 503]);
+
+export async function fetchOrders(): Promise<OrdersResponse> {
+  try {
+    const raw = await apiFetch<unknown>("/orders");
+    return { connected: true, items: normalizeOrderList(raw) };
+  } catch (err) {
+    if (err instanceof ApiError && APPOINTMENTS_NOT_CONNECTED.has(err.status)) {
+      return { connected: false, items: [] };
+    }
+    if (err instanceof Error && (err.name === "TypeError" || err.message === "Failed to fetch")) {
+      return { connected: false, items: [] };
+    }
+    throw err;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Cloud knowledge connections
@@ -1123,6 +1171,145 @@ function normalizeAppointmentList(raw: unknown): Appointment[] {
     });
   }
   return out;
+}
+
+function normalizeOrderList(raw: unknown): Appointment[] {
+  let items: unknown[] = [];
+  if (Array.isArray(raw)) items = raw;
+  else if (raw && typeof raw === "object") {
+    const maybe = (raw as Record<string, unknown>).items ?? (raw as Record<string, unknown>).orders;
+    if (Array.isArray(maybe)) items = maybe;
+  }
+  const out: Appointment[] = [];
+  for (const it of items) {
+    if (!it || typeof it !== "object") continue;
+    const o = it as Record<string, unknown>;
+    const conversationId = pickStr(o, "conversation_id", "conversationId", "phone") ?? "";
+    if (!conversationId) continue;
+    const payload = normalizeOrderPayload(
+      (o.order_payload ?? o.orderPayload ?? {}) as Record<string, unknown>,
+      pickStr(o, "customer_name", "customerName", "name") ?? conversationId,
+      conversationId,
+    );
+    const orderStatus = normalizeOrderStatus(
+      pickStr(o, "order_status", "orderStatus", "status"),
+    );
+    if (!orderStatus || orderStatus === "collecting_details") continue;
+    const customerName =
+      payload.customerName ||
+      pickStr(o, "customer_name", "customerName", "name") ||
+      conversationId;
+    const createdAt =
+      pickStr(o, "updated_at", "updatedAt", "created_at", "createdAt") ??
+      new Date().toISOString();
+    const escalationId = pickStr(o, "escalation_id", "escalationId");
+    const orderSummary = orderLineSummary(payload);
+    out.push({
+      id: escalationId ? `order-escalation:${escalationId}` : `order-state:${conversationId}`,
+      customerName,
+      channel: (pickStr(o, "channel", "platform") ?? payload.channel ?? "whatsapp").toLowerCase(),
+      conversationId,
+      title: orderSummary || "Order",
+      dateTimeLabel: formatOrderStatusLabel(orderStatus, payload),
+      location: payload.address || null,
+      status: "pending",
+      source: escalationId ? "order_escalation" : "order_state",
+      createdAt,
+      order: payload,
+      orderStatus,
+      humanActionRequired: Boolean(o.human_action_required ?? o.humanActionRequired),
+      nextOperatorAction:
+        pickStr(o, "next_operator_action", "nextOperatorAction") ??
+        defaultOrderNextAction(orderStatus),
+      escalationId,
+    });
+  }
+  out.sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
+  return out;
+}
+
+function normalizeOrderStatus(value: string | null): OrderQueueStatus | null {
+  const s = (value ?? "").trim().toLowerCase();
+  if (
+    s === "collecting_details" ||
+    s === "awaiting_customer_confirmation" ||
+    s === "awaiting_human_confirmation" ||
+    s === "confirmed" ||
+    s === "rejected" ||
+    s === "resolved"
+  ) {
+    return s;
+  }
+  return null;
+}
+
+function orderLineSummary(order: OrderDetails): string {
+  return order.products
+    .map((line) => {
+      const qty = line.quantity != null ? `${line.quantity}x ` : "";
+      return `${qty}${line.name}`.trim();
+    })
+    .filter(Boolean)
+    .join(", ");
+}
+
+function formatOrderStatusLabel(status: OrderQueueStatus, order: OrderDetails): string {
+  const total = formatOrderTotal(order);
+  if (status === "awaiting_customer_confirmation") return `${total} · Awaiting customer confirmation`;
+  if (status === "awaiting_human_confirmation") return `${total} · Pending team confirmation`;
+  if (status === "confirmed") return `${total} · Confirmed`;
+  return total;
+}
+
+function defaultOrderNextAction(status: OrderQueueStatus): string {
+  if (status === "awaiting_customer_confirmation") return "Waiting for the customer to confirm the order summary.";
+  if (status === "awaiting_human_confirmation") return "Confirm this order with the customer.";
+  return "Review this order.";
+}
+
+function normalizeOrderPayload(
+  payload: Record<string, unknown>,
+  fallbackName: string,
+  fallbackPhone: string,
+): OrderDetails {
+  const productsRaw = Array.isArray(payload.products) ? payload.products : [];
+  const products: OrderLine[] = [];
+  for (const item of productsRaw) {
+    if (!item || typeof item !== "object") continue;
+    const line = item as Record<string, unknown>;
+    const name = pickStr(line, "name", "product", "title");
+    if (!name) continue;
+    products.push({
+      name,
+      quantity: pickNum(line, "quantity", "qty"),
+      unitPrice: pickNum(line, "unit_price", "unitPrice", "price"),
+      subtotal: pickNum(line, "subtotal", "line_total", "lineTotal"),
+    });
+  }
+  return {
+    customerName: pickStr(payload, "customer_name", "customerName", "name") ?? fallbackName,
+    phone: pickStr(payload, "phone", "customer_phone", "customerPhone", "customer_id", "customerId") ?? fallbackPhone,
+    address: pickStr(payload, "delivery_address", "deliveryAddress", "address") ?? "",
+    products,
+    total: pickNum(payload, "total", "order_total", "orderTotal"),
+    currency: pickStr(payload, "currency") ?? "XCG",
+    comments: pickStr(payload, "comments", "special_requests", "specialRequests"),
+  };
+}
+
+function pickNum(o: Record<string, unknown>, ...keys: string[]): number | null {
+  for (const k of keys) {
+    const v = o[k];
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "string" && v.trim() && Number.isFinite(Number(v))) return Number(v);
+  }
+  return null;
+}
+
+function formatOrderTotal(order: OrderDetails): string {
+  if (order.total == null) return "Price not captured";
+  const display = Number.isInteger(order.total) ? String(order.total) : order.total.toFixed(2);
+  return `${order.currency ? `${order.currency} ` : ""}${display}`;
 }
 
 export interface AvailabilitySlot {
