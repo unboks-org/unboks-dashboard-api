@@ -4,6 +4,7 @@ import {
   deleteInfoUpdate,
   fetchInfoUpdates,
   setInfoUpdateActive,
+  updateInfoUpdate,
   type InfoUpdateApiItem,
 } from "@/lib/api";
 import { getClientSlug } from "@/lib/tenant";
@@ -29,6 +30,7 @@ export interface YourInfoUpdate {
   text: string;
   active: boolean;
   createdAt: string;
+  updatedAt?: string;
   startDate?: string;
   endDate?: string;
 }
@@ -71,6 +73,7 @@ function normalizeApiUpdate(item: InfoUpdateApiItem): YourInfoUpdate | null {
     text,
     active: item.active !== false,
     createdAt: cleanText(item.createdAt) || new Date().toISOString(),
+    updatedAt: cleanText(item.updatedAt) || undefined,
     startDate: cleanText(item.startDate) || undefined,
     endDate: cleanText(item.endDate) || undefined,
   };
@@ -167,6 +170,23 @@ export function useYourInfoUpdates() {
     [refresh],
   );
 
+  const updateUpdate = useCallback(
+    async (
+      id: string,
+      input: Partial<Pick<YourInfoUpdate, "type" | "text" | "active" | "startDate" | "endDate">>,
+    ) => {
+      await updateInfoUpdate(id, {
+        type: input.type,
+        text: input.text,
+        active: input.active,
+        startDate: input.startDate ?? null,
+        endDate: input.endDate ?? null,
+      });
+      await refresh();
+    },
+    [refresh],
+  );
+
   const removeUpdate = useCallback(
     async (id: string) => {
       await deleteInfoUpdate(id);
@@ -175,5 +195,5 @@ export function useYourInfoUpdates() {
     [refresh],
   );
 
-  return { updates, addUpdate, setActive, removeUpdate };
+  return { updates, addUpdate, updateUpdate, setActive, removeUpdate };
 }

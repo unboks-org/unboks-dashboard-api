@@ -1226,6 +1226,14 @@ export interface InfoUpdateCreatePayload {
   endDate?: string | null;
 }
 
+export interface InfoUpdateUpdatePayload {
+  text?: string;
+  type?: string;
+  active?: boolean;
+  startDate?: string | null;
+  endDate?: string | null;
+}
+
 // ---------------------------------------------------------------------------
 // Core fetch wrapper
 // ---------------------------------------------------------------------------
@@ -1513,6 +1521,16 @@ export async function setInfoUpdateActive(
   await apiFetch(`/settings/info-updates/${encodeURIComponent(id)}`, {
     method: "PUT",
     body: JSON.stringify({ active }),
+  });
+}
+
+export async function updateInfoUpdate(
+  id: string,
+  payload: InfoUpdateUpdatePayload,
+): Promise<void> {
+  await apiFetch(`/settings/info-updates/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
   });
 }
 

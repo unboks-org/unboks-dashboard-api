@@ -35,7 +35,7 @@ import {
   useWorkspaceLabels,
   workspaceLabelsFallback,
 } from "@/hooks/use-bookings-label";
-import { useYourInfoUpdates, UPDATE_TYPES, type YourInfoUpdateType } from "@/hooks/use-your-info-updates";
+import { useYourInfoUpdates, UPDATE_TYPES, type YourInfoUpdate, type YourInfoUpdateType } from "@/hooks/use-your-info-updates";
 import { KnowledgeFileUploader } from "@/components/settings/KnowledgeFileUploader";
 import { KnowledgeMediaAttachments } from "@/components/settings/KnowledgeMediaAttachments";
 import { CloudKnowledgeConnections } from "@/components/settings/CloudKnowledgeConnections";
@@ -783,6 +783,236 @@ function SotBlockEditView({
   );
 }
 
+function formatUpdateDate(value?: string) {
+  if (!value) return "";
+  return new Date(value).toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function SavedKnowledgeUpdateCard({
+  update,
+  onUpdate,
+  onSetActive,
+  onRemove,
+}: {
+  update: YourInfoUpdate;
+  onUpdate: (
+    id: string,
+    input: Partial<Pick<YourInfoUpdate, "type" | "text" | "active" | "startDate" | "endDate">>,
+  ) => Promise<void>;
+  onSetActive: (id: string, active: boolean) => Promise<void>;
+  onRemove: (id: string) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draftType, setDraftType] = useState<YourInfoUpdateType>(update.type);
+  const [draftText, setDraftText] = useState(update.text);
+  const [draftStart, setDraftStart] = useState(update.startDate ?? "");
+  const [draftEnd, setDraftEnd] = useState(update.endDate ?? "");
+  const [busy, setBusy] = useState(false);
+  const typeLabel = UPDATE_TYPES.find((t) => t.value === update.type)?.label ?? update.type;
+  const draftDirty =
+    draftType !== update.type ||
+    draftText !== update.text ||
+    draftStart !== (update.startDate ?? "") ||
+    draftEnd !== (update.endDate ?? "");
+  const canSave = draftText.trim().length > 0 && draftDirty && !busy;
+
+  useEffect(() => {
+    if (editing) return;
+    setDraftType(update.type);
+    setDraftText(update.text);
+    setDraftStart(update.startDate ?? "");
+    setDraftEnd(update.endDate ?? "");
+  }, [editing, update]);
+
+  const handleCancel = () => {
+    setDraftType(update.type);
+    setDraftText(update.text);
+    setDraftStart(update.startDate ?? "");
+    setDraftEnd(update.endDate ?? "");
+    setEditing(false);
+  };
+
+  const handleSave = async () => {
+    const text = draftText.trim();
+    if (!text) {
+      toast.error("Write a note before saving.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await onUpdate(update.id, {
+        type: draftType,
+        text,
+        active: update.active,
+        startDate: draftStart || undefined,
+        endDate: draftEnd || undefined,
+      });
+      toast.success("Knowledge update saved.");
+      setEditing(false);
+    } catch (err) {
+      const msg = err instanceof Error && err.message
+        ? err.message
+        : "Could not save knowledge update.";
+      toast.error(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <li
+      className={cn(
+        "rounded-xl border border-[#e8eaed] bg-white p-3",
+        !update.active && "opacity-60",
+      )}
+    >
+      <div className="flex flex-wrap items-start gap-2">
+        <span className="inline-flex items-center rounded-full bg-[#f1f3f4] px-2 py-0.5 text-[11px] font-medium text-[#3c4043]">
+          {typeLabel}
+        </span>
+        <span
+          className={cn(
+            "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+            update.active
+              ? "bg-[#e6f4ea] text-[#137333]"
+              : "bg-[#f6f8fc] text-[#5f6368]",
+          )}
+        >
+          {update.active ? "Active" : "Inactive"}
+        </span>
+        <div className="ml-auto flex items-center gap-1">
+          {!editing && (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="rounded-full px-2 py-1 text-[12px] font-medium text-[#1a73e8] hover:bg-[#e8f0fe]"
+            >
+              Edit
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await onRemove(update.id);
+              } catch (err) {
+                const msg = err instanceof Error && err.message
+                  ? err.message
+                  : "Could not remove update.";
+                toast.error(msg);
+              }
+            }}
+            disabled={busy}
+            aria-label="Remove update"
+            className="grid h-7 w-7 place-items-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4] disabled:opacity-60"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {editing ? (
+        <div className="mt-3 space-y-3 rounded-lg border border-[#e8eaed] bg-[#fbfbfd] p-3">
+          <div>
+            <FieldLabel>Type</FieldLabel>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {UPDATE_TYPES.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setDraftType(t.value)}
+                  disabled={busy}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-[12px] transition-colors disabled:opacity-60",
+                    draftType === t.value
+                      ? "border-[#1a73e8] bg-[#e8f0fe] text-[#1a73e8]"
+                      : "border-[#dadce0] bg-white text-[#5f6368] hover:bg-[#f6f8fc]",
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <label className="block">
+            <FieldLabel>Note</FieldLabel>
+            <textarea
+              value={draftText}
+              onChange={(e) => setDraftText(e.target.value)}
+              disabled={busy}
+              rows={4}
+              className="mt-1 w-full min-w-0 resize-y rounded-lg border border-[#dadce0] bg-white px-3 py-2 text-[13px] text-[#202124] outline-none placeholder:text-[#9aa0a6] focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] disabled:bg-[#f8f9fa]"
+            />
+          </label>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block">
+              <FieldLabel>Start date (optional)</FieldLabel>
+              <TextInput
+                type="date"
+                value={draftStart}
+                onChange={(e) => setDraftStart(e.target.value)}
+                disabled={busy}
+              />
+            </label>
+            <label className="block">
+              <FieldLabel>End date (optional)</FieldLabel>
+              <TextInput
+                type="date"
+                value={draftEnd}
+                onChange={(e) => setDraftEnd(e.target.value)}
+                disabled={busy}
+              />
+            </label>
+          </div>
+          <div className="flex flex-wrap justify-end gap-2">
+            <GhostButton type="button" onClick={handleCancel} disabled={busy}>
+              Cancel
+            </GhostButton>
+            <PrimaryButton type="button" onClick={handleSave} disabled={!canSave}>
+              {busy ? "Saving..." : "Save changes"}
+            </PrimaryButton>
+          </div>
+        </div>
+      ) : (
+        <>
+          <p className="mt-2 whitespace-pre-wrap break-words text-[13px] text-[#202124]">
+            {update.text}
+          </p>
+          <KnowledgeMediaAttachments knowledgeId={update.id} />
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#5f6368]">
+            <span>Added {formatUpdateDate(update.createdAt)}</span>
+            {update.updatedAt && update.updatedAt !== update.createdAt && (
+              <span>Updated {formatUpdateDate(update.updatedAt)}</span>
+            )}
+            {update.startDate && <span>From {update.startDate}</span>}
+            {update.endDate && <span>Until {update.endDate}</span>}
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await onSetActive(update.id, !update.active);
+                } catch (err) {
+                  const msg = err instanceof Error && err.message
+                    ? err.message
+                    : "Could not update status.";
+                  toast.error(msg);
+                }
+              }}
+              className="ml-auto text-[#1a73e8] hover:underline"
+            >
+              {update.active ? "Mark inactive" : "Reactivate"}
+            </button>
+          </div>
+        </>
+      )}
+    </li>
+  );
+}
+
 // =====================================================
 // Page
 // =====================================================
@@ -863,7 +1093,7 @@ export default function Settings() {
   } = useWorkspaceLabels();
   const saveWorkspaceLabels = useSaveWorkspaceLabels();
   const workspaceLabels = workspaceLabelsData ?? workspaceLabelsFallback();
-  const { updates, addUpdate, setActive: setUpdateActive, removeUpdate } = useYourInfoUpdates();
+  const { updates, addUpdate, updateUpdate, setActive: setUpdateActive, removeUpdate } = useYourInfoUpdates();
 
   const {
     blocks: sotBlocks,
@@ -1363,81 +1593,14 @@ export default function Settings() {
                     ) : (
                       <ul className="space-y-2">
                         {updates.map((u) => {
-                          const typeLabel =
-                            UPDATE_TYPES.find((t) => t.value === u.type)?.label ?? u.type;
                           return (
-                            <li
+                            <SavedKnowledgeUpdateCard
                               key={u.id}
-                              className={cn(
-                                "rounded-xl border border-[#e8eaed] bg-white p-3",
-                                !u.active && "opacity-60",
-                              )}
-                            >
-                              <div className="flex items-start gap-2">
-                                <span className="inline-flex items-center rounded-full bg-[#f1f3f4] px-2 py-0.5 text-[11px] font-medium text-[#3c4043]">
-                                  {typeLabel}
-                                </span>
-                                <span
-                                  className={cn(
-                                    "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
-                                    u.active
-                                      ? "bg-[#e6f4ea] text-[#137333]"
-                                      : "bg-[#f6f8fc] text-[#5f6368]",
-                                  )}
-                                >
-                                  {u.active ? "Active" : "Inactive"}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    try {
-                                      await removeUpdate(u.id);
-                                    } catch (err) {
-                                      const msg = err instanceof Error && err.message
-                                        ? err.message
-                                        : "Could not remove update.";
-                                      toast.error(msg);
-                                    }
-                                  }}
-                                  aria-label="Remove update"
-                                  className="ml-auto grid h-6 w-6 place-items-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                              <p className="mt-2 whitespace-pre-wrap break-words text-[13px] text-[#202124]">
-                                {u.text}
-                              </p>
-                              <KnowledgeMediaAttachments knowledgeId={u.id} />
-                              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#5f6368]">
-                                <span>
-                                  Added{" "}
-                                  {new Date(u.createdAt).toLocaleDateString([], {
-                                    month: "short",
-                                    day: "numeric",
-                                    year: "numeric",
-                                  })}
-                                </span>
-                                {u.startDate && <span>From {u.startDate}</span>}
-                                {u.endDate && <span>Until {u.endDate}</span>}
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    try {
-                                      await setUpdateActive(u.id, !u.active);
-                                    } catch (err) {
-                                      const msg = err instanceof Error && err.message
-                                        ? err.message
-                                        : "Could not update status.";
-                                      toast.error(msg);
-                                    }
-                                  }}
-                                  className="ml-auto text-[#1a73e8] hover:underline"
-                                >
-                                  {u.active ? "Mark inactive" : "Reactivate"}
-                                </button>
-                              </div>
-                            </li>
+                              update={u}
+                              onUpdate={updateUpdate}
+                              onSetActive={setUpdateActive}
+                              onRemove={removeUpdate}
+                            />
                           );
                         })}
                       </ul>
