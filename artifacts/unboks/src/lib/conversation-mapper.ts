@@ -1,6 +1,6 @@
 import type { ApiConversation } from "@/lib/api";
 import type { Channel, Conversation } from "@/data/conversations";
-import { hasSchedulingSignals } from "@/lib/appointment-detector";
+import { hasOrderSignals, hasSchedulingSignals } from "@/lib/appointment-detector";
 import { platformToChannel } from "@/lib/channel-map";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -482,6 +482,7 @@ export function escalationToConversationRow(
   // `esc:<id>` last (which won't route to the backend, but lets the
   // local-hide fallback still drop the row).
   const conversationKey = enrich?.conversationKey ?? n.phone ?? id;
+  const orderLike = n.mode === "order" || hasOrderSignals(`${subject}\n${preview}\n${n.body ?? ""}`);
   return {
     id,
     conversationKey,
@@ -494,7 +495,9 @@ export function escalationToConversationRow(
     timestampMs: tsMs,
     unread: enrich?.unread ?? false,
     escalated: true,
-    appointmentSignal: enrich?.appointmentSignal ?? hasSchedulingSignals(`${subject}\n${preview}`),
+    appointmentSignal: orderLike
+      ? false
+      : enrich?.appointmentSignal ?? hasSchedulingSignals(`${subject}\n${preview}`),
     hasAttachment: enrich?.hasAttachment ?? false,
     escalationMode: n.mode,
     escalationSummary: n.summary,
@@ -560,6 +563,8 @@ export function mapApiConversation(c: ApiConversation): Conversation {
     validStr(c._id) ??
     "unknown";
 
+  const explicitMode = (c.escalationMode ?? null) as Conversation["escalationMode"];
+  const orderLike = explicitMode === "order" || hasOrderSignals(`${subject}\n${preview}`);
   return {
     // `id` is kept identical to the routable key so existing call sites
     // (detail fetch, escalation lookup, deep-link `?c=` param) keep
@@ -580,6 +585,7 @@ export function mapApiConversation(c: ApiConversation): Conversation {
       c.escalated ??
       (typeof c.status === "string" && /^escalated$/i.test(c.status)),
     appointmentSignal:
+      !orderLike &&
       pickBool(
         c as unknown as Record<string, unknown>,
         "appointmentSignal",
@@ -589,9 +595,9 @@ export function mapApiConversation(c: ApiConversation): Conversation {
         "hasAppointment",
         "has_appointment",
       ) === true ||
-      hasSchedulingSignals(`${subject}\n${preview}`),
+      (!orderLike && hasSchedulingSignals(`${subject}\n${preview}`)),
     hasAttachment: c.hasAttachment ?? false,
-    escalationMode: (c.escalationMode ?? null) as Conversation["escalationMode"],
+    escalationMode: explicitMode,
     escalationSummary: c.escalationSummary ?? null,
     learningStatus: (c.learningStatus ?? "none") as Conversation["learningStatus"],
   };

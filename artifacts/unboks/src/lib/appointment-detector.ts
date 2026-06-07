@@ -117,6 +117,11 @@ export function hasSchedulingSignals(text: string | null | undefined): boolean {
   return false;
 }
 
+export function hasOrderSignals(text: string | null | undefined): boolean {
+  if (!text) return false;
+  return /\b(order|pedido|bestelling|order summary|delivery address|payment|cash|quantity|qty|total|cookie|cookies|twist|pecan|banana carrot|cinnamon|tosca|cancel my order|reduce (?:my|her|his|their)?\s*order)\b/i.test(text);
+}
+
 interface DetectArgs {
   detail: ConversationDetail;
   conversationId: string;
@@ -248,6 +253,10 @@ export function validateBackendAppointment({
   apt,
   detail,
 }: ValidateBackendArgs): Appointment | null {
+  if (hasOrderSignals(`${apt.title}\n${apt.dateTimeLabel}\n${apt.location ?? ""}`)) {
+    return null;
+  }
+
   // Rule 1 — never downgrade pending / detected.
   if (apt.status !== "confirmed") return apt;
 

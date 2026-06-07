@@ -41,6 +41,7 @@ import {
   hasSchedulingSignals,
   validateBackendAppointment,
 } from "@/lib/appointment-classifier";
+import { hasOrderSignals } from "@/lib/appointment-detector";
 import { mapApiConversation, normalizeEscalation } from "@/lib/conversation-mapper";
 
 const APPOINTMENTS_KEY = ["appointments"] as const;
@@ -145,6 +146,9 @@ export function useAppointments(): UseAppointmentsResult {
       if (!detail) continue;
       const c = candidates[i];
       const mapped = mapApiConversation(c);
+      if (mapped.escalationMode === "order" || hasOrderSignals(`${mapped.subject}\n${mapped.preview}`)) {
+        continue;
+      }
       const apt = detectAppointment({
         detail,
         conversationId: c.phone,

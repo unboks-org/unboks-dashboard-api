@@ -240,7 +240,11 @@ export function MessageRow({
             never collide with the timestamp or action icons on line 1. */}
         <div className="mt-0.5 flex items-center justify-between gap-2 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
-            {conversation.appointmentSignal && !dimmed ? (
+            {conversation.escalationMode === "order" && !dimmed ? (
+              <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 bg-[#e6f4ea] text-[#137333]">
+                ORDER
+              </span>
+            ) : conversation.appointmentSignal && !dimmed ? (
               <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 bg-[#e8f0fe] text-[#174ea6]">
                 Appointment
               </span>
