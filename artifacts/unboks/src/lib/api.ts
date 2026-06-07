@@ -1289,13 +1289,26 @@ function normalizeOrderPayload(
   }
   return {
     customerName: pickStr(payload, "customer_name", "customerName", "name") ?? fallbackName,
-    phone: pickStr(payload, "phone", "customer_phone", "customerPhone", "customer_id", "customerId") ?? fallbackPhone,
+    phone: normalizeOrderPhone(
+      pickStr(payload, "phone", "customer_phone", "customerPhone") ?? fallbackPhone,
+    ),
     address: pickStr(payload, "delivery_address", "deliveryAddress", "address") ?? "",
     products,
     total: pickNum(payload, "total", "order_total", "orderTotal"),
     currency: pickStr(payload, "currency") ?? "XCG",
     comments: pickStr(payload, "comments", "special_requests", "specialRequests"),
   };
+}
+
+function normalizeOrderPhone(value: string | null): string {
+  const raw = (value ?? "").trim();
+  if (!raw) return "";
+  const digits = raw.replace(/[^\d+]/g, "");
+  const digitCount = raw.replace(/\D/g, "").length;
+  const looksLikeProviderObjectId = /^[a-f0-9]{20,32}$/i.test(raw) && digitCount < 10;
+  if (looksLikeProviderObjectId) return "";
+  if (digitCount < 7) return "";
+  return digits || raw;
 }
 
 function pickNum(o: Record<string, unknown>, ...keys: string[]): number | null {

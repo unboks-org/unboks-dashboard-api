@@ -801,6 +801,7 @@ function escalationIdFromOrderAppointment(appointment: Appointment): string | nu
 function OrderDetailCard({ appointment }: { appointment: Appointment }) {
   const order = appointment.order;
   const lines = order?.products ?? [];
+  const phone = displayOrderPhone(order?.phone);
   const total =
     order?.total != null
       ? `${order.currency ? `${order.currency} ` : ""}${formatMoney(order.total)}`
@@ -822,7 +823,7 @@ function OrderDetailCard({ appointment }: { appointment: Appointment }) {
           <OrderField label="Name" value={order?.customerName || appointment.customerName} />
           <OrderField
             label="Phone"
-            value={order?.phone || appointment.conversationId || "Phone not captured"}
+            value={phone || "Phone not captured"}
             icon={<Phone className="w-3.5 h-3.5" />}
           />
           <OrderField
@@ -889,6 +890,15 @@ function OrderDetailCard({ appointment }: { appointment: Appointment }) {
       </div>
     </div>
   );
+}
+
+function displayOrderPhone(phone?: string | null): string {
+  const raw = (phone ?? "").trim();
+  if (!raw) return "";
+  const digitCount = raw.replace(/\D/g, "").length;
+  if (/^[a-f0-9]{20,32}$/i.test(raw) && digitCount < 10) return "";
+  if (digitCount < 7) return "";
+  return raw;
 }
 
 function OrderField({
