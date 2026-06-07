@@ -224,6 +224,7 @@ export interface GuidancePayload {
   saveToYourInfo?: boolean;
   autoUseNextTime?: boolean;
   category?: string;
+  mediaId?: string;
 }
 
 export interface ResolvePayload {

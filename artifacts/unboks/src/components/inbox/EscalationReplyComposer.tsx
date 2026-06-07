@@ -166,7 +166,7 @@ export const EscalationReplyComposer = forwardRef<
 
   const { guidance, reply, resolve, takeover, handback } = useEscalationMutations();
   const isSoft = mode === "soft";
-  const canAttachImage = mode === "hard" && channel.toLowerCase() === "whatsapp";
+  const canAttachImage = channel.toLowerCase() === "whatsapp";
   const mediaQuery = useKnowledgeMediaLibrary(canAttachImage && imagePickerOpen);
 
   // Safety: drafts are customer-specific. The parent keeps this composer
@@ -199,7 +199,7 @@ export const EscalationReplyComposer = forwardRef<
     setSelectedImage(null);
   }, [canAttachImage]);
   const draftEmpty = draft.trim().length === 0;
-  const empty = draftEmpty && !selectedImage;
+  const empty = isSoft ? draftEmpty : draftEmpty && !selectedImage;
   const sendPending = isSoft ? guidance.isPending : reply.isPending;
   const combinedPending = combinedStep !== null;
   // While a combined flow is running, every action button is disabled to
@@ -232,12 +232,14 @@ export const EscalationReplyComposer = forwardRef<
       guidance.mutate(
         {
           id: conversationDbId,
-          payload: { guidance: trimmed },
+          payload: { guidance: trimmed, ...(selectedImage ? { mediaId: selectedImage.id } : {}) },
         },
         {
           onSuccess: () => {
             setDraft("");
             setPrevDraft(null);
+            setSelectedImage(null);
+            setImagePickerOpen(false);
             onDone({ action: "send", sentText: trimmed });
           },
           onError: (err) => {
@@ -373,7 +375,13 @@ export const EscalationReplyComposer = forwardRef<
     setCombinedStep("sending");
     if (isSoft) {
       guidance.mutate(
-        { id: conversationDbId, payload: { guidance: trimmed } },
+        {
+          id: conversationDbId,
+          payload: {
+            guidance: trimmed,
+            ...(selectedImageId ? { mediaId: selectedImageId } : {}),
+          },
+        },
         {
           onSuccess: runResolve,
           onError: (err) => {
@@ -698,7 +706,9 @@ export const EscalationReplyComposer = forwardRef<
                   {selectedImage.caption || selectedImage.originalFilename || "Selected image"}
                 </p>
                 <p className="truncate text-[11px] text-[#5f6368]">
-                  Image will be sent through WhatsApp after provider confirmation.
+                  {isSoft
+                    ? "Your Agent will send this image through WhatsApp after provider confirmation."
+                    : "Image will be sent through WhatsApp after provider confirmation."}
                 </p>
               </div>
             </div>
