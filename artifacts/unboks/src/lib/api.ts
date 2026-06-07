@@ -596,6 +596,11 @@ export async function fetchKnowledgeMedia(
   return normalizeKnowledgeMediaList(raw);
 }
 
+export async function fetchKnowledgeMediaLibrary(): Promise<KnowledgeMedia[]> {
+  const raw = await apiFetch<unknown>("/knowledge/media/library");
+  return normalizeKnowledgeMediaList(raw);
+}
+
 export async function uploadKnowledgeMedia(input: {
   knowledgeId: string;
   source?: string;
@@ -1989,10 +1994,14 @@ export async function unresolveEscalation(id: string): Promise<Escalation> {
   });
 }
 
-export async function replyEscalation(id: string, message: string): Promise<void> {
+export async function replyEscalation(
+  id: string,
+  message: string,
+  mediaId?: string,
+): Promise<void> {
   return apiFetch<void>(`/escalations/${id}/reply`, {
     method: "POST",
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, ...(mediaId ? { mediaId } : {}) }),
   });
 }
 

@@ -54,9 +54,10 @@ import {
   useRef,
   useState,
 } from "react";
-import { Sparkles, VolumeX, Undo2, Send, Check } from "lucide-react";
-import { useEscalationMutations } from "@/hooks/use-client-api";
+import { Check, ImageIcon, Loader2, Send, Sparkles, Undo2, VolumeX, X } from "lucide-react";
+import { useEscalationMutations, useKnowledgeMediaLibrary } from "@/hooks/use-client-api";
 import { ApiError } from "@/lib/error";
+import type { KnowledgeMedia } from "@/lib/api";
 import type { Channel } from "@/data/conversations";
 import { cn } from "@/lib/utils";
 import { AIEditorPanel } from "./AIEditorPanel";
@@ -142,6 +143,8 @@ export const EscalationReplyComposer = forwardRef<
   // is also true when the operator clicks the standalone Mark resolved
   // button.
   const [combinedStep, setCombinedStep] = useState<null | "sending" | "resolving">(null);
+  const [imagePickerOpen, setImagePickerOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<KnowledgeMedia | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const conversationKey = `${channel}:${conversationDbId}:${conversationId}`;
   const previousConversationKey = useRef(conversationKey);
@@ -163,10 +166,12 @@ export const EscalationReplyComposer = forwardRef<
 
   const { guidance, reply, resolve, takeover, handback } = useEscalationMutations();
   const isSoft = mode === "soft";
+  const canAttachImage = mode === "hard" && channel.toLowerCase() === "whatsapp";
+  const mediaQuery = useKnowledgeMediaLibrary(canAttachImage && imagePickerOpen);
 
   // Safety: drafts are customer-specific. The parent keeps this composer
   // mounted while the operator switches conversations, so local state would
-  // otherwise leak Charlotte's unsent text into Lisa's reply box.
+  // otherwise leak Charlotte's unsent text or selected image into Lisa's reply box.
   useEffect(() => {
     if (previousConversationKey.current === conversationKey) return;
     previousConversationKey.current = conversationKey;
@@ -175,6 +180,8 @@ export const EscalationReplyComposer = forwardRef<
     setAiOpen(false);
     setNotice(null);
     setCombinedStep(null);
+    setImagePickerOpen(false);
+    setSelectedImage(null);
   }, [conversationKey]);
 
   // When the operator toggles soft/hard we deliberately keep `draft` and
@@ -186,7 +193,13 @@ export const EscalationReplyComposer = forwardRef<
     setAiOpen(false);
     setNotice(null);
   }, [mode]);
-  const empty = draft.trim().length === 0;
+  useEffect(() => {
+    if (canAttachImage) return;
+    setImagePickerOpen(false);
+    setSelectedImage(null);
+  }, [canAttachImage]);
+  const draftEmpty = draft.trim().length === 0;
+  const empty = draftEmpty && !selectedImage;
   const sendPending = isSoft ? guidance.isPending : reply.isPending;
   const combinedPending = combinedStep !== null;
   // While a combined flow is running, every action button is disabled to
@@ -249,12 +262,17 @@ export const EscalationReplyComposer = forwardRef<
 
     // Hard escalation: direct customer reply.
     reply.mutate(
-      { id: conversationDbId, message: trimmed },
+      { id: conversationDbId, message: trimmed, mediaId: selectedImage?.id },
       {
         onSuccess: () => {
           setDraft("");
           setPrevDraft(null);
-          onDone({ action: "send", sentText: trimmed });
+          setSelectedImage(null);
+          setImagePickerOpen(false);
+          onDone({
+            action: "send",
+            sentText: trimmed || (selectedImage ? "[Image sent]" : null),
+          });
         },
         onError: (err) => {
           if (isNotConnected(err)) {
@@ -298,6 +316,7 @@ export const EscalationReplyComposer = forwardRef<
     if (empty || anyPending) return;
     setNotice(null);
     const trimmed = draft.trim();
+    const selectedImageId = selectedImage?.id;
 
     const runResolve = () => {
       setCombinedStep("resolving");
@@ -316,7 +335,12 @@ export const EscalationReplyComposer = forwardRef<
             setCombinedStep(null);
             setDraft("");
             setPrevDraft(null);
-            onDone({ action: "send-and-resolve", sentText: trimmed });
+            setSelectedImage(null);
+            setImagePickerOpen(false);
+            onDone({
+              action: "send-and-resolve",
+              sentText: trimmed || (selectedImage ? "[Image sent]" : null),
+            });
           },
           onError: (err) => {
             setCombinedStep(null);
@@ -325,6 +349,8 @@ export const EscalationReplyComposer = forwardRef<
             // out, then surface a partial-success warning.
             setDraft("");
             setPrevDraft(null);
+            setSelectedImage(null);
+            setImagePickerOpen(false);
             if (isNotConnected(err)) {
               setNotice({
                 tone: "warning",
@@ -376,7 +402,7 @@ export const EscalationReplyComposer = forwardRef<
     }
 
     reply.mutate(
-      { id: conversationDbId, message: trimmed },
+      { id: conversationDbId, message: trimmed, mediaId: selectedImageId },
       {
         onSuccess: runResolve,
         onError: (err) => {
@@ -595,10 +621,10 @@ export const EscalationReplyComposer = forwardRef<
             <button
               type="button"
               onClick={() => setAiOpen(true)}
-              disabled={empty}
+              disabled={draftEmpty}
               className={cn(
                 "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium border transition-colors",
-                empty
+                draftEmpty
                   ? "border-[#e8eaed] text-[#9aa0a6] bg-white cursor-not-allowed"
                   : "border-[#1a73e8]/30 text-[#1a73e8] bg-[#f0f6ff] hover:bg-[#e8f0fe]",
               )}
@@ -622,6 +648,115 @@ export const EscalationReplyComposer = forwardRef<
           </div>
         )}
       </div>
+
+      {canAttachImage && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                setImagePickerOpen((open) => !open);
+                setNotice(null);
+              }}
+              disabled={anyPending}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-medium transition-colors",
+                selectedImage
+                  ? "border-[#1a73e8]/40 bg-[#e8f0fe] text-[#174ea6]"
+                  : "border-[#dadce0] bg-white text-[#3c4043] hover:bg-[#f8f9fa]",
+                "disabled:cursor-not-allowed disabled:opacity-60",
+              )}
+            >
+              <ImageIcon className="h-3.5 w-3.5" />
+              {selectedImage ? "Change image" : "Attach image"}
+            </button>
+            {selectedImage && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedImage(null);
+                  setNotice(null);
+                }}
+                disabled={anyPending}
+                className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-medium text-[#5f6368] hover:bg-[#f1f3f4] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <X className="h-3.5 w-3.5" />
+                Remove image
+              </button>
+            )}
+          </div>
+
+          {selectedImage && (
+            <div className="flex items-center gap-2 rounded-lg border border-[#d7e3fc] bg-[#f8fbff] p-2">
+              <img
+                src={selectedImage.url}
+                alt={selectedImage.caption || selectedImage.originalFilename || "Selected image"}
+                className="h-14 w-14 shrink-0 rounded-md border border-[#e8eaed] object-cover"
+              />
+              <div className="min-w-0">
+                <p className="truncate text-[12.5px] font-semibold text-[#202124]">
+                  {selectedImage.caption || selectedImage.originalFilename || "Selected image"}
+                </p>
+                <p className="truncate text-[11px] text-[#5f6368]">
+                  Image will be sent through WhatsApp after provider confirmation.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {imagePickerOpen && (
+            <div className="rounded-lg border border-[#e8eaed] bg-[#fbfcff] p-2">
+              {mediaQuery.isLoading ? (
+                <div className="flex items-center gap-2 px-1 py-2 text-[12px] text-[#5f6368]">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Loading images
+                </div>
+              ) : mediaQuery.isError ? (
+                <p className="px-1 py-2 text-[12px] text-[#b3261e]">
+                  Could not load image library.
+                </p>
+              ) : (mediaQuery.data ?? []).length === 0 ? (
+                <p className="px-1 py-2 text-[12px] leading-5 text-[#5f6368]">
+                  No customer images uploaded yet. Add images in Settings under
+                  Knowledge, then return here to send them.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {(mediaQuery.data ?? []).map((media) => {
+                    const active = selectedImage?.id === media.id;
+                    return (
+                      <button
+                        key={media.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedImage(media);
+                          setImagePickerOpen(false);
+                          setNotice(null);
+                        }}
+                        className={cn(
+                          "min-w-0 rounded-lg border bg-white p-1.5 text-left transition-colors",
+                          active
+                            ? "border-[#1a73e8] ring-1 ring-[#1a73e8]"
+                            : "border-[#e8eaed] hover:border-[#bdc1c6] hover:bg-[#f8f9fa]",
+                        )}
+                      >
+                        <img
+                          src={media.url}
+                          alt={media.caption || media.originalFilename || "Image"}
+                          className="aspect-square w-full rounded-md object-cover"
+                        />
+                        <p className="mt-1 truncate text-[11.5px] font-medium text-[#202124]">
+                          {media.caption || media.originalFilename || "Image"}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Calm fallback / error notice */}
       {notice && (

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   fetchConversations,
   fetchConversation,
+  fetchKnowledgeMediaLibrary,
   fetchArchivedConversations,
   archiveConversation,
   unarchiveConversation,
@@ -50,6 +51,7 @@ import {
   type EmailReplyPayload,
   type EmailForwardPayload,
   type EmailDeletePayload,
+  type KnowledgeMedia,
 } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 
@@ -178,8 +180,8 @@ export function useEscalationMutations() {
   });
   const remove = useMutation({ mutationFn: deleteEscalation, onSuccess: invalidate });
   const reply = useMutation({
-    mutationFn: ({ id, message }: { id: string; message: string }) =>
-      replyEscalation(id, message),
+    mutationFn: ({ id, message, mediaId }: { id: string; message: string; mediaId?: string }) =>
+      replyEscalation(id, message, mediaId),
     onSuccess: invalidate,
   });
   const guidance = useMutation({
@@ -203,6 +205,16 @@ export function useEscalationMutations() {
   });
 
   return { resolve, unresolve, remove, reply, guidance, takeover, setMode, handback };
+}
+
+export function useKnowledgeMediaLibrary(enabled = true) {
+  return useQuery<KnowledgeMedia[]>({
+    queryKey: ["knowledge", "media", "library"],
+    queryFn: fetchKnowledgeMediaLibrary,
+    enabled,
+    staleTime: 30_000,
+    retry: 1,
+  });
 }
 
 // ------ Learning entries ------
