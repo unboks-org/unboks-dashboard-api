@@ -28,6 +28,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
+  images: "/images",
   settings: "/settings",
   analytics: "/analytics",
   help: "/help",

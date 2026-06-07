@@ -12,7 +12,9 @@ import { getClientSlug } from "@/lib/tenant";
 import { cn } from "@/lib/utils";
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-const ACCEPT = "image/jpeg,image/png,image/webp";
+const ACCEPT = ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp";
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ALLOWED_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 
 function mediaQueryKey(slug: string, knowledgeId: string) {
   return ["knowledge", "media", slug, knowledgeId] as const;
@@ -76,8 +78,11 @@ export function KnowledgeMediaAttachments({ knowledgeId }: { knowledgeId: string
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      toast.error("Use a JPG, PNG, or WebP image.");
+    const lowerName = file.name.toLowerCase();
+    const hasAllowedType = ALLOWED_IMAGE_TYPES.includes(file.type);
+    const hasAllowedExtension = ALLOWED_IMAGE_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
+    if (!hasAllowedType && !hasAllowedExtension) {
+      toast.error("Use a JPG, JPEG, PNG, or WebP image.");
       return;
     }
     if (file.size > MAX_IMAGE_BYTES) {

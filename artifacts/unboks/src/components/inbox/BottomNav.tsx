@@ -1,4 +1,4 @@
-import { BookOpen, Calendar, Inbox, Settings } from "lucide-react";
+import { Calendar, Image as ImageIcon, Inbox, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavId } from "@/components/inbox/Drawer";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
@@ -11,7 +11,7 @@ interface BottomNavProps {
 }
 
 function activeBottomId(active: NavId): NavId {
-  if (active === "bookings" || active === "help" || active === "settings") return active;
+  if (active === "bookings" || active === "images" || active === "settings") return active;
   return "inbox";
 }
 
@@ -26,7 +26,7 @@ export function BottomNav({
   const items = [
     { id: "inbox" as const, label: "Inbox", icon: Inbox },
     { id: "bookings" as const, label: bookingsLabel, icon: Calendar },
-    { id: "help" as const, label: "Help", icon: BookOpen },
+    { id: "images" as const, label: "Images", icon: ImageIcon },
     { id: "settings" as const, label: "Settings", icon: Settings },
   ] satisfies { id: NavId; label: string; icon: typeof Inbox }[];
   return (

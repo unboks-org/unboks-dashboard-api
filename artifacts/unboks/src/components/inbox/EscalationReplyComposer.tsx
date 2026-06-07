@@ -727,8 +727,8 @@ export const EscalationReplyComposer = forwardRef<
                 </p>
               ) : (mediaQuery.data ?? []).length === 0 ? (
                 <p className="px-1 py-2 text-[12px] leading-5 text-[#5f6368]">
-                  No customer images uploaded yet. Add images in Settings under
-                  Knowledge, then return here to send them.
+                  No customer images uploaded yet. Open Images from the sidebar,
+                  upload the customer image, then return here to send it.
                 </p>
               ) : (
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

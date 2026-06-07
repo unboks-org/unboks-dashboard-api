@@ -18,6 +18,7 @@ const Bookings = lazy(() => import("@/pages/Bookings"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Analytics = lazy(() => import("@/pages/Analytics"));
 const Help = lazy(() => import("@/pages/Help"));
+const Images = lazy(() => import("@/pages/Images"));
 
 function RouteLoading() {
   return (
@@ -196,6 +197,7 @@ const KNOWN_TENANT_SECTIONS = new Set([
   "settings",
   "analytics",
   "help",
+  "images",
   "appointments",
   "bookings",
   "escalations",
@@ -328,6 +330,9 @@ function Router() {
       </Route>
       <Route path="/help">
         <ProtectedRoute><Help /></ProtectedRoute>
+      </Route>
+      <Route path="/images">
+        <ProtectedRoute><Images /></ProtectedRoute>
       </Route>
       {/* Tenant-prefixed deep links from backend alert emails.
           These MUST come after all the specific short routes above so that
