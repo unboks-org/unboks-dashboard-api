@@ -1257,14 +1257,15 @@ function orderLineSummary(order: OrderDetails): string {
 function formatOrderStatusLabel(status: OrderQueueStatus, order: OrderDetails): string {
   const total = formatOrderTotal(order);
   if (status === "awaiting_customer_confirmation") return `${total} · Awaiting customer confirmation`;
-  if (status === "awaiting_human_confirmation") return `${total} · Pending team confirmation`;
-  if (status === "confirmed") return `${total} · Confirmed`;
+  if (status === "awaiting_human_confirmation") return `${total} · Needs phone confirmation`;
+  if (status === "confirmed") return `${total} · Phone confirmed`;
   return total;
 }
 
 function defaultOrderNextAction(status: OrderQueueStatus): string {
   if (status === "awaiting_customer_confirmation") return "Waiting for the customer to confirm the order summary.";
-  if (status === "awaiting_human_confirmation") return "Confirm this order with the customer.";
+  if (status === "awaiting_human_confirmation") return "Call the customer to confirm order details and delivery.";
+  if (status === "confirmed") return "Prepare, deliver, and mark this order fulfilled.";
   return "Review this order.";
 }
 
@@ -2186,6 +2187,12 @@ export async function resolveEscalation(
   return apiFetch(`/escalations/${id}/resolve`, {
     method: "POST",
     body: JSON.stringify(payload ?? {}),
+  });
+}
+
+export async function markOrderPhoneConfirmed(id: string): Promise<{ ok: boolean; status: "confirmed" }> {
+  return apiFetch(`/orders/${id}/phone-confirmed`, {
+    method: "POST",
   });
 }
 
