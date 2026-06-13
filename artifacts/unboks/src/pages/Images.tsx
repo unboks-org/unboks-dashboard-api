@@ -1,12 +1,15 @@
-import { ChangeEvent, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image as ImageIcon, Loader2, Trash2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import {
   createInfoUpdate,
   deleteKnowledgeMedia,
+  fetchProductSettings,
+  saveProductSettings,
   uploadKnowledgeMedia,
+  type ProductSettings,
   type KnowledgeMedia,
 } from "@/lib/api";
 import { useKnowledgeMediaLibrary } from "@/hooks/use-client-api";
@@ -47,6 +50,33 @@ export default function Images() {
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const productSettingsQuery = useQuery<ProductSettings>({
+    queryKey: ["settings", "product"],
+    queryFn: fetchProductSettings,
+    staleTime: 30_000,
+  });
+  const [deliveryAmount, setDeliveryAmount] = useState("");
+  const [deliveryCurrency, setDeliveryCurrency] = useState("XCG");
+  const productSettings = productSettingsQuery.data;
+  const saveDeliveryMutation = useMutation({
+    mutationFn: saveProductSettings,
+    onSuccess: async (next) => {
+      setDeliveryAmount(next.deliveryCostAmount == null ? "" : String(next.deliveryCostAmount));
+      setDeliveryCurrency(next.deliveryCostCurrency || "XCG");
+      await qc.invalidateQueries({ queryKey: ["settings", "product"] });
+      toast.success("Delivery cost saved.");
+    },
+    onError: (err) => {
+      const message = err instanceof Error && err.message ? err.message : "Could not save delivery cost.";
+      toast.error(message);
+    },
+  });
+
+  useEffect(() => {
+    if (!productSettings) return;
+    setDeliveryAmount(productSettings.deliveryCostAmount == null ? "" : String(productSettings.deliveryCostAmount));
+    setDeliveryCurrency(productSettings.deliveryCostCurrency || "XCG");
+  }, [productSettings]);
 
   function onPick(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
@@ -115,6 +145,19 @@ export default function Images() {
     }
   }
 
+  function handleSaveDeliveryCost() {
+    const trimmed = deliveryAmount.trim();
+    const amount = trimmed === "" ? null : Number(trimmed);
+    if (amount != null && (!Number.isFinite(amount) || amount < 0)) {
+      toast.error("Enter a valid delivery amount.");
+      return;
+    }
+    saveDeliveryMutation.mutate({
+      deliveryCostAmount: amount,
+      deliveryCostCurrency: deliveryCurrency.trim().toUpperCase() || "XCG",
+    });
+  }
+
   const media = mediaQuery.data ?? [];
 
   return (
@@ -125,6 +168,49 @@ export default function Images() {
       hideRefresh
     >
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 py-5 sm:px-6">
+        <section className="rounded-2xl border border-[#e6e8eb] bg-card p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-[17px] font-semibold text-[#202124]">Delivery costs</h2>
+            <p className="text-[13px] leading-5 text-[#5f6368]">
+              Set the delivery amount your Agent adds to product order totals.
+            </p>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_120px_auto] sm:items-end">
+            <label className="block">
+              <span className="text-[12px] font-medium text-[#3c4043]">Delivery amount</span>
+              <input
+                value={deliveryAmount}
+                onChange={(e) => setDeliveryAmount(e.target.value)}
+                inputMode="decimal"
+                placeholder="Example: 5"
+                className="mt-1 w-full rounded-xl border border-[#d6dbe3] bg-white px-3 py-2.5 text-[14px] text-[#202124] outline-none placeholder:text-[#9aa0a6] focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
+              />
+            </label>
+            <label className="block">
+              <span className="text-[12px] font-medium text-[#3c4043]">Currency</span>
+              <input
+                value={deliveryCurrency}
+                onChange={(e) => setDeliveryCurrency(e.target.value.toUpperCase())}
+                placeholder="XCG"
+                maxLength={8}
+                className="mt-1 w-full rounded-xl border border-[#d6dbe3] bg-white px-3 py-2.5 text-[14px] text-[#202124] outline-none placeholder:text-[#9aa0a6] focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={handleSaveDeliveryCost}
+              disabled={saveDeliveryMutation.isPending || productSettingsQuery.isLoading}
+              className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-xl bg-[#1a73e8] px-4 text-[14px] font-semibold text-white shadow-sm transition hover:bg-[#1765cc] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {saveDeliveryMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Save delivery cost
+            </button>
+          </div>
+          <p className="mt-2 text-[12px] leading-5 text-[#5f6368]">
+            Leave the amount empty if delivery should be confirmed manually.
+          </p>
+        </section>
+
         <section className="rounded-2xl border border-[#e6e8eb] bg-card p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-1">
             <h2 className="text-[17px] font-semibold text-[#202124]">Upload image</h2>

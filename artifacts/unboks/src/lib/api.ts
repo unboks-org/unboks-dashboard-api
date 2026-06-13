@@ -303,9 +303,16 @@ export interface OrderDetails {
   channel?: string | null;
   address: string;
   products: OrderLine[];
+  productTotal?: number | null;
+  deliveryCost?: number | null;
   total: number | null;
   currency: string;
   comments?: string | null;
+}
+
+export interface ProductSettings {
+  deliveryCostAmount: number | null;
+  deliveryCostCurrency: string;
 }
 
 export type OrderQueueStatus =
@@ -1295,6 +1302,8 @@ function normalizeOrderPayload(
     ),
     address: pickStr(payload, "delivery_address", "deliveryAddress", "address") ?? "",
     products,
+    productTotal: pickNum(payload, "product_total", "productTotal"),
+    deliveryCost: pickNum(payload, "delivery_cost", "deliveryCost"),
     total: pickNum(payload, "total", "order_total", "orderTotal"),
     currency: pickStr(payload, "currency") ?? "XCG",
     comments: pickStr(payload, "comments", "special_requests", "specialRequests"),
@@ -1706,6 +1715,40 @@ export async function saveWorkspaceLabelsSettings(
     method: "PUT",
     body: JSON.stringify({ bookings_label: bookingsLabel }),
   });
+}
+
+function normalizeProductSettings(raw: unknown): ProductSettings {
+  const fallback: ProductSettings = {
+    deliveryCostAmount: null,
+    deliveryCostCurrency: "XCG",
+  };
+  if (!raw || typeof raw !== "object") return fallback;
+  const r = raw as Record<string, unknown>;
+  const amount = pickNum(r, "delivery_cost_amount", "deliveryCostAmount");
+  return {
+    deliveryCostAmount: amount,
+    deliveryCostCurrency:
+      pickStr(r, "delivery_cost_currency", "deliveryCostCurrency", "currency") ??
+      fallback.deliveryCostCurrency,
+  };
+}
+
+export async function fetchProductSettings(): Promise<ProductSettings> {
+  const raw = await apiFetch<unknown>("/settings/product-settings");
+  return normalizeProductSettings(raw);
+}
+
+export async function saveProductSettings(
+  payload: ProductSettings,
+): Promise<ProductSettings> {
+  const raw = await apiFetch<unknown>("/settings/product-settings", {
+    method: "PUT",
+    body: JSON.stringify({
+      delivery_cost_amount: payload.deliveryCostAmount,
+      delivery_cost_currency: payload.deliveryCostCurrency,
+    }),
+  });
+  return normalizeProductSettings(raw);
 }
 
 export async function fetchInfoUpdates(): Promise<InfoUpdatesApiResponse> {

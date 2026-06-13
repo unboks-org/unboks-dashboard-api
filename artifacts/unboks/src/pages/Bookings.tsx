@@ -971,6 +971,14 @@ function OrderDetailCard({ appointment }: { appointment: Appointment }) {
     order?.total != null
       ? `${order.currency ? `${order.currency} ` : ""}${formatMoney(order.total)}`
       : "Price not captured";
+  const productTotal =
+    order?.productTotal != null
+      ? `${order.currency ? `${order.currency} ` : ""}${formatMoney(order.productTotal)}`
+      : null;
+  const deliveryCost =
+    order?.deliveryCost != null
+      ? `${order.currency ? `${order.currency} ` : ""}${formatMoney(order.deliveryCost)}`
+      : null;
 
   return (
     <div className="rounded-lg border border-[#dfe4ea] bg-white overflow-hidden">
@@ -1034,12 +1042,30 @@ function OrderDetailCard({ appointment }: { appointment: Appointment }) {
           )}
         </div>
 
-        <div className="flex items-center justify-between rounded-md border border-[#d6eadb] bg-[#f1f8f3] px-3 py-2.5">
-          <div className="flex items-center gap-2">
-            <ReceiptText className="w-4 h-4 text-[#188038]" />
-            <span className="text-[13px] font-medium text-[#1f2937]">Price</span>
+        <div className="rounded-md border border-[#d6eadb] bg-[#f1f8f3] px-3 py-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <ReceiptText className="w-4 h-4 text-[#188038]" />
+              <span className="text-[13px] font-medium text-[#1f2937]">Total</span>
+            </div>
+            <span className="text-[15px] font-semibold text-[#188038]">{total}</span>
           </div>
-          <span className="text-[15px] font-semibold text-[#188038]">{total}</span>
+          {(productTotal || deliveryCost) && (
+            <dl className="mt-2 grid gap-1 border-t border-[#d6eadb] pt-2 text-[12px] text-[#5f6368]">
+              {productTotal && (
+                <div className="flex items-center justify-between gap-3">
+                  <dt>Products</dt>
+                  <dd className="font-medium text-[#1f2937]">{productTotal}</dd>
+                </div>
+              )}
+              {deliveryCost && (
+                <div className="flex items-center justify-between gap-3">
+                  <dt>Delivery</dt>
+                  <dd className="font-medium text-[#1f2937]">{deliveryCost}</dd>
+                </div>
+              )}
+            </dl>
+          )}
         </div>
 
         {order?.comments && (
