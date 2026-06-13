@@ -423,8 +423,16 @@ export default function Bookings() {
               <ul className="divide-y divide-[#f1f3f4]">
                 {appointments.map((apt) => {
                   const pill = orderStatusPill(apt) ?? statusPill(apt.status, apt.source, activeBackendAvailable);
-                  const canConfirm = apt.source === "backend" && apt.status !== "confirmed";
+                  const isOrderRow = isOrderItem(apt);
+                  const orderEscalationId = escalationIdFromOrderAppointment(apt);
+                  const canConfirm = !isOrderRow && apt.source === "backend" && apt.status !== "confirmed";
                   const confirmingThis = confirmMutation.isPending && pendingConfirm?.id === apt.id;
+                  const needsPhoneConfirmation =
+                    isOrderRow &&
+                    Boolean(orderEscalationId) &&
+                    apt.orderStatus === "awaiting_human_confirmation";
+                  const phoneConfirmingThis =
+                    phoneConfirmMutation.isPending && pendingPhoneConfirm?.id === apt.id;
                   const isSelected = selectedApt?.id === apt.id;
                   return (
                     <li
@@ -500,6 +508,27 @@ export default function Bookings() {
                           Confirm
                         </button>
                       )}
+                      {needsPhoneConfirmation && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setPendingPhoneConfirm(apt); }}
+                          disabled={phoneConfirmingThis}
+                          className={cn(
+                            "flex-shrink-0 inline-flex items-center gap-1 rounded-md border border-[#1a73e8] bg-[#1a73e8] px-2.5 py-1 text-[12px] font-medium text-white transition-colors",
+                            "hover:bg-[#1664c1] hover:border-[#1664c1]",
+                            "focus:outline-none focus:ring-2 focus:ring-[#1a73e8]/30",
+                            "disabled:opacity-60 disabled:cursor-not-allowed",
+                          )}
+                          title="Mark that you called the customer and confirmed the order details."
+                        >
+                          {phoneConfirmingThis ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Phone className="w-3.5 h-3.5" />
+                          )}
+                          Call done
+                        </button>
+                      )}
                     </li>
                   );
                 })}
@@ -568,6 +597,74 @@ export default function Bookings() {
                     );
                   })()}
 
+                  {isOrderItem(selectedApt) &&
+                    escalationIdFromOrderAppointment(selectedApt) &&
+                    selectedApt.orderStatus === "awaiting_human_confirmation" && (
+                      <div className="rounded-xl border border-[#feefc3] bg-[#fef7e0] p-3 shadow-sm">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-semibold text-[#5f3e00]">
+                              Phone call needed
+                            </p>
+                            <p className="mt-0.5 text-[12px] text-[#7d5700]">
+                              Call the customer, confirm the order, address, and delivery details, then save it here.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setPendingPhoneConfirm(selectedApt)}
+                            disabled={phoneConfirmMutation.isPending && pendingPhoneConfirm?.id === selectedApt.id}
+                            className={cn(
+                              "inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg border border-[#1a73e8] bg-[#1a73e8] px-4 text-[13px] font-medium text-white transition-colors md:min-h-0 md:h-9 md:flex-shrink-0",
+                              "hover:bg-[#1664c1] hover:border-[#1664c1]",
+                              "focus:outline-none focus:ring-2 focus:ring-[#1a73e8]/30",
+                              "disabled:opacity-60 disabled:cursor-not-allowed",
+                            )}
+                          >
+                            {phoneConfirmMutation.isPending && pendingPhoneConfirm?.id === selectedApt.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Phone className="w-4 h-4" />
+                            )}
+                            Mark phone call confirmed
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                  {isOrderItem(selectedApt) &&
+                    escalationIdFromOrderAppointment(selectedApt) &&
+                    selectedApt.orderStatus === "confirmed" && (
+                      <div className="rounded-xl border border-[#d6eadb] bg-[#f1f8f3] p-3 shadow-sm">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-semibold text-[#137333]">Phone confirmed</p>
+                            <p className="mt-0.5 text-[12px] text-[#3c6f47]">
+                              Prepare and deliver the order, then mark it fulfilled to archive it.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setPendingProcessOrder(selectedApt)}
+                            disabled={processOrderMutation.isPending && pendingProcessOrder?.id === selectedApt.id}
+                            className={cn(
+                              "inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg border border-[#188038] bg-[#188038] px-4 text-[13px] font-medium text-white transition-colors md:min-h-0 md:h-9 md:flex-shrink-0",
+                              "hover:bg-[#137333] hover:border-[#137333]",
+                              "focus:outline-none focus:ring-2 focus:ring-[#188038]/30",
+                              "disabled:opacity-60 disabled:cursor-not-allowed",
+                            )}
+                          >
+                            {processOrderMutation.isPending && pendingProcessOrder?.id === selectedApt.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Check className="w-4 h-4" />
+                            )}
+                            Mark order fulfilled
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                   {/* Appointment/order info card */}
                   {isOrderItem(selectedApt) ? (
                     <OrderDetailCard appointment={selectedApt} />
@@ -612,64 +709,6 @@ export default function Bookings() {
                       </button>
                     </div>
                   )}
-
-                  {isOrderItem(selectedApt) &&
-                    escalationIdFromOrderAppointment(selectedApt) &&
-                    selectedApt.orderStatus !== "confirmed" && (
-                      <div className="rounded-lg border border-[#feefc3] bg-[#fef7e0] p-3">
-                        <p className="text-[13px] font-medium text-[#5f3e00]">Needs phone confirmation</p>
-                        <p className="text-[12px] text-[#7d5700] mt-0.5">
-                          Call the customer, confirm the order details and delivery, then save the confirmation here.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setPendingPhoneConfirm(selectedApt)}
-                          disabled={phoneConfirmMutation.isPending}
-                          className={cn(
-                            "mt-2.5 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#1a73e8] bg-[#1a73e8] px-3 py-2 text-[13px] font-medium text-white transition-colors",
-                            "hover:bg-[#1664c1] hover:border-[#1664c1]",
-                            "focus:outline-none focus:ring-2 focus:ring-[#1a73e8]/30",
-                            "disabled:opacity-60 disabled:cursor-not-allowed",
-                          )}
-                        >
-                          {phoneConfirmMutation.isPending ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Phone className="w-4 h-4" />
-                          )}
-                          Mark phone call confirmed
-                        </button>
-                      </div>
-                    )}
-
-                  {isOrderItem(selectedApt) &&
-                    escalationIdFromOrderAppointment(selectedApt) &&
-                    selectedApt.orderStatus === "confirmed" && (
-                      <div className="rounded-lg border border-[#d6eadb] bg-[#f1f8f3] p-3">
-                        <p className="text-[13px] font-medium text-[#137333]">Ready to fulfill</p>
-                        <p className="text-[12px] text-[#3c6f47] mt-0.5">
-                          Use this after the order is prepared, delivered, and no further action is needed.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setPendingProcessOrder(selectedApt)}
-                          disabled={processOrderMutation.isPending}
-                          className={cn(
-                            "mt-2.5 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#188038] bg-[#188038] px-3 py-2 text-[13px] font-medium text-white transition-colors",
-                            "hover:bg-[#137333] hover:border-[#137333]",
-                            "focus:outline-none focus:ring-2 focus:ring-[#188038]/30",
-                            "disabled:opacity-60 disabled:cursor-not-allowed",
-                          )}
-                        >
-                          {processOrderMutation.isPending ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Check className="w-4 h-4" />
-                          )}
-                          Mark order fulfilled
-                        </button>
-                      </div>
-                    )}
 
                   <button
                     type="button"
