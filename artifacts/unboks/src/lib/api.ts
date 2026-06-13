@@ -1210,7 +1210,7 @@ function normalizeOrderList(raw: unknown): Appointment[] {
     const createdAt =
       pickStr(o, "updated_at", "updatedAt", "created_at", "createdAt") ??
       new Date().toISOString();
-    const escalationId = pickStr(o, "escalation_id", "escalationId");
+    const escalationId = pickId(o, "escalation_id", "escalationId");
     const orderSummary = orderLineSummary(payload);
     out.push({
       id: escalationId ? `order-escalation:${escalationId}` : `order-state:${conversationId}`,
@@ -1326,6 +1326,15 @@ function pickNum(o: Record<string, unknown>, ...keys: string[]): number | null {
     const v = o[k];
     if (typeof v === "number" && Number.isFinite(v)) return v;
     if (typeof v === "string" && v.trim() && Number.isFinite(Number(v))) return Number(v);
+  }
+  return null;
+}
+
+function pickId(o: Record<string, unknown>, ...keys: string[]): string | null {
+  for (const k of keys) {
+    const v = o[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+    if (typeof v === "number" && Number.isFinite(v)) return String(v);
   }
   return null;
 }
