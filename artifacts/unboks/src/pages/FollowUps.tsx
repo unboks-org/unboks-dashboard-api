@@ -156,7 +156,7 @@ export default function FollowUps() {
               {visible.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => setSelectedId(item.id)}
+                  onClick={() => navigate(`/?c=${encodeURIComponent(item.conversation_id)}`)}
                   className={cn(
                     "grid min-h-[92px] w-full grid-cols-[minmax(0,1.25fr)_minmax(145px,.75fr)_120px] gap-4 border-b border-slate-100 px-5 py-4 text-left last:border-0 hover:bg-slate-50",
                     selected?.id === item.id && "bg-blue-50/70 hover:bg-blue-50/70",
