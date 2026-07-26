@@ -202,6 +202,7 @@ const KNOWN_TENANT_SECTIONS = new Set([
   "appointments",
   "bookings",
   "escalations",
+  "follow-ups",
 ]);
 
 function TenantSectionRedirect() {
