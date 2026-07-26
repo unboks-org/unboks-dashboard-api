@@ -114,7 +114,7 @@ export function KnowledgeMediaAttachments({ knowledgeId }: { knowledgeId: string
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
         <label className="min-w-0 flex-1">
           <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#5f6368]">
-            {tenantText("Images for customers", "Imágenes para pacientes")}
+            {tenantText("Images for customers", "Imágenes para contactos")}
           </span>
           <input
             value={caption}
@@ -154,7 +154,7 @@ export function KnowledgeMediaAttachments({ knowledgeId }: { knowledgeId: string
       <p className="mt-2 text-[11px] leading-5 text-[#5f6368]">
         {tenantText(
           "Attach product, property, menu, service, or example photos. If a customer asks for pictures, your Agent can share the matching image link.",
-          "Adjunta fotos del centro, los servicios u otros ejemplos. Si un paciente pide imágenes, el agente puede compartir el enlace correspondiente.",
+          "Adjunta fotos del centro, los servicios u otros ejemplos. Si una persona pide imágenes, el agente puede compartir el enlace correspondiente.",
         )}
       </p>
 

@@ -166,7 +166,7 @@ function PendingRow({ entry }: { entry: EscalationLearning }) {
       {entry.sourceQuestion && (
         <div className="mb-2">
           <p className="text-[10.5px] font-medium uppercase tracking-wide text-[#5f6368]">
-            {tenantText("Customer question", "Pregunta del paciente")}
+            {tenantText("Customer question", "Pregunta de la persona")}
           </p>
           <p className="mt-0.5 text-[12.5px] text-[#3c4043] bg-[#fbfbfd] border border-[#e6e8eb] rounded-md px-2 py-1.5 whitespace-pre-wrap break-words leading-snug">
             {entry.sourceQuestion}
@@ -304,7 +304,7 @@ function ReadOnlyRow({ entry }: { entry: EscalationLearning }) {
       {entry.sourceQuestion && (
         <div className="mb-2">
           <p className="text-[10.5px] font-medium uppercase tracking-wide text-[#5f6368]">
-            {tenantText("Customer question", "Pregunta del paciente")}
+            {tenantText("Customer question", "Pregunta de la persona")}
           </p>
           <p className={cn(
             "mt-0.5 text-[12.5px] border rounded-md px-2 py-1.5 whitespace-pre-wrap break-words leading-snug",

@@ -52,7 +52,7 @@ function retentionOptionLabel(label: string): string {
     return tenantText(label, "No eliminar nunca automáticamente");
   }
   if (label === "Would anonymize customer data") {
-    return tenantText(label, "Anonimizaría los datos del paciente");
+    return tenantText(label, "Anonimizaría los datos del contacto");
   }
   if (label === "Would delete messages permanently") {
     return tenantText(label, "Eliminaría los mensajes de forma permanente");

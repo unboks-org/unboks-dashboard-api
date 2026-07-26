@@ -258,21 +258,21 @@ export default function FollowUps() {
     <DashboardShell
       activeNav="followups"
       pageTitle={tenantText("Follow-ups", "Seguimientos")}
-      pageSubtitle={tenantText("Patient callback requests", "Solicitudes de llamada a pacientes")}
+      pageSubtitle={tenantText("Patient callback requests", "Solicitudes de contacto")}
     >
       <div ref={pageRef} className="mx-auto w-full max-w-[1500px] space-y-6 p-4 md:p-7">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-primary">
-              {tenantText("Patient care queue", "Cola de atención al paciente")}
+              {tenantText("Patient care queue", "Cola de personas interesadas")}
             </p>
             <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-900">
-              {tenantText("Patient follow-ups", "Seguimientos de pacientes")}
+              {tenantText("Patient follow-ups", "Seguimiento de personas interesadas")}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
               {tenantText(
                 "Review each request, call the patient, and record the outcome.",
-                "Revisa cada solicitud, llama al paciente y registra el resultado.",
+                "Revisa cada solicitud, contacta con la persona y registra el resultado.",
               )}
             </p>
           </div>
@@ -334,7 +334,7 @@ export default function FollowUps() {
           <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,.8fr)]">
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="grid grid-cols-[minmax(0,1.25fr)_minmax(145px,.75fr)_120px] gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                <span>{tenantText("Patient and request", "Paciente y solicitud")}</span>
+                <span>{tenantText("Patient and request", "Persona y solicitud")}</span>
                 <span>{tenantText("Callback", "Llamada")}</span>
                 <span>{tenantText("Status", "Estado")}</span>
               </div>
@@ -354,7 +354,7 @@ export default function FollowUps() {
                     <span className="min-w-0">
                       <span className="block truncate font-semibold text-slate-800">
                         {[item.first_name, item.surnames].filter(Boolean).join(" ") ||
-                          tenantText("Unknown patient", "Paciente desconocido")}
+                          tenantText("Unknown patient", "Contacto sin identificar")}
                       </span>
                       <span className="mt-1 block truncate text-xs text-slate-500">{usablePhone(item.phone_raw)}</span>
                       <span className="mt-1 block truncate text-xs text-slate-400">
@@ -392,7 +392,7 @@ export default function FollowUps() {
                     </span>
                     <h2 className="mt-3 text-xl font-semibold text-slate-900">
                       {[selected.first_name, selected.surnames].filter(Boolean).join(" ") ||
-                        tenantText("Unknown patient", "Paciente desconocido")}
+                        tenantText("Unknown patient", "Contacto sin identificar")}
                     </h2>
                     <p className="mt-1 text-sm text-slate-500">
                       {tenantText("Received", "Recibido el")} {received(selected.updated_at)}
@@ -427,7 +427,7 @@ export default function FollowUps() {
                       {selected.visit_reason ||
                         tenantText(
                           "The patient has not provided a reason.",
-                          "El paciente no ha indicado el motivo.",
+                          "La persona no ha indicado el motivo.",
                         )}
                     </p>
                   </div>
@@ -435,7 +435,7 @@ export default function FollowUps() {
                   {selected.status === "needs_human_answer" && (
                     <div className="rounded-xl border border-violet-100 bg-violet-50 p-4">
                       <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-violet-700">
-                        {tenantText("Client question", "Pregunta del paciente")}
+                        {tenantText("Client question", "Pregunta de la persona")}
                       </p>
                       <p className="text-violet-900">
                         {tenantText(

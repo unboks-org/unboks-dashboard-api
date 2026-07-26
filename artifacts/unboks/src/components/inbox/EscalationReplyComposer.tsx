@@ -289,7 +289,7 @@ export const EscalationReplyComposer = forwardRef<
               tone: "info",
               text: tenantText(
                 "Direct customer reply will be connected by the Unboks team.",
-                "El equipo de Unboks habilitará la respuesta directa al paciente.",
+                "El equipo de Unboks habilitará la respuesta directa a la persona.",
               ),
             });
             return;
@@ -440,7 +440,7 @@ export const EscalationReplyComposer = forwardRef<
               text:
                 tenantText(
                   "Direct customer reply will be connected by the Unboks team. Escalation was not resolved.",
-                  "El equipo de Unboks habilitará la respuesta directa al paciente. La solicitud no se ha resuelto.",
+                  "El equipo de Unboks habilitará la respuesta directa a la persona. La solicitud no se ha resuelto.",
                 ),
             });
             return;
@@ -610,7 +610,7 @@ export const EscalationReplyComposer = forwardRef<
 
   const headingText = isSoft
     ? tenantText("Instructions to Agent", "Instrucciones para el agente")
-    : tenantText("Reply to customer", "Responder al paciente");
+    : tenantText("Reply to customer", "Responder a la persona");
   const helperText = isSoft
     ? tenantText(
         "Tell the Agent exactly what to say or do next.",
@@ -618,17 +618,17 @@ export const EscalationReplyComposer = forwardRef<
       )
     : tenantText(
         "This reply will be sent directly to the customer.",
-        "Esta respuesta se enviará directamente al paciente.",
+        "Esta respuesta se enviará directamente a la persona.",
       );
   const placeholder = isSoft
     ? tenantText(
         "Example: Confirm Sunday at 08:00 and ask the customer to confirm their phone number.",
-        "Ejemplo: Confirma el domingo a las 08:00 y pide al paciente que confirme su número de teléfono.",
+        "Ejemplo: Confirma el domingo a las 08:00 y pide a la persona que confirme su número de teléfono.",
       )
     : tenantText("Write your reply...", "Escribe tu respuesta...");
   const sendLabel = isSoft
     ? tenantText("Send to Agent", "Enviar al agente")
-    : tenantText("Reply to customer", "Responder al paciente");
+    : tenantText("Reply to customer", "Responder a la persona");
 
   return (
     <div
@@ -796,7 +796,7 @@ export const EscalationReplyComposer = forwardRef<
                 <p className="px-1 py-2 text-[12px] leading-5 text-[#5f6368]">
                   {tenantText(
                     "No customer images uploaded yet. Open Images from the sidebar, upload the customer image, then return here to send it.",
-                    "Aún no hay imágenes de pacientes subidas. Abre Imágenes en el menú lateral, sube la imagen y vuelve aquí para enviarla.",
+                    "Aún no hay imágenes de contactos subidas. Abre Imágenes en el menú lateral, sube la imagen y vuelve aquí para enviarla.",
                   )}
                 </p>
               ) : (
@@ -927,7 +927,7 @@ export const EscalationReplyComposer = forwardRef<
                 )
               : tenantText(
                   "Reply to customer without resolving",
-                  "Responder al paciente sin resolver",
+                  "Responder a la persona sin resolver",
                 )
           }
           title={
@@ -938,7 +938,7 @@ export const EscalationReplyComposer = forwardRef<
                 )
               : tenantText(
                   "Reply to the customer without resolving.",
-                  "Responder al paciente sin resolver.",
+                  "Responder a la persona sin resolver.",
                 )
           }
           className={cn(
@@ -1004,7 +1004,7 @@ export const EscalationReplyComposer = forwardRef<
                 )
               : tenantText(
                   "Reply to customer and mark resolved",
-                  "Responder al paciente y marcar como resuelto",
+                  "Responder a la persona y marcar como resuelto",
                 )
           }
           title={
@@ -1015,7 +1015,7 @@ export const EscalationReplyComposer = forwardRef<
                 )
               : tenantText(
                   "Reply directly to the customer and mark this escalation resolved.",
-                  "Responder directamente al paciente y marcar esta solicitud como resuelta.",
+                  "Responder directamente a la persona y marcar esta solicitud como resuelta.",
                 )
           }
           className={cn(

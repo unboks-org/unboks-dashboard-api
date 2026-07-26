@@ -1002,14 +1002,14 @@ function LatestCustomerMessagePreview({ messages }: { messages: ApiMessage[] }) 
 
   return (
     <section
-      aria-label={tenantText("Latest customer message", "Último mensaje del paciente")}
+      aria-label={tenantText("Latest customer message", "Último mensaje de la persona")}
       className="bg-white px-3 sm:px-4 pb-3 flex-shrink-0"
     >
       <div className="rounded-xl border border-[#e6e8eb] bg-white px-3.5 py-3 sm:px-4 sm:py-3.5">
         <div className="flex items-center justify-between gap-2 mb-1.5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#5f6368]">
             {isInbound
-              ? tenantText("Latest customer message", "Último mensaje del paciente")
+              ? tenantText("Latest customer message", "Último mensaje de la persona")
               : tenantText("Latest message", "Último mensaje")}
           </p>
           {latest.timestamp && (
@@ -1258,7 +1258,7 @@ export default function Inbox() {
         toast.success(tenantText("Archived", "Archivada"), {
           description: tenantText(
             "Returns to Active when the customer replies.",
-            "Volverá a Activas cuando el paciente responda.",
+            "Volverá a Activas cuando la persona responda.",
           ),
         });
       } catch {

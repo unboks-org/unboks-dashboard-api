@@ -195,7 +195,7 @@ const SPANISH_CATEGORIES: Record<CategoryId, { label: string; description: strin
   "your-info": {
     label: "Conocimiento de la empresa",
     description:
-      "Añade información, archivos, políticas, servicios y carpetas en la nube que el agente puede usar al responder a pacientes.",
+      "Añade información, archivos, políticas, servicios y carpetas en la nube que el agente puede usar al responder a personas interesadas.",
   },
   "agent-personality": {
     label: "Personalidad del agente",
@@ -1685,7 +1685,7 @@ export default function Settings() {
                     title={tenantText("Add knowledge", "Añadir conocimiento")}
                     description={tenantText(
                       "Quickly add business information your Unboks Agent can use when replying to customers. Examples: holiday hours, offers, pricing rules, policies.",
-                      "Añade información de la empresa que el agente de Unboks pueda usar al responder a pacientes: horarios en festivos, servicios, precios o políticas.",
+                      "Añade información de la empresa que el agente de Unboks pueda usar al responder a personas interesadas: horarios en festivos, servicios, precios o políticas.",
                     )}
                   >
                     <div className="space-y-4">
@@ -1805,7 +1805,7 @@ export default function Settings() {
                     )}
                     description={tenantText(
                       "Notes you've added. Your Agent can use this information when replying to customers.",
-                      "Notas añadidas que el agente puede usar al responder a pacientes.",
+                      "Notas añadidas que el agente puede usar al responder a personas interesadas.",
                     )}
                   >
                     {updates.length === 0 ? (
@@ -1940,7 +1940,7 @@ export default function Settings() {
                           <p className="mt-0.5 text-[12px] text-[#5f6368]">
                             {tenantText(
                               "Get notified when a customer confirms an appointment, booking, order, or scheduled call.",
-                              "Recibe un aviso cuando un seguimiento esté listo para que el equipo llame al paciente.",
+                              "Recibe un aviso cuando un seguimiento esté listo para que el equipo contacte con la persona.",
                             )}
                           </p>
                         </div>
@@ -2274,7 +2274,7 @@ export default function Settings() {
                     title={tenantText("AI Agent identity", "Identidad del agente de IA")}
                     description={tenantText(
                       "Choose the name your AI assistant uses with customers.",
-                      "Elige el nombre que usa el asistente de IA con los pacientes.",
+                      "Elige el nombre que usa el asistente de IA con las personas interesadas.",
                     )}
                     footer={
                       <>
@@ -2988,7 +2988,7 @@ function YourInfoKnowledge({
           <p className="mt-0.5 text-[13px] text-[#5f6368]">
             {tenantText(
               "Review and update the business information your Agent uses when replying to customers.",
-              "Revisa y actualiza la información de la clínica que utiliza el agente al responder a los pacientes.",
+              "Revisa y actualiza la información de la clínica que utiliza el agente al responder a las personas interesadas.",
             )}
           </p>
         </div>

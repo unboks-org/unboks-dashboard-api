@@ -348,7 +348,7 @@ const SPANISH_QUESTIONS: Record<string, LocalizedQuestion> = {
     question: "¿Qué grado de formalidad debe tener el agente de IA?",
     options: ["Muy formal", "Profesional pero cercano", "Cercano e informal"],
     examples: [
-      "Estimado paciente: gracias por su mensaje. Revisaremos el asunto lo antes posible.",
+      "Hola, gracias por tu mensaje. Revisaremos la consulta lo antes posible.",
       "Hola, gracias por contactar. Estaré encantado de ayudarte.",
       "¡Hola! No te preocupes, estoy aquí para ayudarte 🙂",
     ],
@@ -363,7 +363,7 @@ const SPANISH_QUESTIONS: Record<string, LocalizedQuestion> = {
     ],
   },
   empathy: {
-    question: "¿Qué grado de empatía debe mostrar el agente cuando un paciente está preocupado?",
+    question: "¿Qué grado de empatía debe mostrar el agente cuando una persona está preocupada?",
     options: ["Muy empático", "Empatía equilibrada", "Más directo y orientado a soluciones"],
     examples: [
       "Siento que estés pasando por esto. Te ayudaré a trasladarlo a la persona adecuada cuanto antes.",
@@ -382,7 +382,7 @@ const SPANISH_QUESTIONS: Record<string, LocalizedQuestion> = {
   },
   appointmentStyle: {
     question: "¿Cómo debe gestionar el agente las solicitudes de cita?",
-    options: ["Sugerirla con tacto cuando sea oportuno", "Solo cuando la pida el paciente", "Intentar reservar siempre"],
+    options: ["Sugerirla con tacto cuando sea oportuno", "Solo cuando la pida la persona", "Intentar reservar siempre"],
     examples: [
       "Primero puedo darte información general. Si después necesitas orientación personal, podemos ayudarte a concertar una cita.",
       "Sí, puedo ayudarte con una cita. ¿Qué día te viene mejor?",
@@ -419,7 +419,7 @@ const SPANISH_QUESTIONS: Record<string, LocalizedQuestion> = {
     ],
   },
   upsetClient: {
-    question: "¿Cómo debe responder el agente cuando un paciente está molesto o frustrado?",
+    question: "¿Cómo debe responder el agente cuando una persona está molesta o frustrada?",
     options: ["Reconocer primero cómo se siente", "Disculparse y pasar a los siguientes pasos", "Mantener la calma y ser práctico", "Pasarlo pronto a una persona"],
     examples: [
       "Entiendo que esto resulte frustrante. Voy a ayudarte a trasladarlo a la persona adecuada.",
@@ -437,7 +437,7 @@ const SPANISH_QUESTIONS: Record<string, LocalizedQuestion> = {
     ],
   },
   questionsBack: {
-    question: "¿Debe hacer preguntas al paciente para entender mejor la consulta?",
+    question: "¿Debe hacer preguntas a la persona para entender mejor la consulta?",
     options: ["Sí, cuando falten datos", "Hacer solo una pregunta cada vez", "Hacer varias preguntas claras a la vez", "Evitar preguntas salvo que sean necesarias"],
     examples: [
       "Puedo ayudarte. ¿Qué día te viene mejor?",
@@ -792,7 +792,7 @@ export function AgentPersonalityWizard() {
           <p className="mt-4 max-w-xl text-[15px] leading-7 text-[#5f6368]">
             {tenantText(
               "This will help your AI Agent reply to your clients in a way that matches your business style. It’s an important step and will take about 5–7 minutes.",
-              "Esto ayudará al agente de IA a responder a tus pacientes con el estilo de la clínica. Es un paso importante y tardará unos 5–7 minutos.",
+              "Esto ayudará al agente de IA a responder a las personas interesadas con el estilo de la clínica. Es un paso importante y tardará unos 5–7 minutos.",
             )}
           </p>
           {loadError && (
@@ -852,7 +852,7 @@ export function AgentPersonalityWizard() {
             <p className="mt-1.5 text-[13px] leading-5 text-[#5f6368]">
               {tenantText(
                 "Type a sample message as if a client sent it. See how your AI Agent would reply.",
-                "Escribe un mensaje de ejemplo como si lo hubiera enviado un paciente y comprueba cómo respondería el agente.",
+                "Escribe un mensaje de ejemplo como si lo hubiera enviado una persona interesada y comprueba cómo respondería el agente.",
               )}
             </p>
           </div>
@@ -865,7 +865,7 @@ export function AgentPersonalityWizard() {
                   <p className="text-[13px] font-medium text-[#3c4043]">
                     {tenantText(
                       "Send a sample client message to test the style.",
-                      "Envía un mensaje de ejemplo de un paciente para probar el estilo.",
+                      "Envía un mensaje de ejemplo de una persona interesada para probar el estilo.",
                     )}
                   </p>
                 </div>
@@ -981,7 +981,7 @@ export function AgentPersonalityWizard() {
                 className="resize-y bg-white text-[13px]"
                 placeholder={tenantText(
                   "Type a sample client message...",
-                  "Escribe un mensaje de ejemplo del paciente...",
+                  "Escribe un mensaje de ejemplo de una persona interesada...",
                 )}
               />
               <Button

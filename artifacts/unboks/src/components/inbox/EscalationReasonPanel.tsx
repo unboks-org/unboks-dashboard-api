@@ -123,8 +123,8 @@ export function EscalationReasonPanel({
           <Section label={isOrder
             ? tenantText("Order status", "Estado de la solicitud")
             : isSoft
-            ? tenantText("Customer wants", "Qué solicita el paciente")
-            : tenantText("Customer needs", "Qué necesita el paciente")}>
+            ? tenantText("Customer wants", "Qué solicita la persona")
+            : tenantText("Customer needs", "Qué necesita la persona")}>
             {briefing.customerWants}
           </Section>
           <Section label={isOrder
