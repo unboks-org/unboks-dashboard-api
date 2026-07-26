@@ -109,6 +109,22 @@ function usablePhone(value: string): string {
   return value;
 }
 
+function callbackPreference(value: string): string {
+  if (!value) return tenantText("Not provided", "No indicado");
+  const spanish: Record<string, string> = {
+    "any time": "A cualquier hora",
+    afternoon: "Por la tarde",
+    afternoons: "Por las tardes",
+    "afternoons from 18:00": "Por las tardes a partir de las 18:00",
+    "friday afternoon": "Viernes por la tarde",
+    morning: "Por la mañana",
+    mornings: "Por las mañanas",
+    "weekdays, any time": "Entre semana, a cualquier hora",
+    "wednesday or thursday afternoon": "Miércoles o jueves por la tarde",
+  };
+  return tenantText(value, spanish[value.trim().toLowerCase()] ?? value);
+}
+
 function initials(item: FollowUp): string {
   return `${item.first_name?.[0] ?? ""}${item.surnames?.[0] ?? ""}`.toUpperCase() || "?";
 }
@@ -348,7 +364,7 @@ export default function FollowUps() {
                   </span>
                   <span className="pt-1 text-xs leading-5 text-slate-600">
                     <Clock3 className="mr-1 inline h-3.5 w-3.5 text-slate-400" />
-                    {item.callback_preference || tenantText("Not provided", "No indicado")}
+                    {callbackPreference(item.callback_preference)}
                     <span className="mt-1 block text-slate-400">
                       {item.channel === "whatsapp" ? "WhatsApp" : item.channel}
                     </span>
@@ -394,7 +410,7 @@ export default function FollowUps() {
                     <Detail
                       icon={<CalendarClock />}
                       label={tenantText("Best callback time", "Mejor momento para llamar")}
-                      value={selected.callback_preference || tenantText("Not provided", "No indicado")}
+                      value={callbackPreference(selected.callback_preference)}
                     />
                     <Detail
                       icon={<MessageCircle />}

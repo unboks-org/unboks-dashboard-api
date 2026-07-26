@@ -2,6 +2,7 @@ import type { ApiConversation } from "@/lib/api";
 import type { Channel, Conversation } from "@/data/conversations";
 import { hasOrderSignals, hasSchedulingSignals } from "@/lib/appointment-detector";
 import { platformToChannel } from "@/lib/channel-map";
+import { getTenantUiConfig, isSpainSpanishTenant } from "@/lib/tenant-ui";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -46,6 +47,25 @@ export function formatConversationTimestamp(value: unknown): string {
   const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const dayMs = 24 * 60 * 60 * 1000;
   const diffDays = Math.floor((startOfDay(now) - startOfDay(d)) / dayMs);
+
+  if (isSpainSpanishTenant()) {
+    const locale = getTenantUiConfig().dateLocale;
+    if (diffDays === 0) {
+      return new Intl.DateTimeFormat(locale, {
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(d);
+    }
+    if (diffDays === 1) return "Ayer";
+    if (diffDays > 1 && diffDays < 7) {
+      return new Intl.DateTimeFormat(locale, { weekday: "long" }).format(d);
+    }
+    return new Intl.DateTimeFormat(locale, {
+      day: "numeric",
+      month: "short",
+      ...(d.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }),
+    }).format(d);
+  }
 
   if (diffDays === 0) {
     let h = d.getHours();
