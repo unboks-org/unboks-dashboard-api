@@ -10,6 +10,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SettingsErrorBoundary } from "@/components/SettingsErrorBoundary";
 import { FeatureTogglesProvider } from "@/lib/feature-toggles";
 import { DEBUG_LOGS_ENABLED, debugLog } from "@/lib/debug-log";
+import { isSpainSpanishTenant, tenantText } from "@/lib/tenant-ui";
 
 const NotFound = lazy(() => import("@/pages/not-found"));
 const Inbox = lazy(() => import("@/pages/Inbox"));
@@ -29,6 +30,15 @@ function RouteLoading() {
   );
 }
 
+function EscalationsRoute() {
+  if (isSpainSpanishTenant()) return <Redirect to="/follow-ups" />;
+  return (
+    <ProtectedRoute>
+      <Inbox />
+    </ProtectedRoute>
+  );
+}
+
 // Top-level error boundary — prevents white screen on any render crash
 class AppErrorBoundary extends Component<
   { children: ReactNode },
@@ -43,7 +53,9 @@ class AppErrorBoundary extends Component<
     if (error) {
       return (
         <div style={{ padding: 32, fontFamily: "sans-serif" }}>
-          <h2 style={{ color: "#d93025", marginBottom: 8 }}>Something went wrong</h2>
+          <h2 style={{ color: "#d93025", marginBottom: 8 }}>
+            {tenantText("Something went wrong", "Se ha producido un error")}
+          </h2>
           <pre style={{ background: "#f6f8fc", padding: 16, borderRadius: 8, fontSize: 13, overflowX: "auto", whiteSpace: "pre-wrap" }}>
             {(error as Error).message}
             {"\n\n"}
@@ -61,7 +73,7 @@ class AppErrorBoundary extends Component<
             }}
             style={{ marginTop: 16, padding: "8px 16px", background: "#1a73e8", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 14 }}
           >
-            Reload app
+            {tenantText("Reload app", "Volver a cargar")}
           </button>
         </div>
       );
@@ -318,10 +330,10 @@ function Router() {
           path-with-id form are protected and rendered through Inbox,
           which owns the Escalations list and detail panel. */}
       <Route path="/escalations">
-        <ProtectedRoute><Inbox /></ProtectedRoute>
+        <EscalationsRoute />
       </Route>
       <Route path="/escalations/:id">
-        <ProtectedRoute><Inbox /></ProtectedRoute>
+        <EscalationsRoute />
       </Route>
       <Route path="/settings">
         <ProtectedRoute>

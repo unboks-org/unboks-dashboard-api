@@ -4,17 +4,25 @@ import { BLOCK_REASONS, type BlockReason } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getTenantUiConfig, tenantText } from "@/lib/tenant-ui";
 
 const REASON_LABELS: Record<string, string> = Object.fromEntries(
   BLOCK_REASONS.map((r) => [r.value, r.label]),
 );
 
 function reasonLabel(raw: string): string {
-  return REASON_LABELS[raw] ?? raw;
+  const english = REASON_LABELS[raw] ?? raw;
+  return raw === "abusive"
+    ? tenantText(english, "Comportamiento abusivo")
+    : raw === "wrong_contact"
+      ? tenantText(english, "Contacto equivocado")
+      : raw === "other"
+        ? tenantText(english, "Otro")
+        : english;
 }
 
 function formatChannel(channel: string): string {
-  if (!channel) return "Unknown";
+  if (!channel) return tenantText("Unknown", "Desconocido");
   const lower = channel.toLowerCase();
   switch (lower) {
     case "whatsapp": return "WhatsApp";
@@ -35,7 +43,7 @@ function formatUpdatedAt(iso: string): string {
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) return iso;
   try {
-    return new Date(ms).toLocaleString(undefined, {
+    return new Date(ms).toLocaleString(getTenantUiConfig().dateLocale, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -65,8 +73,11 @@ export function BlockedSendersList() {
   const handleUnblock = async (conversationId: string) => {
     try {
       await unblock.mutateAsync(conversationId);
-      toast.success("Unblocked", {
-        description: "Future messages from this sender will appear in the active inbox.",
+      toast.success(tenantText("Unblocked", "Desbloqueado"), {
+        description: tenantText(
+          "Future messages from this sender will appear in the active inbox.",
+          "Los próximos mensajes de este remitente aparecerán en la bandeja activa.",
+        ),
       });
     } catch (err) {
       const msg =
@@ -74,8 +85,13 @@ export function BlockedSendersList() {
           ? err.message || `Backend returned ${err.status}.`
           : err instanceof Error
             ? err.message
-            : "Couldn't unblock. Please try again.";
-      toast.error("Couldn't unblock", { description: msg });
+            : tenantText(
+                "Couldn't unblock. Please try again.",
+                "No se pudo desbloquear. Inténtalo de nuevo.",
+              );
+      toast.error(tenantText("Couldn't unblock", "No se pudo desbloquear"), {
+        description: msg,
+      });
     }
   };
 
@@ -84,10 +100,13 @@ export function BlockedSendersList() {
       <div className="border-b border-[#f1f3f4] px-5 py-4 sm:px-6">
         <h3 className="flex items-center gap-2 text-[14px] font-semibold text-[#202124]">
           <Ban className="h-4 w-4 text-[#5f6368]" aria-hidden="true" />
-          Blocked senders
+          {tenantText("Blocked senders", "Remitentes bloqueados")}
         </h3>
         <p className="mt-1 text-[13px] text-[#5f6368]">
-          Senders blocked at the Unboks dashboard layer. Future messages from these contacts do not appear in the active inbox, the Agent does not reply, and escalation alerts are not triggered. This does not block contacts inside WhatsApp itself.
+          {tenantText(
+            "Senders blocked at the Unboks dashboard layer. Future messages from these contacts do not appear in the active inbox, the Agent does not reply, and escalation alerts are not triggered. This does not block contacts inside WhatsApp itself.",
+            "Remitentes bloqueados en el panel de Unboks. Sus próximos mensajes no aparecen en la bandeja activa, el agente no responde y no se generan alertas de seguimiento. Esto no bloquea los contactos dentro de WhatsApp.",
+          )}
         </p>
       </div>
 
@@ -95,17 +114,26 @@ export function BlockedSendersList() {
         {isLoading ? (
           <div className="flex items-center gap-2 text-[13px] text-[#5f6368]">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            Loading blocked senders…
+            {tenantText("Loading blocked senders…", "Cargando remitentes bloqueados…")}
           </div>
         ) : isError ? (
           <p className="text-[13px] text-[#c5221f]">
             {error instanceof Error && error.message
-              ? `Couldn't load blocked senders: ${error.message}`
-              : "Couldn't load blocked senders."}
+              ? tenantText(
+                  `Couldn't load blocked senders: ${error.message}`,
+                  `No se pudieron cargar los remitentes bloqueados: ${error.message}`,
+                )
+              : tenantText(
+                  "Couldn't load blocked senders.",
+                  "No se pudieron cargar los remitentes bloqueados.",
+                )}
           </p>
         ) : blocked.length === 0 ? (
           <p className="text-[13px] text-[#5f6368]">
-            No senders are blocked yet. Use the Block in Unboks action on any conversation to add one here.
+            {tenantText(
+              "No senders are blocked yet. Use the Block in Unboks action on any conversation to add one here.",
+              "Todavía no hay remitentes bloqueados. Usa la acción Bloquear en Unboks en cualquier conversación para añadir uno.",
+            )}
           </p>
         ) : (
           <ul className="divide-y divide-[#f1f3f4]">
@@ -126,9 +154,13 @@ export function BlockedSendersList() {
                     </p>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px] text-[#5f6368]">
                       <span>{formatChannel(row.channel)}</span>
-                      <span>Reason: {reasonLabel(row.reason as BlockReason)}</span>
-                      {row.blockedBy && <span>Blocked by {row.blockedBy}</span>}
-                      <span>Updated {formatUpdatedAt(row.updatedAt)}</span>
+                      <span>
+                        {tenantText("Reason", "Motivo")}: {reasonLabel(row.reason as BlockReason)}
+                      </span>
+                      {row.blockedBy && (
+                        <span>{tenantText("Blocked by", "Bloqueado por")} {row.blockedBy}</span>
+                      )}
+                      <span>{tenantText("Updated", "Actualizado el")} {formatUpdatedAt(row.updatedAt)}</span>
                     </div>
                   </div>
                   <button
@@ -145,7 +177,9 @@ export function BlockedSendersList() {
                     {isUnblocking ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                     ) : null}
-                    {isUnblocking ? "Unblocking…" : "Unblock"}
+                    {isUnblocking
+                      ? tenantText("Unblocking…", "Desbloqueando…")
+                      : tenantText("Unblock", "Desbloquear")}
                   </button>
                 </li>
               );

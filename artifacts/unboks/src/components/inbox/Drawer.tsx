@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { Channel } from "@/data/conversations";
 import { motion, AnimatePresence } from "framer-motion";
 import { getClientSlug } from "@/lib/tenant";
+import { getTenantUiConfig, tenantText } from "@/lib/tenant-ui";
 
 const XIcon = ({ className, strokeWidth: _sw }: { className?: string; strokeWidth?: number }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
@@ -76,10 +77,10 @@ export function Drawer({
   }, [open, onClose]);
 
   const isDespertares = getClientSlug() === "consulta-despertares";
+  const ui = getTenantUiConfig();
   const PRIMARY: NavItem[] = isDespertares
     ? [
-        { id: "escalations", icon: AlertCircle, label: "Escalations", count: escalationsCount },
-        { id: "inbox", icon: InboxIcon, label: "Conversations", count: inboxCount },
+        { id: "inbox", icon: InboxIcon, label: ui.conversationsLabel, count: inboxCount },
       ]
     : [
         { id: "escalations", icon: AlertCircle, label: "Escalations", count: escalationsCount },
@@ -108,8 +109,8 @@ export function Drawer({
 
   const WORKSPACE: NavItem[] = isDespertares
     ? [
-        { id: "followups", icon: PhoneCall, label: "Follow-ups" },
-        { id: "settings", icon: SettingsIcon, label: "Settings" },
+        { id: "followups", icon: PhoneCall, label: ui.followUpsLabel },
+        { id: "settings", icon: SettingsIcon, label: ui.settingsLabel },
       ]
     : [
         { id: "bookings", icon: Calendar, label: bookingsLabel, count: appointmentsCount },
@@ -160,7 +161,7 @@ export function Drawer({
           ))}
         </NavGroup>}
 
-        <SectionHeader label="Workspace" />
+        <SectionHeader label={tenantText("Workspace", "Gestión")} />
         <NavGroup>
           {WORKSPACE.map((item) => (
             <NavRow key={item.id} item={item} active={active === item.id} onSelect={onSelect} />
@@ -177,7 +178,7 @@ export function Drawer({
             className="w-full flex items-center gap-3 px-3 h-10 rounded-xl text-[14px] text-foreground hover:bg-muted transition-colors"
           >
             <LogOut className="w-[18px] h-[18px] text-muted-foreground" strokeWidth={1.75} />
-            <span className="font-medium">Sign out</span>
+            <span className="font-medium">{tenantText("Sign out", "Cerrar sesión")}</span>
           </motion.button>
         </div>
       )}
@@ -205,7 +206,7 @@ export function Drawer({
                 animate={{ x: 0 }}
                 exit={{ x: "-100%" }}
                 transition={{ type: "spring", stiffness: 400, damping: 30, mass: 1 }}
-                aria-label="Navigation"
+                aria-label={tenantText("Navigation", "Navegación")}
                 className="fixed top-0 left-0 h-full w-[300px] max-w-[85vw] z-50 shadow-2xl border-r border-border bg-background"
               >
                 {content}
@@ -272,7 +273,7 @@ function WorkspaceBlock({
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-[15px] font-semibold text-[#1f2937] leading-tight truncate">
-            {name || "Workspace"}
+            {name || tenantText("Workspace", "Espacio de trabajo")}
           </div>
           {slug && (
             <div className="text-[11.5px] text-[#5f6368] mt-0.5 truncate font-mono">
@@ -302,7 +303,9 @@ function WorkspaceBlock({
             "disabled:cursor-not-allowed disabled:border-[#e6e8eb] disabled:bg-[#f5f6f7] disabled:text-[#9aa0a6]",
           )}
           aria-label={
-            agentStatus?.active ? "Pause agent" : "Start agent"
+            agentStatus?.active
+              ? tenantText("Pause agent", "Pausar agente")
+              : tenantText("Start agent", "Iniciar agente")
           }
         >
           {isAgentStatusUpdating || isAgentStatusLoading ? (
@@ -312,7 +315,9 @@ function WorkspaceBlock({
           ) : (
             <Play className="h-3.5 w-3.5" />
           )}
-          {agentStatus?.active ? "Pause agent" : "Start agent"}
+          {agentStatus?.active
+            ? tenantText("Pause agent", "Pausar agente")
+            : tenantText("Start agent", "Iniciar agente")}
         </button>
       </div>
     </div>
@@ -327,12 +332,12 @@ function AgentStatusBadge({
   loading: boolean;
 }) {
   const s = loading
-    ? { label: "Checking agent", dot: "#9aa0a6", text: "#5f6368", pulse: false }
+    ? { label: tenantText("Checking agent", "Comprobando agente"), dot: "#9aa0a6", text: "#5f6368", pulse: false }
     : !status?.available
-      ? { label: "Agent unavailable", dot: "#9aa0a6", text: "#5f6368", pulse: false }
+      ? { label: tenantText("Agent unavailable", "Agente no disponible"), dot: "#9aa0a6", text: "#5f6368", pulse: false }
       : status.active
-        ? { label: "Agent active", dot: "#10b981", text: "#1f2937", pulse: true }
-        : { label: "Agent paused", dot: "#f59e0b", text: "#1f2937", pulse: false };
+        ? { label: tenantText("Agent active", "Agente activo"), dot: "#10b981", text: "#1f2937", pulse: true }
+        : { label: tenantText("Agent paused", "Agente pausado"), dot: "#f59e0b", text: "#1f2937", pulse: false };
   return (
     <div
       className="inline-flex items-center gap-2 rounded-full border border-[#e6e8eb] bg-card px-2.5 py-1 text-[11.5px] font-medium shadow-sm"

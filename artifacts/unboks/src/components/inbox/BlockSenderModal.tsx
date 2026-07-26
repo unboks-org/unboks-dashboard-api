@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import type { Conversation } from "@/data/conversations";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { tenantText } from "@/lib/tenant-ui";
 
 interface BlockSenderModalProps {
   open: boolean;
@@ -63,7 +64,12 @@ export function BlockSenderModal({
     setError(null);
     const conversationKey = conversation.conversationKey || conversation.id;
     if (!conversationKey) {
-      setError("Couldn't block — no stable identifier on this row.");
+      setError(
+        tenantText(
+          "Couldn't block — no stable identifier on this row.",
+          "No se pudo bloquear: esta fila no tiene un identificador válido.",
+        ),
+      );
       return;
     }
     try {
@@ -71,8 +77,11 @@ export function BlockSenderModal({
         conversationId: conversationKey,
         payload: { reason, blocked_by: operatorLabel || "Operator" },
       });
-      toast.success("Blocked in Unboks", {
-        description: "Future messages from this sender are suppressed in the active inbox.",
+      toast.success(tenantText("Blocked in Unboks", "Bloqueado en Unboks"), {
+        description: tenantText(
+          "Future messages from this sender are suppressed in the active inbox.",
+          "Los próximos mensajes de este remitente no aparecerán en la bandeja activa.",
+        ),
       });
       onBlocked?.(conversation.id);
       onClose();
@@ -82,7 +91,10 @@ export function BlockSenderModal({
           ? err.message || `Backend returned ${err.status}.`
           : err instanceof Error
             ? err.message
-            : "Couldn't block. Please try again.";
+            : tenantText(
+                "Couldn't block. Please try again.",
+                "No se pudo bloquear. Inténtalo de nuevo.",
+              );
       setError(msg);
     }
   };
@@ -92,18 +104,36 @@ export function BlockSenderModal({
       <DialogContent className="box-border w-full sm:w-[calc(100vw-32px)] max-w-[460px] overflow-hidden rounded-t-[1.5rem] rounded-b-none sm:rounded-xl p-5 sm:p-6 mb-0 sm:mb-auto self-end sm:self-center mt-auto sm:mt-auto">
         <div className="absolute left-1/2 top-2 h-1 w-12 -translate-x-1/2 rounded-full bg-[#e8eaed] sm:hidden" aria-hidden="true" />
         <DialogHeader className="min-w-0">
-          <DialogTitle className="break-words">Block this sender in Unboks?</DialogTitle>
+          <DialogTitle className="break-words">
+            {tenantText("Block this sender in Unboks?", "¿Bloquear este remitente en Unboks?")}
+          </DialogTitle>
           <DialogDescription className="sr-only">
-            Block this sender from the active inbox.
+            {tenantText(
+              "Block this sender from the active inbox.",
+              "Bloquear este remitente en la bandeja activa.",
+            )}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 text-[13px] leading-relaxed text-[#3c4043]">
-          <p>Future messages from this contact will not appear in the active inbox.</p>
-          <p>Your Agent will not reply.</p>
-          <p>Escalation alerts will not be triggered.</p>
+          <p>
+            {tenantText(
+              "Future messages from this contact will not appear in the active inbox.",
+              "Los próximos mensajes de este contacto no aparecerán en la bandeja activa.",
+            )}
+          </p>
+          <p>{tenantText("Your Agent will not reply.", "Tu agente no responderá.")}</p>
+          <p>
+            {tenantText(
+              "Escalation alerts will not be triggered.",
+              "No se enviarán alertas de seguimiento.",
+            )}
+          </p>
           <p className="rounded-md border border-[#fde9c8] bg-[#fef7e0] px-3 py-2 text-[12px] text-[#7a4f00]">
-            This does not block the contact inside WhatsApp itself. To stop messages on the phone too, block the number in WhatsApp.
+            {tenantText(
+              "This does not block the contact inside WhatsApp itself. To stop messages on the phone too, block the number in WhatsApp.",
+              "Esto no bloquea el contacto dentro de WhatsApp. Para dejar de recibir sus mensajes también en el teléfono, bloquea el número en WhatsApp.",
+            )}
           </p>
         </div>
 
@@ -112,7 +142,7 @@ export function BlockSenderModal({
             htmlFor="block-sender-reason"
             className="block text-[12px] font-medium text-[#3c4043]"
           >
-            Reason
+            {tenantText("Reason", "Motivo")}
           </label>
           <select
             id="block-sender-reason"
@@ -127,7 +157,13 @@ export function BlockSenderModal({
           >
             {BLOCK_REASONS.map((r) => (
               <option key={r.value} value={r.value}>
-                {r.label}
+                {r.value === "spam"
+                  ? "Spam"
+                  : r.value === "abusive"
+                    ? tenantText("Abusive", "Comportamiento abusivo")
+                    : r.value === "wrong_contact"
+                      ? tenantText("Wrong contact", "Contacto equivocado")
+                      : tenantText("Other", "Otro")}
               </option>
             ))}
           </select>
@@ -141,14 +177,16 @@ export function BlockSenderModal({
 
         <DialogFooter className="flex flex-wrap justify-end gap-2">
           <Button variant="ghost" onClick={onClose} disabled={block.isPending}>
-            Cancel
+            {tenantText("Cancel", "Cancelar")}
           </Button>
           <Button
             onClick={onConfirm}
             disabled={block.isPending || !conversation}
             className="bg-[#c5221f] text-white hover:bg-[#a50e0e]"
           >
-            {block.isPending ? "Blocking…" : "Block in Unboks"}
+            {block.isPending
+              ? tenantText("Blocking…", "Bloqueando…")
+              : tenantText("Block in Unboks", "Bloquear en Unboks")}
           </Button>
         </DialogFooter>
       </DialogContent>

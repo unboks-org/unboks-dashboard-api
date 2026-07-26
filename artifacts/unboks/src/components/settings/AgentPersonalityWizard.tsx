@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAgentPersonality } from "@/hooks/use-agent-personality";
 import type { AgentPersonalitySettings } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { isSpainSpanishTenant, tenantText } from "@/lib/tenant-ui";
 
 type Example = {
   label: string;
@@ -335,6 +336,144 @@ const QUESTIONS: WizardQuestion[] = [
   },
 ];
 
+type LocalizedQuestion = {
+  question: string;
+  options: string[];
+  customLabel?: string;
+  examples: string[];
+};
+
+const SPANISH_QUESTIONS: Record<string, LocalizedQuestion> = {
+  formality: {
+    question: "¿Qué grado de formalidad debe tener el agente de IA?",
+    options: ["Muy formal", "Profesional pero cercano", "Cercano e informal"],
+    examples: [
+      "Estimado paciente: gracias por su mensaje. Revisaremos el asunto lo antes posible.",
+      "Hola, gracias por contactar. Estaré encantado de ayudarte.",
+      "¡Hola! No te preocupes, estoy aquí para ayudarte 🙂",
+    ],
+  },
+  warmth: {
+    question: "¿Qué grado de cercanía y amabilidad debe tener el agente de IA?",
+    options: ["Muy cercano", "Cercano y profesional", "Directo y eficaz"],
+    examples: [
+      "Entiendo que esto es importante para ti. Vamos paso a paso para darte la ayuda adecuada.",
+      "Gracias por explicarlo. Puedo ayudarte con el siguiente paso.",
+      "Recibido. Esto es lo que necesitamos para continuar.",
+    ],
+  },
+  empathy: {
+    question: "¿Qué grado de empatía debe mostrar el agente cuando un paciente está preocupado?",
+    options: ["Muy empático", "Empatía equilibrada", "Más directo y orientado a soluciones"],
+    examples: [
+      "Siento que estés pasando por esto. Te ayudaré a trasladarlo a la persona adecuada cuanto antes.",
+      "Lo entiendo. Vamos a centrarnos en lo que podemos hacer ahora.",
+      "El siguiente paso es que nos envíes estos datos para que el equipo pueda revisarlos.",
+    ],
+  },
+  directness: {
+    question: "¿Debe conversar un poco o ser muy directo?",
+    options: ["Conversador y cercano", "Equilibrado", "Muy directo"],
+    examples: [
+      "Lo entiendo. Para orientarte mejor, ¿puedes contarme qué ha ocurrido y cuándo empezó?",
+      "Gracias. ¿Puedes compartir algo más de contexto para que podamos ayudarte bien?",
+      "Indica la fecha, tu nombre y la consulta principal.",
+    ],
+  },
+  appointmentStyle: {
+    question: "¿Cómo debe gestionar el agente las solicitudes de cita?",
+    options: ["Sugerirla con tacto cuando sea oportuno", "Solo cuando la pida el paciente", "Intentar reservar siempre"],
+    examples: [
+      "Primero puedo darte información general. Si después necesitas orientación personal, podemos ayudarte a concertar una cita.",
+      "Sí, puedo ayudarte con una cita. ¿Qué día te viene mejor?",
+      "El siguiente paso más adecuado es reservar una consulta. ¿Quieres concertarla ahora?",
+    ],
+  },
+  overallTone: {
+    question: "¿Qué tono general debe tener el agente de IA?",
+    options: ["Tranquilo y paciente", "Enérgico y positivo", "Seguro y firme", "Atento y resolutivo"],
+    examples: [
+      "No hay problema. Tómate tu tiempo. Te ayudaré a encontrar el siguiente paso adecuado.",
+      "Perfecto, podemos ayudarte. Empecemos por los datos importantes.",
+      "Según lo que nos has contado, esta es la forma adecuada de proceder.",
+    ],
+  },
+  phrasesUse: {
+    question: "¿Hay palabras o expresiones que el agente deba utilizar a menudo?",
+    options: ["Mantener un lenguaje sencillo y humano", "Usar a menudo el nombre de la clínica", "Usar un lenguaje tranquilizador", "Sin expresiones especiales"],
+    customLabel: "O escribe las palabras y expresiones que prefieras",
+    examples: [
+      "Puedes decir: «Lo entiendo», «Vamos a revisarlo» y «Podemos ayudarte con eso».",
+      "Usa el nombre de la clínica al confirmar citas o datos importantes.",
+      "Evita sonar mecánico. Usa expresiones breves y naturales.",
+    ],
+  },
+  phrasesAvoid: {
+    question: "¿Hay palabras o expresiones que el agente no deba utilizar nunca?",
+    options: ["Evitar expresiones robóticas", "Evitar jerga", "Evitar promesas excesivas", "Aún no hay expresiones prohibidas"],
+    customLabel: "O escribe las palabras y expresiones que deben evitarse",
+    examples: [
+      "Evita expresiones como «Como asistente virtual» o «No puedo hacerlo».",
+      "No prometas resultados, precios o plazos exactos si no están confirmados.",
+      "Evita insistir en concertar una cita en cada mensaje.",
+    ],
+  },
+  upsetClient: {
+    question: "¿Cómo debe responder el agente cuando un paciente está molesto o frustrado?",
+    options: ["Reconocer primero cómo se siente", "Disculparse y pasar a los siguientes pasos", "Mantener la calma y ser práctico", "Pasarlo pronto a una persona"],
+    examples: [
+      "Entiendo que esto resulte frustrante. Voy a ayudarte a trasladarlo a la persona adecuada.",
+      "Siento que haya sido difícil. Esto es lo que podemos hacer ahora.",
+      "Gracias por explicarlo. Se lo trasladaré al equipo para que pueda revisarlo correctamente.",
+    ],
+  },
+  replyLength: {
+    question: "¿Qué longitud deben tener normalmente las respuestas del agente?",
+    options: ["Breves y claras", "Longitud media", "Detalladas y completas"],
+    examples: [
+      "Sí, podemos ayudarte. Indica tu nombre y el horario que prefieres.",
+      "Sí, podemos ayudarte. Indica tu nombre, el mejor teléfono de contacto y qué día te viene bien.",
+      "Sí, podemos ayudarte. Para prepararlo bien, indica tu nombre, teléfono, día preferido y un breve resumen de lo que necesitas.",
+    ],
+  },
+  questionsBack: {
+    question: "¿Debe hacer preguntas al paciente para entender mejor la consulta?",
+    options: ["Sí, cuando falten datos", "Hacer solo una pregunta cada vez", "Hacer varias preguntas claras a la vez", "Evitar preguntas salvo que sean necesarias"],
+    examples: [
+      "Puedo ayudarte. ¿Qué día te viene mejor?",
+      "Para entenderlo mejor, ¿puedes decirme cuándo ocurrió?",
+      "Indica tu nombre, teléfono y el motivo principal de la consulta.",
+    ],
+  },
+  overallDescription: {
+    question: "Describe con tus propias palabras cómo debe comunicarse el agente de IA",
+    options: ["Tranquilo, atento y humano", "Profesional, claro y eficaz", "Cercano, paciente y tranquilizador", "Seguro, directo y práctico"],
+    customLabel: "Escribe aquí la descripción completa",
+    examples: [
+      "Debe parecer un asistente de clínica competente que responde primero y solo sugiere una cita cuando sea útil.",
+      "Debe ser profesional sin resultar frío: claro, paciente y atento.",
+      "Evita que suene mecánico. Las respuestas deben ser naturales, breves y útiles.",
+    ],
+  },
+};
+
+function localizedQuestion(question: WizardQuestion): LocalizedQuestion {
+  if (!isSpainSpanishTenant()) {
+    return {
+      question: question.question,
+      options: question.options.map((option) => option.label),
+      customLabel: question.customLabel,
+      examples: question.examples.map((example) => example.text),
+    };
+  }
+  return SPANISH_QUESTIONS[question.id] ?? {
+    question: question.question,
+    options: question.options.map((option) => option.label),
+    customLabel: question.customLabel,
+    examples: question.examples.map((example) => example.text),
+  };
+}
+
 const EMPTY_ANSWER: Answer = { selected: "", custom: "" };
 
 const EMPTY_SETTINGS: AgentPersonalitySettings = {
@@ -356,7 +495,10 @@ function emptyAnswers(): Record<string, Answer> {
 function friendlyError(err: unknown, fallback: string) {
   const raw = err instanceof Error ? err.message : "";
   if (/configuration|configured|not ready|missing/i.test(raw)) {
-    return "The reply service is not ready yet. Please contact Unboks.";
+    return tenantText(
+      "The reply service is not ready yet. Please contact Unboks.",
+      "El servicio de respuestas aún no está preparado. Contacta con Unboks.",
+    );
   }
   return raw || fallback;
 }
@@ -490,6 +632,7 @@ export function AgentPersonalityWizard() {
 
   const inSimulation = step >= QUESTIONS.length;
   const currentQuestion = QUESTIONS[Math.min(step, QUESTIONS.length - 1)];
+  const currentQuestionCopy = localizedQuestion(currentQuestion);
   const currentAnswer = answers[currentQuestion.id] ?? EMPTY_ANSWER;
   const isLastQuestion = step === QUESTIONS.length - 1;
   const progressValue = inSimulation
@@ -539,6 +682,9 @@ export function AgentPersonalityWizard() {
         `Client message: ${clientMessage}`,
         feedback ? `Adjustment requested: ${feedback}` : "",
         "Write one natural reply in the chosen business style.",
+        isSpainSpanishTenant()
+          ? "Reply in Spanish from Spain and use natural language suitable for a psychology clinic."
+          : "",
       ]
         .filter(Boolean)
         .join("\n"),
@@ -547,7 +693,10 @@ export function AgentPersonalityWizard() {
     const result = await generateExamples(request);
     return (
       result.examples[0]?.trim() ||
-      "Thanks for explaining. I can help with that. Could you share one more detail so we can guide you properly?"
+      tenantText(
+        "Thanks for explaining. I can help with that. Could you share one more detail so we can guide you properly?",
+        "Gracias por explicarlo. Puedo ayudarte. ¿Puedes darme algún detalle más para que podamos orientarte correctamente?",
+      )
     );
   };
 
@@ -571,13 +720,22 @@ export function AgentPersonalityWizard() {
       setCustomFeedbackOpen(false);
       setCustomFeedback("");
     } catch (err) {
-      toast.error(friendlyError(err, "Could not prepare a reply yet."));
+      toast.error(friendlyError(
+        err,
+        tenantText(
+          "Could not prepare a reply yet.",
+          "Aún no se ha podido preparar una respuesta.",
+        ),
+      ));
     }
   };
 
   const handleFeedback = (feedback: string) => {
     if (feedback === "This is good") {
-      toast.success("Good. You can keep testing or lock in this style.");
+      toast.success(tenantText(
+        "Good. You can keep testing or lock in this style.",
+        "Perfecto. Puedes seguir probando o guardar este estilo.",
+      ));
       return;
     }
     void handleSendMessage(feedback);
@@ -589,19 +747,31 @@ export function AgentPersonalityWizard() {
       setAnswers(buildAnswersFromSettings(result));
       setSaved(true);
       if (result.bridgeSaved === false) {
-        toast.warning("Saved. The live update did not confirm yet.");
+        toast.warning(tenantText(
+          "Saved. The live update did not confirm yet.",
+          "Guardado. La actualización en directo aún no se ha confirmado.",
+        ));
       } else {
-        toast.success("Style saved and activated.");
+        toast.success(tenantText(
+          "Style saved and activated.",
+          "Estilo guardado y activado.",
+        ));
       }
     } catch (err) {
-      toast.error(friendlyError(err, "Could not save this style."));
+      toast.error(friendlyError(
+        err,
+        tenantText("Could not save this style.", "No se ha podido guardar este estilo."),
+      ));
     }
   };
 
   if (isLoading) {
     return (
       <section className="rounded-2xl border border-[#e8eaed] bg-white px-5 py-5 text-[14px] text-[#5f6368]">
-        Loading your AI Agent style...
+        {tenantText(
+          "Loading your AI Agent style...",
+          "Cargando el estilo del agente de IA...",
+        )}
       </section>
     );
   }
@@ -614,16 +784,23 @@ export function AgentPersonalityWizard() {
             <Sparkles className="h-7 w-7" />
           </span>
           <h3 className="text-[28px] font-semibold tracking-normal text-[#202124]">
-            Let’s personalize your AI Agent
+            {tenantText(
+              "Let’s personalize your AI Agent",
+              "Personaliza tu agente de IA",
+            )}
           </h3>
           <p className="mt-4 max-w-xl text-[15px] leading-7 text-[#5f6368]">
-            This will help your AI Agent reply to your clients in a way that
-            matches your business style. It’s an important step and will take
-            about 5–7 minutes.
+            {tenantText(
+              "This will help your AI Agent reply to your clients in a way that matches your business style. It’s an important step and will take about 5–7 minutes.",
+              "Esto ayudará al agente de IA a responder a tus pacientes con el estilo de la clínica. Es un paso importante y tardará unos 5–7 minutos.",
+            )}
           </p>
           {loadError && (
             <div className="mt-6 rounded-xl border border-[#f6caca] bg-[#fce8e6] px-4 py-3 text-left text-[13px] text-[#a50e0e]">
-              Could not load the current style. You can still continue.
+              {tenantText(
+                "Could not load the current style. You can still continue.",
+                "No se ha podido cargar el estilo actual. Puedes continuar de todos modos.",
+              )}
             </div>
           )}
           <Button
@@ -632,7 +809,7 @@ export function AgentPersonalityWizard() {
             className="mt-8 min-w-[220px] rounded-xl bg-[#1a73e8] text-white"
             onClick={() => setStarted(true)}
           >
-            Start Personalizing
+            {tenantText("Start Personalizing", "Empezar a personalizar")}
             <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
@@ -647,11 +824,16 @@ export function AgentPersonalityWizard() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6b7280]">
               {inSimulation
-                ? "Test your AI Agent"
-                : `Step ${step + 1} of ${QUESTIONS.length}`}
+                ? tenantText("Test your AI Agent", "Prueba tu agente de IA")
+                : tenantText(
+                    `Step ${step + 1} of ${QUESTIONS.length}`,
+                    `Paso ${step + 1} de ${QUESTIONS.length}`,
+                  )}
             </p>
             <span className="rounded-full border border-[#d8dde3] bg-white px-2.5 py-0.5 text-[11px] font-medium text-[#6b7280]">
-              {inSimulation ? "Ready to save" : `${progressValue}% complete`}
+              {inSimulation
+                ? tenantText("Ready to save", "Listo para guardar")
+                : tenantText(`${progressValue}% complete`, `${progressValue}% completado`)}
             </span>
           </div>
           <Progress value={progressValue} className="h-1.5 bg-[#e8eaed]" />
@@ -662,11 +844,16 @@ export function AgentPersonalityWizard() {
         <div className="mx-auto max-w-[760px] px-4 py-5 sm:px-5">
           <div className="mb-4">
             <h3 className="text-[20px] font-semibold tracking-normal text-[#202124]">
-              Test your AI Agent before saving
+              {tenantText(
+                "Test your AI Agent before saving",
+                "Prueba tu agente de IA antes de guardar",
+              )}
             </h3>
             <p className="mt-1.5 text-[13px] leading-5 text-[#5f6368]">
-              Type a sample message as if a client sent it. See how your AI
-              Agent would reply.
+              {tenantText(
+                "Type a sample message as if a client sent it. See how your AI Agent would reply.",
+                "Escribe un mensaje de ejemplo como si lo hubiera enviado un paciente y comprueba cómo respondería el agente.",
+              )}
             </p>
           </div>
 
@@ -676,7 +863,10 @@ export function AgentPersonalityWizard() {
                 <div className="flex min-h-[190px] flex-col items-center justify-center rounded-lg border border-dashed border-[#dadce0] bg-white px-4 text-center">
                   <MessageCircle className="mb-2 h-5 w-5 text-[#9aa0a6]" />
                   <p className="text-[13px] font-medium text-[#3c4043]">
-                    Send a sample client message to test the style.
+                    {tenantText(
+                      "Send a sample client message to test the style.",
+                      "Envía un mensaje de ejemplo de un paciente para probar el estilo.",
+                    )}
                   </p>
                 </div>
               ) : (
@@ -727,7 +917,13 @@ export function AgentPersonalityWizard() {
                                 onClick={() => handleFeedback(label)}
                                 className="min-h-[30px] rounded-full bg-white px-2.5 text-[11px]"
                               >
-                                {label}
+                                {label === "This is good"
+                                  ? tenantText(label, "Está bien")
+                                  : label === "Make it warmer"
+                                  ? tenantText(label, "Más cercano")
+                                  : label === "Make it more professional"
+                                  ? tenantText(label, "Más profesional")
+                                  : tenantText(label, "Más breve")}
                               </Button>
                             ))}
                             <Button
@@ -738,7 +934,7 @@ export function AgentPersonalityWizard() {
                               onClick={() => setCustomFeedbackOpen((v) => !v)}
                               className="min-h-[30px] rounded-full bg-white px-2.5 text-[11px]"
                             >
-                              Custom instruction
+                              {tenantText("Custom instruction", "Instrucción personalizada")}
                             </Button>
                           </div>
                         )}
@@ -752,14 +948,17 @@ export function AgentPersonalityWizard() {
             {customFeedbackOpen && (
               <div className="mt-3 rounded-lg border border-[#dadce0] bg-white p-3">
                 <label className="mb-1.5 block text-[12px] font-medium text-[#3c4043]">
-                  Custom instruction
+                  {tenantText("Custom instruction", "Instrucción personalizada")}
                 </label>
                 <Textarea
                   value={customFeedback}
                   onChange={(event) => setCustomFeedback(event.target.value)}
                   rows={2}
                   className="resize-y bg-white text-[13px]"
-                  placeholder="Example: Make this reply more relaxed and less sales-focused."
+                  placeholder={tenantText(
+                    "Example: Make this reply more relaxed and less sales-focused.",
+                    "Ejemplo: Haz que la respuesta sea más natural y menos comercial.",
+                  )}
                 />
                 <div className="mt-2 flex justify-end">
                   <Button
@@ -768,7 +967,7 @@ export function AgentPersonalityWizard() {
                     onClick={() => handleSendMessage(customFeedback.trim())}
                     className="min-h-[34px] rounded-lg bg-[#1a73e8] px-3 text-[12px] text-white"
                   >
-                    Apply instruction
+                    {tenantText("Apply instruction", "Aplicar instrucción")}
                   </Button>
                 </div>
               </div>
@@ -780,7 +979,10 @@ export function AgentPersonalityWizard() {
                 onChange={(event) => setMessage(event.target.value)}
                 rows={2}
                 className="resize-y bg-white text-[13px]"
-                placeholder="Type a sample client message..."
+                placeholder={tenantText(
+                  "Type a sample client message...",
+                  "Escribe un mensaje de ejemplo del paciente...",
+                )}
               />
               <Button
                 type="button"
@@ -791,7 +993,7 @@ export function AgentPersonalityWizard() {
                 {isGenerating ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  "Send"
+                  tenantText("Send", "Enviar")
                 )}
               </Button>
             </div>
@@ -806,7 +1008,7 @@ export function AgentPersonalityWizard() {
               className="min-h-[36px] rounded-lg bg-white px-3 text-[13px]"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back
+              {tenantText("Back", "Volver")}
             </Button>
             <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
               <span
@@ -815,7 +1017,7 @@ export function AgentPersonalityWizard() {
                   saved ? "opacity-100" : "opacity-0",
                 )}
               >
-                Saved
+                {tenantText("Saved", "Guardado")}
               </span>
               <Button
                 type="button"
@@ -828,7 +1030,10 @@ export function AgentPersonalityWizard() {
                 ) : (
                   <Check className="h-4 w-4" />
                 )}
-                Yes, this is perfect – Lock in this style for my AI Agent
+                {tenantText(
+                  "Yes, this is perfect – Lock in this style for my AI Agent",
+                  "Sí, está perfecto. Guardar este estilo para mi agente de IA",
+                )}
               </Button>
             </div>
           </div>
@@ -837,12 +1042,12 @@ export function AgentPersonalityWizard() {
         <div className="mx-auto max-w-[760px] px-4 py-5 sm:px-5">
           <div className="mb-4">
             <h3 className="text-[20px] font-semibold tracking-normal text-[#202124]">
-              {currentQuestion.question}
+              {currentQuestionCopy.question}
             </h3>
           </div>
 
           <div className="grid gap-2">
-            {currentQuestion.options.map((option) => {
+            {currentQuestion.options.map((option, optionIndex) => {
               const selected = currentAnswer.selected === option.label;
               return (
                 <button
@@ -862,12 +1067,12 @@ export function AgentPersonalityWizard() {
                   )}
                 >
                   <span className="text-[14px] font-medium text-[#202124]">
-                    {option.label}
+                    {currentQuestionCopy.options[optionIndex] ?? option.label}
                   </span>
                   <span className="flex items-center gap-2">
                     {option.recommended && (
                       <span className="rounded-full bg-[#e6f4ea] px-2 py-0.5 text-[10px] font-semibold text-[#137333]">
-                        Recommended
+                        {tenantText("Recommended", "Recomendado")}
                       </span>
                     )}
                     <span
@@ -888,7 +1093,8 @@ export function AgentPersonalityWizard() {
 
           <label className="mt-4 block">
             <span className="mb-1.5 block text-[12px] font-medium text-[#3c4043]">
-              {currentQuestion.customLabel ?? "Or write your own answer"}
+              {currentQuestionCopy.customLabel ??
+                tenantText("Or write your own answer", "O escribe tu propia respuesta")}
             </span>
             <Textarea
               value={currentAnswer.custom}
@@ -900,38 +1106,44 @@ export function AgentPersonalityWizard() {
               }
               rows={currentQuestion.customRows ?? 2}
               className="min-h-[68px] resize-y bg-white text-[13px]"
-              placeholder="Write your own answer..."
+              placeholder={tenantText(
+                "Write your own answer...",
+                "Escribe tu propia respuesta...",
+              )}
             />
           </label>
 
           <div className="mt-5">
             <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#5f6368]">
-              Real-world reply examples
+              {tenantText("Real-world reply examples", "Ejemplos de respuestas reales")}
             </p>
             <div className="grid gap-2 lg:grid-cols-3">
-              {currentQuestion.examples.map((example) => (
+              {currentQuestion.examples.map((example, exampleIndex) => (
                 <button
                   key={example.label}
                   type="button"
                   onClick={() =>
                     updateAnswer(currentQuestion.id, {
                       selected: "",
-                      custom: example.text,
+                      custom: currentQuestionCopy.examples[exampleIndex] ?? example.text,
                     })
                   }
                   className={cn(
                     "rounded-xl border p-3 text-left transition-colors",
-                    currentAnswer.custom === example.text
+                    currentAnswer.custom === (currentQuestionCopy.examples[exampleIndex] ?? example.text)
                       ? "border-[#1a73e8] bg-[#e8f0fe]"
                       : "border-[#e8eaed] bg-[#fbfbfd] hover:border-[#1a73e8] hover:bg-[#f6faff]",
                   )}
-                  aria-label={`Use ${example.label} as your answer`}
+                  aria-label={tenantText(
+                    `Use ${example.label} as your answer`,
+                    `Usar el ejemplo ${exampleIndex + 1} como respuesta`,
+                  )}
                 >
                   <p className="mb-1.5 text-[11px] font-semibold text-[#1a73e8]">
-                    {example.label}
+                    {tenantText(example.label, `Ejemplo ${exampleIndex + 1}`)}
                   </p>
                   <p className="text-[12px] leading-5 text-[#3c4043]">
-                    {example.text}
+                    {currentQuestionCopy.examples[exampleIndex] ?? example.text}
                   </p>
                 </button>
               ))}
@@ -952,7 +1164,7 @@ export function AgentPersonalityWizard() {
               className="min-h-[34px] rounded-lg bg-white px-3 text-[13px]"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back
+              {tenantText("Back", "Volver")}
             </Button>
             <Button
               type="button"
@@ -960,7 +1172,9 @@ export function AgentPersonalityWizard() {
               onClick={() => setStep((current) => current + 1)}
               className="min-h-[34px] rounded-lg bg-[#1a73e8] px-4 text-[13px] text-white"
             >
-              {isLastQuestion ? "Test your AI Agent" : "Next"}
+              {isLastQuestion
+                ? tenantText("Test your AI Agent", "Probar el agente de IA")
+                : tenantText("Next", "Siguiente")}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>

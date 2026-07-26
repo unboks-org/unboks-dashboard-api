@@ -28,6 +28,7 @@
 import { motion } from "framer-motion";
 import type { ApiMessage } from "@/lib/api";
 import { buildEscalationBriefing } from "@/lib/escalation-summary";
+import { tenantText } from "@/lib/tenant-ui";
 
 /**
  * Kept exported for compatibility with parent code that still imports
@@ -87,7 +88,7 @@ export function EscalationReasonPanel({
 
   return (
     <section
-      aria-label="Decision needed"
+      aria-label={tenantText("Decision needed", "Respuesta necesaria")}
       className="bg-white px-3 sm:px-4 pt-3 pb-2 flex-shrink-0"
     >
       <motion.article
@@ -108,7 +109,7 @@ export function EscalationReasonPanel({
             id="decision-needed-title"
             className="text-[14px] font-semibold tracking-[-0.01em] text-[#111827]"
           >
-            Decision needed
+            {tenantText("Decision needed", "Respuesta necesaria")}
           </h2>
         </header>
 
@@ -116,13 +117,21 @@ export function EscalationReasonPanel({
             label and a one-paragraph answer in primary text. The grid
             collapses to a single column on mobile. */}
         <dl className="grid grid-cols-1 gap-y-3 gap-x-6 sm:grid-cols-2">
-          <Section label="What happened" className="sm:col-span-2">
+          <Section label={tenantText("What happened", "Qué ha ocurrido")} className="sm:col-span-2">
             {briefing.reason}
           </Section>
-          <Section label={isOrder ? "Order status" : isSoft ? "Customer wants" : "Customer needs"}>
+          <Section label={isOrder
+            ? tenantText("Order status", "Estado de la solicitud")
+            : isSoft
+            ? tenantText("Customer wants", "Qué solicita el paciente")
+            : tenantText("Customer needs", "Qué necesita el paciente")}>
             {briefing.customerWants}
           </Section>
-          <Section label={isOrder ? "Operator next step" : "Suggested next step"}>{briefing.marinaNeeds}</Section>
+          <Section label={isOrder
+            ? tenantText("Operator next step", "Siguiente paso del equipo")
+            : tenantText("Suggested next step", "Siguiente paso sugerido")}>
+            {briefing.marinaNeeds}
+          </Section>
         </dl>
       </motion.article>
     </section>

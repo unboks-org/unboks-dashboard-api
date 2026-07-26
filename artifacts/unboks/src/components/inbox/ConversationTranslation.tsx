@@ -60,6 +60,19 @@ import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { tenantText } from "@/lib/tenant-ui";
+
+function languageLabel(language: AIEditorLanguage): string {
+  const spanishLabels: Partial<Record<AIEditorLanguage, string>> = {
+    English: "Inglés",
+    Dutch: "Neerlandés",
+    Spanish: "Español",
+    Papiamento: "Papiamento",
+    Swedish: "Sueco",
+    Portuguese: "Portugués",
+  };
+  return tenantText(language, spanishLabels[language] ?? language);
+}
 
 const NOT_CONNECTED_STATUSES = new Set([0, 404, 501, 503]);
 
@@ -320,7 +333,7 @@ export function ConversationTranslationBar() {
       <div className="flex flex-wrap items-center gap-2">
         <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#5f6368]">
           <Languages className="h-3.5 w-3.5" />
-          Translate conversation
+          {tenantText("Translate conversation", "Traducir conversación")}
         </span>
 
         {/* Language popover. Compact pill matching the inbox header style. */}
@@ -330,16 +343,19 @@ export function ConversationTranslationBar() {
             onClick={() => setPickerOpen((v) => !v)}
             aria-haspopup="listbox"
             aria-expanded={pickerOpen}
-            aria-label={`Translation language: ${language}. Click to change.`}
+            aria-label={tenantText(
+              `Translation language: ${language}. Click to change.`,
+              `Idioma de traducción: ${languageLabel(language)}. Pulsa para cambiarlo.`,
+            )}
             className="inline-flex min-h-[36px] items-center gap-1 rounded-full border border-[#dadce0] bg-white px-2.5 py-0.5 text-[11.5px] font-medium text-[#202124] hover:bg-[#f1f3f4] md:min-h-0"
           >
-            {language}
+            {languageLabel(language)}
             <ChevronDown className="h-3 w-3" />
           </button>
           {pickerOpen && (
             <div
               role="listbox"
-              aria-label="Translation language"
+              aria-label={tenantText("Translation language", "Idioma de traducción")}
               className="absolute left-0 z-20 mt-1 min-w-[160px] overflow-hidden rounded-lg border border-[#e2e8f0] bg-white py-1 shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
             >
               {TRANSLATION_LANGUAGES.map((lang) => {
@@ -361,7 +377,7 @@ export function ConversationTranslationBar() {
                         : "text-[#1f2937] hover:bg-[#f3f4f6]",
                     )}
                   >
-                    <span>{lang}</span>
+                    <span>{languageLabel(lang)}</span>
                     {selected && <Check className="h-3.5 w-3.5 text-[#1a73e8]" />}
                   </button>
                 );
@@ -387,12 +403,12 @@ export function ConversationTranslationBar() {
           {isLoading ? (
             <>
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Translating...
+              {tenantText("Translating...", "Traduciendo...")}
             </>
           ) : (
             <>
               <Languages className="h-3.5 w-3.5" />
-              Translate
+              {tenantText("Translate", "Traducir")}
             </>
           )}
         </motion.button>
@@ -407,23 +423,31 @@ export function ConversationTranslationBar() {
               onChange={(e) => setVisible(e.target.checked)}
               className="h-3.5 w-3.5 rounded border-[#dadce0] text-[#1a73e8] focus:ring-[#1a73e8]"
             />
-            Show translations
+            {tenantText("Show translations", "Mostrar traducciones")}
           </label>
         )}
       </div>
 
       {/* Status helper line. Kept tiny so the bar stays compact. */}
       {isLoading && (
-        <p className="text-[11px] text-[#5f6368]">Translating conversation...</p>
+        <p className="text-[11px] text-[#5f6368]">
+          {tenantText("Translating conversation...", "Traduciendo la conversación...")}
+        </p>
       )}
       {status === "done" && failureCount > 0 && (
         <p className="text-[11px] text-[#a06800]">
-          Some messages could not be translated.
+          {tenantText(
+            "Some messages could not be translated.",
+            "No se han podido traducir algunos mensajes.",
+          )}
         </p>
       )}
       {status === "not-connected" && (
         <p className="text-[11px] text-[#0b3b8c]">
-          Translation will be connected by the Unboks team.
+          {tenantText(
+            "Translation will be connected by the Unboks team.",
+            "El equipo de Unboks habilitará la traducción.",
+          )}
         </p>
       )}
     </div>
@@ -454,11 +478,14 @@ export function MessageTranslationView({
     <div
       className="rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2"
       role="region"
-      aria-label={`Message translated to ${result.language}`}
+      aria-label={tenantText(
+        `Message translated to ${result.language}`,
+        `Mensaje traducido al ${languageLabel(result.language)}`,
+      )}
     >
       <span className="mb-1 inline-flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-wide text-[#64748b]">
         <Languages className="h-3 w-3" />
-        Translated to {result.language}
+        {tenantText("Translated to", "Traducido al")} {languageLabel(result.language)}
       </span>
       <p className="whitespace-pre-wrap break-words text-[13px] leading-[1.5] text-[#1f2937]">
         {result.text}

@@ -48,6 +48,7 @@ import { AgentPersonalityWizard } from "@/components/settings/AgentPersonalityWi
 import { useSot, type SotBlock, type SotSubsection } from "@/data/sot";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getTenantUiConfig, isSpainSpanishTenant, tenantText } from "@/lib/tenant-ui";
 
 const ALLOWED_LOGO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
 const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2 MB
@@ -83,13 +84,22 @@ const AGENT_NAME_BLOCKED_TERMS = [
 
 function agentNameDraftError(value: string): string | null {
   const name = value.trim().replace(/\s+/g, " ");
-  if (!name) return "Enter a name.";
-  if (name.length > 40) return "Use 40 characters or fewer.";
-  if (AGENT_NAME_URL_RE.test(name)) return "Do not use a URL.";
-  if (AGENT_NAME_EMOJI_RE.test(name)) return "Do not use emojis.";
+  if (!name) return tenantText("Enter a name.", "Introduce un nombre.");
+  if (name.length > 40) {
+    return tenantText("Use 40 characters or fewer.", "Usa 40 caracteres o menos.");
+  }
+  if (AGENT_NAME_URL_RE.test(name)) {
+    return tenantText("Do not use a URL.", "No uses una URL.");
+  }
+  if (AGENT_NAME_EMOJI_RE.test(name)) {
+    return tenantText("Do not use emojis.", "No uses emojis.");
+  }
   const lowered = name.toLowerCase();
   if (AGENT_NAME_BLOCKED_TERMS.some((term) => lowered.includes(term))) {
-    return "Choose a name that does not imply a provider, human role, or professional license.";
+    return tenantText(
+      "Choose a name that does not imply a provider, human role, or professional license.",
+      "Elige un nombre que no sugiera un proveedor, una identidad humana ni una licencia profesional.",
+    );
   }
   return null;
 }
@@ -176,6 +186,70 @@ const CATEGORIES: {
     icon: SlidersHorizontal,
   },
 ];
+
+const SPANISH_CATEGORIES: Record<CategoryId, { label: string; description: string }> = {
+  workspace: {
+    label: "Espacio de trabajo",
+    description: "Gestiona los datos básicos que se muestran en tu espacio de trabajo de Unboks.",
+  },
+  "your-info": {
+    label: "Conocimiento de la empresa",
+    description:
+      "Añade información, archivos, políticas, servicios y carpetas en la nube que el agente puede usar al responder a pacientes.",
+  },
+  "agent-personality": {
+    label: "Personalidad del agente",
+    description: "Ajusta el tono del agente, su estilo de respuesta y los tiempos de respuesta.",
+  },
+  "agent-learnings": {
+    label: "Aprendizajes del agente",
+    description:
+      "Revisa las respuestas del equipo. Las entradas aprobadas pasan a formar parte del conocimiento del agente.",
+  },
+  escalation: {
+    label: "Alertas",
+    description: "Elige qué avisos quieres recibir y dónde deben enviarse.",
+  },
+  "data-retention": {
+    label: "Conservación y archivo",
+    description:
+      "Controla durante cuánto tiempo las conversaciones permanecen activas, archivadas y disponibles para búsqueda.",
+  },
+  "excluded-contacts": {
+    label: "Contactos excluidos",
+    description:
+      "Contactos que Unboks debe ignorar por completo antes de responder, crear seguimientos o enviar alertas.",
+  },
+  "blocked-senders": {
+    label: "Remitentes bloqueados",
+    description: "Remitentes bloqueados en la bandeja activa del panel de Unboks.",
+  },
+  "auto-block": {
+    label: "Bloqueo automático",
+    description:
+      "Bloquea automáticamente los abusos graves y los insultos reiterados, con revisión humana.",
+  },
+  preferences: {
+    label: "Etiquetas y preferencias",
+    description: "Personaliza la apariencia del panel y cómo se abren las respuestas.",
+  },
+};
+
+const SPANISH_UPDATE_TYPES: Record<YourInfoUpdateType, string> = {
+  general: "General",
+  offer: "Oferta",
+  holiday: "Festivo",
+  hours: "Horarios",
+  pricing: "Precios",
+  policy: "Política",
+  property: "Instalaciones",
+  product: "Servicio",
+  other: "Otro",
+};
+
+function updateTypeLabel(type: YourInfoUpdateType, fallback: string): string {
+  return isSpainSpanishTenant() ? SPANISH_UPDATE_TYPES[type] : fallback;
+}
 
 import { motion, type HTMLMotionProps } from "framer-motion";
 
@@ -298,7 +372,7 @@ function SavedFlash({ visible }: { visible: boolean }) {
       )}
       aria-live="polite"
     >
-      Saved
+      {tenantText("Saved", "Guardado")}
     </span>
   );
 }
@@ -330,8 +404,11 @@ function websiteLinkUrlFromItem(item: string): string {
 function getWebsiteLinksBlock(blocks: SotBlock[]): SotBlock {
   return blocks.find((block) => block.id === WEBSITE_LINKS_BLOCK_ID) ?? {
     id: WEBSITE_LINKS_BLOCK_ID,
-    title: "Website links",
-    content: "Website page references saved in Source of Truth. Pages are not crawled or imported automatically.",
+    title: tenantText("Website links", "Enlaces web"),
+    content: tenantText(
+      "Website page references saved in Source of Truth. Pages are not crawled or imported automatically.",
+      "Referencias de páginas web guardadas como información de confianza. Las páginas no se importan automáticamente.",
+    ),
     items: [],
   };
 }
@@ -383,7 +460,24 @@ function DeliveryBadge({ status }: { status: DeliveryStatus }) {
         className,
       )}
     >
-      {label}
+      {tenantText(
+        label,
+        status === "active"
+          ? "Activo"
+          : status === "pending_activation"
+            ? "Activación pendiente"
+            : status === "not_configured"
+              ? "Sin configurar"
+              : status === "saved_only"
+                ? "Aún no envía"
+                : status === "provider_not_configured"
+                  ? "Aún no conectado"
+                  : status === "failed"
+                    ? "Fallido"
+                    : status === "disabled"
+                      ? "Desactivado"
+                      : "Predeterminado",
+      )}
     </span>
   );
 }
@@ -491,13 +585,13 @@ function SotKnowledgeCard({
         subsections: cleanedSubs && cleanedSubs.length > 0 ? cleanedSubs : undefined,
       };
       await onSave(payload);
-      toast.success("Saved.");
+      toast.success(tenantText("Saved.", "Guardado."));
       setEditing(false);
     } catch (err) {
       toast.error(
         err instanceof Error
-          ? `Could not save: ${err.message}`
-          : "Could not save changes.",
+          ? tenantText(`Could not save: ${err.message}`, `No se pudo guardar: ${err.message}`)
+          : tenantText("Could not save changes.", "No se pudieron guardar los cambios."),
       );
     } finally {
       setBusy(false);
@@ -517,7 +611,7 @@ function SotKnowledgeCard({
             className="flex flex-shrink-0 items-center gap-1.5 !px-3 !py-1.5 !bg-[#f8f9fa] !border-[#e8eaed] hover:!bg-[#f1f3f4] !text-[#3c4043]"
           >
             <Pencil className="h-3.5 w-3.5" />
-            Edit
+            {tenantText("Edit", "Editar")}
           </GhostButton>
         ) : (
           <div className="flex flex-shrink-0 items-center gap-2">
@@ -527,7 +621,7 @@ function SotKnowledgeCard({
               disabled={isSaving}
               className="!px-3 !py-1.5"
             >
-              Cancel
+              {tenantText("Cancel", "Cancelar")}
             </GhostButton>
             <PrimaryButton
               type="button"
@@ -536,9 +630,14 @@ function SotKnowledgeCard({
               className="flex items-center gap-1.5 !px-3 !py-1.5"
             >
               {isSaving ? (
-                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving</>
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />{" "}
+                  {tenantText("Saving", "Guardando")}
+                </>
               ) : (
-                <><Check className="h-3.5 w-3.5" /> Save</>
+                <>
+                  <Check className="h-3.5 w-3.5" /> {tenantText("Save", "Guardar")}
+                </>
               )}
             </PrimaryButton>
           </div>
@@ -561,7 +660,10 @@ function SotBlockReadView({ block }: { block: SotBlock }) {
   if (!hasContent && !hasItems && !hasSubs) {
     return (
       <p className="text-[13px] italic text-[#9aa0a6]">
-        No information added yet. Use Edit to add details for your Agent.
+        {tenantText(
+          "No information added yet. Use Edit to add details for your Agent.",
+          "Aún no se ha añadido información. Usa Editar para añadir detalles para tu agente.",
+        )}
       </p>
     );
   }
@@ -633,7 +735,7 @@ function SotBlockEditView({
       {hasContent && (
         <label className="block">
           <span className="mb-1 block text-[12px] font-medium text-[#5f6368]">
-            Description
+            {tenantText("Description", "Descripción")}
           </span>
           <textarea
             value={draft.content ?? ""}
@@ -648,7 +750,7 @@ function SotBlockEditView({
       {hasItems && (
         <label className="block">
           <span className="mb-1 block text-[12px] font-medium text-[#5f6368]">
-            Items (one per line)
+            {tenantText("Items (one per line)", "Elementos (uno por línea)")}
           </span>
           <textarea
             value={(draft.items ?? []).join("\n")}
@@ -672,7 +774,7 @@ function SotBlockEditView({
               <div className="flex items-start justify-between gap-2">
                 <label className="block flex-1">
                   <span className="mb-1 block text-[12px] font-medium uppercase tracking-wide text-[#5f6368]">
-                    Section title
+                    {tenantText("Section title", "Título de la sección")}
                   </span>
                   <input
                     type="text"
@@ -694,7 +796,7 @@ function SotBlockEditView({
                   }}
                   disabled={disabled}
                   className="mt-5 rounded-md p-1.5 text-[#5f6368] hover:bg-[#f1f3f4] disabled:opacity-60"
-                  aria-label="Remove section"
+                  aria-label={tenantText("Remove section", "Eliminar sección")}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -702,7 +804,7 @@ function SotBlockEditView({
               {sub.content !== undefined && (
                 <label className="block">
                   <span className="mb-1 block text-[12px] font-medium text-[#5f6368]">
-                    Description
+                    {tenantText("Description", "Descripción")}
                   </span>
                   <textarea
                     value={sub.content ?? ""}
@@ -720,7 +822,7 @@ function SotBlockEditView({
               {sub.items !== undefined && (
                 <label className="block">
                   <span className="mb-1 block text-[12px] font-medium text-[#5f6368]">
-                    Items (one per line)
+                    {tenantText("Items (one per line)", "Elementos (uno por línea)")}
                   </span>
                   <textarea
                     value={(sub.items ?? []).join("\n")}
@@ -742,7 +844,7 @@ function SotBlockEditView({
             onClick={() => {
               const subs: SotSubsection[] = [
                 ...(draft.subsections ?? []),
-                { title: "New section", content: "" },
+                { title: tenantText("New section", "Nueva sección"), content: "" },
               ];
               onChange({ ...draft, subsections: subs });
             }}
@@ -750,7 +852,7 @@ function SotBlockEditView({
             className="flex items-center gap-1.5 rounded-md border border-dashed border-[#dadce0] px-2.5 py-1.5 text-[12px] font-medium text-[#5f6368] hover:bg-[#f8f9fa] disabled:opacity-60"
           >
             <Plus className="h-3.5 w-3.5" />
-            Add section
+            {tenantText("Add section", "Añadir sección")}
           </button>
         </div>
       )}
@@ -766,7 +868,7 @@ function SotBlockEditView({
             className="flex items-center gap-1.5 rounded-md border border-dashed border-[#dadce0] px-2.5 py-1.5 text-[12px] font-medium text-[#5f6368] hover:bg-[#f8f9fa] disabled:opacity-60"
           >
             <Plus className="h-3.5 w-3.5" />
-            Add description
+            {tenantText("Add description", "Añadir descripción")}
           </button>
           <button
             type="button"
@@ -775,7 +877,7 @@ function SotBlockEditView({
             className="flex items-center gap-1.5 rounded-md border border-dashed border-[#dadce0] px-2.5 py-1.5 text-[12px] font-medium text-[#5f6368] hover:bg-[#f8f9fa] disabled:opacity-60"
           >
             <Plus className="h-3.5 w-3.5" />
-            Add list
+            {tenantText("Add list", "Añadir lista")}
           </button>
         </div>
       )}
@@ -785,7 +887,7 @@ function SotBlockEditView({
 
 function formatUpdateDate(value?: string) {
   if (!value) return "";
-  return new Date(value).toLocaleDateString([], {
+  return new Date(value).toLocaleDateString(getTenantUiConfig().dateLocale, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -839,7 +941,10 @@ function SavedKnowledgeUpdateCard({
   const handleSave = async () => {
     const text = draftText.trim();
     if (!text) {
-      toast.error("Write a note before saving.");
+      toast.error(tenantText(
+        "Write a note before saving.",
+        "Escribe una nota antes de guardar.",
+      ));
       return;
     }
     setBusy(true);
@@ -851,12 +956,18 @@ function SavedKnowledgeUpdateCard({
         startDate: draftStart || undefined,
         endDate: draftEnd || undefined,
       });
-      toast.success("Knowledge update saved.");
+      toast.success(tenantText(
+        "Knowledge update saved.",
+        "Actualización de conocimiento guardada.",
+      ));
       setEditing(false);
     } catch (err) {
       const msg = err instanceof Error && err.message
         ? err.message
-        : "Could not save knowledge update.";
+        : tenantText(
+            "Could not save knowledge update.",
+            "No se ha podido guardar la actualización de conocimiento.",
+          );
       toast.error(msg);
     } finally {
       setBusy(false);
@@ -882,7 +993,9 @@ function SavedKnowledgeUpdateCard({
               : "bg-[#f6f8fc] text-[#5f6368]",
           )}
         >
-          {update.active ? "Active" : "Inactive"}
+          {update.active
+            ? tenantText("Active", "Activo")
+            : tenantText("Inactive", "Inactivo")}
         </span>
         <div className="ml-auto flex items-center gap-1">
           {!editing && (
@@ -891,7 +1004,7 @@ function SavedKnowledgeUpdateCard({
               onClick={() => setEditing(true)}
               className="rounded-full px-2 py-1 text-[12px] font-medium text-[#1a73e8] hover:bg-[#e8f0fe]"
             >
-              Edit
+              {tenantText("Edit", "Editar")}
             </button>
           )}
           <button
@@ -902,12 +1015,15 @@ function SavedKnowledgeUpdateCard({
               } catch (err) {
                 const msg = err instanceof Error && err.message
                   ? err.message
-                  : "Could not remove update.";
+                  : tenantText(
+                      "Could not remove update.",
+                      "No se ha podido eliminar la actualización.",
+                    );
                 toast.error(msg);
               }
             }}
             disabled={busy}
-            aria-label="Remove update"
+            aria-label={tenantText("Remove update", "Eliminar actualización")}
             className="grid h-7 w-7 place-items-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4] disabled:opacity-60"
           >
             <X className="h-3.5 w-3.5" />
@@ -918,7 +1034,7 @@ function SavedKnowledgeUpdateCard({
       {editing ? (
         <div className="mt-3 space-y-3 rounded-lg border border-[#e8eaed] bg-[#fbfbfd] p-3">
           <div>
-            <FieldLabel>Type</FieldLabel>
+            <FieldLabel>{tenantText("Type", "Tipo")}</FieldLabel>
             <div className="mt-2 flex flex-wrap gap-2">
               {UPDATE_TYPES.map((t) => (
                 <button
@@ -933,13 +1049,13 @@ function SavedKnowledgeUpdateCard({
                       : "border-[#dadce0] bg-white text-[#5f6368] hover:bg-[#f6f8fc]",
                   )}
                 >
-                  {t.label}
+                  {updateTypeLabel(t.value, t.label)}
                 </button>
               ))}
             </div>
           </div>
           <label className="block">
-            <FieldLabel>Note</FieldLabel>
+            <FieldLabel>{tenantText("Note", "Nota")}</FieldLabel>
             <textarea
               value={draftText}
               onChange={(e) => setDraftText(e.target.value)}
@@ -950,7 +1066,9 @@ function SavedKnowledgeUpdateCard({
           </label>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
-              <FieldLabel>Start date (optional)</FieldLabel>
+              <FieldLabel>
+                {tenantText("Start date (optional)", "Fecha de inicio (opcional)")}
+              </FieldLabel>
               <TextInput
                 type="date"
                 value={draftStart}
@@ -959,7 +1077,9 @@ function SavedKnowledgeUpdateCard({
               />
             </label>
             <label className="block">
-              <FieldLabel>End date (optional)</FieldLabel>
+              <FieldLabel>
+                {tenantText("End date (optional)", "Fecha de fin (opcional)")}
+              </FieldLabel>
               <TextInput
                 type="date"
                 value={draftEnd}
@@ -970,10 +1090,12 @@ function SavedKnowledgeUpdateCard({
           </div>
           <div className="flex flex-wrap justify-end gap-2">
             <GhostButton type="button" onClick={handleCancel} disabled={busy}>
-              Cancel
+              {tenantText("Cancel", "Cancelar")}
             </GhostButton>
             <PrimaryButton type="button" onClick={handleSave} disabled={!canSave}>
-              {busy ? "Saving..." : "Save changes"}
+              {busy
+                ? tenantText("Saving...", "Guardando...")
+                : tenantText("Save changes", "Guardar cambios")}
             </PrimaryButton>
           </div>
         </div>
@@ -984,12 +1106,20 @@ function SavedKnowledgeUpdateCard({
           </p>
           <KnowledgeMediaAttachments knowledgeId={update.id} />
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#5f6368]">
-            <span>Added {formatUpdateDate(update.createdAt)}</span>
+            <span>
+              {tenantText("Added", "Añadido el")} {formatUpdateDate(update.createdAt)}
+            </span>
             {update.updatedAt && update.updatedAt !== update.createdAt && (
-              <span>Updated {formatUpdateDate(update.updatedAt)}</span>
+              <span>
+                {tenantText("Updated", "Actualizado el")} {formatUpdateDate(update.updatedAt)}
+              </span>
             )}
-            {update.startDate && <span>From {update.startDate}</span>}
-            {update.endDate && <span>Until {update.endDate}</span>}
+            {update.startDate && (
+              <span>{tenantText("From", "Desde")} {update.startDate}</span>
+            )}
+            {update.endDate && (
+              <span>{tenantText("Until", "Hasta")} {update.endDate}</span>
+            )}
             <button
               type="button"
               onClick={async () => {
@@ -998,13 +1128,18 @@ function SavedKnowledgeUpdateCard({
                 } catch (err) {
                   const msg = err instanceof Error && err.message
                     ? err.message
-                    : "Could not update status.";
+                    : tenantText(
+                        "Could not update status.",
+                        "No se ha podido actualizar el estado.",
+                      );
                   toast.error(msg);
                 }
               }}
               className="ml-auto text-[#1a73e8] hover:underline"
             >
-              {update.active ? "Mark inactive" : "Reactivate"}
+              {update.active
+                ? tenantText("Mark inactive", "Marcar como inactivo")
+                : tenantText("Reactivate", "Reactivar")}
             </button>
           </div>
         </>
@@ -1139,11 +1274,18 @@ export default function Settings() {
     e.target.value = "";
     if (!file) return;
     if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
-      toast.error("Logo must be a PNG, JPG, WebP or SVG image.");
+      toast.error(
+        tenantText(
+          "Logo must be a PNG, JPG, WebP or SVG image.",
+          "El logotipo debe ser una imagen PNG, JPG, WebP o SVG.",
+        ),
+      );
       return;
     }
     if (file.size > MAX_LOGO_BYTES) {
-      toast.error("Logo must be under 2 MB.");
+      toast.error(
+        tenantText("Logo must be under 2 MB.", "El logotipo debe ocupar menos de 2 MB."),
+      );
       return;
     }
     const reader = new FileReader();
@@ -1151,7 +1293,8 @@ export default function Settings() {
       const dataUrl = typeof reader.result === "string" ? reader.result : "";
       if (dataUrl) setAccountDraft((d) => ({ ...d, logoDataUrl: dataUrl }));
     };
-    reader.onerror = () => toast.error("Could not read that image.");
+    reader.onerror = () =>
+      toast.error(tenantText("Could not read that image.", "No se pudo leer la imagen."));
     reader.readAsDataURL(file);
   };
 
@@ -1191,12 +1334,18 @@ export default function Settings() {
       if (ALERT_CHANNEL_SUPPORT[key] !== "available") continue;
       const p = notifyDraft[key];
       if (p.enabled && p.destination.trim().length === 0) {
-        return `Add a ${labels[key]} destination, or turn ${labels[key]} off.`;
+        return tenantText(
+          `Add a ${labels[key]} destination, or turn ${labels[key]} off.`,
+          `Añade un destino para ${labels[key]} o desactiva ${labels[key]}.`,
+        );
       }
     }
     const alt = notifyDraft.alternativeEmail.trim();
     if (alt.length > 0 && !ALT_EMAIL_RE.test(alt)) {
-      return "Enter a valid email address.";
+      return tenantText(
+        "Enter a valid email address.",
+        "Introduce una dirección de correo válida.",
+      );
     }
     return null;
   }, [notifyDraft]);
@@ -1212,12 +1361,18 @@ export default function Settings() {
     } catch (err) {
       // Surface the backend message verbatim, never pretend it saved.
       // Fallback copy is only used when the error has no usable message.
-      let msg = "Couldn't save escalation alerts. Please try again.";
+      let msg = tenantText(
+        "Couldn't save escalation alerts. Please try again.",
+        "No se pudieron guardar las alertas. Inténtalo de nuevo.",
+      );
       if (err instanceof ApiError) {
         if (err.message && err.message.trim().length > 0) {
           msg = err.message;
         } else {
-          msg = `Save failed (${err.status}).`;
+          msg = tenantText(
+            `Save failed (${err.status}).`,
+            `No se pudo guardar (${err.status}).`,
+          );
         }
       } else if (err instanceof Error && err.message) {
         msg = err.message;
@@ -1237,13 +1392,21 @@ export default function Settings() {
     const t = window.setTimeout(() => setNotifySaved(false), 1800);
     return () => window.clearTimeout(t);
   }, [notifySaved]);
-  const currentCategory = CATEGORIES.find((c) => c.id === active) ?? CATEGORIES[0];
+  const currentCategoryBase = CATEGORIES.find((c) => c.id === active) ?? CATEGORIES[0];
+  const currentCategory = isSpainSpanishTenant()
+    ? { ...currentCategoryBase, ...SPANISH_CATEGORIES[currentCategoryBase.id] }
+    : currentCategoryBase;
+  const categoryLabel = (category: (typeof CATEGORIES)[number]) =>
+    isSpainSpanishTenant() ? SPANISH_CATEGORIES[category.id].label : category.label;
 
   return (
     <DashboardShell
       activeNav="settings"
-      pageTitle="Settings"
-      pageSubtitle="Manage your workspace, Agent information, alerts, and preferences."
+      pageTitle={tenantText("Settings", "Configuración")}
+      pageSubtitle={tenantText(
+        "Manage your workspace, Agent information, alerts, and preferences.",
+        "Gestiona tu espacio de trabajo, la información del agente, las alertas y las preferencias.",
+      )}
       hideRefresh
     >
       <div className="min-h-full bg-[#f8f9fb]">
@@ -1251,12 +1414,12 @@ export default function Settings() {
 
           {/* Top tab bar — horizontally scrollable on mobile, full-width on desktop */}
           <nav
-            aria-label="Settings categories"
+            aria-label={tenantText("Settings categories", "Categorías de configuración")}
             className="mb-6 border-b border-[#e8eaed]"
           >
             <label className="mb-3 block md:hidden">
               <span className="mb-1.5 block text-[12px] font-medium text-[#5f6368]">
-                Settings section
+                {tenantText("Settings section", "Sección de configuración")}
               </span>
               <select
                 value={active}
@@ -1265,7 +1428,7 @@ export default function Settings() {
               >
                 {CATEGORIES.map((cat) => (
                   <option key={cat.id} value={cat.id}>
-                    {cat.label}
+                    {categoryLabel(cat)}
                   </option>
                 ))}
               </select>
@@ -1298,7 +1461,7 @@ export default function Settings() {
                         isActive ? "text-[#1a73e8]" : "text-[#9aa0a6]",
                       )}
                     />
-                    {cat.label}
+                    {categoryLabel(cat)}
                   </button>
                 );
               })}
@@ -1314,6 +1477,7 @@ export default function Settings() {
 
               {active === "workspace" && (
                 <div className="space-y-5">
+                {!isSpainSpanishTenant() && (
                 <Card
                   title="Workspace menu label"
                   description="Choose the label shown for the appointment/order workspace in the sidebar and mobile menu."
@@ -1382,9 +1546,13 @@ export default function Settings() {
                     </div>
                   </div>
                 </Card>
+                )}
                 <Card
-                  title="Business identity"
-                  description="Used inside this dashboard. Public website and Agent usage will be connected by the Unboks team."
+                  title={tenantText("Business identity", "Identidad de la empresa")}
+                  description={tenantText(
+                    "Used inside this dashboard. Public website and Agent usage will be connected by the Unboks team.",
+                    "Se utiliza dentro de este panel. El equipo de Unboks conectará su uso con la web pública y el agente.",
+                  )}
                   footer={
                     <>
                       <SavedFlash visible={accountSaved} />
@@ -1398,12 +1566,15 @@ export default function Settings() {
                           } catch (err) {
                             const msg = err instanceof Error && err.message
                               ? err.message
-                              : "Could not save workspace settings.";
+                              : tenantText(
+                                  "Could not save workspace settings.",
+                                  "No se pudo guardar la configuración del espacio de trabajo.",
+                                );
                             toast.error(msg);
                           }
                         }}
                       >
-                        Save changes
+                        {tenantText("Save changes", "Guardar cambios")}
                       </PrimaryButton>
                     </>
                   }
@@ -1411,17 +1582,19 @@ export default function Settings() {
                   <div className="space-y-4">
                     {/* Logo first — Linear pattern */}
                     <div>
-                      <FieldLabel>Logo</FieldLabel>
+                      <FieldLabel>{tenantText("Logo", "Logotipo")}</FieldLabel>
                       <div className="mt-2 flex items-start gap-4">
                         <div className="grid h-20 w-20 flex-shrink-0 place-items-center overflow-hidden rounded-xl border border-[#e8eaed] bg-[#f6f8fc]">
                           {accountDraft.logoDataUrl ? (
                             <img
                               src={accountDraft.logoDataUrl}
-                              alt="Logo preview"
+                              alt={tenantText("Logo preview", "Vista previa del logotipo")}
                               className="max-h-full max-w-full object-contain"
                             />
                           ) : (
-                            <span className="text-[11px] text-[#9aa0a6]">No logo</span>
+                            <span className="text-[11px] text-[#9aa0a6]">
+                              {tenantText("No logo", "Sin logotipo")}
+                            </span>
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -1430,7 +1603,7 @@ export default function Settings() {
                               type="button"
                               onClick={() => logoInputRef.current?.click()}
                             >
-                              Upload logo
+                              {tenantText("Upload logo", "Subir logotipo")}
                             </GhostButton>
                             {accountDraft.logoDataUrl && (
                               <GhostButton
@@ -1440,7 +1613,7 @@ export default function Settings() {
                                 }
                                 className="text-[#5f6368]"
                               >
-                                Remove
+                                {tenantText("Remove", "Eliminar")}
                               </GhostButton>
                             )}
                             <input
@@ -1452,7 +1625,10 @@ export default function Settings() {
                             />
                           </div>
                           <p className="mt-2 text-[12px] text-[#5f6368]">
-                            PNG, JPG, WebP or SVG. Max 2 MB. Used in your dashboard.
+                            {tenantText(
+                              "PNG, JPG, WebP or SVG. Max 2 MB. Used in your dashboard.",
+                              "PNG, JPG, WebP o SVG. Máximo 2 MB. Se utiliza en tu panel.",
+                            )}
                           </p>
                         </div>
                       </div>
@@ -1460,10 +1636,30 @@ export default function Settings() {
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       {([
-                        { key: "businessName", label: "Business name", type: "text", placeholder: "Acme Co." },
-                        { key: "contactEmail", label: "Contact email", type: "email", placeholder: "hello@acme.com" },
-                        { key: "phone", label: "Phone number", type: "tel", placeholder: "+1 555 123 4567" },
-                        { key: "website", label: "Website", type: "url", placeholder: "https://acme.com" },
+                        {
+                          key: "businessName",
+                          label: tenantText("Business name", "Nombre de la empresa"),
+                          type: "text",
+                          placeholder: "Acme Co.",
+                        },
+                        {
+                          key: "contactEmail",
+                          label: tenantText("Contact email", "Correo de contacto"),
+                          type: "email",
+                          placeholder: "hola@empresa.es",
+                        },
+                        {
+                          key: "phone",
+                          label: tenantText("Phone number", "Número de teléfono"),
+                          type: "tel",
+                          placeholder: "+34 600 000 000",
+                        },
+                        {
+                          key: "website",
+                          label: tenantText("Website", "Sitio web"),
+                          type: "url",
+                          placeholder: "https://empresa.es",
+                        },
                       ] as const).map((field) => (
                         <label key={field.key} className="block">
                           <FieldLabel>{field.label}</FieldLabel>
@@ -1486,12 +1682,15 @@ export default function Settings() {
               {active === "your-info" && (
                 <div className="space-y-5">
                   <Card
-                    title="Add knowledge"
-                    description="Quickly add business information your Unboks Agent can use when replying to customers. Examples: holiday hours, offers, pricing rules, policies."
+                    title={tenantText("Add knowledge", "Añadir conocimiento")}
+                    description={tenantText(
+                      "Quickly add business information your Unboks Agent can use when replying to customers. Examples: holiday hours, offers, pricing rules, policies.",
+                      "Añade información de la empresa que el agente de Unboks pueda usar al responder a pacientes: horarios en festivos, servicios, precios o políticas.",
+                    )}
                   >
                     <div className="space-y-4">
                       <div>
-                        <FieldLabel>Type</FieldLabel>
+                        <FieldLabel>{tenantText("Type", "Tipo")}</FieldLabel>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {UPDATE_TYPES.map((t) => (
                             <button
@@ -1505,26 +1704,31 @@ export default function Settings() {
                                   : "border-[#dadce0] bg-white text-[#5f6368] hover:bg-[#f6f8fc]",
                               )}
                             >
-                              {t.label}
+                              {updateTypeLabel(t.value, t.label)}
                             </button>
                           ))}
                         </div>
                       </div>
 
                       <label className="block">
-                        <FieldLabel>Note</FieldLabel>
+                        <FieldLabel>{tenantText("Note", "Nota")}</FieldLabel>
                         <textarea
                           value={updateText}
                           onChange={(e) => setUpdateText(e.target.value)}
                           rows={3}
-                          placeholder="Example: We are closed on Christmas Day, but open again on December 26."
+                          placeholder={tenantText(
+                            "Example: We are closed on Christmas Day, but open again on December 26.",
+                            "Ejemplo: Cerramos el día de Navidad y volvemos a abrir el 26 de diciembre.",
+                          )}
                           className="mt-1 w-full min-w-0 resize-y rounded-lg border border-[#dadce0] bg-white px-3 py-2 text-[13px] text-[#202124] outline-none placeholder:text-[#9aa0a6] focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
                         />
                       </label>
 
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <label className="block">
-                          <FieldLabel>Start date (optional)</FieldLabel>
+                          <FieldLabel>
+                            {tenantText("Start date (optional)", "Fecha de inicio (opcional)")}
+                          </FieldLabel>
                           <TextInput
                             type="date"
                             value={updateStart}
@@ -1532,7 +1736,9 @@ export default function Settings() {
                           />
                         </label>
                         <label className="block">
-                          <FieldLabel>End date (optional)</FieldLabel>
+                          <FieldLabel>
+                            {tenantText("End date (optional)", "Fecha de fin (opcional)")}
+                          </FieldLabel>
                           <TextInput
                             type="date"
                             value={updateEnd}
@@ -1547,7 +1753,12 @@ export default function Settings() {
                           onClick={async () => {
                             const text = updateText.trim();
                             if (!text) {
-                              toast.error("Write a short note before adding the update.");
+                              toast.error(
+                                tenantText(
+                                  "Write a short note before adding the update.",
+                                  "Escribe una nota breve antes de añadir la actualización.",
+                                ),
+                              );
                               return;
                             }
                             try {
@@ -1561,16 +1772,19 @@ export default function Settings() {
                               setUpdateStart("");
                               setUpdateEnd("");
                               setUpdateType("general");
-                              toast.success("Update added.");
+                              toast.success(tenantText("Update added.", "Actualización añadida."));
                             } catch (err) {
                               const msg = err instanceof Error && err.message
                                 ? err.message
-                                : "Could not save knowledge update.";
+                                : tenantText(
+                                    "Could not save knowledge update.",
+                                    "No se pudo guardar la actualización de conocimiento.",
+                                  );
                               toast.error(msg);
                             }
                           }}
                         >
-                          Save knowledge
+                          {tenantText("Save knowledge", "Guardar conocimiento")}
                         </PrimaryButton>
                       </div>
                     </div>
@@ -1585,11 +1799,19 @@ export default function Settings() {
                   />
 
                   <Card
-                    title="Saved knowledge updates"
-                    description="Notes you've added. Your Agent can use this information when replying to customers."
+                    title={tenantText(
+                      "Saved knowledge updates",
+                      "Actualizaciones de conocimiento guardadas",
+                    )}
+                    description={tenantText(
+                      "Notes you've added. Your Agent can use this information when replying to customers.",
+                      "Notas añadidas que el agente puede usar al responder a pacientes.",
+                    )}
                   >
                     {updates.length === 0 ? (
-                      <p className="text-[13px] text-[#9aa0a6]">No updates yet.</p>
+                      <p className="text-[13px] text-[#9aa0a6]">
+                        {tenantText("No updates yet.", "Todavía no hay actualizaciones.")}
+                      </p>
                     ) : (
                       <ul className="space-y-2">
                         {updates.map((u) => {
@@ -1608,15 +1830,21 @@ export default function Settings() {
                   </Card>
 
                   <Card
-                    title="Upload knowledge files"
-                    description="Documents, menus, price lists, FAQs, and policies your Agent can use when replying."
+                    title={tenantText("Upload knowledge files", "Subir archivos de conocimiento")}
+                    description={tenantText(
+                      "Documents, menus, price lists, FAQs, and policies your Agent can use when replying.",
+                      "Documentos, tarifas, preguntas frecuentes y políticas que el agente puede usar al responder.",
+                    )}
                   >
                     <KnowledgeFileUploader />
                   </Card>
 
                   <Card
-                    title="Connect cloud storage"
-                    description="Link folders from Google Drive, OneDrive, or Dropbox so your Agent can use the documents inside."
+                    title={tenantText("Connect cloud storage", "Conectar almacenamiento en la nube")}
+                    description={tenantText(
+                      "Link folders from Google Drive, OneDrive, or Dropbox so your Agent can use the documents inside.",
+                      "Vincula carpetas de Google Drive, OneDrive o Dropbox para que el agente pueda usar sus documentos.",
+                    )}
                   >
                     <CloudKnowledgeConnections />
                   </Card>
@@ -1633,8 +1861,11 @@ export default function Settings() {
 
               {active === "escalation" && (
                 <Card
-                  title="Alerts"
-                  description="Choose which alerts you want to receive and where they should be sent."
+                  title={tenantText("Alerts", "Alertas")}
+                  description={tenantText(
+                    "Choose which alerts you want to receive and where they should be sent.",
+                    "Elige qué alertas quieres recibir y dónde deben enviarse.",
+                  )}
                   footer={
                     <>
                       <SavedFlash visible={notifySaved} />
@@ -1643,7 +1874,9 @@ export default function Settings() {
                         disabled={!notifyDirty || notifySaving || notifyLoading}
                         onClick={handleSaveNotifyPrefs}
                       >
-                        {notifySaving ? "Saving…" : "Save changes"}
+                        {notifySaving
+                          ? tenantText("Saving…", "Guardando…")
+                          : tenantText("Save changes", "Guardar cambios")}
                       </PrimaryButton>
                     </>
                   }
@@ -1668,14 +1901,19 @@ export default function Settings() {
                       preserved on save. */}
                   <div className="mb-4">
                     <p className="text-[12px] font-medium uppercase tracking-wide text-[#5f6368]">
-                      Alert types
+                      {tenantText("Alert types", "Tipos de alerta")}
                     </p>
                     <div className="mt-2 divide-y divide-[#f1f3f4] rounded-lg border border-[#e8eaed]">
                       <div className="flex items-start justify-between gap-4 px-3 py-3">
                         <div className="min-w-0">
-                          <p className="text-[14px] text-[#202124]">Escalation alerts</p>
+                          <p className="text-[14px] text-[#202124]">
+                            {tenantText("Escalation alerts", "Alertas de respuesta humana")}
+                          </p>
                           <p className="mt-0.5 text-[12px] text-[#5f6368]">
-                            Get notified when your Agent needs human help or a customer conversation requires attention.
+                            {tenantText(
+                              "Get notified when your Agent needs human help or a customer conversation requires attention.",
+                              "Recibe un aviso cuando el agente necesite ayuda humana o una conversación requiera atención.",
+                            )}
                           </p>
                         </div>
                         <Switch
@@ -1687,15 +1925,23 @@ export default function Settings() {
                             }))
                           }
                           disabled={notifyLoading || notifySaving}
-                          aria-label="Receive escalation alerts"
+                          aria-label={tenantText(
+                            "Receive escalation alerts",
+                            "Recibir alertas de respuesta humana",
+                          )}
                           className="mt-0.5 data-[state=checked]:bg-[#1a73e8] data-[state=unchecked]:bg-[#dadce0]"
                         />
                       </div>
                       <div className="flex items-start justify-between gap-4 px-3 py-3">
                         <div className="min-w-0">
-                          <p className="text-[14px] text-[#202124]">Appointment alerts</p>
+                          <p className="text-[14px] text-[#202124]">
+                            {tenantText("Appointment alerts", "Alertas de seguimiento")}
+                          </p>
                           <p className="mt-0.5 text-[12px] text-[#5f6368]">
-                            Get notified when a customer confirms an appointment, booking, order, or scheduled call.
+                            {tenantText(
+                              "Get notified when a customer confirms an appointment, booking, order, or scheduled call.",
+                              "Recibe un aviso cuando un seguimiento esté listo para que el equipo llame al paciente.",
+                            )}
                           </p>
                         </div>
                         <Switch
@@ -1707,7 +1953,10 @@ export default function Settings() {
                             }))
                           }
                           disabled={notifyLoading || notifySaving}
-                          aria-label="Receive appointment alerts"
+                          aria-label={tenantText(
+                            "Receive appointment alerts",
+                            "Recibir alertas de seguimiento",
+                          )}
                           className="mt-0.5 data-[state=checked]:bg-[#1a73e8] data-[state=unchecked]:bg-[#dadce0]"
                         />
                       </div>
@@ -1716,7 +1965,7 @@ export default function Settings() {
 
                   <div>
                     <p className="mb-2 text-[12px] font-medium uppercase tracking-wide text-[#5f6368]">
-                      Where alerts are sent
+                      {tenantText("Where alerts are sent", "Dónde se envían las alertas")}
                     </p>
                   </div>
 
@@ -1730,15 +1979,22 @@ export default function Settings() {
                           title={notifyDefaultEmail ?? undefined}
                         >
                           {notifyDefaultEmail
-                            ? `Always on, sent to ${notifyDefaultEmail}`
-                            : "Always on, uses your default account email"}
+                            ? tenantText(
+                                `Always on, sent to ${notifyDefaultEmail}`,
+                                `Siempre activo; se envía a ${notifyDefaultEmail}`,
+                              )
+                            : tenantText(
+                                "Always on, uses your default account email",
+                                "Siempre activo; usa el correo predeterminado de la cuenta",
+                              )}
                         </p>
                         {notifyPrefs.alternativeEmail.trim().length > 0 && (
                           <p
                             className="mt-0.5 truncate text-[12px] text-[#5f6368]"
                             title={notifyPrefs.alternativeEmail.trim()}
                           >
-                            Alternative: {notifyPrefs.alternativeEmail.trim()}
+                            {tenantText("Alternative", "Alternativo")}:{" "}
+                            {notifyPrefs.alternativeEmail.trim()}
                           </p>
                         )}
                       </div>
@@ -1751,7 +2007,7 @@ export default function Settings() {
                         htmlFor="escalation-alt-email"
                         className="block text-[12px] font-medium text-[#5f6368]"
                       >
-                        Alternative email
+                        {tenantText("Alternative email", "Correo alternativo")}
                       </label>
                       <input
                         id="escalation-alt-email"
@@ -1762,12 +2018,15 @@ export default function Settings() {
                         onChange={(e) =>
                           setNotifyDraft((d) => ({ ...d, alternativeEmail: e.target.value }))
                         }
-                        placeholder="second@example.com"
+                        placeholder="segundo@ejemplo.es"
                         disabled={notifyLoading || notifySaving}
                         className="mt-1 h-9 w-full rounded-md border border-[#dadce0] bg-white px-3 text-[14px] text-[#202124] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] disabled:bg-[#f8f9fa] disabled:text-[#9aa0a6]"
                       />
                       <p className="mt-1 text-[11px] text-[#5f6368]">
-                        Send alerts to an additional email address. Leave empty to use only the default.
+                        {tenantText(
+                          "Send alerts to an additional email address. Leave empty to use only the default.",
+                          "Envía alertas a otro correo. Déjalo vacío para usar solo el predeterminado.",
+                        )}
                       </p>
                     </div>
 
@@ -1804,13 +2063,16 @@ export default function Settings() {
                                   </p>
                                   {!supported && (
                                     <span className="rounded-full border border-[#e0e3e7] bg-white px-2 py-0.5 text-[11px] font-medium text-[#6b7280]">
-                                      Coming soon
+                                      {tenantText("Coming soon", "Próximamente")}
                                     </span>
                                   )}
                                 </div>
                                 {!supported && (
                                   <p className="mt-1 max-w-[520px] text-[12px] leading-5 text-[#6b7280]">
-                                    Not active yet. We will enable this after the provider integration is wired and tested by Unboks.
+                                    {tenantText(
+                                      "Not active yet. We will enable this after the provider integration is wired and tested by Unboks.",
+                                      "Aún no está activo. Lo habilitaremos cuando Unboks haya conectado y probado la integración.",
+                                    )}
                                   </p>
                                 )}
                               </div>
@@ -1827,8 +2089,14 @@ export default function Settings() {
                                   disabled={!supported || notifyLoading || notifySaving}
                                   aria-label={
                                     supported
-                                      ? `Enable ${row.label} alerts`
-                                      : `${row.label} alerts are coming soon`
+                                      ? tenantText(
+                                          `Enable ${row.label} alerts`,
+                                          `Activar alertas de ${row.label}`,
+                                        )
+                                      : tenantText(
+                                          `${row.label} alerts are coming soon`,
+                                          `Las alertas de ${row.label} estarán disponibles próximamente`,
+                                        )
                                   }
                                   className="data-[state=checked]:bg-[#1a73e8] data-[state=unchecked]:bg-[#dadce0]"
                                 />
@@ -1849,7 +2117,10 @@ export default function Settings() {
                                 />
                                 {row.key === "whatsapp" && (
                                   <p className="mt-1 text-[11px] text-[#5f6368]">
-                                    Include country code, for example +599 for Curaçao or +351 for Portugal.
+                                    {tenantText(
+                                      "Include country code, for example +599 for Curaçao or +351 for Portugal.",
+                                      "Incluye el prefijo del país; por ejemplo, +34 para España.",
+                                    )}
                                   </p>
                                 )}
                               </>
@@ -1865,32 +2136,50 @@ export default function Settings() {
                                 Unboks setup the operator already knows. */}
                             {row.key === "whatsapp" && pref.enabled && status === "pending_activation" && (
                               <div className="mt-2 rounded-md border border-[#fde293] bg-[#fef7e0] px-3 py-2 text-[12px] text-[#7a5a00]">
-                                WhatsApp alerts are configured but not active yet. Send START from this operator WhatsApp number to the business WhatsApp number to activate alerts.
+                                {tenantText(
+                                  "WhatsApp alerts are configured but not active yet. Send START from this operator WhatsApp number to the business WhatsApp number to activate alerts.",
+                                  "Las alertas de WhatsApp están configuradas, pero aún no están activas. Envía START desde este número de WhatsApp del operador al número de WhatsApp de la empresa para activarlas.",
+                                )}
                               </div>
                             )}
                             {row.key === "whatsapp" && pref.enabled && status === "active" && (
                               <p className="mt-2 text-[12px] text-[#137333]">
-                                WhatsApp alerts are active.
+                                {tenantText(
+                                  "WhatsApp alerts are active.",
+                                  "Las alertas de WhatsApp están activas.",
+                                )}
                               </p>
                             )}
                             {row.key === "whatsapp" && pref.enabled && status === "not_configured" && (
                               <p className="mt-2 text-[12px] text-[#5f6368]">
-                                Add a WhatsApp number above to activate alerts.
+                                {tenantText(
+                                  "Add a WhatsApp number above to activate alerts.",
+                                  "Añade arriba un número de WhatsApp para activar las alertas.",
+                                )}
                               </p>
                             )}
                             {row.key === "whatsapp" && pref.enabled && status === "saved_only" && (
                               <p className="mt-2 text-[12px] text-[#5f6368]">
-                                Settings are saved but alerts are not sending yet. Contact your Unboks team if this does not update soon.
+                                {tenantText(
+                                  "Settings are saved but alerts are not sending yet. Contact your Unboks team if this does not update soon.",
+                                  "La configuración está guardada, pero las alertas aún no se envían. Contacta con el equipo de Unboks si no se actualiza pronto.",
+                                )}
                               </p>
                             )}
                             {row.key === "whatsapp" && pref.enabled && status === "provider_not_configured" && (
                               <p className="mt-2 text-[12px] text-[#5f6368]">
-                                Your Unboks team still needs to finish setup. No action needed on your end.
+                                {tenantText(
+                                  "Your Unboks team still needs to finish setup. No action needed on your end.",
+                                  "El equipo de Unboks debe terminar la configuración. No tienes que hacer nada.",
+                                )}
                               </p>
                             )}
                             {row.key === "whatsapp" && pref.enabled && status === "failed" && (
                               <p className="mt-2 text-[12px] text-[#a50e0e]">
-                                Recent delivery failed. Check the number or contact your Unboks team.
+                                {tenantText(
+                                  "Recent delivery failed. Check the number or contact your Unboks team.",
+                                  "El último envío ha fallado. Comprueba el número o contacta con el equipo de Unboks.",
+                                )}
                               </p>
                             )}
                           </div>
@@ -1899,12 +2188,51 @@ export default function Settings() {
                     )}
                   </div>
                   <div className="mt-4 space-y-1 rounded-lg border border-[#e6e8eb] bg-[#fbfbfd] px-3 py-3 text-[11px] text-[#5f6368]">
-                    <p className="font-medium text-[#3c4043]">Status guide</p>
-                    <p><span className="font-medium text-[#137333]">Active</span>: alerts are being sent.</p>
-                    <p><span className="font-medium text-[#7a5a00]">Pending activation</span>: configured and saved. Send START from your WhatsApp to the business number to finish activating.</p>
-                    <p><span className="font-medium text-[#5f6368]">Not yet sending</span>: settings are saved but no delivery yet. Contact your Unboks team if this persists.</p>
-                    <p><span className="font-medium text-[#7a5a00]">Not yet connected</span>: your Unboks team still needs to finish setup. No action needed on your end.</p>
-                    <p><span className="font-medium text-[#a50e0e]">Failed</span>: recent delivery failed. Check the number or contact your Unboks team.</p>
+                    <p className="font-medium text-[#3c4043]">
+                      {tenantText("Status guide", "Guía de estados")}
+                    </p>
+                    <p>
+                      <span className="font-medium text-[#137333]">
+                        {tenantText("Active", "Activo")}
+                      </span>
+                      : {tenantText("alerts are being sent.", "las alertas se están enviando.")}
+                    </p>
+                    <p>
+                      <span className="font-medium text-[#7a5a00]">
+                        {tenantText("Pending activation", "Activación pendiente")}
+                      </span>
+                      : {tenantText(
+                        "configured and saved. Send START from your WhatsApp to the business number to finish activating.",
+                        "configurado y guardado. Envía START desde tu WhatsApp al número de la empresa para terminar la activación.",
+                      )}
+                    </p>
+                    <p>
+                      <span className="font-medium text-[#5f6368]">
+                        {tenantText("Not yet sending", "Aún no envía")}
+                      </span>
+                      : {tenantText(
+                        "settings are saved but no delivery yet. Contact your Unboks team if this persists.",
+                        "la configuración está guardada, pero todavía no hay envíos. Contacta con el equipo de Unboks si continúa así.",
+                      )}
+                    </p>
+                    <p>
+                      <span className="font-medium text-[#7a5a00]">
+                        {tenantText("Not yet connected", "Aún no conectado")}
+                      </span>
+                      : {tenantText(
+                        "your Unboks team still needs to finish setup. No action needed on your end.",
+                        "el equipo de Unboks debe terminar la configuración. No tienes que hacer nada.",
+                      )}
+                    </p>
+                    <p>
+                      <span className="font-medium text-[#a50e0e]">
+                        {tenantText("Failed", "Fallido")}
+                      </span>
+                      : {tenantText(
+                        "recent delivery failed. Check the number or contact your Unboks team.",
+                        "el último envío ha fallado. Comprueba el número o contacta con el equipo de Unboks.",
+                      )}
+                    </p>
                   </div>
                 </Card>
               )}
@@ -1943,8 +2271,11 @@ export default function Settings() {
               {active === "agent-personality" && (
                 <div className="space-y-5">
                   <Card
-                    title="AI Agent identity"
-                    description="Choose the name your AI assistant uses with customers."
+                    title={tenantText("AI Agent identity", "Identidad del agente de IA")}
+                    description={tenantText(
+                      "Choose the name your AI assistant uses with customers.",
+                      "Elige el nombre que usa el asistente de IA con los pacientes.",
+                    )}
                     footer={
                       <>
                         <SavedFlash visible={agentNameSaved} />
@@ -1956,23 +2287,30 @@ export default function Settings() {
                             try {
                               await saveAgentName(normalizedAgentNameDraft);
                               setAgentNameSaved(true);
-                              toast.success("AI Agent name saved.");
+                              toast.success(
+                                tenantText("AI Agent name saved.", "Nombre del agente de IA guardado."),
+                              );
                             } catch (err) {
                               const msg = err instanceof Error && err.message
                                 ? err.message
-                                : "Could not save AI Agent name.";
+                                : tenantText(
+                                    "Could not save AI Agent name.",
+                                    "No se pudo guardar el nombre del agente de IA.",
+                                  );
                               toast.error(msg);
                             }
                           }}
                         >
-                          Save agent name
+                          {tenantText("Save agent name", "Guardar nombre del agente")}
                         </PrimaryButton>
                       </>
                     }
                   >
                     <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                       <label className="block">
-                        <FieldLabel>AI Agent name</FieldLabel>
+                        <FieldLabel>
+                          {tenantText("AI Agent name", "Nombre del agente de IA")}
+                        </FieldLabel>
                         <TextInput
                           type="text"
                           maxLength={40}
@@ -1985,13 +2323,13 @@ export default function Settings() {
                           }}
                         />
                         <p className="mt-1 text-[12px] text-[#5f6368]">
-                          Current active name:{" "}
+                          {tenantText("Current active name", "Nombre activo")}:{" "}
                           <span className="font-medium text-[#202124]">
                             {agentNameSettings.effectiveName || "Marina"}
                           </span>
                           {agentNameOverrideActive && (
                             <span className="ml-2 rounded-full bg-[#fef7e0] px-2 py-0.5 text-[11px] font-medium text-[#7a5a00]">
-                              Admin override active
+                              {tenantText("Admin override active", "Anulación administrativa activa")}
                             </span>
                           )}
                         </p>
@@ -2000,33 +2338,59 @@ export default function Settings() {
                         )}
                       </label>
                       <div className="text-[12px] leading-5 text-[#5f6368] sm:max-w-[360px]">
-                        <p>This is the display name, not the model/provider name.</p>
-                        <p>Your assistant will not claim to be human or a licensed professional.</p>
+                        <p>
+                          {tenantText(
+                            "This is the display name, not the model/provider name.",
+                            "Este es el nombre visible, no el nombre del modelo o proveedor.",
+                          )}
+                        </p>
+                        <p>
+                          {tenantText(
+                            "Your assistant will not claim to be human or a licensed professional.",
+                            "El asistente no afirmará ser una persona ni un profesional sanitario colegiado.",
+                          )}
+                        </p>
                         {agentNameOverrideActive && (
                           <p className="mt-2 rounded-lg bg-[#fef7e0] px-3 py-2 text-[#7a5a00]">
-                            Admin override active. Contact Unboks to change this name.
+                            {tenantText(
+                              "Admin override active. Contact Unboks to change this name.",
+                              "Hay una anulación administrativa activa. Contacta con Unboks para cambiar este nombre.",
+                            )}
                           </p>
                         )}
                       </div>
                     </div>
                   </Card>
                   <Card
-                    title="Response timing"
-                    description="Wait briefly for quick follow-up messages, then reply once with the full context."
+                    title={tenantText("Response timing", "Tiempo de respuesta")}
+                    description={tenantText(
+                      "Wait briefly for quick follow-up messages, then reply once with the full context.",
+                      "Espera brevemente por si llegan varios mensajes seguidos y responde una sola vez con todo el contexto.",
+                    )}
                   >
                     {responseTimingLoading ? (
-                      <p className="text-[13px] text-[#5f6368]">Loading response timing…</p>
+                      <p className="text-[13px] text-[#5f6368]">
+                        {tenantText("Loading response timing…", "Cargando el tiempo de respuesta…")}
+                      </p>
                     ) : responseTimingError || !responseTiming || !responseTimingTenant ? (
-                      <p className="text-[13px] text-[#c5221f]">Could not load response timing.</p>
+                      <p className="text-[13px] text-[#c5221f]">
+                        {tenantText(
+                          "Could not load response timing.",
+                          "No se pudo cargar el tiempo de respuesta.",
+                        )}
+                      </p>
                     ) : (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between gap-4 rounded-xl border border-[#edf0f3] bg-[#fbfcfe] px-4 py-3">
                           <div>
                             <p className="text-[13px] font-medium text-[#202124]">
-                              Message batching
+                              {tenantText("Message batching", "Agrupación de mensajes")}
                             </p>
                             <p className="text-[12px] text-[#5f6368]">
-                              Marina waits for quick consecutive WhatsApp messages before replying.
+                              {tenantText(
+                                "Marina waits for quick consecutive WhatsApp messages before replying.",
+                                "Marina espera brevemente por si llegan varios mensajes seguidos de WhatsApp antes de responder.",
+                              )}
                             </p>
                           </div>
                           <Switch
@@ -2038,21 +2402,56 @@ export default function Settings() {
                                   ...responseTimingTenant,
                                   message_batching_enabled: checked,
                                 });
-                                toast.success("Response timing saved.");
+                                toast.success(
+                                  tenantText("Response timing saved.", "Tiempo de respuesta guardado."),
+                                );
                               } catch (err) {
-                                toast.error(err instanceof Error ? err.message : "Could not save response timing.");
+                                toast.error(
+                                  err instanceof Error
+                                    ? err.message
+                                    : tenantText(
+                                        "Could not save response timing.",
+                                        "No se pudo guardar el tiempo de respuesta.",
+                                      ),
+                                );
                               }
                             }}
-                            aria-label="Message batching enabled"
+                            aria-label={tenantText(
+                              "Message batching enabled",
+                              "Agrupación de mensajes activada",
+                            )}
                           />
                         </div>
                         <div>
-                          <FieldLabel>Timing mode</FieldLabel>
+                          <FieldLabel>
+                            {tenantText("Timing mode", "Modo de espera")}
+                          </FieldLabel>
                           <div className="mt-2 grid gap-2 sm:grid-cols-3">
                             {[
-                              { key: "preset", label: "Preset", help: "Fast, balanced, or patient." },
-                              { key: "custom", label: "Custom", help: "Choose exact seconds." },
-                              { key: "random", label: "Random", help: "Random wait each batch." },
+                              {
+                                key: "preset",
+                                label: tenantText("Preset", "Predefinido"),
+                                help: tenantText(
+                                  "Fast, balanced, or patient.",
+                                  "Rápido, equilibrado o pausado.",
+                                ),
+                              },
+                              {
+                                key: "custom",
+                                label: tenantText("Custom", "Personalizado"),
+                                help: tenantText(
+                                  "Choose exact seconds.",
+                                  "Elige los segundos exactos.",
+                                ),
+                              },
+                              {
+                                key: "random",
+                                label: tenantText("Random", "Aleatorio"),
+                                help: tenantText(
+                                  "Random wait each batch.",
+                                  "Espera aleatoria en cada grupo.",
+                                ),
+                              },
                             ].map((mode) => (
                               <button
                                 key={mode.key}
@@ -2077,9 +2476,18 @@ export default function Settings() {
                                         : {}),
                                     };
                                     await saveResponseTiming.mutateAsync(next);
-                                    toast.success("Response timing saved.");
+                                    toast.success(
+                                      tenantText("Response timing saved.", "Tiempo de respuesta guardado."),
+                                    );
                                   } catch (err) {
-                                    toast.error(err instanceof Error ? err.message : "Could not save response timing.");
+                                    toast.error(
+                                      err instanceof Error
+                                        ? err.message
+                                        : tenantText(
+                                            "Could not save response timing.",
+                                            "No se pudo guardar el tiempo de respuesta.",
+                                          ),
+                                    );
                                   }
                                 }}
                                 className={cn(
@@ -2099,7 +2507,7 @@ export default function Settings() {
 
                         {responseTimingMode === "preset" && (
                         <div>
-                          <FieldLabel>Reply speed</FieldLabel>
+                          <FieldLabel>{tenantText("Reply speed", "Velocidad de respuesta")}</FieldLabel>
                           <div className="mt-2 grid gap-2 sm:grid-cols-3">
                             {(responseTimingSettings?.presets ?? []).map((preset) => {
                               const selected = responseTimingTenant.preset === preset.key;
@@ -2116,9 +2524,18 @@ export default function Settings() {
                                         preset: preset.key,
                                         delay_seconds: preset.delay_seconds,
                                       });
-                                      toast.success("Response timing saved.");
+                                      toast.success(
+                                        tenantText("Response timing saved.", "Tiempo de respuesta guardado."),
+                                      );
                                     } catch (err) {
-                                      toast.error(err instanceof Error ? err.message : "Could not save response timing.");
+                                      toast.error(
+                                        err instanceof Error
+                                          ? err.message
+                                          : tenantText(
+                                              "Could not save response timing.",
+                                              "No se pudo guardar el tiempo de respuesta.",
+                                            ),
+                                      );
                                     }
                                   }}
                                   className={cn(
@@ -2129,9 +2546,20 @@ export default function Settings() {
                                     (saveResponseTiming.isPending || responseTimingOverrideActive) && "cursor-not-allowed opacity-60",
                                   )}
                                 >
-                                  <span className="block font-medium">{preset.label}</span>
+                                  <span className="block font-medium">
+                                    {isSpainSpanishTenant()
+                                      ? preset.key === "fast"
+                                        ? "Rápido"
+                                        : preset.key === "patient"
+                                          ? "Pausado"
+                                          : preset.key === "balanced"
+                                            ? "Equilibrado"
+                                            : preset.label
+                                      : preset.label}
+                                  </span>
                                   <span className="text-[12px] text-[#5f6368]">
-                                    Waits about {preset.delay_seconds} seconds.
+                                    {tenantText("Waits about", "Espera unos")}{" "}
+                                    {preset.delay_seconds} {tenantText("seconds.", "segundos.")}
                                   </span>
                                 </button>
                               );
@@ -2142,7 +2570,9 @@ export default function Settings() {
 
                         {responseTimingMode === "custom" && (
                           <label className="block">
-                            <FieldLabel>Custom wait in seconds</FieldLabel>
+                            <FieldLabel>
+                              {tenantText("Custom wait in seconds", "Espera personalizada en segundos")}
+                            </FieldLabel>
                             <input
                               type="number"
                               min={5}
@@ -2160,24 +2590,48 @@ export default function Settings() {
                                     delay_seconds: value,
                                     max_wait_seconds: value,
                                   });
-                                  toast.success("Response timing saved.");
+                                  toast.success(
+                                    tenantText("Response timing saved.", "Tiempo de respuesta guardado."),
+                                  );
                                 } catch (err) {
-                                  toast.error(err instanceof Error ? err.message : "Could not save response timing.");
+                                  toast.error(
+                                    err instanceof Error
+                                      ? err.message
+                                      : tenantText(
+                                          "Could not save response timing.",
+                                          "No se pudo guardar el tiempo de respuesta.",
+                                        ),
+                                  );
                                 }
                               }}
                               className="mt-2 h-11 w-full rounded-xl border border-[#dadce0] bg-white px-3 text-[14px] text-[#202124] outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-[#1a73e8]/15 disabled:opacity-60"
                             />
-                            <p className="mt-1 text-[12px] text-[#5f6368]">Allowed range: 5 to 300 seconds.</p>
+                            <p className="mt-1 text-[12px] text-[#5f6368]">
+                              {tenantText(
+                                "Allowed range: 5 to 300 seconds.",
+                                "Intervalo permitido: de 5 a 300 segundos.",
+                              )}
+                            </p>
                           </label>
                         )}
 
                         {responseTimingMode === "random" && (
                           <div className="rounded-xl border border-[#edf0f3] bg-[#fbfcfe] px-4 py-3">
-                            <FieldLabel>Random wait range</FieldLabel>
+                            <FieldLabel>
+                              {tenantText("Random wait range", "Intervalo de espera aleatoria")}
+                            </FieldLabel>
                             <div className="mt-3 grid gap-4 sm:grid-cols-2">
                               {[
-                                { key: "random_min_seconds", label: "Minimum", fallback: 5 },
-                                { key: "random_max_seconds", label: "Maximum", fallback: 25 },
+                                {
+                                  key: "random_min_seconds",
+                                  label: tenantText("Minimum", "Mínimo"),
+                                  fallback: 5,
+                                },
+                                {
+                                  key: "random_max_seconds",
+                                  label: tenantText("Maximum", "Máximo"),
+                                  fallback: 25,
+                                },
                               ].map((field) => {
                                 const value = Math.round(
                                   Number(responseTimingTenant[field.key as "random_min_seconds" | "random_max_seconds"] ?? field.fallback),
@@ -2209,9 +2663,18 @@ export default function Settings() {
                                         }
                                         try {
                                           await saveResponseTiming.mutateAsync(next);
-                                          toast.success("Response timing saved.");
+                                          toast.success(
+                                            tenantText("Response timing saved.", "Tiempo de respuesta guardado."),
+                                          );
                                         } catch (err) {
-                                          toast.error(err instanceof Error ? err.message : "Could not save response timing.");
+                                          toast.error(
+                                            err instanceof Error
+                                              ? err.message
+                                              : tenantText(
+                                                  "Could not save response timing.",
+                                                  "No se pudo guardar el tiempo de respuesta.",
+                                                ),
+                                          );
                                         }
                                       }}
                                       className="mt-2 w-full"
@@ -2221,24 +2684,36 @@ export default function Settings() {
                               })}
                             </div>
                             <p className="mt-2 text-[12px] text-[#5f6368]">
-                              Marina picks one random wait value inside this range for each new message batch.
+                              {tenantText(
+                                "Marina picks one random wait value inside this range for each new message batch.",
+                                "Marina elige un tiempo de espera aleatorio dentro de este intervalo para cada nuevo grupo de mensajes.",
+                              )}
                             </p>
                           </div>
                         )}
                         <div className="grid gap-3 text-[12px] text-[#5f6368] sm:grid-cols-2">
                           <p>
-                            Current active timing:{" "}
+                            {tenantText("Current active timing", "Tiempo activo actual")}:{" "}
                             <span className="font-medium text-[#202124]">
                               {!responseTiming.message_batching_enabled
-                                ? "Immediate replies"
+                                ? tenantText("Immediate replies", "Respuestas inmediatas")
                                 : responseTiming.mode === "random"
-                                  ? `Random ${responseTiming.random_min_seconds}s-${responseTiming.random_max_seconds}s`
-                                  : `${responseTiming.delay_seconds}s delay`}
+                                  ? tenantText(
+                                      `Random ${responseTiming.random_min_seconds}s-${responseTiming.random_max_seconds}s`,
+                                      `Aleatorio ${responseTiming.random_min_seconds}s-${responseTiming.random_max_seconds}s`,
+                                    )
+                                  : tenantText(
+                                      `${responseTiming.delay_seconds}s delay`,
+                                      `${responseTiming.delay_seconds}s de espera`,
+                                    )}
                             </span>
                           </p>
                           {responseTimingOverrideActive && (
                             <p className="rounded-lg bg-[#fef7e0] px-3 py-2 text-[#7a5a00]">
-                              Admin override active. Contact Unboks to change this timing.
+                              {tenantText(
+                                "Admin override active. Contact Unboks to change this timing.",
+                                "Hay una anulación administrativa activa. Contacta con Unboks para cambiar este tiempo.",
+                              )}
                             </p>
                           )}
                         </div>
@@ -2252,8 +2727,11 @@ export default function Settings() {
               {active === "preferences" && (
                 <div className="space-y-5">
                   <Card
-                    title="Email replies"
-                    description="Choose how email replies are opened from the inbox."
+                    title={tenantText("Email replies", "Respuestas por correo")}
+                    description={tenantText(
+                      "Choose how email replies are opened from the inbox.",
+                      "Elige cómo se abren las respuestas por correo desde la bandeja.",
+                    )}
                   >
                     <div className="flex flex-wrap gap-2">
                       {(["gmail", "mailto"] as const).map((option) => (
@@ -2268,7 +2746,9 @@ export default function Settings() {
                               : "border-[#dadce0] bg-white text-[#5f6368] hover:bg-[#f6f8fc]",
                           )}
                         >
-                          {option === "gmail" ? "Gmail" : "Default mail app"}
+                          {option === "gmail"
+                            ? "Gmail"
+                            : tenantText("Default mail app", "Aplicación de correo predeterminada")}
                         </button>
                       ))}
                     </div>
@@ -2313,14 +2793,20 @@ function WebsiteLinksCard({
   const addLink = async () => {
     const normalized = normalizeWebsiteUrl(url);
     if (!normalized) {
-      toast.error("Enter a valid website link.");
+      toast.error(tenantText(
+        "Enter a valid website link.",
+        "Introduce un enlace web válido.",
+      ));
       return;
     }
     const duplicate = links.some(
       (item) => websiteLinkUrlFromItem(item).replace(/\/$/, "") === normalized.replace(/\/$/, ""),
     );
     if (duplicate) {
-      toast.error("That link is already saved.");
+      toast.error(tenantText(
+        "That link is already saved.",
+        "Ese enlace ya está guardado.",
+      ));
       return;
     }
     setBusy(true);
@@ -2328,11 +2814,17 @@ function WebsiteLinksCard({
       await saveLinks([websiteLinkItem(label, normalized), ...links]);
       setUrl("");
       setLabel("");
-      toast.success("Website link saved as a Source of Truth reference.");
+      toast.success(tenantText(
+        "Website link saved as a Source of Truth reference.",
+        "Enlace web guardado como referencia de información.",
+      ));
     } catch (err) {
       const msg = err instanceof Error && err.message
         ? err.message
-        : "Could not save website link.";
+        : tenantText(
+            "Could not save website link.",
+            "No se ha podido guardar el enlace web.",
+          );
       toast.error(msg);
     } finally {
       setBusy(false);
@@ -2343,11 +2835,14 @@ function WebsiteLinksCard({
     setBusy(true);
     try {
       await saveLinks(links.filter((item) => item !== itemToRemove));
-      toast.success("Website link removed.");
+      toast.success(tenantText("Website link removed.", "Enlace web eliminado."));
     } catch (err) {
       const msg = err instanceof Error && err.message
         ? err.message
-        : "Could not remove website link.";
+        : tenantText(
+            "Could not remove website link.",
+            "No se ha podido eliminar el enlace web.",
+          );
       toast.error(msg);
     } finally {
       setBusy(false);
@@ -2356,13 +2851,18 @@ function WebsiteLinksCard({
 
   return (
     <Card
-      title="Website links"
-      description="Save important website pages as references. This does not crawl or import page content automatically."
+      title={tenantText("Website links", "Enlaces web")}
+      description={tenantText(
+        "Save important website pages as references. This does not crawl or import page content automatically.",
+        "Guarda páginas web importantes como referencias. El contenido de las páginas no se importa automáticamente.",
+      )}
     >
       <div className="space-y-4">
         <div className="rounded-lg border border-[#dfe6f7] bg-[#f8fbff] px-3 py-2 text-[12px] leading-relaxed text-[#3c4043]">
-          Links are stored as Source of Truth references so your team and Agent know where information lives.
-          To use exact website content in replies, add the important text as knowledge or upload a file.
+          {tenantText(
+            "Links are stored as Source of Truth references so your team and Agent know where information lives. To use exact website content in replies, add the important text as knowledge or upload a file.",
+            "Los enlaces se guardan como referencias para que el equipo y el agente sepan dónde encontrar la información. Para usar contenido exacto de una web en las respuestas, añade el texto importante como conocimiento o sube un archivo.",
+          )}
         </div>
 
         {loadError && (
@@ -2370,28 +2870,31 @@ function WebsiteLinksCard({
             role="alert"
             className="rounded-md border border-[#f6caca] bg-[#fce8e6] px-3 py-2 text-[12px] leading-relaxed text-[#a50e0e]"
           >
-            Could not load Source of Truth: {loadError.message}. Refresh to retry.
+            {tenantText(
+              "Could not load Source of Truth:",
+              "No se ha podido cargar la información de referencia:",
+            )} {loadError.message}. {tenantText("Refresh to retry.", "Actualiza para volver a intentarlo.")}
           </div>
         )}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1.3fr_auto] sm:items-end">
           <label className="block">
-            <FieldLabel>Label optional</FieldLabel>
+            <FieldLabel>{tenantText("Label optional", "Etiqueta opcional")}</FieldLabel>
             <TextInput
               type="text"
               value={label}
               disabled={disabled}
-              placeholder="Pricing, FAQ, menu"
+              placeholder={tenantText("Pricing, FAQ, menu", "Precios, preguntas frecuentes, servicios")}
               onChange={(e) => setLabel(e.target.value)}
             />
           </label>
           <label className="block">
-            <FieldLabel>Website page link</FieldLabel>
+            <FieldLabel>{tenantText("Website page link", "Enlace de la página web")}</FieldLabel>
             <TextInput
               type="url"
               value={url}
               disabled={disabled}
-              placeholder="https://example.com/pricing"
+              placeholder="https://ejemplo.es/precios"
               onChange={(e) => setUrl(e.target.value)}
             />
           </label>
@@ -2402,14 +2905,21 @@ function WebsiteLinksCard({
             className="inline-flex items-center justify-center gap-1.5"
           >
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-            Add link
+            {tenantText("Add link", "Añadir enlace")}
           </PrimaryButton>
         </div>
 
         {isLoading ? (
-          <p className="text-[13px] text-[#9aa0a6]">Loading website links...</p>
+          <p className="text-[13px] text-[#9aa0a6]">
+            {tenantText("Loading website links...", "Cargando enlaces web...")}
+          </p>
         ) : links.length === 0 ? (
-          <p className="text-[13px] text-[#9aa0a6]">No website references added yet.</p>
+          <p className="text-[13px] text-[#9aa0a6]">
+            {tenantText(
+              "No website references added yet.",
+              "Aún no se han añadido referencias web.",
+            )}
+          </p>
         ) : (
           <ul className="divide-y divide-[#eef0f3] rounded-xl border border-[#e8eaed]">
             {links.map((item) => {
@@ -2428,7 +2938,7 @@ function WebsiteLinksCard({
                     type="button"
                     disabled={disabled}
                     onClick={() => removeLink(item)}
-                    aria-label="Remove website link"
+                    aria-label={tenantText("Remove website link", "Eliminar enlace web")}
                     className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4] disabled:opacity-50"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -2461,7 +2971,7 @@ function YourInfoKnowledge({
   const [open, setOpen] = useState(false);
   const starterBlock: SotBlock = {
     id: "business-knowledge",
-    title: "Business knowledge",
+    title: tenantText("Business knowledge", "Conocimiento de la clínica"),
     content: "",
   };
   return (
@@ -2473,10 +2983,13 @@ function YourInfoKnowledge({
       >
         <div className="min-w-0">
           <h3 className="text-[14px] font-semibold text-[#202124]">
-            Your Agent knowledge
+            {tenantText("Your Agent knowledge", "Conocimiento del agente")}
           </h3>
           <p className="mt-0.5 text-[13px] text-[#5f6368]">
-            Review and update the business information your Agent uses when replying to customers.
+            {tenantText(
+              "Review and update the business information your Agent uses when replying to customers.",
+              "Revisa y actualiza la información de la clínica que utiliza el agente al responder a los pacientes.",
+            )}
           </p>
         </div>
         <ChevronDown
@@ -2498,29 +3011,41 @@ function YourInfoKnowledge({
               role="alert"
               className="rounded-md border border-[#f6caca] bg-[#fce8e6] px-3 py-2 text-[12px] leading-relaxed text-[#a50e0e]"
             >
-              Could not load your Agent knowledge from the server: {loadError.message}. Refresh to retry.
+              {tenantText(
+                "Could not load your Agent knowledge from the server:",
+                "No se ha podido cargar el conocimiento del agente desde el servidor:",
+              )} {loadError.message}. {tenantText("Refresh to retry.", "Actualiza para volver a intentarlo.")}
             </div>
           ) : (
             <div className="flex items-center gap-2 text-[12px] leading-relaxed text-[#5f6368]">
               {isSavingBlock ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-[#1a73e8]" />
-                  <span>Saving...</span>
+                  <span>{tenantText("Saving...", "Guardando...")}</span>
                 </>
               ) : (
-                <span>Synced across your workspace.</span>
+                <span>{tenantText(
+                  "Synced across your workspace.",
+                  "Sincronizado en todo el espacio de trabajo.",
+                )}</span>
               )}
             </div>
           )}
 
           {isLoading ? (
-            <p className="text-[13px] text-[#9aa0a6]">Loading your Agent knowledge...</p>
+            <p className="text-[13px] text-[#9aa0a6]">
+              {tenantText(
+                "Loading your Agent knowledge...",
+                "Cargando el conocimiento del agente...",
+              )}
+            </p>
           ) : blocks.length === 0 ? (
             <>
               <div className="rounded-xl border border-[#e8eaed] bg-[#f8fafd] px-4 py-3 text-[13px] leading-relaxed text-[#5f6368]">
-                Add the facts your Agent should use: services, products,
-                prices, locations, policies, FAQs, and rules. These details are
-                used in live replies after saving.
+                {tenantText(
+                  "Add the facts your Agent should use: services, products, prices, locations, policies, FAQs, and rules. These details are used in live replies after saving.",
+                  "Añade la información que debe utilizar el agente: servicios, precios, centros, políticas, preguntas frecuentes y normas. Estos datos se usan en las respuestas en directo después de guardarlos.",
+                )}
               </div>
               <SotKnowledgeCard
                 block={starterBlock}

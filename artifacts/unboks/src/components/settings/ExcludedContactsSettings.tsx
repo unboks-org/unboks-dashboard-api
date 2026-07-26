@@ -15,6 +15,7 @@ import type {
 } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
+import { getTenantUiConfig, tenantText } from "@/lib/tenant-ui";
 
 const LABELS = [
   "Owner",
@@ -36,6 +37,26 @@ const CHANNELS = [
   { value: "facebook", label: "Facebook" },
 ] as const;
 
+function contactLabel(label: (typeof LABELS)[number]): string {
+  return label === "Owner"
+    ? tenantText(label, "Propietario")
+    : label === "Staff"
+      ? tenantText(label, "Personal")
+      : label === "Supplier"
+        ? tenantText(label, "Proveedor")
+        : label === "Private"
+          ? tenantText(label, "Privado")
+          : label === "Family"
+            ? tenantText(label, "Familia")
+            : label === "Lawyer / Accountant"
+              ? tenantText(label, "Abogado / asesor")
+              : label === "Test Contact"
+                ? tenantText(label, "Contacto de prueba")
+                : label === "Other"
+                  ? tenantText(label, "Otro")
+                  : label;
+}
+
 const EMPTY_FORM: IgnoredContactPayload = {
   name: "",
   phone: "",
@@ -56,7 +77,7 @@ function formatDate(iso: string): string {
   if (!iso) return "-";
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) return iso;
-  return new Date(ms).toLocaleString(undefined, {
+  return new Date(ms).toLocaleString(getTenantUiConfig().dateLocale, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -110,12 +131,21 @@ export function ExcludedContactsSettings() {
     try {
       await addContact.mutateAsync(form);
       setForm(EMPTY_FORM);
-      toast.success("Contact added to Ignore List", {
-        description: "Inbound messages from this contact will be ignored before Marina or escalations run.",
+      toast.success(tenantText("Contact added to Ignore List", "Contacto añadido a la lista de exclusión"), {
+        description: tenantText(
+          "Inbound messages from this contact will be ignored before Marina or escalations run.",
+          "Los mensajes entrantes de este contacto se ignorarán antes de que actúe Marina o se cree un seguimiento.",
+        ),
       });
     } catch (err) {
-      toast.error("Couldn't add contact", {
-        description: errorMessage(err, "Please check the phone, email, or sender id."),
+      toast.error(tenantText("Couldn't add contact", "No se pudo añadir el contacto"), {
+        description: errorMessage(
+          err,
+          tenantText(
+            "Please check the phone, email, or sender id.",
+            "Comprueba el teléfono, el correo o el identificador del remitente.",
+          ),
+        ),
       });
     }
   };
@@ -130,12 +160,15 @@ export function ExcludedContactsSettings() {
           .filter((c) => c.selected && c.valid && !c.duplicate && !c.alreadyIgnored)
           .map(contactKey),
       ));
-      toast.success("Import preview ready");
+      toast.success(tenantText("Import preview ready", "Vista previa de importación lista"));
     } catch (err) {
       setPreview(null);
       setSelected(new Set());
-      toast.error("Couldn't preview import", {
-        description: errorMessage(err, "Upload a CSV or VCF file."),
+      toast.error(tenantText("Couldn't preview import", "No se pudo previsualizar la importación"), {
+        description: errorMessage(
+          err,
+          tenantText("Upload a CSV or VCF file.", "Sube un archivo CSV o VCF."),
+        ),
       });
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -157,12 +190,21 @@ export function ExcludedContactsSettings() {
       const result = await importContacts.mutateAsync(selectedPreviewContacts);
       setPreview(null);
       setSelected(new Set());
-      toast.success("Ignore List imported", {
-        description: `${result.added.length} contact${result.added.length === 1 ? "" : "s"} added.`,
+      toast.success(tenantText("Ignore List imported", "Lista de exclusión importada"), {
+        description: tenantText(
+          `${result.added.length} contact${result.added.length === 1 ? "" : "s"} added.`,
+          `${result.added.length} ${result.added.length === 1 ? "contacto añadido" : "contactos añadidos"}.`,
+        ),
       });
     } catch (err) {
-      toast.error("Couldn't import contacts", {
-        description: errorMessage(err, "Please review the selected contacts and try again."),
+      toast.error(tenantText("Couldn't import contacts", "No se pudieron importar los contactos"), {
+        description: errorMessage(
+          err,
+          tenantText(
+            "Please review the selected contacts and try again.",
+            "Revisa los contactos seleccionados e inténtalo de nuevo.",
+          ),
+        ),
       });
     }
   };
@@ -170,12 +212,18 @@ export function ExcludedContactsSettings() {
   const handleDelete = async (id: number) => {
     try {
       await deleteContact.mutateAsync(id);
-      toast.success("Contact removed", {
-        description: "Future messages from this contact can flow normally again.",
+      toast.success(tenantText("Contact removed", "Contacto eliminado"), {
+        description: tenantText(
+          "Future messages from this contact can flow normally again.",
+          "Los próximos mensajes de este contacto volverán a procesarse con normalidad.",
+        ),
       });
     } catch (err) {
-      toast.error("Couldn't remove contact", {
-        description: errorMessage(err, "Please try again."),
+      toast.error(tenantText("Couldn't remove contact", "No se pudo eliminar el contacto"), {
+        description: errorMessage(
+          err,
+          tenantText("Please try again.", "Inténtalo de nuevo."),
+        ),
       });
     }
   };
@@ -185,37 +233,45 @@ export function ExcludedContactsSettings() {
       <div className="border-b border-[#f1f3f4] px-5 py-4 sm:px-6">
         <h3 className="flex items-center gap-2 text-[14px] font-semibold text-[#202124]">
           <ShieldMinus className="h-4 w-4 text-[#5f6368]" aria-hidden="true" />
-          Excluded Contacts / Ignore List
+          {tenantText("Excluded Contacts / Ignore List", "Contactos excluidos")}
         </h3>
         <p className="mt-1 text-[13px] leading-5 text-[#5f6368]">
-          Add contacts that Unboks should completely ignore. Messages from these contacts will not receive Marina replies, will not create escalations, and will not trigger notifications.
+          {tenantText(
+            "Add contacts that Unboks should completely ignore. Messages from these contacts will not receive Marina replies, will not create escalations, and will not trigger notifications.",
+            "Añade contactos que Unboks debe ignorar por completo. Sus mensajes no recibirán respuestas de Marina, no crearán seguimientos ni enviarán notificaciones.",
+          )}
         </p>
       </div>
 
       <div className="space-y-6 px-5 py-4 sm:px-6">
         <div className="rounded-xl border border-[#edf0f3] bg-[#fbfcfe] px-4 py-3 text-[12px] leading-5 text-[#5f6368]">
-          This is a full ignore list. Matched messages stop before Marina, before LLM/API calls, before escalations, before drafts, and before notifications. Only an internal log event is kept.
+          {tenantText(
+            "This is a full ignore list. Matched messages stop before Marina, before LLM/API calls, before escalations, before drafts, and before notifications. Only an internal log event is kept.",
+            "Esta es una lista de exclusión completa. Los mensajes coincidentes se detienen antes de Marina, de las llamadas a la IA, de los seguimientos, de los borradores y de las notificaciones. Solo se conserva un registro interno.",
+          )}
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.8fr)]">
           <div className="rounded-xl border border-[#edf0f3] px-4 py-4">
-            <p className="text-[13px] font-semibold text-[#202124]">Add manually</p>
+            <p className="text-[13px] font-semibold text-[#202124]">
+              {tenantText("Add manually", "Añadir manualmente")}
+            </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <label className="text-[12px] font-medium text-[#3c4043]">
-                Name
+                {tenantText("Name", "Nombre")}
                 <input
                   value={form.name ?? ""}
                   onChange={(e) => updateForm("name", e.target.value)}
-                  placeholder="Optional display name"
+                  placeholder={tenantText("Optional display name", "Nombre visible opcional")}
                   className="mt-1.5 w-full rounded-lg border border-[#dadce0] px-3 py-2 text-[13px] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
                 />
               </label>
               <label className="text-[12px] font-medium text-[#3c4043]">
-                Phone number
+                {tenantText("Phone number", "Número de teléfono")}
                 <input
                   value={form.phone ?? ""}
                   onChange={(e) => updateForm("phone", e.target.value)}
-                  placeholder="+599..."
+                  placeholder="+34..."
                   className="mt-1.5 w-full rounded-lg border border-[#dadce0] px-3 py-2 text-[13px] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
                 />
               </label>
@@ -229,46 +285,56 @@ export function ExcludedContactsSettings() {
                 />
               </label>
               <label className="text-[12px] font-medium text-[#3c4043]">
-                Channel
+                {tenantText("Channel", "Canal")}
                 <select
                   value={form.channel ?? ""}
                   onChange={(e) => updateForm("channel", e.target.value)}
                   className="mt-1.5 w-full rounded-lg border border-[#dadce0] bg-white px-3 py-2 text-[13px] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
                 >
                   {CHANNELS.map((channel) => (
-                    <option key={channel.value} value={channel.value}>{channel.label}</option>
+                    <option key={channel.value} value={channel.value}>
+                      {channel.value
+                        ? channel.label
+                        : tenantText("Any / unknown", "Cualquiera / desconocido")}
+                    </option>
                   ))}
                 </select>
               </label>
               <label className="text-[12px] font-medium text-[#3c4043]">
-                Sender ID
+                {tenantText("Sender ID", "ID del remitente")}
                 <input
                   value={form.external_sender_id ?? ""}
                   onChange={(e) => updateForm("external_sender_id", e.target.value)}
-                  placeholder="Exact channel sender id"
+                  placeholder={tenantText(
+                    "Exact channel sender id",
+                    "Identificador exacto del remitente en el canal",
+                  )}
                   className="mt-1.5 w-full rounded-lg border border-[#dadce0] px-3 py-2 text-[13px] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
                 />
               </label>
               <label className="text-[12px] font-medium text-[#3c4043]">
-                Label
+                {tenantText("Label", "Etiqueta")}
                 <select
                   value={form.label ?? ""}
                   onChange={(e) => updateForm("label", e.target.value)}
                   className="mt-1.5 w-full rounded-lg border border-[#dadce0] bg-white px-3 py-2 text-[13px] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
                 >
-                  <option value="">Choose label</option>
+                  <option value="">{tenantText("Choose label", "Elegir etiqueta")}</option>
                   {LABELS.map((label) => (
-                    <option key={label} value={label}>{label}</option>
+                    <option key={label} value={label}>{contactLabel(label)}</option>
                   ))}
                 </select>
               </label>
               <label className="sm:col-span-2 text-[12px] font-medium text-[#3c4043]">
-                Note / reason
+                {tenantText("Note / reason", "Nota / motivo")}
                 <textarea
                   value={form.note ?? ""}
                   onChange={(e) => updateForm("note", e.target.value)}
                   rows={3}
-                  placeholder="Why this contact should be ignored"
+                  placeholder={tenantText(
+                    "Why this contact should be ignored",
+                    "Por qué debe ignorarse este contacto",
+                  )}
                   className="mt-1.5 w-full resize-y rounded-lg border border-[#dadce0] px-3 py-2 text-[13px] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
                 />
               </label>
@@ -281,18 +347,26 @@ export function ExcludedContactsSettings() {
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1a73e8] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#1765c1] disabled:cursor-not-allowed disabled:bg-[#c8d4e6]"
               >
                 {addContact.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
-                Add to Ignore List
+                {tenantText("Add to Ignore List", "Añadir a la lista de exclusión")}
               </button>
             </div>
           </div>
 
           <div className="rounded-xl border border-[#edf0f3] px-4 py-4">
-            <p className="text-[13px] font-semibold text-[#202124]">Import contacts</p>
+            <p className="text-[13px] font-semibold text-[#202124]">
+              {tenantText("Import contacts", "Importar contactos")}
+            </p>
             <p className="mt-1 text-[12px] leading-5 text-[#5f6368]">
-              Upload a CSV with name, phone, email, label, note, channel, or upload a VCF exported from your contacts.
+              {tenantText(
+                "Upload a CSV with name, phone, email, label, note, channel, or upload a VCF exported from your contacts.",
+                "Sube un CSV con nombre, teléfono, correo, etiqueta, nota y canal, o un VCF exportado desde tus contactos.",
+              )}
             </p>
             <div className="mt-3 rounded-lg border border-dashed border-[#cbd5e1] bg-[#f8fafc] px-3 py-3 text-[12px] text-[#5f6368]">
-              Phone contact import is not supported in this browser. Use VCF, CSV, or manual add.
+              {tenantText(
+                "Phone contact import is not supported in this browser. Use VCF, CSV, or manual add.",
+                "Este navegador no permite importar directamente los contactos del teléfono. Usa VCF, CSV o la entrada manual.",
+              )}
             </div>
             <input
               ref={fileInputRef}
@@ -308,7 +382,7 @@ export function ExcludedContactsSettings() {
               className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#dadce0] bg-white px-4 py-2 text-[13px] font-medium text-[#202124] hover:border-[#1a73e8] hover:text-[#1a73e8] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {validateImport.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <UploadCloud className="h-4 w-4" aria-hidden="true" />}
-              Upload CSV or VCF
+              {tenantText("Upload CSV or VCF", "Subir CSV o VCF")}
             </button>
           </div>
         </div>
@@ -317,9 +391,14 @@ export function ExcludedContactsSettings() {
           <div className="rounded-xl border border-[#edf0f3] px-4 py-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-[13px] font-semibold text-[#202124]">Import preview</p>
+                <p className="text-[13px] font-semibold text-[#202124]">
+                  {tenantText("Import preview", "Vista previa de importación")}
+                </p>
                 <p className="mt-1 text-[12px] text-[#5f6368]">
-                  Review contacts before saving. Deselect anything you do not want to add.
+                  {tenantText(
+                    "Review contacts before saving. Deselect anything you do not want to add.",
+                    "Revisa los contactos antes de guardar y desmarca los que no quieras añadir.",
+                  )}
                 </p>
               </div>
               <button
@@ -329,16 +408,16 @@ export function ExcludedContactsSettings() {
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1a73e8] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#1765c1] disabled:cursor-not-allowed disabled:bg-[#c8d4e6]"
               >
                 {importContacts.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
-                Save selected contacts
+                {tenantText("Save selected contacts", "Guardar contactos seleccionados")}
               </button>
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
-              <Stat label="Total" value={preview.summary.total} />
-              <Stat label="Valid" value={preview.summary.valid} />
-              <Stat label="Duplicates" value={preview.summary.duplicates} />
-              <Stat label="Invalid" value={preview.summary.invalid} />
-              <Stat label="Already ignored" value={preview.summary.alreadyIgnored} />
-              <Stat label="To add" value={selectedPreviewContacts.length} />
+              <Stat label={tenantText("Total", "Total")} value={preview.summary.total} />
+              <Stat label={tenantText("Valid", "Válidos")} value={preview.summary.valid} />
+              <Stat label={tenantText("Duplicates", "Duplicados")} value={preview.summary.duplicates} />
+              <Stat label={tenantText("Invalid", "No válidos")} value={preview.summary.invalid} />
+              <Stat label={tenantText("Already ignored", "Ya excluidos")} value={preview.summary.alreadyIgnored} />
+              <Stat label={tenantText("To add", "Para añadir")} value={selectedPreviewContacts.length} />
             </div>
             <ul className="mt-4 max-h-[360px] divide-y divide-[#f1f3f4] overflow-y-auto rounded-xl border border-[#edf0f3]">
               {preview.contacts.map((row) => {
@@ -355,9 +434,13 @@ export function ExcludedContactsSettings() {
                         className="mt-1 h-4 w-4 rounded border-[#cfd4dc] text-[#1a73e8] focus:ring-[#1a73e8]/30 disabled:opacity-40"
                       />
                       <span className="min-w-0">
-                        <span className="block text-[13px] font-medium text-[#202124]">{row.name || row.email || row.phone || "Unnamed contact"}</span>
+                        <span className="block text-[13px] font-medium text-[#202124]">
+                          {row.name || row.email || row.phone ||
+                            tenantText("Unnamed contact", "Contacto sin nombre")}
+                        </span>
                         <span className="mt-0.5 block break-words text-[12px] text-[#5f6368]">
-                          {[row.phone, row.email, row.channel, row.label].filter(Boolean).join(" · ") || "No contact details"}
+                          {[row.phone, row.email, row.channel, row.label].filter(Boolean).join(" · ") ||
+                            tenantText("No contact details", "Sin datos de contacto")}
                         </span>
                         {row.errors.length > 0 && (
                           <span className="mt-1 block text-[12px] text-[#b3261e]">{row.errors.join(" ")}</span>
@@ -370,7 +453,13 @@ export function ExcludedContactsSettings() {
                         canSelect ? "bg-[#e6f4ea] text-[#137333]" : "bg-[#fce8e6] text-[#a50e0e]",
                       )}
                     >
-                      {canSelect ? "Ready" : row.alreadyIgnored ? "Already ignored" : row.duplicate ? "Duplicate" : "Invalid"}
+                      {canSelect
+                        ? tenantText("Ready", "Listo")
+                        : row.alreadyIgnored
+                          ? tenantText("Already ignored", "Ya excluido")
+                          : row.duplicate
+                            ? tenantText("Duplicate", "Duplicado")
+                            : tenantText("Invalid", "No válido")}
                     </span>
                   </li>
                 );
@@ -380,21 +469,29 @@ export function ExcludedContactsSettings() {
         )}
 
         <div className="rounded-xl border border-[#edf0f3] px-4 py-4">
-          <p className="text-[13px] font-semibold text-[#202124]">Current Ignore List</p>
+          <p className="text-[13px] font-semibold text-[#202124]">
+            {tenantText("Current Ignore List", "Lista de exclusión actual")}
+          </p>
           {isLoading ? (
             <div className="mt-3 flex items-center gap-2 text-[13px] text-[#5f6368]">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              Loading excluded contacts...
+              {tenantText("Loading excluded contacts...", "Cargando contactos excluidos...")}
             </div>
           ) : isError ? (
             <p className="mt-3 text-[13px] text-[#c5221f]">
               {error instanceof Error && error.message
-                ? `Couldn't load excluded contacts: ${error.message}`
-                : "Couldn't load excluded contacts."}
+                ? tenantText(
+                    `Couldn't load excluded contacts: ${error.message}`,
+                    `No se pudieron cargar los contactos excluidos: ${error.message}`,
+                  )
+                : tenantText(
+                    "Couldn't load excluded contacts.",
+                    "No se pudieron cargar los contactos excluidos.",
+                  )}
             </p>
           ) : contacts.length === 0 ? (
             <p className="mt-3 text-[13px] text-[#5f6368]">
-              No contacts are excluded yet.
+              {tenantText("No contacts are excluded yet.", "Todavía no hay contactos excluidos.")}
             </p>
           ) : (
             <ul className="mt-3 divide-y divide-[#f1f3f4]">
@@ -404,13 +501,17 @@ export function ExcludedContactsSettings() {
                   <li key={contact.id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <p className="text-[13px] font-medium text-[#202124]">
-                        {contact.name || contact.email || contact.phone || contact.externalSenderId || "Excluded contact"}
+                        {contact.name || contact.email || contact.phone || contact.externalSenderId ||
+                          tenantText("Excluded contact", "Contacto excluido")}
                       </p>
                       <p className="mt-0.5 break-words text-[12px] text-[#5f6368]">
-                        {[contact.phone, contact.email, contact.channel, contact.externalSenderId, contact.label].filter(Boolean).join(" · ") || "No contact details"}
+                        {[contact.phone, contact.email, contact.channel, contact.externalSenderId, contact.label].filter(Boolean).join(" · ") ||
+                          tenantText("No contact details", "Sin datos de contacto")}
                       </p>
                       {contact.note && <p className="mt-1 text-[12px] text-[#5f6368]">{contact.note}</p>}
-                      <p className="mt-1 text-[11px] text-[#80868b]">Updated {formatDate(contact.updatedAt)}</p>
+                      <p className="mt-1 text-[11px] text-[#80868b]">
+                        {tenantText("Updated", "Actualizado el")} {formatDate(contact.updatedAt)}
+                      </p>
                     </div>
                     <button
                       type="button"
@@ -419,7 +520,7 @@ export function ExcludedContactsSettings() {
                       className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#f4c7c3] bg-white px-3 py-1.5 text-[12px] font-medium text-[#b3261e] hover:bg-[#fce8e6] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />}
-                      Remove
+                      {tenantText("Remove", "Eliminar")}
                     </button>
                   </li>
                 );

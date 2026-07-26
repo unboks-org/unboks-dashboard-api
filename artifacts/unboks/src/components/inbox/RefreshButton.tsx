@@ -35,6 +35,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { tenantText } from "@/lib/tenant-ui";
 
 const REFRESHED_KEYS: ReadonlyArray<readonly string[]> = [
   ["conversations"],
@@ -91,13 +92,16 @@ export function RefreshButton({ className }: { className?: string }) {
   // refresh happened in the last minute, then switch to a clock label.
   let statusText: string | null = null;
   if (errored) {
-    statusText = "Could not refresh. Try again.";
+    statusText = tenantText("Could not refresh. Try again.", "No se pudo actualizar. Inténtalo de nuevo.");
   } else if (lastUpdatedMs !== null) {
     const ageMs = Date.now() - lastUpdatedMs;
     statusText =
       ageMs < 60_000
-        ? "Updated just now"
-        : `Last updated ${formatClock(new Date(lastUpdatedMs))}`;
+        ? tenantText("Updated just now", "Actualizado ahora")
+        : tenantText(
+            `Last updated ${formatClock(new Date(lastUpdatedMs))}`,
+            `Última actualización: ${formatClock(new Date(lastUpdatedMs))}`,
+          );
   }
 
   return (
@@ -124,12 +128,15 @@ export function RefreshButton({ className }: { className?: string }) {
         transition={{ type: "spring", stiffness: 400, damping: 25 }}
         aria-label={
           isRefreshing
-            ? "Refreshing dashboard data"
+            ? tenantText("Refreshing dashboard data", "Actualizando los datos del panel")
             : statusText && !errored
-              ? `Refresh dashboard. ${statusText}.`
-              : "Refresh dashboard"
+              ? tenantText(
+                  `Refresh dashboard. ${statusText}.`,
+                  `Actualizar el panel. ${statusText}.`,
+                )
+              : tenantText("Refresh dashboard", "Actualizar el panel")
         }
-        title={statusText ?? "Refresh dashboard"}
+        title={statusText ?? tenantText("Refresh dashboard", "Actualizar el panel")}
         className={cn(
           "inline-flex items-center justify-center h-11 w-11 md:h-9 md:w-9 rounded-lg border border-[#e2e6ec] bg-white text-[#1f2937] transition-colors",
           "hover:border-[#1a73e8] hover:text-[#1a73e8]",

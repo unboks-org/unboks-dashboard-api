@@ -14,6 +14,7 @@ import {
   type EndOfRetentionAction,
   type AuditLogRetentionMonths,
 } from "@/hooks/use-data-retention-settings";
+import { getTenantUiConfig, tenantText } from "@/lib/tenant-ui";
 
 /**
  * Compact "Data retention & archive" settings section.
@@ -35,7 +36,29 @@ import {
 // Render a label string for a saved value by looking it up in the option
 // list. Falls back to a safe placeholder if the value isn't matched.
 function labelFor<T>(options: { value: T; label: string }[], value: T): string {
-  return options.find((o) => o.value === value)?.label ?? "Not set";
+  const label = options.find((o) => o.value === value)?.label ??
+    tenantText("Not set", "Sin definir");
+  return retentionOptionLabel(label);
+}
+
+function retentionOptionLabel(label: string): string {
+  if (/^\d+ days$/.test(label)) return tenantText(label, label.replace(" days", " días"));
+  if (/^\d+ months$/.test(label)) return tenantText(label, label.replace(" months", " meses"));
+  if (label === "5 years") return tenantText(label, "5 años");
+  if (label === "Never automatically archive") {
+    return tenantText(label, "No archivar nunca automáticamente");
+  }
+  if (label === "Never delete automatically") {
+    return tenantText(label, "No eliminar nunca automáticamente");
+  }
+  if (label === "Would anonymize customer data") {
+    return tenantText(label, "Anonimizaría los datos del paciente");
+  }
+  if (label === "Would delete messages permanently") {
+    return tenantText(label, "Eliminaría los mensajes de forma permanente");
+  }
+  if (label === "Would keep forever") return tenantText(label, "Los conservaría para siempre");
+  return label;
 }
 
 // Convert select string back to the typed value (handles "null" and numeric
@@ -164,44 +187,65 @@ export function DataRetentionSettings() {
     save(draft);
     setSavedFlash(true);
     window.setTimeout(() => setSavedFlash(false), 2200);
-    toast.success("Saved as a local preference only. No cleanup automation is active yet.");
+    toast.success(
+      tenantText(
+        "Saved as a local preference only. No cleanup automation is active yet.",
+        "Guardado solo como preferencia local. La limpieza automática aún no está activa.",
+      ),
+    );
   };
 
   // Honest status string: until the backend reports policyActive, we
   // display "Saved locally" so the operator never assumes automation is
   // running on their data.
   const policyLine = settings.status?.policyActive
-    ? "Active"
-    : "Not active yet (local preference only)";
+    ? tenantText("Active", "Activa")
+    : tenantText(
+        "Not active yet (local preference only)",
+        "Aún no está activa (solo preferencia local)",
+      );
   const nextCleanup = settings.status?.nextCleanupAt
-    ? new Date(settings.status.nextCleanupAt).toLocaleString()
-    : "Not scheduled yet";
+    ? new Date(settings.status.nextCleanupAt).toLocaleString(getTenantUiConfig().dateLocale)
+    : tenantText("Not scheduled yet", "Aún no programada");
 
   return (
     <section className="overflow-hidden rounded-2xl border border-[#e8eaed] bg-white">
       <header className="border-b border-[#f1f3f4] px-5 py-4 sm:px-6">
         <h3 className="text-[14px] font-semibold text-[#202124]">
-          Data retention preferences
+          {tenantText("Data retention preferences", "Preferencias de conservación de datos")}
         </h3>
         <p className="mt-0.5 text-[13px] text-[#5f6368]">
-          Prepare retention preferences for future automation.
+          {tenantText(
+            "Prepare retention preferences for future automation.",
+            "Prepara las preferencias de conservación para una futura automatización.",
+          )}
         </p>
       </header>
 
       <div>
         <div className="border-b border-[#f1f3f4] bg-[#fff8e1] px-4 py-3 text-[12.5px] leading-snug text-[#5f4b00] sm:px-5">
           <p className="font-semibold text-[#3c4043]">
-            Not active yet: automatic archive, delete, and anonymize jobs are
-            not running.
+            {tenantText(
+              "Not active yet: automatic archive, delete, and anonymize jobs are not running.",
+              "Aún no está activo: las tareas automáticas de archivo, eliminación y anonimización no se están ejecutando.",
+            )}
           </p>
           <p className="mt-1">
-            These choices are saved on this browser as preferences only. Manual
-            Inbox archive and unarchive actions still work normally.
+            {tenantText(
+              "These choices are saved on this browser as preferences only. Manual Inbox archive and unarchive actions still work normally.",
+              "Estas opciones solo se guardan como preferencias en este navegador. Las acciones manuales de archivar y desarchivar siguen funcionando con normalidad.",
+            )}
           </p>
         </div>
         <Row
-          label="Archive inactive conversations after"
-          helper="Future preference only. This does not automatically move conversations today."
+          label={tenantText(
+            "Archive inactive conversations after",
+            "Archivar conversaciones inactivas después de",
+          )}
+          helper={tenantText(
+            "Future preference only. This does not automatically move conversations today.",
+            "Solo es una preferencia futura. Hoy no mueve conversaciones automáticamente.",
+          )}
           htmlFor="dr-active-inbox"
           divider={false}
           control={
@@ -214,15 +258,21 @@ export function DataRetentionSettings() {
             >
               {ACTIVE_INBOX_OPTIONS.map((o) => (
                 <option key={String(o.value)} value={String(o.value)}>
-                  {o.label}
+                  {retentionOptionLabel(o.label)}
                 </option>
               ))}
             </Select>
           }
         />
         <Row
-          label="Keep archived conversations for"
-          helper="Future preference only. No automatic deletion currently runs."
+          label={tenantText(
+            "Keep archived conversations for",
+            "Conservar las conversaciones archivadas durante",
+          )}
+          helper={tenantText(
+            "Future preference only. No automatic deletion currently runs.",
+            "Solo es una preferencia futura. Actualmente no se ejecuta ninguna eliminación automática.",
+          )}
           htmlFor="dr-archive-retention"
           control={
             <Select
@@ -234,15 +284,18 @@ export function DataRetentionSettings() {
             >
               {ARCHIVE_RETENTION_OPTIONS.map((o) => (
                 <option key={String(o.value)} value={String(o.value)}>
-                  {o.label}
+                  {retentionOptionLabel(o.label)}
                 </option>
               ))}
             </Select>
           }
         />
         <Row
-          label="After the archive period"
-          helper="Future preference only. This does not delete or anonymize data yet."
+          label={tenantText("After the archive period", "Después del periodo de archivo")}
+          helper={tenantText(
+            "Future preference only. This does not delete or anonymize data yet.",
+            "Solo es una preferencia futura. Todavía no elimina ni anonimiza datos.",
+          )}
           htmlFor="dr-end-action"
           control={
             <Select
@@ -254,15 +307,21 @@ export function DataRetentionSettings() {
             >
               {END_OF_RETENTION_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
-                  {o.label}
+                  {retentionOptionLabel(o.label)}
                 </option>
               ))}
             </Select>
           }
         />
         <Row
-          label="Keep approved Agent answers after archive or delete"
-          helper="Future preference only. Approved answers are not changed by this control today."
+          label={tenantText(
+            "Keep approved Agent answers after archive or delete",
+            "Conservar las respuestas aprobadas del agente después de archivar o eliminar",
+          )}
+          helper={tenantText(
+            "Future preference only. Approved answers are not changed by this control today.",
+            "Solo es una preferencia futura. Este control no modifica hoy las respuestas aprobadas.",
+          )}
           htmlFor="dr-keep-learnings"
           control={
             <label
@@ -278,13 +337,23 @@ export function DataRetentionSettings() {
                 }
                 className="h-4 w-4 cursor-pointer rounded border-[#dadce0] text-[#1a73e8] focus:ring-[#1a73e8]"
               />
-              <span>{draft.keepApprovedLearnings ? "On" : "Off"}</span>
+              <span>
+                {draft.keepApprovedLearnings
+                  ? tenantText("On", "Activado")
+                  : tenantText("Off", "Desactivado")}
+              </span>
             </label>
           }
         />
         <Row
-          label="Keep escalation and audit logs for"
-          helper="Future preference only. Audit log cleanup is not automated yet."
+          label={tenantText(
+            "Keep escalation and audit logs for",
+            "Conservar los registros de seguimiento y auditoría durante",
+          )}
+          helper={tenantText(
+            "Future preference only. Audit log cleanup is not automated yet.",
+            "Solo es una preferencia futura. La limpieza de los registros de auditoría aún no está automatizada.",
+          )}
           htmlFor="dr-audit-logs"
           control={
             <Select
@@ -296,7 +365,7 @@ export function DataRetentionSettings() {
             >
               {AUDIT_LOG_OPTIONS.map((o) => (
                 <option key={String(o.value)} value={String(o.value)}>
-                  {o.label}
+                  {retentionOptionLabel(o.label)}
                 </option>
               ))}
             </Select>
@@ -306,24 +375,28 @@ export function DataRetentionSettings() {
         <div className="border-t border-[#f1f3f4] bg-[#fafbfc] px-4 py-3 text-[12px] text-[#5f6368] sm:px-5">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
             <span>
-              Retention policy:{" "}
+              {tenantText("Retention policy", "Política de conservación")}:{" "}
               <span className="font-medium text-[#3c4043]">{policyLine}</span>
             </span>
             <span>
-              Next cleanup:{" "}
+              {tenantText("Next cleanup", "Próxima limpieza")}:{" "}
               <span className="font-medium text-[#3c4043]">{nextCleanup}</span>
             </span>
           </div>
           <p className="mt-1.5">
-            Local preference only. No automatic retention, deletion, or
-            anonymization is enforced until backend automation is connected.
+            {tenantText(
+              "Local preference only. No automatic retention, deletion, or anonymization is enforced until backend automation is connected.",
+              "Solo es una preferencia local. No se aplica ninguna conservación, eliminación o anonimización automática hasta que se conecte la automatización del servidor.",
+            )}
           </p>
         </div>
       </div>
 
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[#f1f3f4] bg-[#fafbfc] px-4 py-3 sm:px-5">
         <div className="text-[12px] text-[#5f6368]">
-          <p className="font-medium text-[#3c4043]">Saved local preferences</p>
+          <p className="font-medium text-[#3c4043]">
+            {tenantText("Saved local preferences", "Preferencias locales guardadas")}
+          </p>
           <p>
             {labelFor(ACTIVE_INBOX_OPTIONS, settings.activeInboxArchiveAfterDays)} ·{" "}
             {labelFor(ARCHIVE_RETENTION_OPTIONS, settings.archiveRetentionMonths)} ·{" "}
@@ -338,7 +411,7 @@ export function DataRetentionSettings() {
             )}
             aria-live="polite"
           >
-            Saved
+            {tenantText("Saved", "Guardado")}
           </span>
           <button
             type="button"
@@ -349,7 +422,7 @@ export function DataRetentionSettings() {
               "hover:bg-[#1765c1] disabled:cursor-not-allowed disabled:bg-[#c8d4e6]",
             )}
           >
-            Save local preference
+            {tenantText("Save local preference", "Guardar preferencia local")}
           </button>
         </div>
       </footer>

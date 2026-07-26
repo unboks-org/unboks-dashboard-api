@@ -11,6 +11,7 @@ import {
   fetchFollowUps, updateFollowUpStatus, type FollowUp, type FollowUpStatus,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { getTenantUiConfig, tenantText } from "@/lib/tenant-ui";
 
 const statusLabels: Record<FollowUpStatus, string> = {
   collecting: "Missing information",
@@ -20,6 +21,16 @@ const statusLabels: Record<FollowUpStatus, string> = {
   appointment_coordinated: "Appointment coordinated",
   no_answer: "No answer",
   closed: "Closed",
+};
+
+const spanishStatusLabels: Record<FollowUpStatus, string> = {
+  collecting: "Faltan datos",
+  ready_to_call: "Listo para llamar",
+  needs_human_answer: "Necesita respuesta",
+  in_progress: "En seguimiento",
+  appointment_coordinated: "Cita coordinada",
+  no_answer: "No responde",
+  closed: "Cerrado",
 };
 
 const statusStyles: Record<FollowUpStatus, string> = {
@@ -41,6 +52,16 @@ const tabs: { label: string; statuses: FollowUpStatus[] }[] = [
   { label: "Completed", statuses: ["appointment_coordinated", "no_answer"] },
   { label: "Archived", statuses: ["closed"] },
 ];
+
+const spanishTabLabels = [
+  "Activos",
+  "Listos para llamar",
+  "Faltan datos",
+  "Necesitan respuesta",
+  "En seguimiento",
+  "Finalizados",
+  "Archivados",
+] as const;
 
 const FOLLOW_UPS_QUEUE_STATE_KEY = "unboks:follow-ups:queue-state";
 
@@ -82,7 +103,9 @@ function writeQueueState(state: FollowUpsQueueState): void {
 }
 
 function usablePhone(value: string): string {
-  if (!value || /^[a-f0-9]{24}$/i.test(value)) return "Phone not provided";
+  if (!value || /^[a-f0-9]{24}$/i.test(value)) {
+    return tenantText("Phone not provided", "Teléfono no facilitado");
+  }
   return value;
 }
 
@@ -92,8 +115,19 @@ function initials(item: FollowUp): string {
 
 function received(value: string): string {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Recently";
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(date);
+  if (Number.isNaN(date.getTime())) return tenantText("Recently", "Recientemente");
+  return new Intl.DateTimeFormat(getTenantUiConfig().dateLocale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function followUpStatusLabel(status: FollowUpStatus): string {
+  return tenantText(statusLabels[status], spanishStatusLabels[status]);
+}
+
+function followUpTabLabel(index: number): string {
+  return tenantText(tabs[index].label, spanishTabLabels[index]);
 }
 
 export default function FollowUps() {
@@ -149,9 +183,20 @@ export default function FollowUps() {
       updateFollowUpStatus(id, status),
     onSuccess: (_, variables) => {
       client.invalidateQueries({ queryKey: ["follow-ups"] });
-      toast.success(`Status changed to ${statusLabels[variables.status]}`);
+      toast.success(
+        tenantText(
+          `Status changed to ${statusLabels[variables.status]}`,
+          `Estado cambiado a ${spanishStatusLabels[variables.status]}`,
+        ),
+      );
     },
-    onError: () => toast.error("The follow-up could not be updated."),
+    onError: () =>
+      toast.error(
+        tenantText(
+          "The follow-up could not be updated.",
+          "No se pudo actualizar el seguimiento.",
+        ),
+      ),
   });
 
   const move = (status: FollowUpStatus) => {
@@ -163,9 +208,19 @@ export default function FollowUps() {
     try {
       const result = await query.refetch({ cancelRefetch: true });
       if (result.error) throw result.error;
-      toast.success(`Queue refreshed — ${result.data?.length ?? 0} follow-ups loaded.`);
+      toast.success(
+        tenantText(
+          `Queue refreshed — ${result.data?.length ?? 0} follow-ups loaded.`,
+          `Cola actualizada: ${result.data?.length ?? 0} seguimientos cargados.`,
+        ),
+      );
     } catch {
-      toast.error("The queue could not be refreshed. Please try again.");
+      toast.error(
+        tenantText(
+          "The queue could not be refreshed. Please try again.",
+          "No se pudo actualizar la cola. Inténtalo de nuevo.",
+        ),
+      );
     } finally {
       setIsManualRefreshing(false);
     }
@@ -186,27 +241,44 @@ export default function FollowUps() {
   return (
     <DashboardShell
       activeNav="followups"
-      pageTitle="Follow-ups"
-      pageSubtitle="Patient callback requests"
+      pageTitle={tenantText("Follow-ups", "Seguimientos")}
+      pageSubtitle={tenantText("Patient callback requests", "Solicitudes de llamada a pacientes")}
     >
       <div ref={pageRef} className="mx-auto w-full max-w-[1500px] space-y-6 p-4 md:p-7">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-primary">Patient care queue</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-900">Patient follow-ups</h1>
-            <p className="mt-1 text-sm text-slate-500">Review each request, call the patient, and record the outcome.</p>
+            <p className="text-sm font-semibold text-primary">
+              {tenantText("Patient care queue", "Cola de atención al paciente")}
+            </p>
+            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-900">
+              {tenantText("Patient follow-ups", "Seguimientos de pacientes")}
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              {tenantText(
+                "Review each request, call the patient, and record the outcome.",
+                "Revisa cada solicitud, llama al paciente y registra el resultado.",
+              )}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <span className="hidden items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 sm:flex">
-              <BellRing className="h-4 w-4" /> Live queue
+              <BellRing className="h-4 w-4" /> {tenantText("Live queue", "Cola en directo")}
             </span>
             <button
               type="button"
               onClick={refresh}
               disabled={isManualRefreshing}
               className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 hover:bg-slate-50 disabled:cursor-wait disabled:opacity-70"
-              aria-label={isManualRefreshing ? "Refreshing follow-ups" : "Refresh follow-ups"}
-              title={isManualRefreshing ? "Refreshing…" : "Refresh follow-ups"}
+              aria-label={
+                isManualRefreshing
+                  ? tenantText("Refreshing follow-ups", "Actualizando seguimientos")
+                  : tenantText("Refresh follow-ups", "Actualizar seguimientos")
+              }
+              title={
+                isManualRefreshing
+                  ? tenantText("Refreshing…", "Actualizando…")
+                  : tenantText("Refresh follow-ups", "Actualizar seguimientos")
+              }
             >
               <RefreshCw className={cn("h-4 w-4", isManualRefreshing && "animate-spin")} />
             </button>
@@ -229,7 +301,7 @@ export default function FollowUps() {
                   : "border-transparent text-slate-500 hover:text-slate-800",
               )}
             >
-              {tab.label}
+              {followUpTabLabel(index)}
               <span className={cn(
                 "ml-2 rounded-full px-2 py-0.5 text-xs",
                 activeTab === index ? "bg-primary/10" : "bg-slate-100",
@@ -239,12 +311,16 @@ export default function FollowUps() {
         </div>
 
         {query.isLoading ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-500">Loading follow-ups…</div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-500">
+            {tenantText("Loading follow-ups…", "Cargando seguimientos…")}
+          </div>
         ) : (
           <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,.8fr)]">
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="grid grid-cols-[minmax(0,1.25fr)_minmax(145px,.75fr)_120px] gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                <span>Patient and request</span><span>Callback</span><span>Status</span>
+                <span>{tenantText("Patient and request", "Paciente y solicitud")}</span>
+                <span>{tenantText("Callback", "Llamada")}</span>
+                <span>{tenantText("Status", "Estado")}</span>
               </div>
               {visible.map((item) => (
                 <button
@@ -261,26 +337,33 @@ export default function FollowUps() {
                     <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{initials(item)}</span>
                     <span className="min-w-0">
                       <span className="block truncate font-semibold text-slate-800">
-                        {[item.first_name, item.surnames].filter(Boolean).join(" ") || "Unknown patient"}
+                        {[item.first_name, item.surnames].filter(Boolean).join(" ") ||
+                          tenantText("Unknown patient", "Paciente desconocido")}
                       </span>
                       <span className="mt-1 block truncate text-xs text-slate-500">{usablePhone(item.phone_raw)}</span>
-                      <span className="mt-1 block truncate text-xs text-slate-400">{item.visit_reason || "No reason provided"}</span>
+                      <span className="mt-1 block truncate text-xs text-slate-400">
+                        {item.visit_reason || tenantText("No reason provided", "Sin motivo indicado")}
+                      </span>
                     </span>
                   </span>
                   <span className="pt-1 text-xs leading-5 text-slate-600">
                     <Clock3 className="mr-1 inline h-3.5 w-3.5 text-slate-400" />
-                    {item.callback_preference || "Not provided"}
-                    <span className="mt-1 block text-slate-400">{item.channel === "whatsapp" ? "WhatsApp" : item.channel}</span>
+                    {item.callback_preference || tenantText("Not provided", "No indicado")}
+                    <span className="mt-1 block text-slate-400">
+                      {item.channel === "whatsapp" ? "WhatsApp" : item.channel}
+                    </span>
                   </span>
                   <span className="pt-1">
                     <span className={cn("inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium leading-tight", statusStyles[item.status])}>
-                      {statusLabels[item.status]}
+                      {followUpStatusLabel(item.status)}
                     </span>
                   </span>
                 </button>
               ))}
               {!visible.length && (
-                <div className="px-6 py-16 text-center text-sm text-slate-500">No follow-ups in this view.</div>
+                <div className="px-6 py-16 text-center text-sm text-slate-500">
+                  {tenantText("No follow-ups in this view.", "No hay seguimientos en esta vista.")}
+                </div>
               )}
             </section>
 
@@ -289,50 +372,85 @@ export default function FollowUps() {
                 <div className="flex items-start justify-between border-b border-slate-100 p-5">
                   <div>
                     <span className={cn("inline-flex rounded-full border px-2.5 py-1 text-xs font-medium", statusStyles[selected.status])}>
-                      {statusLabels[selected.status]}
+                      {followUpStatusLabel(selected.status)}
                     </span>
                     <h2 className="mt-3 text-xl font-semibold text-slate-900">
-                      {[selected.first_name, selected.surnames].filter(Boolean).join(" ") || "Unknown patient"}
+                      {[selected.first_name, selected.surnames].filter(Boolean).join(" ") ||
+                        tenantText("Unknown patient", "Paciente desconocido")}
                     </h2>
-                    <p className="mt-1 text-sm text-slate-500">Received {received(selected.updated_at)}</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {tenantText("Received", "Recibido el")} {received(selected.updated_at)}
+                    </p>
                   </div>
                 </div>
 
                 <div className="space-y-5 p-5 text-sm">
                   <div className="space-y-3">
-                    <Detail icon={<Phone />} label="Phone" value={usablePhone(selected.phone_raw)} />
-                    <Detail icon={<CalendarClock />} label="Best callback time" value={selected.callback_preference || "Not provided"} />
-                    <Detail icon={<MessageCircle />} label="Channel" value={selected.channel === "whatsapp" ? "WhatsApp" : selected.channel} />
+                    <Detail
+                      icon={<Phone />}
+                      label={tenantText("Phone", "Teléfono")}
+                      value={usablePhone(selected.phone_raw)}
+                    />
+                    <Detail
+                      icon={<CalendarClock />}
+                      label={tenantText("Best callback time", "Mejor momento para llamar")}
+                      value={selected.callback_preference || tenantText("Not provided", "No indicado")}
+                    />
+                    <Detail
+                      icon={<MessageCircle />}
+                      label={tenantText("Channel", "Canal")}
+                      value={selected.channel === "whatsapp" ? "WhatsApp" : selected.channel}
+                    />
                   </div>
 
                   <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Reason for contact</p>
-                    <p className="leading-relaxed text-slate-700">{selected.visit_reason || "The patient has not provided a reason."}</p>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {tenantText("Reason for contact", "Motivo de la consulta")}
+                    </p>
+                    <p className="leading-relaxed text-slate-700">
+                      {selected.visit_reason ||
+                        tenantText(
+                          "The patient has not provided a reason.",
+                          "El paciente no ha indicado el motivo.",
+                        )}
+                    </p>
                   </div>
 
                   {selected.status === "needs_human_answer" && (
                     <div className="rounded-xl border border-violet-100 bg-violet-50 p-4">
-                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-violet-700">Client question</p>
-                      <p className="text-violet-900">Open the conversation to review and answer the pending question.</p>
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-violet-700">
+                        {tenantText("Client question", "Pregunta del paciente")}
+                      </p>
+                      <p className="text-violet-900">
+                        {tenantText(
+                          "Open the conversation to review and answer the pending question.",
+                          "Abre la conversación para revisar y responder la pregunta pendiente.",
+                        )}
+                      </p>
                     </div>
                   )}
 
                   <div className="border-t border-slate-100 pt-4">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</p>
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {tenantText("Actions", "Acciones")}
+                    </p>
                     <div className="grid grid-cols-2 gap-2">
-                      <Action label="Open conversation" icon={<MessageCircle />} onClick={openConversation} />
-                      <Action label="Assign to me" icon={<UserRound />} onClick={() => move("in_progress")} />
-                      <Action label="No answer" icon={<X />} onClick={() => move("no_answer")} />
-                      <Action label="Call in progress" icon={<Phone />} onClick={() => move("in_progress")} />
-                      <Action label="Appointment coordinated" icon={<Check />} onClick={() => move("appointment_coordinated")} primary />
-                      <Action label="Close follow-up" icon={<ChevronRight />} onClick={() => move("closed")} />
+                      <Action label={tenantText("Open conversation", "Abrir conversación")} icon={<MessageCircle />} onClick={openConversation} />
+                      <Action label={tenantText("Assign to me", "Asignarme")} icon={<UserRound />} onClick={() => move("in_progress")} />
+                      <Action label={tenantText("No answer", "No responde")} icon={<X />} onClick={() => move("no_answer")} />
+                      <Action label={tenantText("Call in progress", "Llamada en curso")} icon={<Phone />} onClick={() => move("in_progress")} />
+                      <Action label={tenantText("Appointment coordinated", "Cita coordinada")} icon={<Check />} onClick={() => move("appointment_coordinated")} primary />
+                      <Action label={tenantText("Close follow-up", "Cerrar seguimiento")} icon={<ChevronRight />} onClick={() => move("closed")} />
                     </div>
                   </div>
                 </div>
               </aside>
             ) : (
               <aside className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">
-                Select a follow-up to view its details.
+                {tenantText(
+                  "Select a follow-up to view its details.",
+                  "Selecciona un seguimiento para ver sus detalles.",
+                )}
               </aside>
             )}
           </div>

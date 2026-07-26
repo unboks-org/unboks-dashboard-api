@@ -30,6 +30,7 @@ import { useDashboardIdentity } from "@/hooks/use-dashboard-identity";
 import { ApiError } from "@/lib/error";
 import type { EscalationLearning, EscalationLearningStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { getTenantUiConfig, tenantText } from "@/lib/tenant-ui";
 
 const TABS: { id: EscalationLearningStatus; label: string }[] = [
   { id: "pending", label: "Pending" },
@@ -57,7 +58,7 @@ function formatWhen(iso?: string): string {
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) return iso;
   try {
-    return new Date(ms).toLocaleString(undefined, {
+    return new Date(ms).toLocaleString(getTenantUiConfig().dateLocale, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -72,27 +73,30 @@ function formatWhen(iso?: string): string {
 function getErrorMessage(err: unknown): string {
   if (err instanceof ApiError) return err.message;
   if (err instanceof Error) return err.message;
-  return "Something went wrong. Please try again.";
+  return tenantText(
+    "Something went wrong. Please try again.",
+    "Se ha producido un error. Inténtalo de nuevo.",
+  );
 }
 
 function StatusPill({ status }: { status: EscalationLearningStatus }) {
   if (status === "approved") {
     return (
       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10.5px] font-medium bg-[#e6f4ea] text-[#137333]">
-        Approved
+        {tenantText("Approved", "Aprobado")}
       </span>
     );
   }
   if (status === "dismissed") {
     return (
       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10.5px] font-medium bg-[#f1f3f4] text-[#5f6368]">
-        Not saved
+        {tenantText("Not saved", "No guardado")}
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10.5px] font-medium bg-[#fef7e0] text-[#5f3e00]">
-      Pending review
+      {tenantText("Pending review", "Pendiente de revisión")}
     </span>
   );
 }
@@ -118,7 +122,10 @@ function PendingRow({ entry }: { entry: EscalationLearning }) {
     if (busy) return;
     const trimmed = draft.trim();
     if (!trimmed) {
-      setRowError("The learning text cannot be empty.");
+      setRowError(tenantText(
+        "The learning text cannot be empty.",
+        "El texto del aprendizaje no puede estar vacío.",
+      ));
       return;
     }
     setRowError(null);
@@ -159,7 +166,7 @@ function PendingRow({ entry }: { entry: EscalationLearning }) {
       {entry.sourceQuestion && (
         <div className="mb-2">
           <p className="text-[10.5px] font-medium uppercase tracking-wide text-[#5f6368]">
-            Customer question
+            {tenantText("Customer question", "Pregunta del paciente")}
           </p>
           <p className="mt-0.5 text-[12.5px] text-[#3c4043] bg-[#fbfbfd] border border-[#e6e8eb] rounded-md px-2 py-1.5 whitespace-pre-wrap break-words leading-snug">
             {entry.sourceQuestion}
@@ -168,7 +175,7 @@ function PendingRow({ entry }: { entry: EscalationLearning }) {
       )}
 
       <p className="text-[10.5px] font-medium uppercase tracking-wide text-[#5f6368]">
-        Suggested learning
+        {tenantText("Suggested learning", "Aprendizaje sugerido")}
       </p>
       {editing ? (
         <textarea
@@ -178,7 +185,7 @@ function PendingRow({ entry }: { entry: EscalationLearning }) {
             if (rowError) setRowError(null);
           }}
           rows={4}
-          aria-label="Edit suggested learning"
+          aria-label={tenantText("Edit suggested learning", "Editar aprendizaje sugerido")}
           className="mt-0.5 w-full text-[13px] text-[#202124] border border-[#dadce0] rounded-md px-2.5 py-1.5 outline-none resize-y focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] transition-colors"
         />
       ) : (
@@ -204,7 +211,9 @@ function PendingRow({ entry }: { entry: EscalationLearning }) {
             "disabled:opacity-50 disabled:cursor-not-allowed",
           )}
         >
-          {dismiss.isPending ? "Dismissing..." : "Do not save"}
+          {dismiss.isPending
+            ? tenantText("Dismissing...", "Descartando...")
+            : tenantText("Do not save", "No guardar")}
         </button>
         {editing ? (
           <>
@@ -214,7 +223,7 @@ function PendingRow({ entry }: { entry: EscalationLearning }) {
               disabled={busy}
               className="inline-flex items-center justify-center rounded-full px-3 py-1 min-h-[32px] text-[12.5px] font-medium border border-[#dadce0] bg-white text-[#3c4043] hover:bg-[#f1f3f4] transition-colors disabled:opacity-50"
             >
-              Cancel
+              {tenantText("Cancel", "Cancelar")}
             </button>
             <button
               type="button"
@@ -223,7 +232,11 @@ function PendingRow({ entry }: { entry: EscalationLearning }) {
               className="inline-flex items-center justify-center gap-1 rounded-full px-3 py-1 min-h-[32px] text-[12.5px] font-semibold text-white bg-[#1a73e8] hover:bg-[#1765cc] transition-colors shadow-sm disabled:bg-[#c4c8cf] disabled:cursor-not-allowed"
             >
               <Check className="w-3 h-3" />
-              {edit.isPending ? "Saving..." : approve.isPending ? "Approving..." : "Save and approve"}
+              {edit.isPending
+                ? tenantText("Saving...", "Guardando...")
+                : approve.isPending
+                ? tenantText("Approving...", "Aprobando...")
+                : tenantText("Save and approve", "Guardar y aprobar")}
             </button>
           </>
         ) : (
@@ -235,7 +248,7 @@ function PendingRow({ entry }: { entry: EscalationLearning }) {
               className="inline-flex items-center justify-center gap-1 rounded-full px-3 py-1 min-h-[32px] text-[12.5px] font-medium border border-[#dadce0] bg-white text-[#3c4043] hover:bg-[#f1f3f4] transition-colors disabled:opacity-50"
             >
               <Pencil className="w-3 h-3" />
-              Edit first
+              {tenantText("Edit first", "Editar primero")}
             </button>
             <button
               type="button"
@@ -244,7 +257,9 @@ function PendingRow({ entry }: { entry: EscalationLearning }) {
               className="inline-flex items-center justify-center gap-1 rounded-full px-3 py-1 min-h-[32px] text-[12.5px] font-semibold text-white bg-[#1a73e8] hover:bg-[#1765cc] transition-colors shadow-sm disabled:bg-[#c4c8cf] disabled:cursor-not-allowed"
             >
               <Check className="w-3 h-3" />
-              {approve.isPending ? "Approving..." : "Approve learning"}
+              {approve.isPending
+                ? tenantText("Approving...", "Aprobando...")
+                : tenantText("Approve learning", "Aprobar aprendizaje")}
             </button>
           </>
         )}
@@ -273,11 +288,15 @@ function ReadOnlyRow({ entry }: { entry: EscalationLearning }) {
             {formatChannel(entry.channel)}
             {" · "}
             {entry.status === "approved"
-              ? `Approved ${formatWhen(entry.approvedAt ?? entry.updatedAt ?? entry.createdAt)}`
+              ? `${tenantText("Approved", "Aprobado")} ${formatWhen(entry.approvedAt ?? entry.updatedAt ?? entry.createdAt)}`
               : entry.status === "dismissed"
-              ? `Dismissed ${formatWhen(entry.dismissedAt ?? entry.updatedAt ?? entry.createdAt)}`
+              ? `${tenantText("Dismissed", "Descartado")} ${formatWhen(entry.dismissedAt ?? entry.updatedAt ?? entry.createdAt)}`
               : formatWhen(entry.createdAt)}
-            {entry.approvedBy ? ` · by ${entry.approvedBy}` : entry.operator ? ` · by ${entry.operator}` : ""}
+            {entry.approvedBy
+              ? ` · ${tenantText("by", "por")} ${entry.approvedBy}`
+              : entry.operator
+              ? ` · ${tenantText("by", "por")} ${entry.operator}`
+              : ""}
           </span>
         </div>
       </div>
@@ -285,7 +304,7 @@ function ReadOnlyRow({ entry }: { entry: EscalationLearning }) {
       {entry.sourceQuestion && (
         <div className="mb-2">
           <p className="text-[10.5px] font-medium uppercase tracking-wide text-[#5f6368]">
-            Customer question
+            {tenantText("Customer question", "Pregunta del paciente")}
           </p>
           <p className={cn(
             "mt-0.5 text-[12.5px] border rounded-md px-2 py-1.5 whitespace-pre-wrap break-words leading-snug",
@@ -299,7 +318,9 @@ function ReadOnlyRow({ entry }: { entry: EscalationLearning }) {
       )}
 
       <p className="text-[10.5px] font-medium uppercase tracking-wide text-[#5f6368]">
-        {entry.status === "approved" ? "Learning text" : "Suggested learning"}
+        {entry.status === "approved"
+          ? tenantText("Learning text", "Texto del aprendizaje")
+          : tenantText("Suggested learning", "Aprendizaje sugerido")}
       </p>
       <p className={cn(
         "mt-0.5 text-[13px] whitespace-pre-wrap break-words leading-snug",
@@ -345,9 +366,14 @@ function AgentLearningPrefsCard() {
       <header className="px-4 sm:px-5 pt-4 pb-3 border-b border-[#e8eaed]">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="text-[15px] font-semibold text-[#1f2937]">Behavior</h3>
+            <h3 className="text-[15px] font-semibold text-[#1f2937]">
+              {tenantText("Behavior", "Comportamiento")}
+            </h3>
             <p className="mt-0.5 text-[12.5px] text-[#5f6368] leading-snug">
-              Control how Unboks learns from operator replies. This setting only affects when pending learnings are created. Nothing is added to your Agent without your approval.
+              {tenantText(
+                "Control how Unboks learns from operator replies. This setting only affects when pending learnings are created. Nothing is added to your Agent without your approval.",
+                "Controla cómo aprende Unboks de las respuestas del equipo. Este ajuste solo determina cuándo se crean aprendizajes pendientes. No se añade nada al agente sin tu aprobación.",
+              )}
             </p>
           </div>
           <SaveStatusBadge
@@ -365,20 +391,29 @@ function AgentLearningPrefsCard() {
             role="alert"
             className="text-[12.5px] text-[#5f1414] bg-[#fce8e6] border border-[#f6c6c2] rounded-md px-2.5 py-2"
           >
-            Could not load behaviour settings: {getErrorMessage(error)}
+            {tenantText(
+              "Could not load behaviour settings:",
+              "No se han podido cargar los ajustes de comportamiento:",
+            )} {getErrorMessage(error)}
           </p>
         )}
         <ToggleRow
           id="create-pending-learning-from-operator-replies"
-          title="Create pending learning from operator replies"
-          description="When on, operator replies are saved as pending learnings for review. They are not used by the Agent until approved."
+          title={tenantText(
+            "Create pending learning from operator replies",
+            "Crear aprendizajes pendientes a partir de las respuestas del equipo",
+          )}
+          description={tenantText(
+            "When on, operator replies are saved as pending learnings for review. They are not used by the Agent until approved.",
+            "Cuando está activado, las respuestas del equipo se guardan como aprendizajes pendientes de revisión. El agente no los utiliza hasta que se aprueban.",
+          )}
           checked={value.createPendingLearningFromOperatorReplies}
           disabled={togglesDisabled}
           onChange={(next) => update({ createPendingLearningFromOperatorReplies: next })}
         />
         {mutation.isError && (
           <p role="alert" className="text-[12.5px] text-[#5f1414] bg-[#fce8e6] border border-[#f6c6c2] rounded-md px-2.5 py-2">
-            Could not save: {getErrorMessage(mutation.error)}
+            {tenantText("Could not save:", "No se ha podido guardar:")} {getErrorMessage(mutation.error)}
           </p>
         )}
       </div>
@@ -421,7 +456,7 @@ function SaveStatusBadge({ isSaving, isError, isSyncing, lastSavedAt }: SaveStat
     return (
       <span className="inline-flex items-center gap-1.5 text-[12px] text-[#5f6368] flex-shrink-0">
         <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
-        Saving
+        {tenantText("Saving", "Guardando")}
       </span>
     );
   }
@@ -429,7 +464,7 @@ function SaveStatusBadge({ isSaving, isError, isSyncing, lastSavedAt }: SaveStat
     return (
       <span className="inline-flex items-center gap-1.5 text-[12px] text-[#5f1414] flex-shrink-0" role="status">
         <X className="w-3 h-3" aria-hidden="true" />
-        Sync failed
+        {tenantText("Sync failed", "Error de sincronización")}
       </span>
     );
   }
@@ -437,7 +472,7 @@ function SaveStatusBadge({ isSaving, isError, isSyncing, lastSavedAt }: SaveStat
     return (
       <span className="inline-flex items-center gap-1.5 text-[12px] text-[#1e7e34] flex-shrink-0" role="status">
         <Check className="w-3 h-3" aria-hidden="true" />
-        Saved
+        {tenantText("Saved", "Guardado")}
       </span>
     );
   }
@@ -445,7 +480,7 @@ function SaveStatusBadge({ isSaving, isError, isSyncing, lastSavedAt }: SaveStat
     return (
       <span className="inline-flex items-center gap-1.5 text-[12px] text-[#5f6368] flex-shrink-0">
         <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
-        Syncing
+        {tenantText("Syncing", "Sincronizando")}
       </span>
     );
   }
@@ -548,13 +583,18 @@ export function AgentLearningsList() {
             <Sparkles className="w-3.5 h-3.5" />
           </span>
           <div className="min-w-0">
-            <h3 className="text-[15px] font-semibold text-[#1f2937]">Agent learnings</h3>
+            <h3 className="text-[15px] font-semibold text-[#1f2937]">
+              {tenantText("Agent learnings", "Aprendizajes del agente")}
+            </h3>
             <p className="mt-0.5 text-[12.5px] text-[#5f6368] leading-snug">
-              Answers your team gave during escalations. Approved entries become part of your Agent's knowledge. Pending and dismissed entries are not used by the Agent.
+              {tenantText(
+                "Answers your team gave during escalations. Approved entries become part of your Agent's knowledge. Pending and dismissed entries are not used by the Agent.",
+                "Respuestas que dio tu equipo cuando fue necesaria su intervención. Las entradas aprobadas pasan a formar parte del conocimiento del agente. Las pendientes y descartadas no se utilizan.",
+              )}
             </p>
           </div>
         </div>
-        <div role="tablist" aria-label="Agent learning status" className="mt-3 inline-flex rounded-full border border-[#e6e8eb] bg-[#fbfbfd] p-0.5">
+        <div role="tablist" aria-label={tenantText("Agent learning status", "Estado de los aprendizajes del agente")} className="mt-3 inline-flex rounded-full border border-[#e6e8eb] bg-[#fbfbfd] p-0.5">
           {TABS.map((t) => {
             const active = t.id === tab;
             return (
@@ -571,7 +611,11 @@ export function AgentLearningsList() {
                     : "text-[#5f6368] hover:text-[#1f2937]",
                 )}
               >
-                {t.label}
+                {t.id === "pending"
+                  ? tenantText(t.label, "Pendientes")
+                  : t.id === "approved"
+                  ? tenantText(t.label, "Aprobados")
+                  : tenantText(t.label, "Descartados")}
               </button>
             );
           })}
@@ -582,7 +626,7 @@ export function AgentLearningsList() {
         {isLoading ? (
           <div className="flex items-center gap-2 text-[13px] text-[#5f6368]">
             <Loader2 className="w-4 h-4 animate-spin" />
-            Loading...
+            {tenantText("Loading...", "Cargando...")}
           </div>
         ) : isError ? (
           <div className="rounded-md border border-[#f6c6c2] bg-[#fce8e6] text-[#5f1414] text-[13px] px-3 py-2">
@@ -592,10 +636,13 @@ export function AgentLearningsList() {
         ) : entries.length === 0 ? (
           <p className="text-[13px] text-[#5f6368]">
             {tab === "pending"
-              ? "No suggestions waiting. New ones appear here after you reply to or resolve an escalation."
+              ? tenantText(
+                  "No suggestions waiting. New ones appear here after you reply to or resolve an escalation.",
+                  "No hay sugerencias pendientes. Las nuevas aparecerán aquí después de responder o resolver una solicitud.",
+                )
               : tab === "approved"
-              ? "No approved learnings yet."
-              : "No dismissed learnings."}
+              ? tenantText("No approved learnings yet.", "Aún no hay aprendizajes aprobados.")
+              : tenantText("No dismissed learnings.", "No hay aprendizajes descartados.")}
           </p>
         ) : (
           <>
@@ -612,8 +659,11 @@ export function AgentLearningsList() {
               <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
                 <p className="text-[12px] text-[#5f6368]">
                   {expanded
-                    ? `Showing all ${total}.`
-                    : `Showing ${COLLAPSED_LIMIT} of ${total}.`}
+                    ? tenantText(`Showing all ${total}.`, `Mostrando los ${total}.`)
+                    : tenantText(
+                        `Showing ${COLLAPSED_LIMIT} of ${total}.`,
+                        `Mostrando ${COLLAPSED_LIMIT} de ${total}.`,
+                      )}
                 </p>
                 <button
                   type="button"
@@ -621,7 +671,9 @@ export function AgentLearningsList() {
                   aria-expanded={expanded}
                   className="inline-flex items-center justify-center rounded-full px-3 py-1 min-h-[32px] text-[12.5px] font-medium border border-[#dadce0] bg-white text-[#1a73e8] hover:bg-[#f0f6ff] transition-colors"
                 >
-                  {expanded ? "Show less" : `See more (${overflow})`}
+                  {expanded
+                    ? tenantText("Show less", "Ver menos")
+                    : tenantText(`See more (${overflow})`, `Ver más (${overflow})`)}
                 </button>
               </div>
             )}

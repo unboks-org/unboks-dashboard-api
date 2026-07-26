@@ -25,6 +25,7 @@ import type {
   AIEditorContext,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { tenantText } from "@/lib/tenant-ui";
 
 const LANGUAGES: AIEditorLanguage[] = [
   "English",
@@ -51,6 +52,38 @@ const TABS: { value: AIEditorAction; label: string; Icon: typeof Sparkles }[] = 
 
 const NOT_CONNECTED_STATUSES = new Set([0, 404, 501, 503]);
 const NOT_CONNECTED_COPY = "Agent Editor will be connected by the Unboks team.";
+
+function languageLabel(language: AIEditorLanguage): string {
+  const spanishLabels: Partial<Record<AIEditorLanguage, string>> = {
+    English: "Inglés",
+    Dutch: "Neerlandés",
+    Spanish: "Español",
+    Papiamento: "Papiamento",
+    Swedish: "Sueco",
+    Portuguese: "Portugués",
+  };
+  return tenantText(language, spanishLabels[language] ?? language);
+}
+
+function editorTabLabel(action: AIEditorAction, fallback: string): string {
+  if (action === "translate") return tenantText(fallback, "Traducir");
+  if (action === "style") return tenantText(fallback, "Estilo");
+  return tenantText(fallback, "Corregir");
+}
+
+function editorStyleCopy(style: AIEditorStyle, fallbackLabel: string, fallbackHint: string) {
+  const spanish: Record<AIEditorStyle, { label: string; hint: string }> = {
+    professional: { label: "Profesional", hint: "Claro, pulido y profesional. Sin relleno." },
+    warmer: { label: "Más cercano", hint: "Más humano, atento y personal." },
+    shorter: { label: "Más breve", hint: "Menos palabras. Solo lo importante." },
+    friendlier: { label: "Más amable", hint: "Ligero, natural y accesible." },
+    direct: { label: "Más directo", hint: "Claro y conciso. Sin rodeos." },
+  };
+  return {
+    label: tenantText(fallbackLabel, spanish[style].label),
+    hint: tenantText(fallbackHint, spanish[style].hint),
+  };
+}
 
 interface AIEditorPanelProps {
   open: boolean;
@@ -126,7 +159,10 @@ export function AIEditorPanel({
           // a soft failure rather than wiping the preview area.
           const next = (res?.text ?? "").trim();
           if (!next) {
-            setErrorText("The editor returned an empty result. Try again.");
+            setErrorText(tenantText(
+              "The editor returned an empty result. Try again.",
+              "El editor ha devuelto un resultado vacío. Inténtalo de nuevo.",
+            ));
             return;
           }
           setEdited(stripEmDashes(next));
@@ -142,7 +178,10 @@ export function AIEditorPanel({
             setNotConnected(true);
             return;
           }
-          setErrorText(err.message || "Couldn't generate. Try again.");
+          setErrorText(err.message || tenantText(
+            "Couldn't generate. Try again.",
+            "No se ha podido generar. Inténtalo de nuevo.",
+          ));
         },
       },
     );
@@ -173,12 +212,14 @@ export function AIEditorPanel({
         {/* Header */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-[#f1f3f4]">
           <Sparkles className="w-4 h-4 text-[#1a73e8]" />
-          <h2 className="text-[14px] font-semibold text-[#202124] flex-1">Agent Editor</h2>
+          <h2 className="text-[14px] font-semibold text-[#202124] flex-1">
+            {tenantText("Agent Editor", "Editor del agente")}
+          </h2>
           <motion.button
             whileTap={{ scale: 0.9 }}
             type="button"
             onClick={onClose}
-            aria-label="Close Agent Editor"
+            aria-label={tenantText("Close Agent Editor", "Cerrar el editor del agente")}
             className="grid h-7 w-7 place-items-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4] transition-colors"
           >
             <X className="w-4 h-4" />
@@ -207,7 +248,7 @@ export function AIEditorPanel({
                 )}
               >
                 <Icon className="w-3.5 h-3.5" />
-                {label}
+                {editorTabLabel(value, label)}
               </button>
             );
           })}
@@ -219,7 +260,7 @@ export function AIEditorPanel({
           {tab === "translate" && (
             <div className="space-y-1.5">
               <label className="block text-[12px] font-medium text-[#5f6368]">
-                Target language
+                {tenantText("Target language", "Idioma de destino")}
               </label>
               <div className="flex flex-wrap gap-1.5">
                 {LANGUAGES.map((lang) => {
@@ -236,7 +277,7 @@ export function AIEditorPanel({
                           : "bg-white border-[#dadce0] text-[#5f6368] hover:bg-[#f6f8fc]",
                       )}
                     >
-                      {lang}
+                      {languageLabel(lang)}
                     </button>
                   );
                 })}
@@ -247,11 +288,12 @@ export function AIEditorPanel({
           {tab === "style" && (
             <div className="space-y-1.5">
               <label className="block text-[12px] font-medium text-[#5f6368]">
-                Tone and style
+                {tenantText("Tone and style", "Tono y estilo")}
               </label>
               <div className="grid grid-cols-2 gap-1.5">
                 {STYLES.map((s) => {
                   const selected = style === s.value;
+                  const copy = editorStyleCopy(s.value, s.label, s.hint);
                   return (
                     <button
                       key={s.value}
@@ -270,9 +312,9 @@ export function AIEditorPanel({
                           selected ? "text-[#1a73e8]" : "text-[#202124]",
                         )}
                       >
-                        {s.label}
+                        {copy.label}
                       </p>
-                      <p className="text-[11px] text-[#5f6368] mt-0.5">{s.hint}</p>
+                      <p className="text-[11px] text-[#5f6368] mt-0.5">{copy.hint}</p>
                     </button>
                   );
                 })}
@@ -282,7 +324,10 @@ export function AIEditorPanel({
 
           {tab === "fix" && (
             <p className="text-[12px] text-[#5f6368]">
-              Fix corrects spelling, grammar, and clarity while preserving meaning and tone.
+              {tenantText(
+                "Fix corrects spelling, grammar, and clarity while preserving meaning and tone.",
+                "La corrección mejora la ortografía, la gramática y la claridad, manteniendo el significado y el tono.",
+              )}
             </p>
           )}
 
@@ -294,7 +339,7 @@ export function AIEditorPanel({
               htmlFor="ai-editor-original"
               className="block text-[11px] uppercase tracking-wide text-[#9aa0a6] font-medium"
             >
-              Original (editable)
+              {tenantText("Original (editable)", "Original (editable)")}
             </label>
             <textarea
               id="ai-editor-original"
@@ -305,7 +350,10 @@ export function AIEditorPanel({
                 if (edited) setEdited(null);
                 if (errorText) setErrorText(null);
               }}
-              placeholder="Write something here, or in the composer first."
+              placeholder={tenantText(
+                "Write something here, or in the composer first.",
+                "Escribe algo aquí o primero en el cuadro de respuesta.",
+              )}
               disabled={ai.isPending}
               rows={3}
               className="block w-full resize-y rounded-md border border-[#e8eaed] bg-[#f8f9fa] px-3 py-2 text-[13px] text-[#202124] min-h-[60px] max-h-[200px] overflow-y-auto focus:outline-none focus:ring-2 focus:ring-[#1a73e8]/30 focus:border-[#1a73e8] disabled:opacity-60"
@@ -315,17 +363,20 @@ export function AIEditorPanel({
           {/* Result / status */}
           <div className="space-y-1">
             <p className="text-[11px] uppercase tracking-wide text-[#9aa0a6] font-medium">
-              Edited
+              {tenantText("Edited", "Editado")}
             </p>
             {ai.isPending && (
               <div className="rounded-md border border-[#e8eaed] bg-white px-3 py-3 flex items-center gap-2 text-[13px] text-[#5f6368] min-h-[60px]">
                 <Loader2 className="w-4 h-4 animate-spin text-[#1a73e8]" />
-                Working on it...
+                {tenantText("Working on it...", "Procesando...")}
               </div>
             )}
             {!ai.isPending && notConnected && (
               <div className="rounded-md border border-[#fde293] bg-[#fef7e0] px-3 py-3 text-[13px] text-[#5f3e00] min-h-[60px]">
-                {NOT_CONNECTED_COPY}
+                {tenantText(
+                  NOT_CONNECTED_COPY,
+                  "El equipo de Unboks habilitará el editor del agente.",
+                )}
               </div>
             )}
             {!ai.isPending && !notConnected && errorText && (
@@ -340,7 +391,10 @@ export function AIEditorPanel({
             )}
             {!ai.isPending && !notConnected && !errorText && !edited && (
               <div className="rounded-md border border-dashed border-[#dadce0] bg-white px-3 py-3 text-[13px] text-[#9aa0a6] min-h-[60px]">
-                Click Generate to see the edited version.
+                {tenantText(
+                  "Click Generate to see the edited version.",
+                  "Pulsa Generar para ver la versión editada.",
+                )}
               </div>
             )}
           </div>
@@ -355,7 +409,11 @@ export function AIEditorPanel({
             className="px-3 py-1.5 text-[13px] font-medium text-white bg-[#1a73e8] rounded-md hover:bg-[#1765cc] disabled:bg-[#dadce0] disabled:cursor-not-allowed inline-flex items-center gap-1.5"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            {ai.isPending ? "Generating..." : edited ? "Regenerate" : "Generate"}
+            {ai.isPending
+              ? tenantText("Generating...", "Generando...")
+              : edited
+              ? tenantText("Regenerate", "Volver a generar")
+              : tenantText("Generate", "Generar")}
           </button>
           <button
             type="button"
@@ -363,14 +421,14 @@ export function AIEditorPanel({
             disabled={!edited || ai.isPending}
             className="px-3 py-1.5 text-[13px] font-medium text-[#202124] bg-white border border-[#dadce0] rounded-md hover:bg-[#f6f8fc] disabled:text-[#9aa0a6] disabled:cursor-not-allowed"
           >
-            Apply
+            {tenantText("Apply", "Aplicar")}
           </button>
           <button
             type="button"
             onClick={onClose}
             className="ml-auto px-3 py-1.5 text-[13px] text-[#5f6368] hover:bg-[#f1f3f4] rounded-md"
           >
-            Cancel
+            {tenantText("Cancel", "Cancelar")}
           </button>
         </div>
       </div>
@@ -383,7 +441,7 @@ export function AIEditorPanel({
       className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-[#202124]/40 backdrop-blur-[2px]"
       role="dialog"
       aria-modal="true"
-      aria-label="Agent Editor"
+      aria-label={tenantText("Agent Editor", "Editor del agente")}
       onMouseDown={(e) => {
         // Click outside to close, but only on the backdrop itself.
         if (e.target === e.currentTarget) onClose();
