@@ -328,6 +328,7 @@ function EscalationModeToggle({
 interface ConversationDetailPaneProps {
   conversation: Conversation;
   onClose: () => void;
+  onBackToFollowUps?: () => void;
   /**
    * Email-only header actions. Wired through from Inbox so the same handlers
    * power both the row icons and the detail-pane buttons. When omitted (e.g.
@@ -361,6 +362,7 @@ interface ConversationDetailPaneProps {
 function ConversationDetailPane({
   conversation,
   onClose,
+  onBackToFollowUps,
   onEmailReply,
   onEmailForward,
   onEmailDelete,
@@ -599,22 +601,37 @@ function ConversationDetailPane({
       <div className="border-b border-border bg-card px-3 md:px-5 py-2.5 flex-shrink-0 z-10 shadow-sm">
         {/* Row 1 — identity + actions */}
         <div className="flex items-center gap-2 md:gap-3">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={onClose}
-            aria-label="Close conversation"
-            className="w-11 h-11 -ml-1 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground md:hidden flex-shrink-0"
-          >
-            <ArrowLeft className="w-[22px] h-[22px]" strokeWidth={1.5} />
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={onClose}
-            aria-label="Close conversation"
-            className="hidden md:flex w-8 h-8 items-center justify-center rounded-full hover:bg-muted text-muted-foreground flex-shrink-0"
-          >
-            <X className="w-[18px] h-[18px]" strokeWidth={2} />
-          </motion.button>
+          {onBackToFollowUps ? (
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              type="button"
+              onClick={onBackToFollowUps}
+              aria-label="Back to follow-ups"
+              className="inline-flex h-10 flex-shrink-0 items-center gap-2 rounded-lg bg-primary/10 px-2.5 text-[12px] font-semibold text-primary transition-colors hover:bg-primary/15 md:px-3"
+            >
+              <ArrowLeft className="h-[18px] w-[18px]" strokeWidth={1.8} />
+              <span className="hidden sm:inline">Back to follow-ups</span>
+            </motion.button>
+          ) : (
+            <>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={onClose}
+                aria-label="Close conversation"
+                className="w-11 h-11 -ml-1 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground md:hidden flex-shrink-0"
+              >
+                <ArrowLeft className="w-[22px] h-[22px]" strokeWidth={1.5} />
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={onClose}
+                aria-label="Close conversation"
+                className="hidden md:flex w-8 h-8 items-center justify-center rounded-full hover:bg-muted text-muted-foreground flex-shrink-0"
+              >
+                <X className="w-[18px] h-[18px]" strokeWidth={2} />
+              </motion.button>
+            </>
+          )}
           <div className="flex-1 min-w-0">
             <p className="text-[17px] md:text-[15px] font-semibold text-foreground truncate leading-tight">
               {conversation.sender}
@@ -1073,6 +1090,10 @@ function ConversationThreadBody({
 export default function Inbox() {
   const [location, navigate] = useLocation();
   const search = useSearch();
+  const returnToFollowUps = useMemo(
+    () => new URLSearchParams(search).get("from") === "follow-ups",
+    [search],
+  );
   const { isChannelVisible } = useIcpChannelVisibility();
   const [searchQuery, setSearchQueryState] = useState("");
   // activeNav is derived from the URL — that's how a refresh / crash
@@ -1714,6 +1735,7 @@ export default function Inbox() {
           <ConversationDetailPane
             conversation={selectedConv}
             onClose={() => setSelectedConv(null)}
+            onBackToFollowUps={returnToFollowUps ? () => navigate("/follow-ups") : undefined}
             onEmailReply={canDeleteChannel(selectedConv.channel) ? handleEmailReply : undefined}
             onEmailForward={canDeleteChannel(selectedConv.channel) ? handleEmailForward : undefined}
             onEmailDelete={canDeleteChannel(selectedConv.channel) ? handleEmailDelete : undefined}

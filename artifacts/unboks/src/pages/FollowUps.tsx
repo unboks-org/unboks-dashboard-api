@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
@@ -42,6 +42,45 @@ const tabs: { label: string; statuses: FollowUpStatus[] }[] = [
   { label: "Archived", statuses: ["closed"] },
 ];
 
+const FOLLOW_UPS_QUEUE_STATE_KEY = "unboks:follow-ups:queue-state";
+
+interface FollowUpsQueueState {
+  activeTab: number;
+  selectedId: number | null;
+  scrollTop: number;
+}
+
+function readQueueState(): FollowUpsQueueState | null {
+  try {
+    const stored = window.sessionStorage.getItem(FOLLOW_UPS_QUEUE_STATE_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as Partial<FollowUpsQueueState>;
+    if (
+      typeof parsed.activeTab !== "number" ||
+      parsed.activeTab < 0 ||
+      parsed.activeTab >= tabs.length ||
+      typeof parsed.scrollTop !== "number"
+    ) {
+      return null;
+    }
+    return {
+      activeTab: parsed.activeTab,
+      selectedId: typeof parsed.selectedId === "number" ? parsed.selectedId : null,
+      scrollTop: Math.max(0, parsed.scrollTop),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeQueueState(state: FollowUpsQueueState): void {
+  try {
+    window.sessionStorage.setItem(FOLLOW_UPS_QUEUE_STATE_KEY, JSON.stringify(state));
+  } catch {
+    // Queue restoration is a convenience; navigation still works if storage is unavailable.
+  }
+}
+
 function usablePhone(value: string): string {
   if (!value || /^[a-f0-9]{24}$/i.test(value)) return "Phone not provided";
   return value;
@@ -60,9 +99,12 @@ function received(value: string): string {
 export default function FollowUps() {
   const [, navigate] = useLocation();
   const client = useQueryClient();
-  const [activeTab, setActiveTab] = useState(0);
+  const initialQueueState = useRef(readQueueState()).current;
+  const pageRef = useRef<HTMLDivElement>(null);
+  const pendingScrollTopRef = useRef<number | null>(initialQueueState?.scrollTop ?? null);
+  const [activeTab, setActiveTab] = useState(initialQueueState?.activeTab ?? 0);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(initialQueueState?.selectedId ?? null);
   const query = useQuery({
     queryKey: ["follow-ups"],
     queryFn: () => fetchFollowUps(),
@@ -81,6 +123,26 @@ export default function FollowUps() {
       setSelectedId(visible[0].id);
     }
   }, [visible, selectedId]);
+
+  useEffect(() => {
+    if (query.isLoading || pendingScrollTopRef.current === null) return;
+    const scrollContainer = pageRef.current?.closest("main");
+    if (!(scrollContainer instanceof HTMLElement)) return;
+
+    const scrollTop = pendingScrollTopRef.current;
+    let innerFrame = 0;
+    const outerFrame = window.requestAnimationFrame(() => {
+      innerFrame = window.requestAnimationFrame(() => {
+        scrollContainer.scrollTop = scrollTop;
+        pendingScrollTopRef.current = null;
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(outerFrame);
+      if (innerFrame) window.cancelAnimationFrame(innerFrame);
+    };
+  }, [query.isLoading, visible.length]);
 
   const update = useMutation({
     mutationFn: ({ id, status }: { id: number; status: FollowUpStatus }) =>
@@ -110,6 +172,16 @@ export default function FollowUps() {
   };
   const count = (index: number) =>
     rows.filter((row) => tabs[index].statuses.includes(row.status)).length;
+  const openConversation = () => {
+    if (!selected) return;
+    const scrollContainer = pageRef.current?.closest("main");
+    writeQueueState({
+      activeTab,
+      selectedId: selected.id,
+      scrollTop: scrollContainer instanceof HTMLElement ? scrollContainer.scrollTop : 0,
+    });
+    navigate(`/?c=${encodeURIComponent(selected.conversation_id)}&from=follow-ups`);
+  };
 
   return (
     <DashboardShell
@@ -117,7 +189,7 @@ export default function FollowUps() {
       pageTitle="Follow-ups"
       pageSubtitle="Patient callback requests"
     >
-      <div className="mx-auto w-full max-w-[1500px] space-y-6 p-4 md:p-7">
+      <div ref={pageRef} className="mx-auto w-full max-w-[1500px] space-y-6 p-4 md:p-7">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-primary">Patient care queue</p>
@@ -145,7 +217,11 @@ export default function FollowUps() {
           {tabs.map((tab, index) => (
             <button
               key={tab.label}
-              onClick={() => setActiveTab(index)}
+              type="button"
+              onClick={() => {
+                setActiveTab(index);
+                setSelectedId(null);
+              }}
               className={cn(
                 "-mb-px whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium",
                 activeTab === index
@@ -173,7 +249,9 @@ export default function FollowUps() {
               {visible.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => navigate(`/?c=${encodeURIComponent(item.conversation_id)}`)}
+                  type="button"
+                  onClick={() => setSelectedId(item.id)}
+                  aria-pressed={selected?.id === item.id}
                   className={cn(
                     "grid min-h-[92px] w-full grid-cols-[minmax(0,1.25fr)_minmax(145px,.75fr)_120px] gap-4 border-b border-slate-100 px-5 py-4 text-left last:border-0 hover:bg-slate-50",
                     selected?.id === item.id && "bg-blue-50/70 hover:bg-blue-50/70",
@@ -242,7 +320,7 @@ export default function FollowUps() {
                   <div className="border-t border-slate-100 pt-4">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</p>
                     <div className="grid grid-cols-2 gap-2">
-                      <Action label="Open conversation" icon={<MessageCircle />} onClick={() => navigate(`/?c=${encodeURIComponent(selected.conversation_id)}`)} />
+                      <Action label="Open conversation" icon={<MessageCircle />} onClick={openConversation} />
                       <Action label="Assign to me" icon={<UserRound />} onClick={() => move("in_progress")} />
                       <Action label="No answer" icon={<X />} onClick={() => move("no_answer")} />
                       <Action label="Call in progress" icon={<Phone />} onClick={() => move("in_progress")} />
