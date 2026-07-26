@@ -33,12 +33,13 @@ const statusStyles: Record<FollowUpStatus, string> = {
 };
 
 const tabs: { label: string; statuses: FollowUpStatus[] }[] = [
-  { label: "All", statuses: ["collecting", "ready_to_call", "needs_human_answer", "in_progress", "appointment_coordinated", "no_answer", "closed"] },
+  { label: "Active", statuses: ["collecting", "ready_to_call", "needs_human_answer", "in_progress"] },
   { label: "Ready to call", statuses: ["ready_to_call"] },
   { label: "Missing information", statuses: ["collecting"] },
   { label: "Needs an answer", statuses: ["needs_human_answer"] },
   { label: "In progress", statuses: ["in_progress"] },
-  { label: "Completed", statuses: ["appointment_coordinated", "no_answer", "closed"] },
+  { label: "Completed", statuses: ["appointment_coordinated", "no_answer"] },
+  { label: "Archived", statuses: ["closed"] },
 ];
 
 function usablePhone(value: string): string {
@@ -59,7 +60,7 @@ function received(value: string): string {
 export default function FollowUps() {
   const [, navigate] = useLocation();
   const client = useQueryClient();
-  const [activeTab, setActiveTab] = useState(1);
+  const [activeTab, setActiveTab] = useState(0);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const query = useQuery({
     queryKey: ["follow-ups"],
