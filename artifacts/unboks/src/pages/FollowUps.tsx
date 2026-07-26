@@ -59,7 +59,7 @@ function received(value: string): string {
 export default function FollowUps() {
   const [, navigate] = useLocation();
   const client = useQueryClient();
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(1);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const query = useQuery({
     queryKey: ["follow-ups"],
