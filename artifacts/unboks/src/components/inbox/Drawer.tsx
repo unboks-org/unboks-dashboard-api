@@ -19,10 +19,12 @@ import {
   Send,
   MessageSquare,
   LogOut,
+  PhoneCall,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Channel } from "@/data/conversations";
 import { motion, AnimatePresence } from "framer-motion";
+import { getClientSlug } from "@/lib/tenant";
 
 const XIcon = ({ className, strokeWidth: _sw }: { className?: string; strokeWidth?: number }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
@@ -30,7 +32,7 @@ const XIcon = ({ className, strokeWidth: _sw }: { className?: string; strokeWidt
   </svg>
 );
 
-export type NavId = "inbox" | "escalations" | "bookings" | "images" | "settings" | "analytics" | "help" | `channel:${Channel}`;
+export type NavId = "inbox" | "escalations" | "bookings" | "followups" | "images" | "settings" | "analytics" | "help" | `channel:${Channel}`;
 
 interface DrawerProps {
   open: boolean;
@@ -69,10 +71,13 @@ export function Drawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  const PRIMARY: NavItem[] = [
-    { id: "escalations", icon: AlertCircle, label: "Escalations", count: escalationsCount },
-    { id: "inbox", icon: InboxIcon, label: "Inbox", count: inboxCount },
-  ];
+  const isDespertares = getClientSlug() === "consulta-despertares";
+  const PRIMARY: NavItem[] = isDespertares
+    ? [{ id: "inbox", icon: InboxIcon, label: "Conversations", count: inboxCount }]
+    : [
+        { id: "escalations", icon: AlertCircle, label: "Escalations", count: escalationsCount },
+        { id: "inbox", icon: InboxIcon, label: "Inbox", count: inboxCount },
+      ];
 
   const { isChannelVisible, bridgeUnavailable, bridgeUnavailableReason } =
     useIcpChannelVisibility();
@@ -94,13 +99,18 @@ export function Drawer({
     return isChannelVisible(ch as Parameters<typeof isChannelVisible>[0]);
   });
 
-  const WORKSPACE: NavItem[] = [
-    { id: "bookings", icon: Calendar, label: bookingsLabel, count: appointmentsCount },
-    { id: "images", icon: ImageIcon, label: "Images" },
-    { id: "analytics", icon: BarChart2, label: "Analytics" },
-    { id: "help", icon: BookOpen, label: "Help" },
-    { id: "settings", icon: SettingsIcon, label: "Settings" },
-  ];
+  const WORKSPACE: NavItem[] = isDespertares
+    ? [
+        { id: "followups", icon: PhoneCall, label: "Follow-ups" },
+        { id: "settings", icon: SettingsIcon, label: "Settings" },
+      ]
+    : [
+        { id: "bookings", icon: Calendar, label: bookingsLabel, count: appointmentsCount },
+        { id: "images", icon: ImageIcon, label: "Images" },
+        { id: "analytics", icon: BarChart2, label: "Analytics" },
+        { id: "help", icon: BookOpen, label: "Help" },
+        { id: "settings", icon: SettingsIcon, label: "Settings" },
+      ];
 
   const { data: profile } = useClientProfile();
 
@@ -116,8 +126,8 @@ export function Drawer({
           ))}
         </NavGroup>
 
-        <SectionHeader label="Channels" />
-        {bridgeUnavailable && (
+        {!isDespertares && <SectionHeader label="Channels" />}
+        {!isDespertares && bridgeUnavailable && (
           <div className="mx-1 mb-2 rounded-xl border border-[#f6d48f] bg-[#fff8e1] px-3 py-2 text-[12px] leading-5 text-[#7a5a00]">
             ICP channel sync unavailable. Showing all channels until it reconnects.
             {bridgeUnavailableReason ? (
@@ -125,11 +135,11 @@ export function Drawer({
             ) : null}
           </div>
         )}
-        <NavGroup>
+        {!isDespertares && <NavGroup>
           {CHANNELS.map((item) => (
             <NavRow key={item.id} item={item} active={active === item.id} onSelect={onSelect} />
           ))}
-        </NavGroup>
+        </NavGroup>}
 
         <SectionHeader label="Workspace" />
         <NavGroup>

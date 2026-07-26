@@ -17,7 +17,7 @@ export default function FollowUps() {
     onSuccess: () => client.invalidateQueries({ queryKey: ["follow-ups"] }),
   });
   const rows = query.data ?? [];
-  return <DashboardShell activeNav="bookings" pageTitle="Follow-ups" pageSubtitle="Patient callback requests" onNavSelect={() => {}}>
+  return <DashboardShell activeNav="followups" pageTitle="Follow-ups" pageSubtitle="Patient callback requests">
     <main className="mx-auto w-full max-w-6xl p-4 md:p-8">
       <div className="mb-6 flex items-center justify-between"><div><h1 className="text-2xl font-semibold">Follow-ups</h1><p className="text-sm text-muted-foreground">The team coordinates appointments by phone.</p></div><button className="rounded-lg border p-2" onClick={() => query.refetch()} aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></div>
       {query.isLoading ? <p className="text-muted-foreground">Loading follow-ups…</p> : rows.length === 0 ? <div className="rounded-xl border bg-card p-8 text-center text-muted-foreground">No patient follow-ups yet.</div> :
