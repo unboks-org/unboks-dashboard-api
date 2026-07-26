@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { useIcpChannelVisibility } from "@/hooks/use-icp-channel-visibility";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import { useClientProfile } from "@/hooks/use-client-profile";
-import type { ClientProfile } from "@/lib/api";
+import { useAgentStatus, useSetAgentStatus } from "@/hooks/use-agent-status";
+import type { AgentStatus, ClientProfile } from "@/lib/api";
 import {
   Inbox as InboxIcon,
   AlertCircle,
@@ -20,6 +21,9 @@ import {
   MessageSquare,
   LogOut,
   PhoneCall,
+  Pause,
+  Play,
+  LoaderCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Channel } from "@/data/conversations";
@@ -116,10 +120,22 @@ export function Drawer({
       ];
 
   const { data: profile } = useClientProfile();
+  const agentStatus = useAgentStatus();
+  const setAgentStatus = useSetAgentStatus();
 
   const content = (
     <div className="flex flex-col h-full bg-[#fbfbfd]">
-      <WorkspaceBlock profile={profile} />
+      <WorkspaceBlock
+        profile={profile}
+        agentStatus={agentStatus.data}
+        isAgentStatusLoading={agentStatus.isLoading}
+        isAgentStatusUpdating={setAgentStatus.isPending}
+        onToggleAgent={() => {
+          if (agentStatus.data?.available) {
+            setAgentStatus.mutate(!agentStatus.data.active);
+          }
+        }}
+      />
 
       <nav className="flex-1 overflow-y-auto px-3 pb-[calc(1rem+env(safe-area-inset-bottom))]
         [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -218,10 +234,21 @@ export function Drawer({
  * resolved yet); we render a neutral placeholder block at the same
  * dimensions so the sidebar doesn't reflow when the data arrives.
  */
-function WorkspaceBlock({ profile }: { profile: ClientProfile | undefined }) {
+function WorkspaceBlock({
+  profile,
+  agentStatus,
+  isAgentStatusLoading,
+  isAgentStatusUpdating,
+  onToggleAgent,
+}: {
+  profile: ClientProfile | undefined;
+  agentStatus: AgentStatus | undefined;
+  isAgentStatusLoading: boolean;
+  isAgentStatusUpdating: boolean;
+  onToggleAgent: () => void;
+}) {
   const name = profile?.name?.trim() || "";
   const slug = profile?.slug?.trim() || "";
-  const status = profile?.status ?? "unknown";
 
   // Initials for the square avatar tile. Take the first letter of each
   // whitespace-separated token (max 2) so "Pepe Test" → "PT" and "Acme"
@@ -254,32 +281,63 @@ function WorkspaceBlock({ profile }: { profile: ClientProfile | undefined }) {
           )}
         </div>
       </div>
-      <div className="mt-3">
-        <WorkspaceStatusBadge status={status} />
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <AgentStatusBadge
+          status={agentStatus}
+          loading={isAgentStatusLoading}
+        />
+        <button
+          type="button"
+          onClick={onToggleAgent}
+          disabled={
+            isAgentStatusLoading ||
+            isAgentStatusUpdating ||
+            !agentStatus?.available
+          }
+          className={cn(
+            "inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[11.5px] font-semibold transition-colors",
+            agentStatus?.active
+              ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
+              : "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100",
+            "disabled:cursor-not-allowed disabled:border-[#e6e8eb] disabled:bg-[#f5f6f7] disabled:text-[#9aa0a6]",
+          )}
+          aria-label={
+            agentStatus?.active ? "Pause agent" : "Start agent"
+          }
+        >
+          {isAgentStatusUpdating || isAgentStatusLoading ? (
+            <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+          ) : agentStatus?.active ? (
+            <Pause className="h-3.5 w-3.5" />
+          ) : (
+            <Play className="h-3.5 w-3.5" />
+          )}
+          {agentStatus?.active ? "Pause agent" : "Start agent"}
+        </button>
       </div>
     </div>
   );
 }
 
-function WorkspaceStatusBadge({ status }: { status: ClientProfile["status"] }) {
-  // Map each backend status to a calm visual treatment. Unknown must stay
-  // neutral: do not show a green "Connected" state unless the backend
-  // explicitly confirms an active tenant.
-  const spec: Record<
-    ClientProfile["status"],
-    { label: string; dot: string; text: string; pulse: boolean }
-  > = {
-    active: { label: "Active", dot: "#10b981", text: "#1f2937", pulse: true },
-    trial: { label: "Trial", dot: "#1a73e8", text: "#1f2937", pulse: true },
-    suspended: { label: "Suspended", dot: "#ef4444", text: "#1f2937", pulse: false },
-    unknown: { label: "Status unknown", dot: "#9aa0a6", text: "#5f6368", pulse: false },
-  };
-  const s = spec[status];
+function AgentStatusBadge({
+  status,
+  loading,
+}: {
+  status: AgentStatus | undefined;
+  loading: boolean;
+}) {
+  const s = loading
+    ? { label: "Checking agent", dot: "#9aa0a6", text: "#5f6368", pulse: false }
+    : !status?.available
+      ? { label: "Agent unavailable", dot: "#9aa0a6", text: "#5f6368", pulse: false }
+      : status.active
+        ? { label: "Agent active", dot: "#10b981", text: "#1f2937", pulse: true }
+        : { label: "Agent paused", dot: "#f59e0b", text: "#1f2937", pulse: false };
   return (
     <div
       className="inline-flex items-center gap-2 rounded-full border border-[#e6e8eb] bg-card px-2.5 py-1 text-[11.5px] font-medium shadow-sm"
       role="status"
-      aria-label={`Workspace status: ${s.label}`}
+      aria-label={s.label}
     >
       <span className="relative grid h-1.5 w-1.5 place-items-center">
         {s.pulse && (

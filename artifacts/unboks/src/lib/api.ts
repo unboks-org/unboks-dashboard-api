@@ -1596,6 +1596,31 @@ export interface ClientProfile {
   status: "active" | "trial" | "suspended" | "unknown";
 }
 
+export interface AgentStatus {
+  active: boolean;
+  status: "active" | "paused";
+  available: boolean;
+  source: string;
+  updatedAt: string | null;
+}
+
+export async function getAgentStatus(): Promise<AgentStatus> {
+  return apiFetch<AgentStatus>("/agent/status", {
+    cache: "no-store",
+    headers: {
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+    },
+  });
+}
+
+export async function setAgentStatus(active: boolean): Promise<AgentStatus> {
+  return apiFetch<AgentStatus>("/agent/status", {
+    method: "PUT",
+    body: JSON.stringify({ active }),
+  });
+}
+
 function prettifySlug(slug: string): string {
   if (!slug) return "";
   return slug
