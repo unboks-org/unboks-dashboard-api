@@ -3,6 +3,7 @@ import { Conversation } from "@/data/conversations";
 import { cn } from "@/lib/utils";
 import { CHANNEL_BADGE_COLORS } from "@/lib/channel-map";
 import { Star, Reply, Forward, Trash2, Archive, ArchiveRestore } from "lucide-react";
+import { getClientSlug } from "@/lib/tenant";
 
 // Muted, desaturated palette — premium SaaS feel.
 // Enough depth for white initials to remain legible (all clear ~3.5:1+),
@@ -79,6 +80,7 @@ export function MessageRow({
 }: MessageRowProps) {
   const [starred, setStarred] = useState(false);
   const color = avatarColor(conversation.sender);
+  const showClassificationTags = getClientSlug() !== "consulta-despertares";
 
   // Prefer the latest preview; fall back to subject if preview is missing so
   // the row never collapses to nothing.
@@ -240,11 +242,11 @@ export function MessageRow({
             never collide with the timestamp or action icons on line 1. */}
         <div className="mt-0.5 flex items-center justify-between gap-2 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
-            {(conversation.escalationMode === "order" || conversation.badgeType === "order" || conversation.orderStatus) && !dimmed ? (
+            {showClassificationTags && (conversation.escalationMode === "order" || conversation.badgeType === "order" || conversation.orderStatus) && !dimmed ? (
               <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 bg-[#e6f4ea] text-[#137333]">
                 ORDER
               </span>
-            ) : conversation.appointmentSignal && !dimmed ? (
+            ) : showClassificationTags && conversation.appointmentSignal && !dimmed ? (
               <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 bg-[#e8f0fe] text-[#174ea6]">
                 Appointment
               </span>
