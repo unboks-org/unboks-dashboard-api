@@ -15,6 +15,7 @@ const NotFound = lazy(() => import("@/pages/not-found"));
 const Inbox = lazy(() => import("@/pages/Inbox"));
 const Login = lazy(() => import("@/pages/Login"));
 const Bookings = lazy(() => import("@/pages/Bookings"));
+const FollowUps = lazy(() => import("@/pages/FollowUps"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Analytics = lazy(() => import("@/pages/Analytics"));
 const Help = lazy(() => import("@/pages/Help"));
@@ -307,6 +308,9 @@ function Router() {
           The id is decoded inside Bookings via `useDeepLink`. */}
       <Route path="/appointments/:id">
         <ProtectedRoute><Bookings /></ProtectedRoute>
+      </Route>
+      <Route path="/follow-ups">
+        <ProtectedRoute><FollowUps /></ProtectedRoute>
       </Route>
       {/* Deep links into Escalations. Both the bare /escalations
           surface (used for `?view=escalations` style links) and the

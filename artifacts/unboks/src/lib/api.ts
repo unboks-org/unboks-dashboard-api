@@ -339,6 +339,26 @@ export interface OrdersResponse {
   items: Appointment[];
 }
 
+export type FollowUpStatus = "collecting" | "ready_to_call" | "needs_human_answer" | "in_progress" | "appointment_coordinated" | "no_answer" | "closed";
+export interface FollowUp {
+  id: number; conversation_id: string; channel: string; first_name: string;
+  surnames: string; phone_raw: string; callback_preference: string;
+  visit_reason: string; status: FollowUpStatus; handoff_reason: string;
+  created_at: string; updated_at: string;
+}
+
+export async function fetchFollowUps(status?: FollowUpStatus): Promise<FollowUp[]> {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  const raw = await apiFetch<{ items?: FollowUp[]; followUps?: FollowUp[] }>(`/follow-ups${query}`);
+  return raw.items ?? raw.followUps ?? [];
+}
+
+export async function updateFollowUpStatus(id: number, status: FollowUpStatus): Promise<FollowUp> {
+  return apiFetch<FollowUp>(`/follow-ups/${id}/status`, {
+    method: "POST", body: JSON.stringify({ status }),
+  });
+}
+
 /**
  * Try to fetch appointments from the canonical backend endpoint. If the
  * endpoint isn't connected yet (404 / 501 / 503 / network), resolve to
