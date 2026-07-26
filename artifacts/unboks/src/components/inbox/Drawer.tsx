@@ -73,7 +73,10 @@ export function Drawer({
 
   const isDespertares = getClientSlug() === "consulta-despertares";
   const PRIMARY: NavItem[] = isDespertares
-    ? [{ id: "inbox", icon: InboxIcon, label: "Conversations", count: inboxCount }]
+    ? [
+        { id: "escalations", icon: AlertCircle, label: "Escalations", count: escalationsCount },
+        { id: "inbox", icon: InboxIcon, label: "Conversations", count: inboxCount },
+      ]
     : [
         { id: "escalations", icon: AlertCircle, label: "Escalations", count: escalationsCount },
         { id: "inbox", icon: InboxIcon, label: "Inbox", count: inboxCount },

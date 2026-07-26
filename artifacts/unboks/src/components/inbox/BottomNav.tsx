@@ -12,7 +12,7 @@ interface BottomNavProps {
 }
 
 function activeBottomId(active: NavId): NavId {
-  if (active === "bookings" || active === "followups" || active === "images" || active === "settings") return active;
+  if (active === "escalations" || active === "bookings" || active === "followups" || active === "images" || active === "settings") return active;
   return "inbox";
 }
 
@@ -27,6 +27,7 @@ export function BottomNav({
   const isDespertares = getClientSlug() === "consulta-despertares";
   const items = (isDespertares ? [
     { id: "inbox" as const, label: "Conversations", icon: Inbox },
+    { id: "escalations" as const, label: "Escalations", icon: PhoneCall },
     { id: "followups" as const, label: "Follow-ups", icon: PhoneCall },
     { id: "settings" as const, label: "Settings", icon: Settings },
   ] : [
