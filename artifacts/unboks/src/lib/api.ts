@@ -348,8 +348,19 @@ export interface FollowUp {
 }
 
 export async function fetchFollowUps(status?: FollowUpStatus): Promise<FollowUp[]> {
-  const query = status ? `?status=${encodeURIComponent(status)}` : "";
-  const raw = await apiFetch<{ items?: FollowUp[]; followUps?: FollowUp[] }>(`/follow-ups${query}`);
+  const params = new URLSearchParams();
+  if (status) params.set("status", status);
+  params.set("_refresh", Date.now().toString());
+  const raw = await apiFetch<{ items?: FollowUp[]; followUps?: FollowUp[] }>(
+    `/follow-ups?${params.toString()}`,
+    {
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+      },
+    },
+  );
   return raw.items ?? raw.followUps ?? [];
 }
 

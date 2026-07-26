@@ -61,6 +61,7 @@ export default function FollowUps() {
   const [, navigate] = useLocation();
   const client = useQueryClient();
   const [activeTab, setActiveTab] = useState(0);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const query = useQuery({
     queryKey: ["follow-ups"],
@@ -94,6 +95,19 @@ export default function FollowUps() {
   const move = (status: FollowUpStatus) => {
     if (selected) update.mutate({ id: selected.id, status });
   };
+  const refresh = async () => {
+    if (isManualRefreshing) return;
+    setIsManualRefreshing(true);
+    try {
+      const result = await query.refetch({ cancelRefetch: true });
+      if (result.error) throw result.error;
+      toast.success(`Queue refreshed — ${result.data?.length ?? 0} follow-ups loaded.`);
+    } catch {
+      toast.error("The queue could not be refreshed. Please try again.");
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  };
   const count = (index: number) =>
     rows.filter((row) => tabs[index].statuses.includes(row.status)).length;
 
@@ -115,11 +129,14 @@ export default function FollowUps() {
               <BellRing className="h-4 w-4" /> Live queue
             </span>
             <button
-              onClick={() => query.refetch()}
-              className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 hover:bg-slate-50"
-              aria-label="Refresh follow-ups"
+              type="button"
+              onClick={refresh}
+              disabled={isManualRefreshing}
+              className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 hover:bg-slate-50 disabled:cursor-wait disabled:opacity-70"
+              aria-label={isManualRefreshing ? "Refreshing follow-ups" : "Refresh follow-ups"}
+              title={isManualRefreshing ? "Refreshing…" : "Refresh follow-ups"}
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className={cn("h-4 w-4", isManualRefreshing && "animate-spin")} />
             </button>
           </div>
         </header>
