@@ -2145,8 +2145,11 @@ export async function replyToWhatsAppConversation(
   }
 
   return apiFetch<WhatsAppConversationReplyResponse>(
-    `/messages/conversations/${encodeConversationKey(key)}/whatsapp/reply`,
-    { method: "POST", body: JSON.stringify({ message: text }) },
+    "/messages/whatsapp/reply",
+    {
+      method: "POST",
+      body: JSON.stringify({ conversation_id: key, message: text }),
+    },
   );
 }
 
