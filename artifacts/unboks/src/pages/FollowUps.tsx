@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
-  BellRing, CalendarClock, Check, ChevronRight, Clock3, MessageCircle,
+  BellRing, CalendarClock, Check, ChevronRight, Clock3, Copy, MessageCircle,
   Phone, RefreshCw, UserRound, X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -125,6 +125,56 @@ function callbackPreference(value: string): string {
   return tenantText(value, spanish[value.trim().toLowerCase()] ?? value);
 }
 
+function provided(value?: string): string {
+  return value?.trim() || tenantText("Not provided", "No indicado");
+}
+
+function prospectName(item: FollowUp): string {
+  return [item.first_name, item.surnames].filter(Boolean).join(" ") ||
+    tenantText("Unknown patient", "Contacto sin identificar");
+}
+
+function appointmentPreference(item: FollowUp): string {
+  return provided(item.appointment_preference);
+}
+
+function sessionType(item: FollowUp): string {
+  return provided(item.session_type);
+}
+
+function formatProspectForMessaging(item: FollowUp): string {
+  return [
+    "*Nuevo contacto para llamada*",
+    "",
+    `*Nombre y apellidos:* ${prospectName(item)}`,
+    `*Teléfono:* ${usablePhone(item.phone_raw)}`,
+    `*Horario preferido para la cita:* ${appointmentPreference(item)}`,
+    `*Tipo de sesión:* ${sessionType(item)}`,
+    `*Motivo de consulta (opcional):* ${provided(item.visit_reason)}`,
+    `*Cuándo podemos localizarle:* ${callbackPreference(item.callback_preference)}`,
+  ].join("\n");
+}
+
+async function copyText(value: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    if (!document.execCommand("copy")) throw new Error("Copy command failed");
+  } finally {
+    textarea.remove();
+  }
+}
+
 function initials(item: FollowUp): string {
   return `${item.first_name?.[0] ?? ""}${item.surnames?.[0] ?? ""}`.toUpperCase() || "?";
 }
@@ -154,6 +204,7 @@ export default function FollowUps() {
   const pendingScrollTopRef = useRef<number | null>(initialQueueState?.scrollTop ?? null);
   const [activeTab, setActiveTab] = useState(initialQueueState?.activeTab ?? 0);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(initialQueueState?.selectedId ?? null);
   const query = useQuery({
     queryKey: ["follow-ups"],
@@ -253,6 +304,17 @@ export default function FollowUps() {
     });
     navigate(`/?c=${encodeURIComponent(selected.conversation_id)}&from=follow-ups`);
   };
+  const copyProspect = async () => {
+    if (!selected) return;
+    try {
+      await copyText(formatProspectForMessaging(selected));
+      setCopiedId(selected.id);
+      window.setTimeout(() => setCopiedId((current) => current === selected.id ? null : current), 1600);
+      toast.success(tenantText("Prospect data copied.", "Datos del prospecto copiados."));
+    } catch {
+      toast.error(tenantText("The data could not be copied.", "No se pudieron copiar los datos."));
+    }
+  };
 
   return (
     <DashboardShell
@@ -331,11 +393,10 @@ export default function FollowUps() {
             {tenantText("Loading follow-ups…", "Cargando seguimientos…")}
           </div>
         ) : (
-          <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,.8fr)]">
+          <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,.68fr)_minmax(0,1.32fr)] xl:grid-cols-[minmax(0,.62fr)_minmax(0,1.38fr)]">
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="grid grid-cols-[minmax(0,1.25fr)_minmax(145px,.75fr)_120px] gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                 <span>{tenantText("Patient and request", "Persona y solicitud")}</span>
-                <span>{tenantText("Callback", "Llamada")}</span>
                 <span>{tenantText("Status", "Estado")}</span>
               </div>
               {visible.map((item) => (
@@ -345,32 +406,26 @@ export default function FollowUps() {
                   onClick={() => setSelectedId(item.id)}
                   aria-pressed={selected?.id === item.id}
                   className={cn(
-                    "grid min-h-[92px] w-full grid-cols-[minmax(0,1.25fr)_minmax(145px,.75fr)_120px] gap-4 border-b border-slate-100 px-5 py-4 text-left last:border-0 hover:bg-slate-50",
+                    "grid min-h-[106px] w-full grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-slate-100 px-4 py-4 text-left last:border-0 hover:bg-slate-50",
                     selected?.id === item.id && "bg-blue-50/70 hover:bg-blue-50/70",
                   )}
                 >
                   <span className="flex min-w-0 gap-3">
                     <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{initials(item)}</span>
                     <span className="min-w-0">
-                      <span className="block truncate font-semibold text-slate-800">
-                        {[item.first_name, item.surnames].filter(Boolean).join(" ") ||
-                          tenantText("Unknown patient", "Contacto sin identificar")}
-                      </span>
+                      <span className="block truncate font-semibold text-slate-800">{prospectName(item)}</span>
                       <span className="mt-1 block truncate text-xs text-slate-500">{usablePhone(item.phone_raw)}</span>
                       <span className="mt-1 block truncate text-xs text-slate-400">
                         {item.visit_reason || tenantText("No reason provided", "Sin motivo indicado")}
                       </span>
-                    </span>
-                  </span>
-                  <span className="pt-1 text-xs leading-5 text-slate-600">
-                    <Clock3 className="mr-1 inline h-3.5 w-3.5 text-slate-400" />
-                    {callbackPreference(item.callback_preference)}
-                    <span className="mt-1 block text-slate-400">
-                      {item.channel === "whatsapp" ? "WhatsApp" : item.channel}
+                      <span className="mt-1.5 block truncate text-xs leading-5 text-slate-600">
+                        <Clock3 className="mr-1 inline h-3.5 w-3.5 text-slate-400" />
+                        {callbackPreference(item.callback_preference)}
+                      </span>
                     </span>
                   </span>
                   <span className="pt-1">
-                    <span className={cn("inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium leading-tight", statusStyles[item.status])}>
+                    <span className={cn("inline-flex max-w-[105px] rounded-full border px-2.5 py-1 text-[11px] font-medium leading-tight", statusStyles[item.status])}>
                       {followUpStatusLabel(item.status)}
                     </span>
                   </span>
@@ -385,23 +440,37 @@ export default function FollowUps() {
 
             {selected ? (
               <aside className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:sticky lg:top-6">
-                <div className="flex items-start justify-between border-b border-slate-100 p-5">
-                  <div>
-                    <span className={cn("inline-flex rounded-full border px-2.5 py-1 text-xs font-medium", statusStyles[selected.status])}>
+                <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {tenantText("Complete prospect file", "Ficha completa del prospecto")}
+                    </p>
+                    <span className={cn("mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-medium", statusStyles[selected.status])}>
                       {followUpStatusLabel(selected.status)}
                     </span>
-                    <h2 className="mt-3 text-xl font-semibold text-slate-900">
-                      {[selected.first_name, selected.surnames].filter(Boolean).join(" ") ||
-                        tenantText("Unknown patient", "Contacto sin identificar")}
-                    </h2>
+                    <h2 className="mt-3 truncate text-xl font-semibold text-slate-900">{prospectName(selected)}</h2>
                     <p className="mt-1 text-sm text-slate-500">
                       {tenantText("Received", "Recibido el")} {received(selected.updated_at)}
                     </p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={copyProspect}
+                    aria-label={tenantText("Copy all prospect data", "Copiar todos los datos del prospecto")}
+                    title={tenantText("Copy all prospect data", "Copiar todos los datos del prospecto")}
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-primary/30 hover:bg-primary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  >
+                    {copiedId === selected.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </button>
                 </div>
 
                 <div className="space-y-5 p-5 text-sm">
-                  <div className="space-y-3">
+                  <div className="grid gap-4 rounded-xl border border-slate-100 bg-slate-50/60 p-4 sm:grid-cols-2">
+                    <Detail
+                      icon={<UserRound />}
+                      label={tenantText("Name and surnames", "Nombre y apellidos")}
+                      value={prospectName(selected)}
+                    />
                     <Detail
                       icon={<Phone />}
                       label={tenantText("Phone", "Teléfono")}
@@ -409,19 +478,25 @@ export default function FollowUps() {
                     />
                     <Detail
                       icon={<CalendarClock />}
-                      label={tenantText("Best callback time", "Mejor momento para llamar")}
-                      value={callbackPreference(selected.callback_preference)}
+                      label={tenantText("Preferred appointment time", "Horario preferido para la cita")}
+                      value={appointmentPreference(selected)}
                     />
                     <Detail
-                      icon={<MessageCircle />}
-                      label={tenantText("Channel", "Canal")}
-                      value={selected.channel === "whatsapp" ? "WhatsApp" : selected.channel}
+                      icon={<BellRing />}
+                      label={tenantText("Session type", "Tipo de sesión")}
+                      value={sessionType(selected)}
+                    />
+                    <Detail
+                      className="sm:col-span-2"
+                      icon={<Clock3 />}
+                      label={tenantText("When we can reach them", "Cuándo podemos localizarle")}
+                      value={callbackPreference(selected.callback_preference)}
                     />
                   </div>
 
                   <div className="rounded-xl bg-slate-50 p-4">
                     <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {tenantText("Reason for contact", "Motivo de la consulta")}
+                      {tenantText("Reason for contact (optional)", "Motivo de la consulta (opcional)")}
                     </p>
                     <p className="leading-relaxed text-slate-700">
                       {selected.visit_reason ||
@@ -476,11 +551,11 @@ export default function FollowUps() {
   );
 }
 
-function Detail({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+function Detail({ icon, label, value, className }: { icon: ReactNode; label: string; value: string; className?: string }) {
   return (
-    <div className="flex gap-3">
-      <span className="mt-0.5 text-slate-400 [&>svg]:h-4 [&>svg]:w-4">{icon}</span>
-      <div><p className="text-xs text-slate-500">{label}</p><p className="mt-0.5 font-medium text-slate-800">{value}</p></div>
+    <div className={cn("flex min-w-0 gap-3", className)}>
+      <span className="mt-0.5 shrink-0 text-slate-400 [&>svg]:h-4 [&>svg]:w-4">{icon}</span>
+      <div className="min-w-0"><p className="text-xs text-slate-500">{label}</p><p className="mt-0.5 break-words font-medium text-slate-800">{value}</p></div>
     </div>
   );
 }
