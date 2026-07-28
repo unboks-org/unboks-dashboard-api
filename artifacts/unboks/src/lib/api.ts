@@ -2122,6 +2122,35 @@ export async function deleteConversation(phone: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Direct WhatsApp conversation reply
+// ---------------------------------------------------------------------------
+
+export interface WhatsAppConversationReplyResponse {
+  ok: boolean;
+  reply: string;
+  channel: "whatsapp";
+  role: "operator";
+}
+
+export async function replyToWhatsAppConversation(
+  conversationId: string,
+  message: string,
+): Promise<WhatsAppConversationReplyResponse> {
+  const key = (conversationId ?? "").replace(/[\r\n]+/g, "").trim();
+  const text = (message ?? "").trim();
+  if (!key) throw new ApiError(400, "Conversation id is missing.");
+  if (!text) throw new ApiError(400, "Message is required.");
+  if (text.length > 4096) {
+    throw new ApiError(400, "WhatsApp messages cannot exceed 4096 characters.");
+  }
+
+  return apiFetch<WhatsAppConversationReplyResponse>(
+    `/messages/conversations/${encodeConversationKey(key)}/whatsapp/reply`,
+    { method: "POST", body: JSON.stringify({ message: text }) },
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Email actions (TASK-021 / Briefs 210 + 218)
 // ---------------------------------------------------------------------------
 //
