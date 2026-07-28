@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
-  BellRing, CalendarClock, Check, ChevronRight, Clock3, Copy, MessageCircle,
-  Phone, RefreshCw, UserRound, X,
+  BellRing, CalendarClock, Check, Clock3, Copy, MessageCircle,
+  Phone, RefreshCw, UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
@@ -18,6 +18,7 @@ const statusLabels: Record<FollowUpStatus, string> = {
   ready_to_call: "Ready to call",
   needs_human_answer: "Needs an answer",
   in_progress: "In progress",
+  copied: "Copied",
   appointment_coordinated: "Appointment coordinated",
   no_answer: "No answer",
   closed: "Closed",
@@ -28,6 +29,7 @@ const spanishStatusLabels: Record<FollowUpStatus, string> = {
   ready_to_call: "Listo para llamar",
   needs_human_answer: "Necesita respuesta",
   in_progress: "En seguimiento",
+  copied: "Copiado",
   appointment_coordinated: "Cita coordinada",
   no_answer: "No responde",
   closed: "Cerrado",
@@ -38,17 +40,19 @@ const statusStyles: Record<FollowUpStatus, string> = {
   ready_to_call: "border-emerald-200 bg-emerald-50 text-emerald-700",
   needs_human_answer: "border-violet-200 bg-violet-50 text-violet-700",
   in_progress: "border-blue-200 bg-blue-50 text-blue-700",
+  copied: "border-emerald-600 bg-emerald-600 text-white",
   appointment_coordinated: "border-sky-200 bg-sky-50 text-sky-700",
   no_answer: "border-slate-200 bg-slate-100 text-slate-600",
   closed: "border-slate-200 bg-slate-100 text-slate-600",
 };
 
 const tabs: { label: string; statuses: FollowUpStatus[] }[] = [
-  { label: "Active", statuses: ["collecting", "ready_to_call", "needs_human_answer", "in_progress"] },
+  { label: "Active", statuses: ["collecting", "ready_to_call", "needs_human_answer", "in_progress", "copied"] },
   { label: "Ready to call", statuses: ["ready_to_call"] },
   { label: "Missing information", statuses: ["collecting"] },
   { label: "Needs an answer", statuses: ["needs_human_answer"] },
   { label: "In progress", statuses: ["in_progress"] },
+  { label: "Copied", statuses: ["copied"] },
   { label: "Completed", statuses: ["appointment_coordinated", "no_answer"] },
   { label: "Archived", statuses: ["closed"] },
 ];
@@ -59,6 +63,7 @@ const spanishTabLabels = [
   "Faltan datos",
   "Necesitan respuesta",
   "En seguimiento",
+  "Copiados",
   "Finalizados",
   "Archivados",
 ] as const;
@@ -250,6 +255,7 @@ export default function FollowUps() {
       updateFollowUpStatus(id, status),
     onSuccess: (_, variables) => {
       client.invalidateQueries({ queryKey: ["follow-ups"] });
+      if (variables.status === "copied") return;
       toast.success(
         tenantText(
           `Status changed to ${statusLabels[variables.status]}`,
@@ -309,6 +315,7 @@ export default function FollowUps() {
     try {
       await copyText(formatProspectForMessaging(selected));
       setCopiedId(selected.id);
+      if (selected.status !== "copied") move("copied");
       window.setTimeout(() => setCopiedId((current) => current === selected.id ? null : current), 1600);
       toast.success(tenantText("Prospect data copied.", "Datos del prospecto copiados."));
     } catch {
@@ -460,7 +467,9 @@ export default function FollowUps() {
                     title={tenantText("Copy all prospect data", "Copiar todos los datos del prospecto")}
                     className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-primary/30 hover:bg-primary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                   >
-                    {copiedId === selected.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {selected.status === "copied" || copiedId === selected.id
+                      ? <Check className="h-4 w-4" />
+                      : <Copy className="h-4 w-4" />}
                   </button>
                 </div>
 
@@ -527,11 +536,12 @@ export default function FollowUps() {
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       <Action label={tenantText("Open conversation", "Abrir conversación")} icon={<MessageCircle />} onClick={openConversation} />
-                      <Action label={tenantText("Assign to me", "Asignarme")} icon={<UserRound />} onClick={() => move("in_progress")} />
-                      <Action label={tenantText("No answer", "No responde")} icon={<X />} onClick={() => move("no_answer")} />
-                      <Action label={tenantText("Call in progress", "Llamada en curso")} icon={<Phone />} onClick={() => move("in_progress")} />
-                      <Action label={tenantText("Appointment coordinated", "Cita coordinada")} icon={<Check />} onClick={() => move("appointment_coordinated")} primary />
-                      <Action label={tenantText("Close follow-up", "Cerrar seguimiento")} icon={<ChevronRight />} onClick={() => move("closed")} />
+                      <Action
+                        label={tenantText("Copied", "Copiado")}
+                        icon={<Check />}
+                        onClick={copyProspect}
+                        selected={selected.status === "copied" || copiedId === selected.id}
+                      />
                     </div>
                   </div>
                 </div>
@@ -560,14 +570,16 @@ function Detail({ icon, label, value, className }: { icon: ReactNode; label: str
   );
 }
 
-function Action({ label, icon, onClick, primary }: { label: string; icon: ReactNode; onClick: () => void; primary?: boolean }) {
+function Action({ label, icon, onClick, selected }: { label: string; icon: ReactNode; onClick: () => void; selected?: boolean }) {
   return (
     <button
+      type="button"
       onClick={onClick}
+      aria-pressed={selected}
       className={cn(
-        "flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium",
-        primary
-          ? "border-primary bg-primary text-white hover:bg-primary/90"
+        "flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium transition",
+        selected
+          ? "border-emerald-600 bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
           : "border-slate-200 text-slate-700 hover:bg-slate-50",
       )}
     >

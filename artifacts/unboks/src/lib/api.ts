@@ -339,7 +339,7 @@ export interface OrdersResponse {
   items: Appointment[];
 }
 
-export type FollowUpStatus = "collecting" | "ready_to_call" | "needs_human_answer" | "in_progress" | "appointment_coordinated" | "no_answer" | "closed";
+export type FollowUpStatus = "collecting" | "ready_to_call" | "needs_human_answer" | "in_progress" | "copied" | "appointment_coordinated" | "no_answer" | "closed";
 export interface FollowUp {
   id: number; conversation_id: string; channel: string; first_name: string;
   surnames: string; phone_raw: string; callback_preference: string;
