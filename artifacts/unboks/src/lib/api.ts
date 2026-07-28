@@ -2130,6 +2130,8 @@ export interface WhatsAppConversationReplyResponse {
   reply: string;
   channel: "whatsapp";
   role: "operator";
+  delivery_mode?: "free_text" | "template";
+  original_message_sent?: boolean;
 }
 
 export async function replyToWhatsAppConversation(

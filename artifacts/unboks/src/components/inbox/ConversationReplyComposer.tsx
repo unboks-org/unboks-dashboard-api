@@ -26,9 +26,18 @@ export function ConversationReplyComposer({
     setIsSending(true);
     setError(null);
     try {
-      await replyToWhatsAppConversation(conversationId, trimmedDraft);
+      const result = await replyToWhatsAppConversation(
+        conversationId,
+        trimmedDraft,
+      );
       setDraft("");
-      toast.success("Mensaje enviado por WhatsApp.");
+      if (result.delivery_mode === "template") {
+        toast.success(
+          "Plantilla de seguimiento enviada. El texto libre no se envió; podrás escribir cuando el contacto responda.",
+        );
+      } else {
+        toast.success("Mensaje entregado a WhatsApp.");
+      }
       try {
         await onSent?.();
       } catch {
