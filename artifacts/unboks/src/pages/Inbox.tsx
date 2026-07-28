@@ -56,6 +56,7 @@ import { toast } from "sonner";
 import type { ApiMessage, ConversationDetail } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { EscalationReplyComposer } from "@/components/inbox/EscalationReplyComposer";
+import { ConversationReplyComposer } from "@/components/inbox/ConversationReplyComposer";
 import {
   useEscalationLearningMutations,
   useAgentLearningPrefs,
@@ -393,7 +394,13 @@ function ConversationDetailPane({
   // wouter navigator — used for in-pane links to other dashboard
   // surfaces (e.g. Settings → Agent learnings).
   const [, navigate] = useLocation();
-  const { data: detail, isLoading, isError, error } = useConversation(conversation.id);
+  const {
+    data: detail,
+    isLoading,
+    isError,
+    error,
+    refetch: refetchConversation,
+  } = useConversation(conversation.id);
   const { unresolve } = useEscalationMutations();
   const badgeColor = CHANNEL_BADGE_COLORS[conversation.channel] ?? "#9aa0a6";
   // Sort newest-first by parsed backend timestamp so the latest message is
@@ -474,6 +481,11 @@ function ConversationDetailPane({
   // detail payload — resolved escalation rows still carry escalated:true but
   // must never surface the reply composer or mode toggle.
   const isEscalation = Boolean(showBanner) && !resolvedContext;
+  const showDirectReply =
+    isSpainSpanishTenant() &&
+    conversation.channel.toLowerCase() === "whatsapp" &&
+    !archived &&
+    !resolvedContext;
   const [trailOpen, setTrailOpen] = useState(false);
   useEffect(() => {
     setTrailOpen(false);
@@ -947,7 +959,7 @@ function ConversationDetailPane({
               </button>
               {trailOpen && (
                 <div id="conversation-trail">
-                  <ConversationTranslationBar />
+                  {!isSpainSpanishTenant() && <ConversationTranslationBar />}
                   <ConversationThreadBody
                     isLoading={isLoading}
                     messages={messages}
@@ -961,21 +973,31 @@ function ConversationDetailPane({
         </div>
       ) : (
         // ----- STANDARD (non-escalation) LAYOUT -------------------------
-        // Conversation-first: translation toolbar + full thread, no
-        // composer. Unchanged from prior behavior for plain inbox items.
-        <ConversationTranslationProvider
-          conversationId={conversation.id}
-          channel={conversation.channel}
-          messages={messages}
-        >
-          <ConversationTranslationBar />
-          <ConversationThreadBody
-            isLoading={isLoading}
+        // Consulta Despertares gets a direct, provider-confirmed WhatsApp
+        // reply composer. Other tenants retain the existing read-only view.
+        <div className="flex min-h-0 flex-1 flex-col">
+          <ConversationTranslationProvider
+            conversationId={conversation.id}
+            channel={conversation.channel}
             messages={messages}
-            conversation={conversation}
-            errorDetail={errorDetail}
-          />
-        </ConversationTranslationProvider>
+          >
+            {!isSpainSpanishTenant() && <ConversationTranslationBar />}
+            <ConversationThreadBody
+              isLoading={isLoading}
+              messages={messages}
+              conversation={conversation}
+              errorDetail={errorDetail}
+            />
+          </ConversationTranslationProvider>
+          {showDirectReply && (
+            <ConversationReplyComposer
+              conversationId={conversation.id}
+              onSent={async () => {
+                await refetchConversation();
+              }}
+            />
+          )}
+        </div>
       )}
     </div>
   );
