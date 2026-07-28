@@ -343,6 +343,7 @@ export type FollowUpStatus = "collecting" | "ready_to_call" | "needs_human_answe
 export interface FollowUp {
   id: number; conversation_id: string; channel: string; first_name: string;
   surnames: string; phone_raw: string; callback_preference: string;
+  appointment_preference?: string; session_type?: string;
   visit_reason: string; status: FollowUpStatus; handoff_reason: string;
   created_at: string; updated_at: string;
 }
