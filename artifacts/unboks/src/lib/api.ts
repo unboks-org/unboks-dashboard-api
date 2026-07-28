@@ -339,6 +339,38 @@ export interface OrdersResponse {
   items: Appointment[];
 }
 
+export type FollowUpStatus = "collecting" | "ready_to_call" | "needs_human_answer" | "in_progress" | "appointment_coordinated" | "no_answer" | "closed";
+export interface FollowUp {
+  id: number; conversation_id: string; channel: string; first_name: string;
+  surnames: string; phone_raw: string; callback_preference: string;
+  appointment_preference?: string; session_type?: string;
+  visit_reason: string; status: FollowUpStatus; handoff_reason: string;
+  created_at: string; updated_at: string;
+}
+
+export async function fetchFollowUps(status?: FollowUpStatus): Promise<FollowUp[]> {
+  const params = new URLSearchParams();
+  if (status) params.set("status", status);
+  params.set("_refresh", Date.now().toString());
+  const raw = await apiFetch<{ items?: FollowUp[]; followUps?: FollowUp[] }>(
+    `/follow-ups?${params.toString()}`,
+    {
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+      },
+    },
+  );
+  return raw.items ?? raw.followUps ?? [];
+}
+
+export async function updateFollowUpStatus(id: number, status: FollowUpStatus): Promise<FollowUp> {
+  return apiFetch<FollowUp>(`/follow-ups/${id}/status`, {
+    method: "POST", body: JSON.stringify({ status }),
+  });
+}
+
 /**
  * Try to fetch appointments from the canonical backend endpoint. If the
  * endpoint isn't connected yet (404 / 501 / 503 / network), resolve to
@@ -1563,6 +1595,31 @@ export interface ClientProfile {
   slug: string;
   name: string;
   status: "active" | "trial" | "suspended" | "unknown";
+}
+
+export interface AgentStatus {
+  active: boolean;
+  status: "active" | "paused";
+  available: boolean;
+  source: string;
+  updatedAt: string | null;
+}
+
+export async function getAgentStatus(): Promise<AgentStatus> {
+  return apiFetch<AgentStatus>("/agent/status", {
+    cache: "no-store",
+    headers: {
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+    },
+  });
+}
+
+export async function setAgentStatus(active: boolean): Promise<AgentStatus> {
+  return apiFetch<AgentStatus>("/agent/status", {
+    method: "PUT",
+    body: JSON.stringify({ active }),
+  });
 }
 
 function prettifySlug(slug: string): string {

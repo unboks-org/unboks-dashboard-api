@@ -60,6 +60,7 @@ import { ApiError } from "@/lib/error";
 import type { KnowledgeMedia } from "@/lib/api";
 import type { Channel } from "@/data/conversations";
 import { cn } from "@/lib/utils";
+import { tenantText } from "@/lib/tenant-ui";
 import { AIEditorPanel } from "./AIEditorPanel";
 import { motion } from "framer-motion";
 
@@ -246,15 +247,21 @@ export const EscalationReplyComposer = forwardRef<
             if (isNotConnected(err)) {
               setNotice({
                 tone: "info",
-                text: "Saved. Agent connection will be completed by the Unboks team.",
+                text: tenantText(
+                  "Saved. Agent connection will be completed by the Unboks team.",
+                  "Guardado. El equipo de Unboks completará la conexión con el agente.",
+                ),
               });
               return;
             }
             setNotice({
               tone: "error",
               text:
-                "Couldn't send guidance: " +
-                (err instanceof Error ? err.message : "Unknown error"),
+                tenantText(
+                  "Couldn't send guidance: ",
+                  "No se han podido enviar las instrucciones: ",
+                ) +
+                (err instanceof Error ? err.message : tenantText("Unknown error", "Error desconocido")),
             });
           },
         },
@@ -280,15 +287,18 @@ export const EscalationReplyComposer = forwardRef<
           if (isNotConnected(err)) {
             setNotice({
               tone: "info",
-              text: "Direct customer reply will be connected by the Unboks team.",
+              text: tenantText(
+                "Direct customer reply will be connected by the Unboks team.",
+                "El equipo de Unboks habilitará la respuesta directa a la persona.",
+              ),
             });
             return;
           }
           setNotice({
             tone: "error",
             text:
-              "Couldn't send reply: " +
-              (err instanceof Error ? err.message : "Unknown error"),
+              tenantText("Couldn't send reply: ", "No se ha podido enviar la respuesta: ") +
+              (err instanceof Error ? err.message : tenantText("Unknown error", "Error desconocido")),
           });
         },
       },
@@ -357,15 +367,21 @@ export const EscalationReplyComposer = forwardRef<
               setNotice({
                 tone: "warning",
                 text:
-                  "Message sent. Mark resolved will be connected by the Unboks team.",
+                  tenantText(
+                    "Message sent. Mark resolved will be connected by the Unboks team.",
+                    "Mensaje enviado. El equipo de Unboks habilitará la opción de marcar como resuelto.",
+                  ),
               });
               return;
             }
             setNotice({
               tone: "warning",
               text:
-                "Message sent, but escalation was not marked resolved: " +
-                (err instanceof Error ? err.message : "Unknown error"),
+                tenantText(
+                  "Message sent, but escalation was not marked resolved: ",
+                  "Mensaje enviado, pero la solicitud no se ha marcado como resuelta: ",
+                ) +
+                (err instanceof Error ? err.message : tenantText("Unknown error", "Error desconocido")),
             });
           },
         },
@@ -395,7 +411,10 @@ export const EscalationReplyComposer = forwardRef<
               setNotice({
                 tone: "info",
                 text:
-                  "Saved. Agent connection will be completed by the Unboks team. Escalation was not resolved.",
+                  tenantText(
+                    "Saved. Agent connection will be completed by the Unboks team. Escalation was not resolved.",
+                    "Guardado. El equipo de Unboks completará la conexión con el agente. La solicitud no se ha resuelto.",
+                  ),
               });
               return;
             }
@@ -419,7 +438,10 @@ export const EscalationReplyComposer = forwardRef<
             setNotice({
               tone: "info",
               text:
-                "Direct customer reply will be connected by the Unboks team. Escalation was not resolved.",
+                tenantText(
+                  "Direct customer reply will be connected by the Unboks team. Escalation was not resolved.",
+                  "El equipo de Unboks habilitará la respuesta directa a la persona. La solicitud no se ha resuelto.",
+                ),
             });
             return;
           }
@@ -456,15 +478,21 @@ export const EscalationReplyComposer = forwardRef<
           if (isNotConnected(err)) {
             setNotice({
               tone: "info",
-              text: "Mark resolved will be connected by the Unboks team.",
+              text: tenantText(
+                "Mark resolved will be connected by the Unboks team.",
+                "El equipo de Unboks habilitará la opción de marcar como resuelto.",
+              ),
             });
             return;
           }
           setNotice({
             tone: "error",
             text:
-              "Couldn't mark resolved: " +
-              (err instanceof Error ? err.message : "Unknown error"),
+              tenantText(
+                "Couldn't mark resolved: ",
+                "No se ha podido marcar como resuelto: ",
+              ) +
+              (err instanceof Error ? err.message : tenantText("Unknown error", "Error desconocido")),
           });
         },
       },
@@ -481,15 +509,21 @@ export const EscalationReplyComposer = forwardRef<
           if (isNotConnected(err)) {
             setNotice({
               tone: "info",
-              text: "Switch to human takeover will be connected by the Unboks team.",
+              text: tenantText(
+                "Switch to human takeover will be connected by the Unboks team.",
+                "El equipo de Unboks habilitará la intervención humana.",
+              ),
             });
             return;
           }
           setNotice({
             tone: "error",
             text:
-              "Couldn't switch to human takeover: " +
-              (err instanceof Error ? err.message : "Unknown error"),
+              tenantText(
+                "Couldn't switch to human takeover: ",
+                "No se ha podido activar la intervención humana: ",
+              ) +
+              (err instanceof Error ? err.message : tenantText("Unknown error", "Error desconocido")),
           });
         },
       },
@@ -506,15 +540,21 @@ export const EscalationReplyComposer = forwardRef<
           if (isNotConnected(err)) {
             setNotice({
               tone: "info",
-              text: "Hand back to Agent will be connected by the Unboks team.",
+              text: tenantText(
+                "Hand back to Agent will be connected by the Unboks team.",
+                "El equipo de Unboks habilitará la devolución al agente.",
+              ),
             });
             return;
           }
           setNotice({
             tone: "error",
             text:
-              "Couldn't hand back to Agent: " +
-              (err instanceof Error ? err.message : "Unknown error"),
+              tenantText(
+                "Couldn't hand back to Agent: ",
+                "No se ha podido devolver la conversación al agente: ",
+              ) +
+              (err instanceof Error ? err.message : tenantText("Unknown error", "Error desconocido")),
           });
         },
       },
@@ -568,14 +608,27 @@ export const EscalationReplyComposer = forwardRef<
     [conversationDbId, mode, resolve, takeover, handback],
   );
 
-  const headingText = isSoft ? "Instructions to Agent" : "Reply to customer";
+  const headingText = isSoft
+    ? tenantText("Instructions to Agent", "Instrucciones para el agente")
+    : tenantText("Reply to customer", "Responder a la persona");
   const helperText = isSoft
-    ? "Tell the Agent exactly what to say or do next."
-    : "This reply will be sent directly to the customer.";
+    ? tenantText(
+        "Tell the Agent exactly what to say or do next.",
+        "Indica al agente exactamente qué debe decir o hacer a continuación.",
+      )
+    : tenantText(
+        "This reply will be sent directly to the customer.",
+        "Esta respuesta se enviará directamente a la persona.",
+      );
   const placeholder = isSoft
-    ? "Example: Confirm Sunday at 08:00 and ask the customer to confirm their phone number."
-    : "Write your reply...";
-  const sendLabel = isSoft ? "Send to Agent" : "Reply to customer";
+    ? tenantText(
+        "Example: Confirm Sunday at 08:00 and ask the customer to confirm their phone number.",
+        "Ejemplo: Confirma el domingo a las 08:00 y pide a la persona que confirme su número de teléfono.",
+      )
+    : tenantText("Write your reply...", "Escribe tu respuesta...");
+  const sendLabel = isSoft
+    ? tenantText("Send to Agent", "Enviar al agente")
+    : tenantText("Reply to customer", "Responder a la persona");
 
   return (
     <div
@@ -599,7 +652,7 @@ export const EscalationReplyComposer = forwardRef<
           {!isSoft && aiMuted && (
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[#f1f3f4] text-[10.5px] text-[#5f6368]">
               <VolumeX className="w-2.5 h-2.5" />
-              Agent muted
+              {tenantText("Agent muted", "Agente en pausa")}
             </span>
           )}
         </div>
@@ -636,21 +689,24 @@ export const EscalationReplyComposer = forwardRef<
                   ? "border-[#e8eaed] text-[#9aa0a6] bg-white cursor-not-allowed"
                   : "border-[#1a73e8]/30 text-[#1a73e8] bg-[#f0f6ff] hover:bg-[#e8f0fe]",
               )}
-              aria-label="Open Agent Editor"
-              title="Agent Editor: Translate, Style, Fix"
+              aria-label={tenantText("Open Agent Editor", "Abrir el editor del agente")}
+              title={tenantText(
+                "Agent Editor: Translate, Style, Fix",
+                "Editor del agente: traducir, ajustar estilo y corregir",
+              )}
             >
               <Sparkles className="w-3.5 h-3.5" />
-              Agent Editor
+              {tenantText("Agent Editor", "Editor del agente")}
             </button>
             {prevDraft !== null && (
               <button
                 type="button"
                 onClick={onUndo}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[12px] text-[#5f6368] hover:bg-[#f1f3f4]"
-                title="Undo last Agent edit"
+                title={tenantText("Undo last Agent edit", "Deshacer la última edición del agente")}
               >
                 <Undo2 className="w-3.5 h-3.5" />
-                Undo edit
+                {tenantText("Undo edit", "Deshacer edición")}
               </button>
             )}
           </div>
@@ -676,7 +732,9 @@ export const EscalationReplyComposer = forwardRef<
               )}
             >
               <ImageIcon className="h-3.5 w-3.5" />
-              {selectedImage ? "Change image" : "Attach image"}
+              {selectedImage
+                ? tenantText("Change image", "Cambiar imagen")
+                : tenantText("Attach image", "Adjuntar imagen")}
             </button>
             {selectedImage && (
               <button
@@ -689,7 +747,7 @@ export const EscalationReplyComposer = forwardRef<
                 className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-medium text-[#5f6368] hover:bg-[#f1f3f4] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <X className="h-3.5 w-3.5" />
-                Remove image
+                {tenantText("Remove image", "Quitar imagen")}
               </button>
             )}
           </div>
@@ -698,17 +756,23 @@ export const EscalationReplyComposer = forwardRef<
             <div className="flex items-center gap-2 rounded-lg border border-[#d7e3fc] bg-[#f8fbff] p-2">
               <img
                 src={selectedImage.url}
-                alt={selectedImage.caption || selectedImage.originalFilename || "Selected image"}
+                alt={selectedImage.caption || selectedImage.originalFilename || tenantText("Selected image", "Imagen seleccionada")}
                 className="h-14 w-14 shrink-0 rounded-md border border-[#e8eaed] object-cover"
               />
               <div className="min-w-0">
                 <p className="truncate text-[12.5px] font-semibold text-[#202124]">
-                  {selectedImage.caption || selectedImage.originalFilename || "Selected image"}
+                  {selectedImage.caption || selectedImage.originalFilename || tenantText("Selected image", "Imagen seleccionada")}
                 </p>
                 <p className="truncate text-[11px] text-[#5f6368]">
                   {isSoft
-                    ? "Your Agent will send this image through WhatsApp after provider confirmation."
-                    : "Image will be sent through WhatsApp after provider confirmation."}
+                    ? tenantText(
+                        "Your Agent will send this image through WhatsApp after provider confirmation.",
+                        "El agente enviará esta imagen por WhatsApp cuando el proveedor lo confirme.",
+                      )
+                    : tenantText(
+                        "Image will be sent through WhatsApp after provider confirmation.",
+                        "La imagen se enviará por WhatsApp cuando el proveedor lo confirme.",
+                      )}
                 </p>
               </div>
             </div>
@@ -719,16 +783,21 @@ export const EscalationReplyComposer = forwardRef<
               {mediaQuery.isLoading ? (
                 <div className="flex items-center gap-2 px-1 py-2 text-[12px] text-[#5f6368]">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Loading images
+                  {tenantText("Loading images", "Cargando imágenes")}
                 </div>
               ) : mediaQuery.isError ? (
                 <p className="px-1 py-2 text-[12px] text-[#b3261e]">
-                  Could not load image library.
+                  {tenantText(
+                    "Could not load image library.",
+                    "No se ha podido cargar la biblioteca de imágenes.",
+                  )}
                 </p>
               ) : (mediaQuery.data ?? []).length === 0 ? (
                 <p className="px-1 py-2 text-[12px] leading-5 text-[#5f6368]">
-                  No customer images uploaded yet. Open Images from the sidebar,
-                  upload the customer image, then return here to send it.
+                  {tenantText(
+                    "No customer images uploaded yet. Open Images from the sidebar, upload the customer image, then return here to send it.",
+                    "Aún no hay imágenes de contactos subidas. Abre Imágenes en el menú lateral, sube la imagen y vuelve aquí para enviarla.",
+                  )}
                 </p>
               ) : (
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -752,11 +821,11 @@ export const EscalationReplyComposer = forwardRef<
                       >
                         <img
                           src={media.url}
-                          alt={media.caption || media.originalFilename || "Image"}
+                          alt={media.caption || media.originalFilename || tenantText("Image", "Imagen")}
                           className="aspect-square w-full rounded-md object-cover"
                         />
                         <p className="mt-1 truncate text-[11.5px] font-medium text-[#202124]">
-                          {media.caption || media.originalFilename || "Image"}
+                          {media.caption || media.originalFilename || tenantText("Image", "Imagen")}
                         </p>
                       </button>
                     );
@@ -820,7 +889,7 @@ export const EscalationReplyComposer = forwardRef<
             disabled={takeover.isPending || combinedPending}
             className="text-[13px] font-medium text-[#c5221f] hover:underline disabled:opacity-50 disabled:no-underline"
           >
-            Switch to human takeover
+            {tenantText("Switch to human takeover", "Pasar a intervención humana")}
           </button>
         </div>
       ) : (
@@ -831,7 +900,7 @@ export const EscalationReplyComposer = forwardRef<
             disabled={handback.isPending || combinedPending}
             className="text-[13px] font-medium text-[#1a73e8] hover:underline disabled:opacity-50 disabled:no-underline"
           >
-            Hand back to Agent
+            {tenantText("Hand back to Agent", "Devolver al agente")}
           </button>
         </div>
       )}
@@ -839,7 +908,9 @@ export const EscalationReplyComposer = forwardRef<
       <div
         className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2 pt-0.5"
         role="group"
-        aria-label={isSoft ? "Escalation guidance actions" : "Escalation reply actions"}
+        aria-label={isSoft
+          ? tenantText("Escalation guidance actions", "Acciones de instrucciones al agente")
+          : tenantText("Escalation reply actions", "Acciones de respuesta")}
       >
         {/* 1) Send — outline secondary */}
         <motion.button
@@ -850,13 +921,25 @@ export const EscalationReplyComposer = forwardRef<
           transition={{ type: "spring", stiffness: 400, damping: 25 }}
           aria-label={
             isSoft
-              ? "Send guidance to your Agent without resolving"
-              : "Reply to customer without resolving"
+              ? tenantText(
+                  "Send guidance to your Agent without resolving",
+                  "Enviar instrucciones al agente sin resolver",
+                )
+              : tenantText(
+                  "Reply to customer without resolving",
+                  "Responder a la persona sin resolver",
+                )
           }
           title={
             isSoft
-              ? "Send guidance to your Agent without resolving."
-              : "Reply to the customer without resolving."
+              ? tenantText(
+                  "Send guidance to your Agent without resolving.",
+                  "Enviar instrucciones al agente sin resolver.",
+                )
+              : tenantText(
+                  "Reply to the customer without resolving.",
+                  "Responder a la persona sin resolver.",
+                )
           }
           className={cn(
             "inline-flex items-center justify-center gap-1.5 rounded-full border px-3.5 py-2 sm:py-1.5 min-h-[44px] sm:min-h-0 text-[13px] font-medium",
@@ -868,7 +951,9 @@ export const EscalationReplyComposer = forwardRef<
           )}
         >
           <Send className="h-3.5 w-3.5" />
-          {sendPending && !combinedPending ? "Sending..." : "Send"}
+          {sendPending && !combinedPending
+            ? tenantText("Sending...", "Enviando...")
+            : tenantText("Send", "Enviar")}
         </motion.button>
 
         {/* 2) Resolve — outline secondary */}
@@ -878,8 +963,14 @@ export const EscalationReplyComposer = forwardRef<
           disabled={anyPending}
           whileTap={{ scale: 0.96, opacity: 0.8 }}
           transition={{ type: "spring", stiffness: 400, damping: 25 }}
-          aria-label="Mark this escalation resolved without sending anything"
-          title="Mark this escalation resolved without sending anything."
+          aria-label={tenantText(
+            "Mark this escalation resolved without sending anything",
+            "Marcar esta solicitud como resuelta sin enviar nada",
+          )}
+          title={tenantText(
+            "Mark this escalation resolved without sending anything.",
+            "Marcar esta solicitud como resuelta sin enviar nada.",
+          )}
           className={cn(
             "inline-flex items-center justify-center gap-1.5 rounded-full border px-3.5 py-2 sm:py-1.5 min-h-[44px] sm:min-h-0 text-[13px] font-medium",
             "border-[#dadce0] bg-white text-[#3c4043]",
@@ -890,7 +981,9 @@ export const EscalationReplyComposer = forwardRef<
           )}
         >
           <Check className="h-3.5 w-3.5" />
-          {resolve.isPending && !combinedPending ? "Resolving..." : "Resolve"}
+          {resolve.isPending && !combinedPending
+            ? tenantText("Resolving...", "Resolviendo...")
+            : tenantText("Resolve", "Resolver")}
         </motion.button>
 
         {/* 3) Send & Resolve — premium combined action.
@@ -905,13 +998,25 @@ export const EscalationReplyComposer = forwardRef<
           transition={{ type: "spring", stiffness: 400, damping: 25 }}
           aria-label={
             isSoft
-              ? "Send guidance and mark resolved"
-              : "Reply to customer and mark resolved"
+              ? tenantText(
+                  "Send guidance and mark resolved",
+                  "Enviar instrucciones y marcar como resuelto",
+                )
+              : tenantText(
+                  "Reply to customer and mark resolved",
+                  "Responder a la persona y marcar como resuelto",
+                )
           }
           title={
             isSoft
-              ? "Send guidance to your Agent and mark this escalation resolved."
-              : "Reply directly to the customer and mark this escalation resolved."
+              ? tenantText(
+                  "Send guidance to your Agent and mark this escalation resolved.",
+                  "Enviar instrucciones al agente y marcar esta solicitud como resuelta.",
+                )
+              : tenantText(
+                  "Reply directly to the customer and mark this escalation resolved.",
+                  "Responder directamente a la persona y marcar esta solicitud como resuelta.",
+                )
           }
           className={cn(
             "col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-1.5 rounded-full px-3.5 py-2 sm:py-1.5 min-h-[44px] sm:min-h-0 text-[13.5px] sm:text-[13px] font-semibold sm:font-medium text-white",
@@ -924,17 +1029,17 @@ export const EscalationReplyComposer = forwardRef<
           {combinedStep === "sending" ? (
             <>
               <Send className="h-3.5 w-3.5" />
-              Sending...
+              {tenantText("Sending...", "Enviando...")}
             </>
           ) : combinedStep === "resolving" ? (
             <>
               <Check className="h-3.5 w-3.5" />
-              Resolving...
+              {tenantText("Resolving...", "Resolviendo...")}
             </>
           ) : (
             <>
               <Send className="h-3.5 w-3.5" />
-              Send &amp; Resolve
+              {tenantText("Send & Resolve", "Enviar y resolver")}
               <Check className="h-3.5 w-3.5 opacity-90" />
             </>
           )}
@@ -949,7 +1054,7 @@ export const EscalationReplyComposer = forwardRef<
             disabled={takeover.isPending || combinedPending}
             className="hidden sm:inline ml-auto text-[12px] text-[#c5221f] hover:underline disabled:opacity-50 disabled:no-underline"
           >
-            Switch to human takeover
+            {tenantText("Switch to human takeover", "Pasar a intervención humana")}
           </button>
         ) : (
           <button
@@ -958,7 +1063,7 @@ export const EscalationReplyComposer = forwardRef<
             disabled={handback.isPending || combinedPending}
             className="hidden sm:inline ml-auto text-[12px] text-[#1a73e8] hover:underline disabled:opacity-50 disabled:no-underline"
           >
-            Hand back to Agent
+            {tenantText("Hand back to Agent", "Devolver al agente")}
           </button>
         )}
       </div>
@@ -989,9 +1094,20 @@ function isNotConnected(err: unknown): boolean {
 }
 
 function formatSendAndResolveFailure(err: unknown, directCustomerReply: boolean): string {
-  const reason = err instanceof Error ? err.message : "Unknown error";
+  const reason = err instanceof Error
+    ? err.message
+    : tenantText("Unknown error", "Error desconocido");
   const target = directCustomerReply
-    ? "Message was not delivered through WhatsApp"
-    : "Guidance was not delivered to the AI Agent";
-  return `${target}. Escalation remains open. Reason: ${reason}`;
+    ? tenantText(
+        "Message was not delivered through WhatsApp",
+        "El mensaje no se ha entregado por WhatsApp",
+      )
+    : tenantText(
+        "Guidance was not delivered to the AI Agent",
+        "Las instrucciones no se han entregado al agente de IA",
+      );
+  return tenantText(
+    `${target}. Escalation remains open. Reason: ${reason}`,
+    `${target}. La solicitud sigue abierta. Motivo: ${reason}`,
+  );
 }

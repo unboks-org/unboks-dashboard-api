@@ -6,19 +6,30 @@ import { useAuth } from "@/components/auth/useAuth";
 import { isValidTenantSlug, type ValidClient } from "@/lib/api";
 import { DEBUG_LOGS_ENABLED, debugLog } from "@/lib/debug-log";
 import { ApiError } from "@/lib/error";
+import { isSpainSpanishTenant } from "@/lib/tenant-ui";
 import { motion } from "framer-motion";
 import unboksLogo from "@assets/unboks-login-logo-optimized_1778556585382.webp";
 
-function getLoginError(err: unknown): string {
+function getLoginError(err: unknown, spanish: boolean): string {
   if (err instanceof TypeError) {
-    return "Can't reach server. Check your connection or contact support.";
+    return spanish
+      ? "No se puede conectar con el servidor. Comprueba tu conexión o contacta con soporte."
+      : "Can't reach server. Check your connection or contact support.";
   }
   if (err instanceof ApiError) {
-    if (err.status === 401 || err.status === 403) return "Invalid access key";
-    if (err.status >= 500) return "Can't reach server. Check your connection or contact support.";
-    return err.message || "Invalid access key";
+    if (err.status === 401 || err.status === 403) {
+      return spanish ? "Clave de acceso no válida" : "Invalid access key";
+    }
+    if (err.status >= 500) {
+      return spanish
+        ? "No se puede conectar con el servidor. Comprueba tu conexión o contacta con soporte."
+        : "Can't reach server. Check your connection or contact support.";
+    }
+    return err.message || (spanish ? "Clave de acceso no válida" : "Invalid access key");
   }
-  return "Can't reach server. Check your connection or contact support.";
+  return spanish
+    ? "No se puede conectar con el servidor. Comprueba tu conexión o contacta con soporte."
+    : "Can't reach server. Check your connection or contact support.";
 }
 
 // J3-N2-10: workspace slugs are fully dynamic. There is no hardcoded
@@ -98,12 +109,14 @@ export default function Login() {
   // every tenant name. Validation happens at submit time.
   const [workspaceInput, setWorkspaceInput] = useState(readWorkspaceHint);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const spanish = isSpainSpanishTenant(workspaceInput.trim());
+  const t = (english: string, spanishText: string) => spanish ? spanishText : english;
 
   // ⚠️ useMutation must be called BEFORE any early return to obey Rules of Hooks
   const mutation = useMutation({
     mutationFn: ({ password, client }: { password: string; client: ValidClient }) =>
       login(password, client),
-    onError: (err: unknown) => setLoginError(getLoginError(err)),
+    onError: (err: unknown) => setLoginError(getLoginError(err, spanish)),
   });
 
   // If the user clicks a welcome email for a different workspace while an
@@ -120,7 +133,10 @@ export default function Login() {
     const client = resolveWorkspace(workspaceInput);
     if (!client) {
       // Generic copy: do NOT echo the typed value or hint at valid options.
-      setLoginError("Workspace not recognized. Check the spelling or contact your admin.");
+      setLoginError(t(
+        "Workspace not recognized. Check the spelling or contact your admin.",
+        "No se reconoce el espacio de trabajo. Comprueba el nombre o contacta con tu administrador.",
+      ));
       return;
     }
     setLoginError(null);
@@ -154,8 +170,12 @@ export default function Login() {
             className="w-16 h-16 mb-6 select-none shadow-sm rounded-2xl"
             draggable={false}
           />
-          <h1 className="text-[24px] font-semibold tracking-tight text-foreground">Sign in to Unboks</h1>
-          <p className="text-[14px] text-muted-foreground mt-1.5">Enter your team password to continue</p>
+          <h1 className="text-[24px] font-semibold tracking-tight text-foreground">
+            {t("Sign in to Unboks", "Accede a Unboks")}
+          </h1>
+          <p className="text-[14px] text-muted-foreground mt-1.5">
+            {t("Enter your team password to continue", "Introduce la contraseña de tu equipo para continuar")}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5" autoComplete="off">
@@ -165,7 +185,9 @@ export default function Login() {
               and type it in. `autoComplete="off"` and the unusual
               `name` discourage browsers from offering saved values. */}
           <div className="space-y-1.5">
-            <label className="text-[13px] font-medium text-foreground ml-1">Workspace</label>
+            <label className="text-[13px] font-medium text-foreground ml-1">
+              {t("Workspace", "Espacio de trabajo")}
+            </label>
             <div className="relative">
               <Building2
                 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
@@ -179,8 +201,8 @@ export default function Login() {
                   setWorkspaceInput(e.target.value);
                   if (loginError) setLoginError(null);
                 }}
-                placeholder="Enter your workspace"
-                aria-label="Workspace"
+                placeholder={t("Enter your workspace", "Introduce tu espacio de trabajo")}
+                aria-label={t("Workspace", "Espacio de trabajo")}
                 autoComplete="off"
                 autoCorrect="off"
                 autoCapitalize="none"
@@ -194,7 +216,9 @@ export default function Login() {
 
           {/* Password input */}
           <div className="space-y-1.5">
-            <label className="text-[13px] font-medium text-foreground ml-1">Password</label>
+            <label className="text-[13px] font-medium text-foreground ml-1">
+              {t("Password", "Contraseña")}
+            </label>
             <div className="relative">
               <Lock
                 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
@@ -208,7 +232,7 @@ export default function Login() {
                   setPassword(e.target.value);
                   if (loginError) setLoginError(null);
                 }}
-                placeholder="Password"
+                placeholder={t("Password", "Contraseña")}
                 autoFocus
                 required
                 autoComplete="current-password"
@@ -235,13 +259,15 @@ export default function Login() {
             transition={{ type: "spring", stiffness: 500, damping: 30 }}
             className="w-full bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-primary-foreground text-[14px] font-semibold h-11 rounded-xl transition-colors mt-2 shadow-sm"
           >
-            {mutation.isPending ? "Signing in…" : "Sign in"}
+            {mutation.isPending
+              ? t("Signing in…", "Accediendo…")
+              : t("Sign in", "Acceder")}
           </motion.button>
           <a
             href={forgotPasswordUrl}
             className="text-center text-[13px] font-medium text-primary hover:underline"
           >
-            Forgot password?
+            {t("Forgot password?", "¿Has olvidado la contraseña?")}
           </a>
         </form>
       </motion.div>

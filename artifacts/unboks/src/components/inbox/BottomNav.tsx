@@ -1,7 +1,9 @@
-import { Calendar, Image as ImageIcon, Inbox, Settings } from "lucide-react";
+import { Calendar, Image as ImageIcon, Inbox, Settings, PhoneCall } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavId } from "@/components/inbox/Drawer";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
+import { getClientSlug } from "@/lib/tenant";
+import { getTenantUiConfig, tenantText } from "@/lib/tenant-ui";
 
 interface BottomNavProps {
   active: NavId;
@@ -11,7 +13,7 @@ interface BottomNavProps {
 }
 
 function activeBottomId(active: NavId): NavId {
-  if (active === "bookings" || active === "images" || active === "settings") return active;
+  if (active === "escalations" || active === "bookings" || active === "followups" || active === "images" || active === "settings") return active;
   return "inbox";
 }
 
@@ -23,15 +25,21 @@ export function BottomNav({
 }: BottomNavProps) {
   const bottomActive = activeBottomId(active);
   const { label: bookingsLabel } = useBookingsLabel();
-  const items = [
+  const isDespertares = getClientSlug() === "consulta-despertares";
+  const ui = getTenantUiConfig();
+  const items = (isDespertares ? [
+    { id: "inbox" as const, label: ui.conversationsLabel, icon: Inbox },
+    { id: "followups" as const, label: ui.followUpsLabel, icon: PhoneCall },
+    { id: "settings" as const, label: ui.settingsLabel, icon: Settings },
+  ] : [
     { id: "inbox" as const, label: "Inbox", icon: Inbox },
     { id: "bookings" as const, label: bookingsLabel, icon: Calendar },
     { id: "images" as const, label: "Images", icon: ImageIcon },
     { id: "settings" as const, label: "Settings", icon: Settings },
-  ] satisfies { id: NavId; label: string; icon: typeof Inbox }[];
+  ]) satisfies { id: NavId; label: string; icon: typeof Inbox }[];
   return (
     <nav
-      aria-label="Primary mobile navigation"
+      aria-label={tenantText("Primary mobile navigation", "Navegación principal para móvil")}
       className="h-[calc(4rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] bg-white border-t border-[#e6e8eb] flex items-center justify-around flex-shrink-0 shadow-[0_-1px_10px_rgba(0,0,0,0.02)] md:hidden"
     >
       {items.map((item) => {

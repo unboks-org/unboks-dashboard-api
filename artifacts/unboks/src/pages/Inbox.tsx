@@ -80,6 +80,7 @@ import {
   ConversationTranslationProvider,
   MessageTranslationView,
 } from "@/components/inbox/ConversationTranslation";
+import { getTenantUiConfig, isSpainSpanishTenant, tenantText } from "@/lib/tenant-ui";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
@@ -107,7 +108,11 @@ function MessageBubble({ msg }: { msg: ApiMessage }) {
       ? "bg-[#f3e8ff] text-[#5b3fa0] rounded-br-[4px]"
       : "bg-primary text-primary-foreground rounded-br-[4px]";
 
-  const roleLabel = isOperator ? "Team" : isUser ? null : "Agent";
+  const roleLabel = isOperator
+    ? tenantText("Team", "Equipo")
+    : isUser
+      ? null
+      : tenantText("Agent", "Agente");
   const roleLabelClass = isOperator
     ? "text-[#5b3fa0]"
     : "text-primary";
@@ -239,7 +244,10 @@ function EscalationModeToggle({
           if (isModeNotConnected(err)) {
             setNotice({
               tone: "info",
-              text: "Mode saved locally. Backend connection will complete this soon.",
+              text: tenantText(
+                "Mode saved locally. Backend connection will complete this soon.",
+                "El modo se ha guardado localmente. La conexión con el servidor se completará pronto.",
+              ),
             });
             return;
           }
@@ -250,9 +258,12 @@ function EscalationModeToggle({
           }
           setNotice({
             tone: "error",
-            text:
-              "Mode saved locally, but couldn't sync to backend: " +
-              (err instanceof Error ? err.message : "Unknown error"),
+            text: tenantText(
+              "Mode saved locally, but couldn't sync to backend: ",
+              "El modo se ha guardado localmente, pero no se pudo sincronizar con el servidor: ",
+            ) + (err instanceof Error
+              ? err.message
+              : tenantText("Unknown error", "Error desconocido")),
           });
         },
       },
@@ -266,7 +277,7 @@ function EscalationModeToggle({
     <>
       <div
         role="group"
-        aria-label="Escalation mode"
+        aria-label={tenantText("Escalation mode", "Modo de intervención")}
         className="inline-flex rounded-full border border-border p-0.5 bg-muted shadow-sm"
       >
         <motion.button
@@ -283,7 +294,7 @@ function EscalationModeToggle({
           )}
         >
           <AlertCircle className={cn("w-3.5 h-3.5", isSoft ? "text-[#f59e0b]" : "")} />
-          Agent needs help
+          {tenantText("Agent needs help", "El agente necesita ayuda")}
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.97 }}
@@ -299,7 +310,7 @@ function EscalationModeToggle({
           )}
         >
           <AlertTriangle className={cn("w-3.5 h-3.5", isHard ? "text-destructive" : "")} />
-          Human takeover
+          {tenantText("Human takeover", "Intervención humana")}
         </motion.button>
       </div>
       {notice && (
@@ -328,6 +339,7 @@ function EscalationModeToggle({
 interface ConversationDetailPaneProps {
   conversation: Conversation;
   onClose: () => void;
+  onBackToFollowUps?: () => void;
   /**
    * Email-only header actions. Wired through from Inbox so the same handlers
    * power both the row icons and the detail-pane buttons. When omitted (e.g.
@@ -361,6 +373,7 @@ interface ConversationDetailPaneProps {
 function ConversationDetailPane({
   conversation,
   onClose,
+  onBackToFollowUps,
   onEmailReply,
   onEmailForward,
   onEmailDelete,
@@ -398,7 +411,12 @@ function ConversationDetailPane({
   const errorDetail: { status: number | null; message: string } | null = isError
     ? error instanceof ApiError
       ? { status: error.status, message: error.message }
-      : { status: null, message: error instanceof Error ? error.message : "Unknown error" }
+      : {
+          status: null,
+          message: error instanceof Error
+            ? error.message
+            : tenantText("Unknown error", "Error desconocido"),
+        }
     : null;
   // Escalation routes use the conversation DB id. Look it up from the
   // escalations list (cached query) via the same normalizer + dedup pass
@@ -464,17 +482,22 @@ function ConversationDetailPane({
   const onUnresolve = useCallback(() => {
     const escalationId = conversation.escalationId;
     if (!escalationId || unresolve.isPending) return;
-    if (!window.confirm("Reopen this escalation?")) return;
+    if (!window.confirm(tenantText("Reopen this escalation?", "¿Reabrir esta solicitud?"))) return;
     unresolve.mutate(
       { id: escalationId },
       {
         onSuccess: () => {
-          toast.success("Escalation reopened");
+          toast.success(tenantText("Escalation reopened", "Solicitud reabierta"));
           onUnresolveSuccess?.(conversation.escalationMode ?? null);
         },
         onError: (err) => {
-          const msg = err instanceof Error ? err.message : "Please try again.";
-          toast.error("Couldn't reopen escalation", { description: msg });
+          const msg = err instanceof Error
+            ? err.message
+            : tenantText("Please try again.", "Inténtalo de nuevo.");
+          toast.error(
+            tenantText("Couldn't reopen escalation", "No se pudo reabrir la solicitud"),
+            { description: msg },
+          );
         },
       },
     );
@@ -599,22 +622,39 @@ function ConversationDetailPane({
       <div className="border-b border-border bg-card px-3 md:px-5 py-2.5 flex-shrink-0 z-10 shadow-sm">
         {/* Row 1 — identity + actions */}
         <div className="flex items-center gap-2 md:gap-3">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={onClose}
-            aria-label="Close conversation"
-            className="w-11 h-11 -ml-1 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground md:hidden flex-shrink-0"
-          >
-            <ArrowLeft className="w-[22px] h-[22px]" strokeWidth={1.5} />
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={onClose}
-            aria-label="Close conversation"
-            className="hidden md:flex w-8 h-8 items-center justify-center rounded-full hover:bg-muted text-muted-foreground flex-shrink-0"
-          >
-            <X className="w-[18px] h-[18px]" strokeWidth={2} />
-          </motion.button>
+          {onBackToFollowUps ? (
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              type="button"
+              onClick={onBackToFollowUps}
+              aria-label={tenantText("Back to follow-ups", "Volver a seguimientos")}
+              className="inline-flex h-10 flex-shrink-0 items-center gap-2 rounded-lg bg-primary/10 px-2.5 text-[12px] font-semibold text-primary transition-colors hover:bg-primary/15 md:px-3"
+            >
+              <ArrowLeft className="h-[18px] w-[18px]" strokeWidth={1.8} />
+              <span className="hidden sm:inline">
+                {tenantText("Back to follow-ups", "Volver a seguimientos")}
+              </span>
+            </motion.button>
+          ) : (
+            <>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={onClose}
+                aria-label={tenantText("Close conversation", "Cerrar conversación")}
+                className="w-11 h-11 -ml-1 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground md:hidden flex-shrink-0"
+              >
+                <ArrowLeft className="w-[22px] h-[22px]" strokeWidth={1.5} />
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={onClose}
+                aria-label={tenantText("Close conversation", "Cerrar conversación")}
+                className="hidden md:flex w-8 h-8 items-center justify-center rounded-full hover:bg-muted text-muted-foreground flex-shrink-0"
+              >
+                <X className="w-[18px] h-[18px]" strokeWidth={2} />
+              </motion.button>
+            </>
+          )}
           <div className="flex-1 min-w-0">
             <p className="text-[17px] md:text-[15px] font-semibold text-foreground truncate leading-tight">
               {conversation.sender}
@@ -629,7 +669,7 @@ function ConversationDetailPane({
               </span>
               {resolvedContext && (
                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 bg-[#10b981]/10 text-[#10b981] tracking-wide">
-                  Resolved escalation
+                  {tenantText("Resolved escalation", "Escalación resuelta")}
                 </span>
               )}
               {conversation.timestamp && (
@@ -661,12 +701,16 @@ function ConversationDetailPane({
               type="button"
               onClick={onUnresolve}
               disabled={unresolve.isPending}
-              aria-label="Reopen this escalation"
-              title="Reopen this escalation"
+              aria-label={tenantText("Reopen this escalation", "Reabrir esta escalación")}
+              title={tenantText("Reopen this escalation", "Reabrir esta escalación")}
               className="min-h-[44px] md:min-h-0 md:h-9 inline-flex items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-semibold border border-[#d6e4ff] bg-white text-primary hover:bg-primary/10 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
             >
               <ArchiveRestore className="w-[18px] h-[18px]" strokeWidth={1.6} />
-              <span>{unresolve.isPending ? "Reopening..." : "Unresolve"}</span>
+              <span>
+                {unresolve.isPending
+                  ? tenantText("Reopening...", "Reabriendo...")
+                  : tenantText("Unresolve", "Reabrir")}
+              </span>
             </motion.button>
           )}
           {(onArchive || onRestore) && (
@@ -676,8 +720,8 @@ function ConversationDetailPane({
                   whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onArchive(conversation); }}
-                  aria-label="Archive conversation"
-                  title="Archive"
+                  aria-label={tenantText("Archive conversation", "Archivar conversación")}
+                  title={tenantText("Archive", "Archivar")}
                   className="w-11 h-11 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Archive className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]" strokeWidth={1.5} />
@@ -688,12 +732,14 @@ function ConversationDetailPane({
                   whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onRestore(conversation); }}
-                  aria-label="Unarchive conversation"
-                  title="Unarchive"
+                  aria-label={tenantText("Unarchive conversation", "Desarchivar conversación")}
+                  title={tenantText("Unarchive", "Desarchivar")}
                   className="min-h-[44px] md:min-h-0 md:h-9 inline-flex items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-semibold hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
                 >
                   <ArchiveRestore className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]" strokeWidth={1.5} />
-                  <span className="hidden sm:inline">Unarchive</span>
+                  <span className="hidden sm:inline">
+                    {tenantText("Unarchive", "Desarchivar")}
+                  </span>
                 </motion.button>
               )}
               {onBlock && !archived && (
@@ -701,8 +747,8 @@ function ConversationDetailPane({
                   whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onBlock(conversation); }}
-                  aria-label="Block in Unboks"
-                  title="Block in Unboks"
+                  aria-label={tenantText("Block in Unboks", "Bloquear en Unboks")}
+                  title={tenantText("Block in Unboks", "Bloquear en Unboks")}
                   className="w-11 h-11 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                 >
                   <Ban className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]" strokeWidth={1.5} />
@@ -717,8 +763,8 @@ function ConversationDetailPane({
                   whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onEmailReply(conversation); }}
-                  aria-label="Reply"
-                  title="Reply"
+                  aria-label={tenantText("Reply", "Responder")}
+                  title={tenantText("Reply", "Responder")}
                   className="w-11 h-11 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors"
                 >
                   <Reply className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]" strokeWidth={1.5} />
@@ -729,8 +775,8 @@ function ConversationDetailPane({
                   whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onEmailForward(conversation); }}
-                  aria-label="Forward"
-                  title="Forward"
+                  aria-label={tenantText("Forward", "Reenviar")}
+                  title={tenantText("Forward", "Reenviar")}
                   className="hidden md:flex w-9 h-9 items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors"
                 >
                   <Forward className="w-[18px] h-[18px]" strokeWidth={1.5} />
@@ -741,8 +787,8 @@ function ConversationDetailPane({
                   whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onEmailDelete(conversation); }}
-                  aria-label="Delete"
-                  title="Delete"
+                  aria-label={tenantText("Delete", "Eliminar")}
+                  title={tenantText("Delete", "Eliminar")}
                   className="hidden md:flex w-9 h-9 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                 >
                   <Trash2 className="w-[18px] h-[18px]" strokeWidth={1.5} />
@@ -764,7 +810,7 @@ function ConversationDetailPane({
           </span>
           {resolvedContext && (
             <span className="text-[11.5px] font-semibold px-2.5 py-0.5 rounded-full flex-shrink-0 bg-[#10b981]/10 text-[#10b981] tracking-wide shadow-sm">
-              Resolved escalation
+              {tenantText("Resolved escalation", "Escalación resuelta")}
             </span>
           )}
           {resolvedContext && conversation.escalationId && (
@@ -776,7 +822,11 @@ function ConversationDetailPane({
               className="min-h-[36px] inline-flex items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-semibold border border-[#d6e4ff] bg-white text-primary disabled:opacity-60"
             >
               <ArchiveRestore className="w-[16px] h-[16px]" strokeWidth={1.6} />
-              <span>{unresolve.isPending ? "Reopening..." : "Unresolve"}</span>
+              <span>
+                {unresolve.isPending
+                  ? tenantText("Reopening...", "Reabriendo...")
+                  : tenantText("Unresolve", "Reabrir")}
+              </span>
             </motion.button>
           )}
           {showBanner && dbId && !resolvedContext && selectedMode !== "order" && (
@@ -883,14 +933,16 @@ function ConversationDetailPane({
                 ) : (
                   <ChevronRight className="h-3.5 w-3.5 flex-shrink-0" />
                 )}
-                <span>Conversation trail</span>
+                <span>{tenantText("Conversation trail", "Historial de la conversación")}</span>
                 {messages.length > 0 && (
                   <span className="text-[11px] font-normal text-[#9aa0a6]">
                     ({messages.length})
                   </span>
                 )}
                 <span className="ml-auto text-[11px] font-normal text-[#9aa0a6]">
-                  {trailOpen ? "Hide conversation" : "Show full conversation"}
+                  {trailOpen
+                    ? tenantText("Hide conversation", "Ocultar conversación")
+                    : tenantText("Show full conversation", "Mostrar conversación completa")}
                 </span>
               </button>
               {trailOpen && (
@@ -950,13 +1002,15 @@ function LatestCustomerMessagePreview({ messages }: { messages: ApiMessage[] }) 
 
   return (
     <section
-      aria-label="Latest customer message"
+      aria-label={tenantText("Latest customer message", "Último mensaje de la persona")}
       className="bg-white px-3 sm:px-4 pb-3 flex-shrink-0"
     >
       <div className="rounded-xl border border-[#e6e8eb] bg-white px-3.5 py-3 sm:px-4 sm:py-3.5">
         <div className="flex items-center justify-between gap-2 mb-1.5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#5f6368]">
-            {isInbound ? "Latest customer message" : "Latest message"}
+            {isInbound
+              ? tenantText("Latest customer message", "Último mensaje de la persona")
+              : tenantText("Latest message", "Último mensaje")}
           </p>
           {latest.timestamp && (
             <span className="text-[11px] text-[#9aa0a6] flex-shrink-0">
@@ -1002,7 +1056,9 @@ function ConversationThreadBody({
             <div className="w-2 h-2 rounded-full bg-muted-foreground/30 animate-bounce [animation-delay:-0.15s]" />
             <div className="w-2 h-2 rounded-full bg-muted-foreground/30 animate-bounce" />
           </div>
-          <p className="text-[13px] font-medium text-muted-foreground">Loading messages</p>
+          <p className="text-[13px] font-medium text-muted-foreground">
+            {tenantText("Loading messages", "Cargando mensajes")}
+          </p>
         </div>
       )}
 
@@ -1041,7 +1097,7 @@ function ConversationThreadBody({
                 <AlertTriangle className="w-5 h-5 text-destructive" />
               </div>
               <p className="text-[14px] font-semibold text-destructive mb-1">
-                Couldn't load conversation
+                {tenantText("Couldn't load conversation", "No se pudo cargar la conversación")}
               </p>
               <p className="text-[13px] text-destructive/80 font-medium">
                 {errorDetail.status
@@ -1056,8 +1112,15 @@ function ConversationThreadBody({
               <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
                 <Bot className="w-5 h-5 text-muted-foreground" />
               </div>
-              <p className="text-[14px] font-medium text-foreground">No messages to display</p>
-              <p className="text-[13px] text-muted-foreground mt-1">This thread appears to be empty.</p>
+              <p className="text-[14px] font-medium text-foreground">
+                {tenantText("No messages to display", "No hay mensajes que mostrar")}
+              </p>
+              <p className="text-[13px] text-muted-foreground mt-1">
+                {tenantText(
+                  "This thread appears to be empty.",
+                  "Esta conversación parece estar vacía.",
+                )}
+              </p>
             </div>
           )}
         </div>
@@ -1073,6 +1136,17 @@ function ConversationThreadBody({
 export default function Inbox() {
   const [location, navigate] = useLocation();
   const search = useSearch();
+  const returnToFollowUps = useMemo(
+    () => new URLSearchParams(search).get("from") === "follow-ups",
+    [search],
+  );
+  useEffect(() => {
+    if (!isSpainSpanishTenant()) return;
+    const params = new URLSearchParams(search);
+    if (location.startsWith("/escalations") || params.get("view") === "escalations") {
+      navigate("/follow-ups", { replace: true });
+    }
+  }, [location, search, navigate]);
   const { isChannelVisible } = useIcpChannelVisibility();
   const [searchQuery, setSearchQueryState] = useState("");
   // activeNav is derived from the URL — that's how a refresh / crash
@@ -1170,17 +1244,27 @@ export default function Inbox() {
     async (conv: Conversation) => {
       const id = conv.conversationKey || conv.id;
       if (!id) {
-        toast.error("Couldn't archive — no stable identifier on this row.");
+        toast.error(
+          tenantText(
+            "Couldn't archive — no stable identifier on this row.",
+            "No se pudo archivar: esta fila no tiene un identificador válido.",
+          ),
+        );
         return;
       }
       try {
         await archiveMutation.mutateAsync(id);
         setSelectedConv((cur) => (cur?.id === conv.id ? null : cur));
-        toast.success("Archived", {
-          description: "Returns to Active when the customer replies.",
+        toast.success(tenantText("Archived", "Archivada"), {
+          description: tenantText(
+            "Returns to Active when the customer replies.",
+            "Volverá a Activas cuando la persona responda.",
+          ),
         });
       } catch {
-        toast.error("Couldn't archive — try again.");
+        toast.error(
+          tenantText("Couldn't archive — try again.", "No se pudo archivar. Inténtalo de nuevo."),
+        );
       }
     },
     [archiveMutation],
@@ -1189,17 +1273,30 @@ export default function Inbox() {
     async (conv: Conversation) => {
       const id = conv.conversationKey || conv.id;
       if (!id) {
-        toast.error("Couldn't unarchive — no stable identifier on this row.");
+        toast.error(
+          tenantText(
+            "Couldn't unarchive — no stable identifier on this row.",
+            "No se pudo desarchivar: esta fila no tiene un identificador válido.",
+          ),
+        );
         return;
       }
       try {
         await unarchiveMutation.mutateAsync(id);
         setSelectedConv((cur) => (cur?.id === conv.id ? null : cur));
-        toast.success("Unarchived", {
-          description: "Conversation is back in Active.",
+        toast.success(tenantText("Unarchived", "Desarchivada"), {
+          description: tenantText(
+            "Conversation is back in Active.",
+            "La conversación vuelve a Activas.",
+          ),
         });
       } catch {
-        toast.error("Couldn't unarchive — try again.");
+        toast.error(
+          tenantText(
+            "Couldn't unarchive — try again.",
+            "No se pudo desarchivar. Inténtalo de nuevo.",
+          ),
+        );
       }
     },
     [unarchiveMutation],
@@ -1426,7 +1523,12 @@ export default function Inbox() {
       // Loaded with a definitive answer and the id isn't in the list.
       // Either it was already resolved, or the link is stale.
       consumedDeepLinkRef.current = lookupKey;
-      toast.message("Escalation not found or already resolved.");
+      toast.message(
+        tenantText(
+          "Escalation not found or already resolved.",
+          "No se encontró la solicitud o ya está resuelta.",
+        ),
+      );
       if (deepLink.source === "query") clearDeepLinkQuery();
     }
   }, [
@@ -1474,7 +1576,9 @@ export default function Inbox() {
 
   const sectionTitle = useMemo(() => {
     if (activeChannel) return activeChannel;
-    return NAV_LABELS[activeNav] || "Inbox";
+    if (activeNav === "inbox") return getTenantUiConfig().conversationsLabel;
+    if (activeNav === "escalations") return getTenantUiConfig().escalationsLabel;
+    return NAV_LABELS[activeNav] || tenantText("Inbox", "Conversaciones");
   }, [activeNav, activeChannel]);
 
   const filtered = useMemo(() => {
@@ -1526,18 +1630,28 @@ export default function Inbox() {
 
   const subtitle: React.ReactNode = (() => {
     if (activeNav === "escalations") {
-      if (escIsLoading) return "Loading…";
-      if (escIsError) return "Couldn't load escalations";
-      if (escalationFilter === "resolved") return "Resolved escalations";
-      return "Conversations that need your attention";
+      if (escIsLoading) return tenantText("Loading…", "Cargando…");
+      if (escIsError) {
+        return tenantText("Couldn't load escalations", "No se pudieron cargar las escalaciones");
+      }
+      if (escalationFilter === "resolved") {
+        return tenantText("Resolved escalations", "Escalaciones resueltas");
+      }
+      return tenantText(
+        "Conversations that need your attention",
+        "Conversaciones que requieren tu atención",
+      );
     }
-    if (isLoading) return "Loading…";
-    if (isError) return "Couldn't load";
+    if (isLoading) return tenantText("Loading…", "Cargando…");
+    if (isError) return tenantText("Couldn't load", "No se pudo cargar");
     if (activeChannel) {
       const n = filtered.length;
-      return `${n} ${n === 1 ? "conversation" : "conversations"}`;
+      return tenantText(
+        `${n} ${n === 1 ? "conversation" : "conversations"}`,
+        `${n} ${n === 1 ? "conversación" : "conversaciones"}`,
+      );
     }
-    return "All conversations";
+    return tenantText("All conversations", "Todas las conversaciones");
   })();
 
   const titleNode: React.ReactNode = activeChannel ? (
@@ -1576,7 +1690,7 @@ export default function Inbox() {
             <div
               className="flex items-center gap-1.5 px-3 py-2.5 border-b border-border bg-card/95 backdrop-blur-sm sticky top-0 z-10 overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               role="tablist"
-              aria-label="Escalation filter"
+              aria-label={tenantText("Escalation filter", "Filtro de escalaciones")}
             >
               {(["all", "soft", "hard", "resolved"] as const).map((m) => (
                 <motion.button
@@ -1593,7 +1707,13 @@ export default function Inbox() {
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
-                  {m === "all" ? "All" : m === "soft" ? "Agent needs help" : m === "hard" ? "Human takeover" : "Resolved"}
+                  {m === "all"
+                    ? tenantText("All", "Todas")
+                    : m === "soft"
+                      ? tenantText("Agent needs help", "El agente necesita ayuda")
+                      : m === "hard"
+                        ? tenantText("Human takeover", "Intervención humana")
+                        : tenantText("Resolved", "Resueltas")}
                 </motion.button>
               ))}
             </div>
@@ -1618,18 +1738,26 @@ export default function Inbox() {
                       aria-pressed={inboxView === v}
                     >
                       {v === "archived" && <Archive className="h-3.5 w-3.5" />}
-                      {v === "active" ? "Active" : "Archived"}
+                      {v === "active"
+                        ? tenantText("Active", "Activas")
+                        : tenantText("Archived", "Archivadas")}
                     </motion.button>
                   ))}
                 </div>
               </div>
               {inboxView === "archived" && archiveIsLoading && (
-                <span className="text-[11px] font-medium text-muted-foreground truncate px-2">Loading…</span>
+                <span className="text-[11px] font-medium text-muted-foreground truncate px-2">
+                  {tenantText("Loading…", "Cargando…")}
+                </span>
               )}
             </div>
           )}
           {(activeNav === "escalations" ? escIsLoading : inboxView === "archived" ? archiveIsLoading : isLoading) && filtered.length === 0 ? (
-            <div className="divide-y divide-border" aria-busy="true" aria-label="Loading conversations">
+            <div
+              className="divide-y divide-border"
+              aria-busy="true"
+              aria-label={tenantText("Loading conversations", "Cargando conversaciones")}
+            >
               {[0, 1, 2, 3, 4].map((i) => (
                 <motion.div 
                   initial={{ opacity: 0, y: 5 }}
@@ -1691,19 +1819,31 @@ export default function Inbox() {
               </div>
               <h3 className="text-[16px] font-semibold text-foreground mb-1">
                 {activeNav === "escalations"
-                  ? escIsError ? "Couldn't load escalations" : "All caught up"
-                  : isError ? "Couldn't load conversations" : "Inbox zero"}
+                  ? escIsError
+                    ? tenantText("Couldn't load escalations", "No se pudieron cargar las escalaciones")
+                    : tenantText("All caught up", "Todo al día")
+                  : isError
+                    ? tenantText("Couldn't load conversations", "No se pudieron cargar las conversaciones")
+                    : tenantText("Inbox zero", "Bandeja vacía")}
               </h3>
               <p className="text-[14px] text-muted-foreground max-w-[260px] leading-relaxed">
                 {activeNav === "escalations"
                   ? escIsError
-                    ? escError instanceof Error ? escError.message : "Please try again later."
+                    ? escError instanceof Error
+                      ? escError.message
+                      : tenantText("Please try again later.", "Inténtalo de nuevo más tarde.")
                     : escalationFilter === "resolved"
-                      ? "No resolved escalations yet."
-                      : "No escalations to show."
+                      ? tenantText(
+                          "No resolved escalations yet.",
+                          "Todavía no hay escalaciones resueltas.",
+                        )
+                      : tenantText("No escalations to show.", "No hay escalaciones que mostrar.")
                   : isError
-                    ? "Please try again later."
-                    : "No conversations to show right now."}
+                    ? tenantText("Please try again later.", "Inténtalo de nuevo más tarde.")
+                    : tenantText(
+                        "No conversations to show right now.",
+                        "Ahora mismo no hay conversaciones que mostrar.",
+                      )}
               </p>
             </motion.div>
           )}
@@ -1714,6 +1854,7 @@ export default function Inbox() {
           <ConversationDetailPane
             conversation={selectedConv}
             onClose={() => setSelectedConv(null)}
+            onBackToFollowUps={returnToFollowUps ? () => navigate("/follow-ups") : undefined}
             onEmailReply={canDeleteChannel(selectedConv.channel) ? handleEmailReply : undefined}
             onEmailForward={canDeleteChannel(selectedConv.channel) ? handleEmailForward : undefined}
             onEmailDelete={canDeleteChannel(selectedConv.channel) ? handleEmailDelete : undefined}
@@ -1752,7 +1893,7 @@ export default function Inbox() {
       <BlockSenderModal
         open={Boolean(blockConv)}
         conversation={blockConv}
-        operatorLabel="Operator"
+        operatorLabel={tenantText("Operator", "Operador")}
         onClose={() => setBlockConv(null)}
         onBlocked={handleBlocked}
       />

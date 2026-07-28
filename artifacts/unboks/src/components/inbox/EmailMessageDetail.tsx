@@ -5,6 +5,7 @@ import { parseEmail, tokenizeInline } from "@/lib/email-parser";
 import { cn } from "@/lib/utils";
 import { MessageTranslationView } from "@/components/inbox/ConversationTranslation";
 import { motion, AnimatePresence } from "framer-motion";
+import { tenantText } from "@/lib/tenant-ui";
 
 // ---------------------------------------------------------------------------
 // EmailMessageDetail
@@ -66,10 +67,10 @@ export function EmailMessageDetail({ msg }: EmailMessageDetailProps) {
       : "border-[#e8eaed]";
 
   const labelText = isOperator
-    ? "Sent by Team"
+    ? tenantText("Sent by Team", "Enviado por el equipo")
     : isAssistant
-      ? "Sent by Agent"
-      : "Received";
+      ? tenantText("Sent by Agent", "Enviado por el agente")
+      : tenantText("Received", "Recibido");
 
   const labelColor = isOperator
     ? "text-[#5b3fa0] font-semibold"
@@ -116,7 +117,7 @@ export function EmailMessageDetail({ msg }: EmailMessageDetailProps) {
       {signature && (
         <div className="mt-4 border-t border-[#f1f3f4] pt-3 text-[12px] leading-[1.5] text-[#5f6368] whitespace-pre-wrap break-words">
           <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[#9aa0a6]">
-            Signature
+            {tenantText("Signature", "Firma")}
           </p>
           <InlineText value={signature} />
         </div>
@@ -139,9 +140,11 @@ export function EmailMessageDetail({ msg }: EmailMessageDetailProps) {
               <ChevronRight className="h-3.5 w-3.5 flex-shrink-0" />
             )}
             <ShieldAlert className="h-3.5 w-3.5 flex-shrink-0 text-[#9aa0a6]" />
-            <span>Confidentiality notice</span>
+            <span>{tenantText("Confidentiality notice", "Aviso de confidencialidad")}</span>
             <span className="ml-auto text-[11px] font-normal text-[#9aa0a6]">
-              {showDisclaimer ? "Hide" : "Show"}
+              {showDisclaimer
+                ? tenantText("Hide", "Ocultar")
+                : tenantText("Show", "Mostrar")}
             </span>
           </motion.button>
           <AnimatePresence>

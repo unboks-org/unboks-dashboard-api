@@ -23,6 +23,7 @@ import type { Conversation } from "@/data/conversations";
 import { cn } from "@/lib/utils";
 import { AIEditorPanel } from "@/components/inbox/AIEditorPanel";
 import { motion } from "framer-motion";
+import { tenantText } from "@/lib/tenant-ui";
 
 const MOBILE_SHEET_CLASS =
   "max-sm:left-0 max-sm:right-0 max-sm:bottom-0 max-sm:top-auto max-sm:translate-x-0 max-sm:translate-y-0 max-sm:w-full max-sm:max-w-none max-sm:max-h-[calc(100dvh-1rem)] max-sm:overflow-y-auto max-sm:rounded-t-2xl max-sm:rounded-b-none max-sm:border-b-0 max-sm:p-4";
@@ -44,16 +45,25 @@ const MOBILE_SHEET_CLASS =
 function describeError(err: unknown): string {
   if (err instanceof ApiError) {
     if (err.status === 404 || err.status === 501) {
-      return "This email action is not available yet.";
+      return tenantText(
+        "This email action is not available yet.",
+        "Esta acción de correo aún no está disponible.",
+      );
     }
     if (err.message && err.message.trim().length > 0) return err.message;
     if (err.status === 0) {
-      return "Couldn't reach the server. Check your connection and try again.";
+      return tenantText(
+        "Couldn't reach the server. Check your connection and try again.",
+        "No se pudo conectar con el servidor. Comprueba la conexión e inténtalo de nuevo.",
+      );
     }
-    return `Request failed (${err.status}).`;
+    return tenantText(
+      `Request failed (${err.status}).`,
+      `La solicitud ha fallado (${err.status}).`,
+    );
   }
   if (err instanceof Error && err.message.trim().length > 0) return err.message;
-  return "Unknown error.";
+  return tenantText("Unknown error.", "Error desconocido.");
 }
 
 // ---------------------------------------------------------------------------
@@ -71,7 +81,9 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
   const [error, setError] = useState<string | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
   const reply = useEmailReply();
-  const subject = conversation?.subject?.trim() || conversation?.sender || "this email";
+  const subject = conversation?.subject?.trim() ||
+    conversation?.sender ||
+    tenantText("this email", "este correo");
   const taRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Reset whenever the modal opens for a new conversation.
@@ -134,7 +146,7 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
           // shows its own visible "Agent Editor" header.
           <>
             <DialogHeader className="sr-only">
-              <DialogTitle>Agent Editor</DialogTitle>
+              <DialogTitle>{tenantText("Agent Editor", "Editor del agente")}</DialogTitle>
             </DialogHeader>
             <AIEditorPanel
               inline
@@ -151,7 +163,9 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
         ) : (
           <>
             <DialogHeader className="min-w-0">
-              <DialogTitle className="break-words">Reply to email</DialogTitle>
+              <DialogTitle className="break-words">
+                {tenantText("Reply to email", "Responder al correo")}
+              </DialogTitle>
               <DialogDescription
                 className="min-w-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap"
                 title={subject}
@@ -164,18 +178,23 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
             <div className="flex items-center gap-2 rounded-md border border-[#e6e8eb] bg-[#fbfbfd] px-3 py-2">
               <span className="h-2 w-2 rounded-full bg-[#7a8fa6] flex-shrink-0" />
               <span className="text-[12px] text-[#5f6368]">
-                Sent as your team, not as the Agent
+                {tenantText(
+                  "Sent as your team, not as the Agent",
+                  "Se envía en nombre de tu equipo, no del agente",
+                )}
               </span>
             </div>
 
             <div className="min-w-0 space-y-2">
-              <Label htmlFor="email-reply-body" className="sr-only">Reply</Label>
+              <Label htmlFor="email-reply-body" className="sr-only">
+                {tenantText("Reply", "Respuesta")}
+              </Label>
               <Textarea
                 id="email-reply-body"
                 ref={taRef}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                placeholder="Write your reply…"
+                placeholder={tenantText("Write your reply…", "Escribe tu respuesta…")}
                 className="box-border block min-h-[140px] w-full max-w-full min-w-0 resize-none text-[14px]"
                 disabled={reply.isPending}
               />
@@ -184,8 +203,11 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
                 type="button"
                 onClick={() => setAiOpen(true)}
                 disabled={!hasBody || reply.isPending}
-                aria-label="Open Agent Editor"
-                title="Agent Editor: Translate, Style, Fix"
+                aria-label={tenantText("Open Agent Editor", "Abrir el editor del agente")}
+                title={tenantText(
+                  "Agent Editor: Translate, Style, Fix",
+                  "Editor del agente: traducir, ajustar el estilo y corregir",
+                )}
                 className={cn(
                   "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium border transition-colors",
                   !hasBody || reply.isPending
@@ -194,16 +216,20 @@ export function EmailReplyModal({ open, conversation, onClose }: EmailReplyModal
                 )}
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                Agent Editor
+                {tenantText("Agent Editor", "Editor del agente")}
               </button>
               {error && (
                 <p role="alert" className="break-words text-[12px] text-[#c5221f]">{error}</p>
               )}
             </div>
             <DialogFooter className="flex flex-wrap justify-end gap-2">
-              <Button variant="ghost" onClick={onClose} disabled={reply.isPending}>Cancel</Button>
+              <Button variant="ghost" onClick={onClose} disabled={reply.isPending}>
+                {tenantText("Cancel", "Cancelar")}
+              </Button>
               <Button onClick={onSend} disabled={!canSend}>
-                {reply.isPending ? "Sending…" : "Send reply"}
+                {reply.isPending
+                  ? tenantText("Sending…", "Enviando…")
+                  : tenantText("Send reply", "Enviar respuesta")}
               </Button>
             </DialogFooter>
           </>
@@ -230,7 +256,9 @@ export function EmailForwardModal({ open, conversation, onClose }: EmailForwardM
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const forward = useEmailForward();
-  const subject = conversation?.subject?.trim() || conversation?.sender || "this email";
+  const subject = conversation?.subject?.trim() ||
+    conversation?.sender ||
+    tenantText("this email", "este correo");
 
   useEffect(() => {
     if (open) {
@@ -251,7 +279,12 @@ export function EmailForwardModal({ open, conversation, onClose }: EmailForwardM
     if (!conversation) return;
     setError(null);
     if (!allValid) {
-      setError("Enter at least one valid email address.");
+      setError(
+        tenantText(
+          "Enter at least one valid email address.",
+          "Introduce al menos una dirección de correo válida.",
+        ),
+      );
       return;
     }
     try {
@@ -274,7 +307,9 @@ export function EmailForwardModal({ open, conversation, onClose }: EmailForwardM
         )}
       >
         <DialogHeader className="min-w-0">
-          <DialogTitle className="break-words">Forward email</DialogTitle>
+          <DialogTitle className="break-words">
+            {tenantText("Forward email", "Reenviar correo")}
+          </DialogTitle>
           <DialogDescription
             className="min-w-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap"
             title={subject}
@@ -285,7 +320,7 @@ export function EmailForwardModal({ open, conversation, onClose }: EmailForwardM
         <div className="min-w-0 space-y-3">
           <div className="min-w-0 space-y-1.5">
             <Label htmlFor="email-forward-to" className="text-[12px] font-medium text-[#5f6368]">
-              To
+              {tenantText("To", "Para")}
             </Label>
             <Input
               id="email-forward-to"
@@ -298,18 +333,27 @@ export function EmailForwardModal({ open, conversation, onClose }: EmailForwardM
               className="box-border block w-full max-w-full min-w-0"
             />
             <p className="text-[11px] text-[#9aa0a6]">
-              Separate multiple addresses with commas.
+              {tenantText(
+                "Separate multiple addresses with commas.",
+                "Separa varias direcciones con comas.",
+              )}
             </p>
           </div>
           <div className="min-w-0 space-y-1.5">
             <Label htmlFor="email-forward-note" className="text-[12px] font-medium text-[#5f6368]">
-              Note <span className="text-[#9aa0a6] font-normal">(optional)</span>
+              {tenantText("Note", "Nota")}{" "}
+              <span className="text-[#9aa0a6] font-normal">
+                {tenantText("(optional)", "(opcional)")}
+              </span>
             </Label>
             <Textarea
               id="email-forward-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Add a short note for the recipient…"
+              placeholder={tenantText(
+                "Add a short note for the recipient…",
+                "Añade una nota breve para el destinatario…",
+              )}
               className="box-border block min-h-[88px] w-full max-w-full min-w-0 resize-none text-[14px]"
               disabled={forward.isPending}
             />
@@ -319,9 +363,13 @@ export function EmailForwardModal({ open, conversation, onClose }: EmailForwardM
           )}
         </div>
         <DialogFooter className="flex flex-wrap justify-end gap-2">
-          <Button variant="ghost" onClick={onClose} disabled={forward.isPending}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose} disabled={forward.isPending}>
+            {tenantText("Cancel", "Cancelar")}
+          </Button>
           <Button onClick={onSend} disabled={!canSend}>
-            {forward.isPending ? "Forwarding…" : "Forward"}
+            {forward.isPending
+              ? tenantText("Forwarding…", "Reenviando…")
+              : tenantText("Forward", "Reenviar")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -406,7 +454,10 @@ export function EmailDeleteConfirm({ open, conversation, onClose, onDeleted }: E
       ) {
         finishHidden(keys);
         toast(
-          "Hidden locally. Backend delete is not connected for this row yet.",
+          tenantText(
+            "Hidden locally. Backend delete is not connected for this row yet.",
+            "Ocultada localmente. La eliminación en el servidor aún no está disponible para esta fila.",
+          ),
         );
         return;
       }
@@ -424,22 +475,31 @@ export function EmailDeleteConfirm({ open, conversation, onClose, onDeleted }: E
         )}
       >
         <DialogHeader className="min-w-0">
-          <DialogTitle className="break-words">Remove this conversation?</DialogTitle>
+          <DialogTitle className="break-words">
+            {tenantText("Remove this conversation?", "¿Eliminar esta conversación?")}
+          </DialogTitle>
           <DialogDescription className="break-words">
-            This will hide it from the active inbox and escalation list.
+            {tenantText(
+              "This will hide it from the active inbox and escalation list.",
+              "Se ocultará de la bandeja activa y de los seguimientos.",
+            )}
           </DialogDescription>
         </DialogHeader>
         {error && (
           <p role="alert" className="break-words text-[12px] text-[#c5221f]">{error}</p>
         )}
         <DialogFooter className="flex flex-wrap justify-end gap-2">
-          <Button variant="ghost" onClick={onClose} disabled={del.isPending}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose} disabled={del.isPending}>
+            {tenantText("Cancel", "Cancelar")}
+          </Button>
           <Button
             onClick={onConfirm}
             disabled={del.isPending}
             className="bg-[#c5221f] text-white hover:bg-[#a50e0e]"
           >
-            {del.isPending ? "Removing…" : "Remove"}
+            {del.isPending
+              ? tenantText("Removing…", "Eliminando…")
+              : tenantText("Remove", "Eliminar")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -6,6 +6,7 @@ import {
   type CloudConnectionProviderId,
 } from "@/hooks/use-cloud-knowledge-connections";
 import { getClientSlug } from "@/lib/tenant";
+import { getTenantUiConfig, tenantText } from "@/lib/tenant-ui";
 
 /**
  * Cloud knowledge providers — backend-driven.
@@ -34,7 +35,10 @@ function formatDate(iso?: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  return d.toLocaleDateString(getTenantUiConfig().dateLocale, {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 // Inline brand marks. SVGs kept small so the row stays compact. Colors
@@ -76,13 +80,21 @@ function ConnectedMeta({ p }: { p: CloudConnectionProvider }) {
     return (
       <>
         <span className="text-[#3c4043]">{p.folder_name}</span>
-        <span className="text-[#9aa0a6]">{" \u00B7 Last synced "}{synced}</span>
+        <span className="text-[#9aa0a6]">
+          {" \u00B7 "}{tenantText("Last synced", "Última sincronización")}: {synced}
+        </span>
       </>
     );
   }
   if (p.folder_name) return <span className="text-[#3c4043]">{p.folder_name}</span>;
-  if (synced) return <span className="text-[#9aa0a6]">Last synced {synced}</span>;
-  return <span className="text-[#5f6368]">Linked</span>;
+  if (synced) {
+    return (
+      <span className="text-[#9aa0a6]">
+        {tenantText("Last synced", "Última sincronización")}: {synced}
+      </span>
+    );
+  }
+  return <span className="text-[#5f6368]">{tenantText("Linked", "Vinculado")}</span>;
 }
 
 function StatusLine({ p }: { p: CloudConnectionProvider }) {
@@ -95,24 +107,34 @@ function StatusLine({ p }: { p: CloudConnectionProvider }) {
     if (p.needs_provider_app_registration) {
       return (
         <span className="text-[#5f6368]">
-          Setup required
+          {tenantText("Setup required", "Configuración necesaria")}
           <span className="text-[#9aa0a6]">
-            {" \u00B7 Contact the Unboks team to enable."}
+            {" \u00B7 "}
+            {tenantText(
+              "Contact the Unboks team to enable.",
+              "Contacta con el equipo de Unboks para activarlo.",
+            )}
           </span>
         </span>
       );
     }
     return (
       <span className="text-[#5f6368]">
-        Setup required
+        {tenantText("Setup required", "Configuración necesaria")}
         {p.blurb ? <span className="text-[#9aa0a6]">{" \u00B7 "}{p.blurb}</span> : null}
       </span>
     );
   }
   return (
     <span className="text-[#5f6368]">
-      Setup pending
-      <span className="text-[#9aa0a6]">{" \u00B7 Contact the Unboks team to enable."}</span>
+      {tenantText("Setup pending", "Configuración pendiente")}
+      <span className="text-[#9aa0a6]">
+        {" \u00B7 "}
+        {tenantText(
+          "Contact the Unboks team to enable.",
+          "Contacta con el equipo de Unboks para activarlo.",
+        )}
+      </span>
     </span>
   );
 }
@@ -151,7 +173,7 @@ function ProviderRow({ p }: { p: CloudConnectionProvider }) {
           <p className="text-[13px] font-semibold text-[#202124]">{p.label}</p>
           {isConnected && (
             <span className="inline-flex items-center rounded-full bg-[#e6f4ea] px-1.5 py-0.5 text-[10px] font-medium text-[#137333]">
-              Connected
+              {tenantText("Connected", "Conectado")}
             </span>
           )}
         </div>
@@ -164,14 +186,14 @@ function ProviderRow({ p }: { p: CloudConnectionProvider }) {
       <div className="flex flex-shrink-0 items-center gap-1 ml-auto sm:ml-0">
         {isConnected ? (
           <span className="rounded-md px-2 py-1 text-[12px] text-[#5f6368]">
-            Linked
+            {tenantText("Linked", "Vinculado")}
           </span>
         ) : connectHref ? (
           <a
             href={connectHref}
             className="rounded-md border border-[#dadce0] bg-white px-3 py-1 text-[12px] font-medium text-[#1a73e8] hover:bg-[#f0f6ff] hover:border-[#c4d7f5]"
           >
-            Connect
+            {tenantText("Connect", "Conectar")}
           </a>
         ) : (
           <button
@@ -179,12 +201,18 @@ function ProviderRow({ p }: { p: CloudConnectionProvider }) {
             disabled
             title={
               p.status === "not_configured"
-                ? "Contact the Unboks team to enable this connection."
-                : "Connect flow is not enabled for this provider yet."
+                ? tenantText(
+                    "Contact the Unboks team to enable this connection.",
+                    "Contacta con el equipo de Unboks para activar esta conexión.",
+                  )
+                : tenantText(
+                    "Connect flow is not enabled for this provider yet.",
+                    "El proceso de conexión aún no está disponible para este proveedor.",
+                  )
             }
             className="cursor-not-allowed rounded-md border border-[#e8eaed] bg-[#f8f9fa] px-3 py-1 text-[12px] font-medium text-[#9aa0a6]"
           >
-            Connect
+            {tenantText("Connect", "Conectar")}
           </button>
         )}
       </div>
@@ -200,7 +228,7 @@ export function CloudKnowledgeConnections() {
     return (
       <div className="flex items-center gap-2 rounded-xl border border-[#e8eaed] bg-white px-4 py-6 text-[12px] text-[#5f6368]">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        Loading cloud connections…
+        {tenantText("Loading cloud connections…", "Cargando conexiones en la nube…")}
       </div>
     );
   }
@@ -210,7 +238,10 @@ export function CloudKnowledgeConnections() {
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[#fbe5e5] bg-[#fef7f7] px-4 py-3 text-[12px] text-[#a8071a]">
         <AlertCircle className="h-4 w-4 flex-shrink-0" />
         <span className="flex-1">
-          Could not load cloud connections. Please try again.
+          {tenantText(
+            "Could not load cloud connections. Please try again.",
+            "No se pudieron cargar las conexiones en la nube. Inténtalo de nuevo.",
+          )}
         </span>
         <button
           type="button"
@@ -218,7 +249,9 @@ export function CloudKnowledgeConnections() {
           disabled={isFetching}
           className="rounded-md border border-[#f5c6c6] bg-white px-2.5 py-1 text-[12px] font-medium text-[#a8071a] hover:bg-[#fdf2f2] disabled:opacity-60"
         >
-          {isFetching ? "Retrying…" : "Retry"}
+          {isFetching
+            ? tenantText("Retrying…", "Reintentando…")
+            : tenantText("Retry", "Reintentar")}
         </button>
       </div>
     );
@@ -229,8 +262,10 @@ export function CloudKnowledgeConnections() {
   if (providers.length === 0) {
     return (
       <div className="rounded-xl border border-[#e8eaed] bg-white px-4 py-6 text-[12px] text-[#5f6368]">
-        No cloud providers are available for your workspace yet. Contact the
-        Unboks team to enable Google Drive, OneDrive, or Dropbox.
+        {tenantText(
+          "No cloud providers are available for your workspace yet. Contact the Unboks team to enable Google Drive, OneDrive, or Dropbox.",
+          "Todavía no hay proveedores en la nube disponibles para tu espacio de trabajo. Contacta con el equipo de Unboks para activar Google Drive, OneDrive o Dropbox.",
+        )}
       </div>
     );
   }

@@ -3,6 +3,8 @@ import { Conversation } from "@/data/conversations";
 import { cn } from "@/lib/utils";
 import { CHANNEL_BADGE_COLORS } from "@/lib/channel-map";
 import { Star, Reply, Forward, Trash2, Archive, ArchiveRestore } from "lucide-react";
+import { getClientSlug } from "@/lib/tenant";
+import { tenantText } from "@/lib/tenant-ui";
 
 // Muted, desaturated palette — premium SaaS feel.
 // Enough depth for white initials to remain legible (all clear ~3.5:1+),
@@ -79,6 +81,7 @@ export function MessageRow({
 }: MessageRowProps) {
   const [starred, setStarred] = useState(false);
   const color = avatarColor(conversation.sender);
+  const showClassificationTags = getClientSlug() !== "consulta-despertares";
 
   // Prefer the latest preview; fall back to subject if preview is missing so
   // the row never collapses to nothing.
@@ -148,8 +151,8 @@ export function MessageRow({
             {conversation.channel === "Email" && onReply && (
               <button
                 type="button"
-                aria-label="Reply"
-                title="Reply"
+                aria-label={tenantText("Reply", "Responder")}
+                title={tenantText("Reply", "Responder")}
                 onClick={(e) => {
                   e.stopPropagation();
                   onReply(conversation);
@@ -162,8 +165,8 @@ export function MessageRow({
             {conversation.channel === "Email" && onForward && (
               <button
                 type="button"
-                aria-label="Forward"
-                title="Forward"
+                aria-label={tenantText("Forward", "Reenviar")}
+                title={tenantText("Forward", "Reenviar")}
                 onClick={(e) => {
                   e.stopPropagation();
                   onForward(conversation);
@@ -176,8 +179,8 @@ export function MessageRow({
             {conversation.channel === "Email" && onDelete && !archived && (
               <button
                 type="button"
-                aria-label="Delete"
-                title="Delete"
+                aria-label={tenantText("Delete", "Eliminar")}
+                title={tenantText("Delete", "Eliminar")}
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete(conversation);
@@ -190,8 +193,8 @@ export function MessageRow({
             {!archived && onArchive && (
               <button
                 type="button"
-                aria-label="Archive"
-                title="Archive"
+                aria-label={tenantText("Archive", "Archivar")}
+                title={tenantText("Archive", "Archivar")}
                 onClick={(e) => {
                   e.stopPropagation();
                   onArchive(conversation);
@@ -204,8 +207,8 @@ export function MessageRow({
             {archived && onRestore && (
               <button
                 type="button"
-                aria-label="Unarchive conversation"
-                title="Unarchive"
+                aria-label={tenantText("Unarchive conversation", "Desarchivar conversación")}
+                title={tenantText("Unarchive", "Desarchivar")}
                 onClick={(e) => {
                   e.stopPropagation();
                   onRestore(conversation);
@@ -213,13 +216,23 @@ export function MessageRow({
                 className="inline-flex min-h-[44px] sm:min-h-0 sm:h-7 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium text-[#5f6368] transition-colors hover:bg-[#e8f0fe] hover:text-[#1a73e8]"
               >
                 <ArchiveRestore className="w-4 h-4" strokeWidth={1.5} />
-                <span className="hidden sm:inline">Unarchive</span>
+                <span className="hidden sm:inline">
+                  {tenantText("Unarchive", "Desarchivar")}
+                </span>
               </button>
             )}
             <button
               type="button"
-              aria-label={starred ? "Unstar" : "Star"}
-              title={starred ? "Unstar" : "Star"}
+              aria-label={
+                starred
+                  ? tenantText("Unstar", "Quitar de favoritos")
+                  : tenantText("Star", "Marcar como favorito")
+              }
+              title={
+                starred
+                  ? tenantText("Unstar", "Quitar de favoritos")
+                  : tenantText("Star", "Marcar como favorito")
+              }
               onClick={(e) => {
                 e.stopPropagation();
                 setStarred((s) => !s);
@@ -240,18 +253,18 @@ export function MessageRow({
             never collide with the timestamp or action icons on line 1. */}
         <div className="mt-0.5 flex items-center justify-between gap-2 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
-            {(conversation.escalationMode === "order" || conversation.badgeType === "order" || conversation.orderStatus) && !dimmed ? (
+            {showClassificationTags && (conversation.escalationMode === "order" || conversation.badgeType === "order" || conversation.orderStatus) && !dimmed ? (
               <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 bg-[#e6f4ea] text-[#137333]">
                 ORDER
               </span>
-            ) : conversation.appointmentSignal && !dimmed ? (
+            ) : showClassificationTags && conversation.appointmentSignal && !dimmed ? (
               <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 bg-[#e8f0fe] text-[#174ea6]">
                 Appointment
               </span>
             ) : null}
             {dimmed ? (
               <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 bg-[#e6f4ea] text-[#137333]">
-                Resolved
+                {tenantText("Resolved", "Resuelta")}
               </span>
             ) : conversation.escalated ? (
               <span
@@ -267,12 +280,12 @@ export function MessageRow({
                 )}
               >
                 {conversation.escalationMode === "soft"
-                  ? "Agent needs help"
+                  ? tenantText("Agent needs help", "El agente necesita ayuda")
                   : conversation.escalationMode === "hard"
-                    ? "Human takeover"
+                    ? tenantText("Human takeover", "Intervención humana")
                     : conversation.escalationMode === "order"
                       ? "ORDER"
-                      : "Escalation"}
+                      : tenantText("Escalation", "Necesita respuesta")}
               </span>
             ) : null}
             <p
@@ -281,13 +294,20 @@ export function MessageRow({
                 dimmed ? "text-[#9aa0a6]" : conversation.unread ? "text-[#3c4043]" : "text-[#5f6368]",
               )}
             >
-              {snippet || <span className="italic text-[#9aa0a6]">No preview</span>}
+              {snippet || (
+                <span className="italic text-[#9aa0a6]">
+                  {tenantText("No preview", "Sin vista previa")}
+                </span>
+              )}
             </p>
           </div>
           {!hideChannel && (
             <span
               className="inline-flex items-center gap-1 flex-shrink-0 rounded-full border border-[#e8eaed] bg-white px-1.5 py-0.5 text-[11px] font-medium text-[#5f6368]"
-              aria-label={`Channel: ${conversation.channel}`}
+              aria-label={tenantText(
+                `Channel: ${conversation.channel}`,
+                `Canal: ${conversation.channel}`,
+              )}
             >
               <span
                 aria-hidden="true"

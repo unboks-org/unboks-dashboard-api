@@ -8,17 +8,19 @@ import {
 import type { AutoBlockSettings } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
+import { tenantText } from "@/lib/tenant-ui";
 
 const ZERO_RULES: Array<{
   key: keyof AutoBlockSettings["zero_tolerance"];
   label: string;
+  spanish: string;
 }> = [
-  { key: "hate_speech", label: "Block immediately for racial slurs / hate speech" },
-  { key: "severe_insult", label: "Block immediately for severe insults or personal abuse" },
-  { key: "threat", label: "Block immediately for threats or intimidation" },
-  { key: "sexual_harassment", label: "Block immediately for sexual harassment" },
-  { key: "fraud_scam", label: "Block immediately for fraud/scam behavior" },
-  { key: "severe_abuse", label: "Block immediately for other severe abusive behavior" },
+  { key: "hate_speech", label: "Block immediately for racial slurs / hate speech", spanish: "Bloquear inmediatamente por insultos racistas o discurso de odio" },
+  { key: "severe_insult", label: "Block immediately for severe insults or personal abuse", spanish: "Bloquear inmediatamente por insultos graves o ataques personales" },
+  { key: "threat", label: "Block immediately for threats or intimidation", spanish: "Bloquear inmediatamente por amenazas o intimidación" },
+  { key: "sexual_harassment", label: "Block immediately for sexual harassment", spanish: "Bloquear inmediatamente por acoso sexual" },
+  { key: "fraud_scam", label: "Block immediately for fraud/scam behavior", spanish: "Bloquear inmediatamente por fraude o estafa" },
+  { key: "severe_abuse", label: "Block immediately for other severe abusive behavior", spanish: "Bloquear inmediatamente por otras conductas abusivas graves" },
 ];
 
 function cloneSettings(settings: AutoBlockSettings): AutoBlockSettings {
@@ -39,15 +41,24 @@ export function AutoBlockRulesSettings() {
     mutate(draft);
     try {
       await save.mutateAsync(draft);
-      toast.success("Auto-block rules saved");
+      toast.success(tenantText("Auto-block rules saved", "Reglas de bloqueo automático guardadas"));
     } catch (err) {
       const msg =
         err instanceof ApiError
           ? err.message || `Backend returned ${err.status}.`
           : err instanceof Error
             ? err.message
-            : "Couldn't save auto-block rules.";
-      toast.error("Couldn't save auto-block rules", { description: msg });
+            : tenantText(
+                "Couldn't save auto-block rules.",
+                "No se pudieron guardar las reglas de bloqueo automático.",
+              );
+      toast.error(
+        tenantText(
+          "Couldn't save auto-block rules",
+          "No se pudieron guardar las reglas de bloqueo automático",
+        ),
+        { description: msg },
+      );
     }
   };
 
@@ -56,12 +67,13 @@ export function AutoBlockRulesSettings() {
       <div className="border-b border-[#f1f3f4] px-5 py-4 sm:px-6">
         <h3 className="flex items-center gap-2 text-[14px] font-semibold text-[#202124]">
           <ShieldAlert className="h-4 w-4 text-[#5f6368]" aria-hidden="true" />
-          Auto-Block Rules
+          {tenantText("Auto-Block Rules", "Reglas de bloqueo automático")}
         </h3>
         <p className="mt-1 text-[13px] leading-5 text-[#5f6368]">
-          Automatically block customers who abuse your team or AI assistant.
-          Serious abuse can be blocked immediately. Repeated profanity can be
-          blocked after a threshold.
+          {tenantText(
+            "Automatically block customers who abuse your team or AI assistant. Serious abuse can be blocked immediately. Repeated profanity can be blocked after a threshold.",
+            "Bloquea automáticamente a quienes ataquen a tu equipo o al asistente de IA. Los abusos graves pueden bloquearse de inmediato y los insultos repetidos, al superar un límite.",
+          )}
         </p>
       </div>
 
@@ -69,34 +81,48 @@ export function AutoBlockRulesSettings() {
         {isLoading ? (
           <div className="flex items-center gap-2 text-[13px] text-[#5f6368]">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            Loading auto-block rules…
+            {tenantText("Loading auto-block rules…", "Cargando reglas de bloqueo automático…")}
           </div>
         ) : isError || !data ? (
           <p className="text-[13px] text-[#c5221f]">
             {error instanceof Error && error.message
-              ? `Couldn't load auto-block rules: ${error.message}`
-              : "Couldn't load auto-block rules."}
+              ? tenantText(
+                  `Couldn't load auto-block rules: ${error.message}`,
+                  `No se pudieron cargar las reglas de bloqueo automático: ${error.message}`,
+                )
+              : tenantText(
+                  "Couldn't load auto-block rules.",
+                  "No se pudieron cargar las reglas de bloqueo automático.",
+                )}
           </p>
         ) : (
           <div className="space-y-5">
             <div className="flex items-center justify-between gap-4 rounded-xl border border-[#edf0f3] bg-[#fbfcfe] px-4 py-3">
               <div>
-                <p className="text-[13px] font-medium text-[#202124]">Auto-block enabled</p>
+                <p className="text-[13px] font-medium text-[#202124]">
+                  {tenantText("Auto-block enabled", "Bloqueo automático activado")}
+                </p>
                 <p className="text-[12px] text-[#5f6368]">
-                  Blocks are logged and escalated for human review.
+                  {tenantText(
+                    "Blocks are logged and escalated for human review.",
+                    "Los bloqueos se registran para que una persona pueda revisarlos.",
+                  )}
                 </p>
               </div>
               <Switch
                 checked={data.enabled}
                 disabled={save.isPending}
                 onCheckedChange={(checked) => update((draft) => { draft.enabled = checked; })}
-                aria-label="Auto-block enabled"
+                aria-label={tenantText(
+                  "Auto-block enabled",
+                  "Bloqueo automático activado",
+                )}
               />
             </div>
 
             <div>
               <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#5f6368]">
-                Zero tolerance
+                {tenantText("Zero tolerance", "Tolerancia cero")}
               </p>
               <div className="divide-y divide-[#f1f3f4] rounded-xl border border-[#edf0f3]">
                 {ZERO_RULES.map((rule) => (
@@ -116,7 +142,7 @@ export function AutoBlockRulesSettings() {
                       })}
                       className="h-4 w-4 rounded border-[#cfd4dc] text-[#1a73e8] focus:ring-[#1a73e8]/30"
                     />
-                    <span>{rule.label}</span>
+                    <span>{tenantText(rule.label, rule.spanish)}</span>
                   </label>
                 ))}
               </div>
@@ -133,10 +159,13 @@ export function AutoBlockRulesSettings() {
                   })}
                   className="h-4 w-4 rounded border-[#cfd4dc] text-[#1a73e8] focus:ring-[#1a73e8]/30"
                 />
-                Block for repeated profanity / bad words
+                {tenantText(
+                  "Block for repeated profanity / bad words",
+                  "Bloquear por insultos o lenguaje ofensivo repetido",
+                )}
               </label>
               <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px] text-[#5f6368]">
-                <span>Block after</span>
+                <span>{tenantText("Block after", "Bloquear después de")}</span>
                 {[2, 3, 5].map((threshold) => (
                   <button
                     key={threshold}
@@ -153,7 +182,7 @@ export function AutoBlockRulesSettings() {
                       "disabled:cursor-not-allowed disabled:opacity-50",
                     )}
                   >
-                    {threshold} messages
+                    {threshold} {tenantText("messages", "mensajes")}
                   </button>
                 ))}
               </div>
@@ -167,7 +196,10 @@ export function AutoBlockRulesSettings() {
                   })}
                   className="h-4 w-4 rounded border-[#cfd4dc] text-[#1a73e8] focus:ring-[#1a73e8]/30"
                 />
-                Warn before blocking for repeated profanity
+                {tenantText(
+                  "Warn before blocking for repeated profanity",
+                  "Avisar antes de bloquear por lenguaje ofensivo repetido",
+                )}
               </label>
             </div>
           </div>

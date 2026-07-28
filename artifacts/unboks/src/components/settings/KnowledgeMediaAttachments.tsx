@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import { getClientSlug } from "@/lib/tenant";
 import { cn } from "@/lib/utils";
+import { tenantText } from "@/lib/tenant-ui";
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ACCEPT = ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp";
@@ -51,10 +52,17 @@ export function KnowledgeMediaAttachments({ knowledgeId }: { knowledgeId: string
       setCaption("");
       qc.setQueryData<KnowledgeMedia[]>(queryKey, (current = []) => [media, ...current]);
       void qc.invalidateQueries({ queryKey });
-      toast.success("Image added to this knowledge item.");
+      toast.success(
+        tenantText(
+          "Image added to this knowledge item.",
+          "Imagen añadida a este elemento de conocimiento.",
+        ),
+      );
     },
     onError: (err) => {
-      const message = err instanceof Error && err.message ? err.message : "Image upload failed.";
+      const message = err instanceof Error && err.message
+        ? err.message
+        : tenantText("Image upload failed.", "La subida de la imagen ha fallado.");
       toast.error(message);
     },
   });
@@ -66,10 +74,12 @@ export function KnowledgeMediaAttachments({ knowledgeId }: { knowledgeId: string
         current.filter((m) => m.id !== mediaId),
       );
       void qc.invalidateQueries({ queryKey });
-      toast.success("Image removed.");
+      toast.success(tenantText("Image removed.", "Imagen eliminada."));
     },
     onError: (err) => {
-      const message = err instanceof Error && err.message ? err.message : "Could not remove image.";
+      const message = err instanceof Error && err.message
+        ? err.message
+        : tenantText("Could not remove image.", "No se pudo eliminar la imagen.");
       toast.error(message);
     },
   });
@@ -82,11 +92,16 @@ export function KnowledgeMediaAttachments({ knowledgeId }: { knowledgeId: string
     const hasAllowedType = ALLOWED_IMAGE_TYPES.includes(file.type);
     const hasAllowedExtension = ALLOWED_IMAGE_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
     if (!hasAllowedType && !hasAllowedExtension) {
-      toast.error("Use a JPG, JPEG, PNG, or WebP image.");
+      toast.error(
+        tenantText(
+          "Use a JPG, JPEG, PNG, or WebP image.",
+          "Usa una imagen JPG, JPEG, PNG o WebP.",
+        ),
+      );
       return;
     }
     if (file.size > MAX_IMAGE_BYTES) {
-      toast.error("Image is over 10 MB.");
+      toast.error(tenantText("Image is over 10 MB.", "La imagen supera los 10 MB."));
       return;
     }
     upload.mutate(file);
@@ -99,12 +114,15 @@ export function KnowledgeMediaAttachments({ knowledgeId }: { knowledgeId: string
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
         <label className="min-w-0 flex-1">
           <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#5f6368]">
-            Images for customers
+            {tenantText("Images for customers", "Imágenes para contactos")}
           </span>
           <input
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
-            placeholder="Optional caption, e.g. Oceanview balcony or Chocolate cupcake box"
+            placeholder={tenantText(
+              "Optional caption, e.g. Oceanview balcony or Chocolate cupcake box",
+              "Descripción opcional; por ejemplo, entrada del centro o sala de consulta",
+            )}
             className="mt-1 w-full rounded-lg border border-[#dadce0] bg-white px-3 py-2 text-[12px] text-[#202124] outline-none placeholder:text-[#9aa0a6] focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
           />
         </label>
@@ -129,24 +147,26 @@ export function KnowledgeMediaAttachments({ knowledgeId }: { knowledgeId: string
           ) : (
             <UploadCloud className="h-3.5 w-3.5" />
           )}
-          Add image
+          {tenantText("Add image", "Añadir imagen")}
         </button>
       </div>
 
       <p className="mt-2 text-[11px] leading-5 text-[#5f6368]">
-        Attach product, property, menu, service, or example photos. If a customer asks
-        for pictures, your Agent can share the matching image link.
+        {tenantText(
+          "Attach product, property, menu, service, or example photos. If a customer asks for pictures, your Agent can share the matching image link.",
+          "Adjunta fotos del centro, los servicios u otros ejemplos. Si una persona pide imágenes, el agente puede compartir el enlace correspondiente.",
+        )}
       </p>
 
       {query.isLoading ? (
         <div className="mt-3 flex items-center gap-2 text-[12px] text-[#5f6368]">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Loading images
+          {tenantText("Loading images", "Cargando imágenes")}
         </div>
       ) : media.length === 0 ? (
         <div className="mt-3 flex items-center gap-2 text-[12px] text-[#9aa0a6]">
           <ImageIcon className="h-3.5 w-3.5" />
-          No images attached.
+          {tenantText("No images attached.", "No hay imágenes adjuntas.")}
         </div>
       ) : (
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -158,7 +178,8 @@ export function KnowledgeMediaAttachments({ knowledgeId }: { knowledgeId: string
               <a href={m.url} target="_blank" rel="noreferrer" className="block">
                 <img
                   src={m.url}
-                  alt={m.caption || m.originalFilename || "Knowledge image"}
+                  alt={m.caption || m.originalFilename ||
+                    tenantText("Knowledge image", "Imagen de conocimiento")}
                   className="h-28 w-full bg-[#f1f3f4] object-cover"
                   loading="lazy"
                 />
@@ -166,7 +187,7 @@ export function KnowledgeMediaAttachments({ knowledgeId }: { knowledgeId: string
               <div className="flex items-start gap-2 p-2">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[12px] font-medium text-[#202124]">
-                    {m.caption || m.originalFilename || "Image"}
+                    {m.caption || m.originalFilename || tenantText("Image", "Imagen")}
                   </p>
                   <p className="mt-0.5 text-[11px] text-[#5f6368]">
                     {formatBytes(m.sizeBytes)}
@@ -176,7 +197,7 @@ export function KnowledgeMediaAttachments({ knowledgeId }: { knowledgeId: string
                   type="button"
                   onClick={() => remove.mutate(m.id)}
                   disabled={remove.isPending}
-                  aria-label="Remove image"
+                  aria-label={tenantText("Remove image", "Eliminar imagen")}
                   className="grid h-7 w-7 place-items-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4] disabled:opacity-60"
                 >
                   <Trash2 className="h-3.5 w-3.5" />

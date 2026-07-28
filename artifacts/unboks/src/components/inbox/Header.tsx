@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Menu, Search } from "lucide-react";
 import { motion } from "framer-motion";
+import { tenantText } from "@/lib/tenant-ui";
 
 interface HeaderProps {
   title?: ReactNode;
@@ -32,7 +33,7 @@ export function Header({
       <div className="flex items-center gap-3 px-3 sm:px-5 py-2.5 md:py-3 min-h-[56px] md:min-h-[64px]">
         {/* Mobile drawer toggle */}
         <motion.button
-          aria-label="Open menu"
+          aria-label={tenantText("Open menu", "Abrir menú")}
           onClick={onOpenDrawer}
           whileTap={{ scale: 0.94, opacity: 0.8 }}
           transition={{ type: "spring", stiffness: 400, damping: 25 }}
@@ -64,7 +65,7 @@ export function Header({
               type="search"
               value={searchQuery}
               onChange={(e) => onSearchChange?.(e.target.value)}
-              placeholder="Search messages"
+              placeholder={tenantText("Search messages", "Buscar mensajes")}
               className="flex-1 min-w-0 bg-transparent text-[14px] text-foreground placeholder:text-muted-foreground outline-none px-2.5"
             />
           </div>
@@ -80,7 +81,7 @@ export function Header({
               type="search"
               value={searchQuery}
               onChange={(e) => onSearchChange?.(e.target.value)}
-              placeholder="Search messages"
+              placeholder={tenantText("Search messages", "Buscar mensajes")}
               className="flex-1 min-w-0 bg-transparent text-[15px] text-foreground placeholder:text-muted-foreground outline-none px-2.5"
             />
           </div>

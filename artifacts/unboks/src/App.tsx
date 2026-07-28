@@ -10,11 +10,13 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SettingsErrorBoundary } from "@/components/SettingsErrorBoundary";
 import { FeatureTogglesProvider } from "@/lib/feature-toggles";
 import { DEBUG_LOGS_ENABLED, debugLog } from "@/lib/debug-log";
+import { isSpainSpanishTenant, tenantText } from "@/lib/tenant-ui";
 
 const NotFound = lazy(() => import("@/pages/not-found"));
 const Inbox = lazy(() => import("@/pages/Inbox"));
 const Login = lazy(() => import("@/pages/Login"));
 const Bookings = lazy(() => import("@/pages/Bookings"));
+const FollowUps = lazy(() => import("@/pages/FollowUps"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Analytics = lazy(() => import("@/pages/Analytics"));
 const Help = lazy(() => import("@/pages/Help"));
@@ -25,6 +27,15 @@ function RouteLoading() {
     <div className="min-h-[100dvh] bg-background text-foreground flex items-center justify-center">
       <div className="h-8 w-8 rounded-full border-2 border-muted border-t-primary animate-spin" />
     </div>
+  );
+}
+
+function EscalationsRoute() {
+  if (isSpainSpanishTenant()) return <Redirect to="/follow-ups" />;
+  return (
+    <ProtectedRoute>
+      <Inbox />
+    </ProtectedRoute>
   );
 }
 
@@ -42,7 +53,9 @@ class AppErrorBoundary extends Component<
     if (error) {
       return (
         <div style={{ padding: 32, fontFamily: "sans-serif" }}>
-          <h2 style={{ color: "#d93025", marginBottom: 8 }}>Something went wrong</h2>
+          <h2 style={{ color: "#d93025", marginBottom: 8 }}>
+            {tenantText("Something went wrong", "Se ha producido un error")}
+          </h2>
           <pre style={{ background: "#f6f8fc", padding: 16, borderRadius: 8, fontSize: 13, overflowX: "auto", whiteSpace: "pre-wrap" }}>
             {(error as Error).message}
             {"\n\n"}
@@ -60,7 +73,7 @@ class AppErrorBoundary extends Component<
             }}
             style={{ marginTop: 16, padding: "8px 16px", background: "#1a73e8", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 14 }}
           >
-            Reload app
+            {tenantText("Reload app", "Volver a cargar")}
           </button>
         </div>
       );
@@ -201,6 +214,7 @@ const KNOWN_TENANT_SECTIONS = new Set([
   "appointments",
   "bookings",
   "escalations",
+  "follow-ups",
 ]);
 
 function TenantSectionRedirect() {
@@ -308,15 +322,18 @@ function Router() {
       <Route path="/appointments/:id">
         <ProtectedRoute><Bookings /></ProtectedRoute>
       </Route>
+      <Route path="/follow-ups">
+        <ProtectedRoute><FollowUps /></ProtectedRoute>
+      </Route>
       {/* Deep links into Escalations. Both the bare /escalations
           surface (used for `?view=escalations` style links) and the
           path-with-id form are protected and rendered through Inbox,
           which owns the Escalations list and detail panel. */}
       <Route path="/escalations">
-        <ProtectedRoute><Inbox /></ProtectedRoute>
+        <EscalationsRoute />
       </Route>
       <Route path="/escalations/:id">
-        <ProtectedRoute><Inbox /></ProtectedRoute>
+        <EscalationsRoute />
       </Route>
       <Route path="/settings">
         <ProtectedRoute>
