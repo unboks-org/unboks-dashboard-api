@@ -10,6 +10,7 @@ import { DashboardShell } from "@/components/inbox/DashboardShell";
 import {
   fetchFollowUps, updateFollowUpStatus, type FollowUp, type FollowUpStatus,
 } from "@/lib/api";
+import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import { getTenantUiConfig, tenantText } from "@/lib/tenant-ui";
 
@@ -107,11 +108,20 @@ function writeQueueState(state: FollowUpsQueueState): void {
   }
 }
 
-function usablePhone(value: string): string {
+function rawProspectPhone(item: FollowUp): string {
+  const candidates = [item.phone_raw, item.phone_normalized, item.conversation_id];
+  return candidates.find((value) => value?.trim() && !/^[a-f0-9]{24}$/i.test(value.trim()))?.trim() ?? "";
+}
+
+function usablePhone(value?: string): string {
   if (!value || /^[a-f0-9]{24}$/i.test(value)) {
     return tenantText("Phone not provided", "Teléfono no facilitado");
   }
   return value;
+}
+
+function prospectPhone(item: FollowUp): string {
+  return usablePhone(rawProspectPhone(item));
 }
 
 function callbackPreference(value: string): string {
@@ -135,8 +145,11 @@ function provided(value?: string): string {
 }
 
 function prospectName(item: FollowUp): string {
-  return [item.first_name, item.surnames].filter(Boolean).join(" ") ||
-    tenantText("Unknown patient", "Contacto sin identificar");
+  const collectedName = [item.first_name, item.surnames].filter(Boolean).join(" ");
+  if (collectedName) return collectedName;
+  const phone = rawProspectPhone(item);
+  if (phone) return tenantText(`Contact ${phone}`, `Contacto ${phone}`);
+  return tenantText("Unknown patient", "Contacto sin identificar");
 }
 
 function appointmentPreference(item: FollowUp): string {
@@ -152,7 +165,7 @@ function formatProspectForMessaging(item: FollowUp): string {
     "*Nuevo contacto para llamada*",
     "",
     `*Nombre y apellidos:* ${prospectName(item)}`,
-    `*Teléfono:* ${usablePhone(item.phone_raw)}`,
+    `*Teléfono:* ${prospectPhone(item)}`,
     `*Horario preferido para la cita:* ${appointmentPreference(item)}`,
     `*Tipo de sesión:* ${sessionType(item)}`,
     `*Motivo de consulta (opcional):* ${provided(item.visit_reason)}`,
@@ -253,6 +266,19 @@ export default function FollowUps() {
   const update = useMutation({
     mutationFn: ({ id, status }: { id: number; status: FollowUpStatus }) =>
       updateFollowUpStatus(id, status),
+    retry: (failureCount, error) =>
+      failureCount < 1 &&
+      (!(error instanceof ApiError) || error.status === 0 || error.status >= 500),
+    onMutate: async (variables) => {
+      await client.cancelQueries({ queryKey: ["follow-ups"] });
+      const previous = client.getQueryData<FollowUp[]>(["follow-ups"]);
+      client.setQueryData<FollowUp[]>(["follow-ups"], (current = []) =>
+        current.map((item) =>
+          item.id === variables.id ? { ...item, status: variables.status } : item,
+        ),
+      );
+      return { previous };
+    },
     onSuccess: (_, variables) => {
       client.invalidateQueries({ queryKey: ["follow-ups"] });
       if (variables.status === "copied") return;
@@ -263,13 +289,17 @@ export default function FollowUps() {
         ),
       );
     },
-    onError: () =>
+    onError: (_error, _variables, context) => {
+      if (context?.previous) {
+        client.setQueryData(["follow-ups"], context.previous);
+      }
       toast.error(
         tenantText(
           "The follow-up could not be updated.",
           "No se pudo actualizar el seguimiento.",
         ),
-      ),
+      );
+    },
   });
 
   const move = (status: FollowUpStatus) => {
@@ -421,7 +451,7 @@ export default function FollowUps() {
                     <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{initials(item)}</span>
                     <span className="min-w-0">
                       <span className="block truncate font-semibold text-slate-800">{prospectName(item)}</span>
-                      <span className="mt-1 block truncate text-xs text-slate-500">{usablePhone(item.phone_raw)}</span>
+                      <span className="mt-1 block truncate text-xs text-slate-500">{prospectPhone(item)}</span>
                       <span className="mt-1 block truncate text-xs text-slate-400">
                         {item.visit_reason || tenantText("No reason provided", "Sin motivo indicado")}
                       </span>
@@ -483,7 +513,7 @@ export default function FollowUps() {
                     <Detail
                       icon={<Phone />}
                       label={tenantText("Phone", "Teléfono")}
-                      value={usablePhone(selected.phone_raw)}
+                      value={prospectPhone(selected)}
                     />
                     <Detail
                       icon={<CalendarClock />}
