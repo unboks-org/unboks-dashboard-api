@@ -229,6 +229,12 @@ export default function FollowUps() {
     queryFn: () => fetchFollowUps(),
     refetchInterval: 10_000,
     refetchIntervalInBackground: false,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
+    staleTime: 0,
+    gcTime: 0,
+    structuralSharing: false,
   });
   const rows = query.data ?? [];
   const visible = useMemo(
