@@ -217,6 +217,7 @@ function followUpTabLabel(index: number): string {
 export default function FollowUps() {
   const [, navigate] = useLocation();
   const client = useQueryClient();
+  const isDespertares = getTenantUiConfig().locale === "es-ES";
   const initialQueueState = useRef(readQueueState()).current;
   const pageRef = useRef<HTMLDivElement>(null);
   const pendingScrollTopRef = useRef<number | null>(initialQueueState?.scrollTop ?? null);
@@ -418,14 +419,20 @@ export default function FollowUps() {
               className={cn(
                 "-mb-px whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium",
                 activeTab === index
-                  ? "border-primary text-primary"
+                  ? isDespertares
+                    ? "rounded-t-xl border-x border-t border-emerald-200 border-b-emerald-500 bg-emerald-50 text-emerald-800 shadow-sm"
+                    : "border-primary text-primary"
                   : "border-transparent text-slate-500 hover:text-slate-800",
               )}
             >
               {followUpTabLabel(index)}
               <span className={cn(
                 "ml-2 rounded-full px-2 py-0.5 text-xs",
-                activeTab === index ? "bg-primary/10" : "bg-slate-100",
+                activeTab === index
+                  ? isDespertares
+                    ? "bg-emerald-600 text-white"
+                    : "bg-primary/10"
+                  : "bg-slate-100",
               )}>{count(index)}</span>
             </button>
           ))}
