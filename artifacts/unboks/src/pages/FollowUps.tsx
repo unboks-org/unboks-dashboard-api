@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
-  BellRing, CalendarClock, Check, Clock3, Copy, MessageCircle,
+  Archive, BellRing, CalendarClock, Check, Clock3, Copy, MessageCircle,
   Phone, RefreshCw, UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -289,6 +289,10 @@ export default function FollowUps() {
     onSuccess: (_, variables) => {
       client.invalidateQueries({ queryKey: ["follow-ups"] });
       if (variables.status === "copied") return;
+      if (variables.status === "closed") {
+        toast.success(tenantText("Prospect archived.", "Prospecto archivado."));
+        return;
+      }
       toast.success(
         tenantText(
           `Status changed to ${statusLabels[variables.status]}`,
@@ -577,7 +581,14 @@ export default function FollowUps() {
                     <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
                       {tenantText("Actions", "Acciones")}
                     </p>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div
+                      className={cn(
+                        "grid gap-2",
+                        isDespertares && selected.status !== "closed"
+                          ? "grid-cols-1 sm:grid-cols-3"
+                          : "grid-cols-2",
+                      )}
+                    >
                       <Action label={tenantText("Open conversation", "Abrir conversación")} icon={<MessageCircle />} onClick={openConversation} />
                       <Action
                         label={tenantText("Copied", "Copiado")}
@@ -585,6 +596,13 @@ export default function FollowUps() {
                         onClick={copyProspect}
                         selected={selected.status === "copied" || copiedId === selected.id}
                       />
+                      {isDespertares && selected.status !== "closed" && (
+                        <Action
+                          label={tenantText("Archive", "Archivar")}
+                          icon={<Archive />}
+                          onClick={() => move("closed")}
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
