@@ -163,6 +163,10 @@ function sessionType(item: FollowUp): string {
   return provided(item.session_type);
 }
 
+function preferredClinic(item: FollowUp): string {
+  return provided(item.preferred_clinic);
+}
+
 function formatProspectForMessaging(item: FollowUp): string {
   return [
     "*Nuevo contacto para llamada*",
@@ -171,6 +175,7 @@ function formatProspectForMessaging(item: FollowUp): string {
     `*Teléfono:* ${prospectPhone(item)}`,
     `*Horario preferido para la cita:* ${appointmentPreference(item)}`,
     `*Tipo de sesión:* ${sessionType(item)}`,
+    `*Centro preferido:* ${preferredClinic(item)}`,
     `*Motivo de consulta (opcional):* ${provided(item.visit_reason)}`,
     `*Cuándo podemos localizarle:* ${callbackPreference(item.callback_preference)}`,
   ].join("\n");
@@ -625,6 +630,7 @@ export default function FollowUps() {
                         <Detail icon={<Phone />} label={tenantText("Phone", "Teléfono")} value={prospectPhone(selected)} />
                         <Detail icon={<CalendarClock />} label={tenantText("Preferred appointment time", "Horario preferido para la cita")} value={appointmentPreference(selected)} />
                         <Detail icon={<BellRing />} label={tenantText("Session type", "Tipo de sesión")} value={sessionType(selected)} />
+                        <Detail icon={<MapPin />} label={tenantText("Preferred clinic", "Centro preferido")} value={preferredClinic(selected)} />
                         <Detail className="sm:col-span-2" icon={<Clock3 />} label={tenantText("When we can reach them", "Cuándo podemos localizarle")} value={callbackPreference(selected.callback_preference)} />
                       </div>
                       <div className="rounded-xl bg-slate-50 p-4">
