@@ -29,8 +29,23 @@ const DESPERTARES_UI: TenantUiConfig = {
   settingsLabel: "Configuración",
 };
 
+const ALI_RENTAL_UI: TenantUiConfig = {
+  locale: "en",
+  dateLocale: "en-CW",
+  followUpsLabel: "Quote leads",
+  conversationsLabel: "Conversations",
+  escalationsLabel: "Escalations",
+  settingsLabel: "Settings",
+};
+
 export function getTenantUiConfig(slug = getClientSlug()): TenantUiConfig {
-  return slug === "consulta-despertares" ? DESPERTARES_UI : DEFAULT_UI;
+  if (slug === "consulta-despertares") return DESPERTARES_UI;
+  if (slug === "ali-car-rental") return ALI_RENTAL_UI;
+  return DEFAULT_UI;
+}
+
+export function isAliRentalTenant(slug = getClientSlug()): boolean {
+  return slug === "ali-car-rental";
 }
 
 export function isSpainSpanishTenant(slug = getClientSlug()): boolean {
