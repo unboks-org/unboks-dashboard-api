@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
-  Archive, BellRing, CalendarClock, Check, Clock3, Copy, MessageCircle,
-  Phone, RefreshCw, UserRound,
+  Archive, BellRing, CalendarClock, Car, Check, Clock3, Copy, MapPin,
+  MessageCircle, Phone, RefreshCw, UserRound, UsersRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
@@ -12,11 +12,12 @@ import {
 } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
-import { getTenantUiConfig, tenantText } from "@/lib/tenant-ui";
+import { getTenantUiConfig, isAliRentalTenant, tenantText } from "@/lib/tenant-ui";
 
 const statusLabels: Record<FollowUpStatus, string> = {
   collecting: "Missing information",
   ready_to_call: "Ready to call",
+  ready_to_quote: "Ready to quote",
   needs_human_answer: "Needs an answer",
   in_progress: "In progress",
   copied: "Copied",
@@ -28,6 +29,7 @@ const statusLabels: Record<FollowUpStatus, string> = {
 const spanishStatusLabels: Record<FollowUpStatus, string> = {
   collecting: "Faltan datos",
   ready_to_call: "Listo para llamar",
+  ready_to_quote: "Listo para cotizar",
   needs_human_answer: "Necesita respuesta",
   in_progress: "En seguimiento",
   copied: "Copiado",
@@ -39,6 +41,7 @@ const spanishStatusLabels: Record<FollowUpStatus, string> = {
 const statusStyles: Record<FollowUpStatus, string> = {
   collecting: "border-amber-200 bg-amber-50 text-amber-700",
   ready_to_call: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  ready_to_quote: "border-emerald-200 bg-emerald-50 text-emerald-700",
   needs_human_answer: "border-violet-200 bg-violet-50 text-violet-700",
   in_progress: "border-blue-200 bg-blue-50 text-blue-700",
   copied: "border-emerald-600 bg-emerald-600 text-white",
@@ -48,8 +51,8 @@ const statusStyles: Record<FollowUpStatus, string> = {
 };
 
 const tabs: { label: string; statuses: FollowUpStatus[] }[] = [
-  { label: "Active", statuses: ["collecting", "ready_to_call", "needs_human_answer", "in_progress", "copied"] },
-  { label: "Ready to call", statuses: ["ready_to_call"] },
+  { label: "Active", statuses: ["collecting", "ready_to_call", "ready_to_quote", "needs_human_answer", "in_progress", "copied"] },
+  { label: "Ready to call", statuses: ["ready_to_call", "ready_to_quote"] },
   { label: "Missing information", statuses: ["collecting"] },
   { label: "Needs an answer", statuses: ["needs_human_answer"] },
   { label: "In progress", statuses: ["in_progress"] },
@@ -211,13 +214,51 @@ function followUpStatusLabel(status: FollowUpStatus): string {
 }
 
 function followUpTabLabel(index: number): string {
+  if (isAliRentalTenant() && index === 1) return "Ready to quote";
   return tenantText(tabs[index].label, spanishTabLabels[index]);
+}
+
+const rentalFieldLabels: Record<string, string> = {
+  customer_name: "Full name",
+  phone: "Telephone",
+  pickup_datetime: "Pickup date and time",
+  return_datetime: "Return date and time",
+  pickup_location: "Pickup location",
+  return_location: "Return location",
+  driver_age: "Driver's age",
+  passenger_count: "Number of passengers",
+  vehicle_preference: "Preferred vehicle/category",
+};
+
+function rentalMissingLabels(item: FollowUp): string[] {
+  return (item.missing_fields ?? []).map(
+    (key) => item.field_labels?.[key] || rentalFieldLabels[key] || key.replaceAll("_", " "),
+  );
+}
+
+function formatRentalLead(item: FollowUp): string {
+  return [
+    "*Complete car-rental lead*",
+    "",
+    `*Full name:* ${prospectName(item)}`,
+    `*Telephone:* ${prospectPhone(item)}`,
+    `*Pickup:* ${provided(item.pickup_datetime)} at ${provided(item.pickup_location)}`,
+    `*Return:* ${provided(item.return_datetime)} at ${provided(item.return_location)}`,
+    `*Driver's age:* ${provided(String(item.driver_age ?? ""))}`,
+    `*Passengers:* ${provided(String(item.passenger_count ?? ""))}`,
+    `*Vehicle/category:* ${provided(item.vehicle_preference)}`,
+    `*Flight number (optional):* ${provided(item.flight_number)}`,
+    `*Luggage (optional):* ${provided(item.luggage)}`,
+    `*Child seat (optional):* ${provided(item.child_seat)}`,
+    `*Notes (optional):* ${provided(item.notes)}`,
+  ].join("\n");
 }
 
 export default function FollowUps() {
   const [, navigate] = useLocation();
   const client = useQueryClient();
   const isDespertares = getTenantUiConfig().locale === "es-ES";
+  const isRental = isAliRentalTenant();
   const initialQueueState = useRef(readQueueState()).current;
   const pageRef = useRef<HTMLDivElement>(null);
   const pendingScrollTopRef = useRef<number | null>(initialQueueState?.scrollTop ?? null);
@@ -354,11 +395,11 @@ export default function FollowUps() {
   const copyProspect = async () => {
     if (!selected) return;
     try {
-      await copyText(formatProspectForMessaging(selected));
+      await copyText(isRental ? formatRentalLead(selected) : formatProspectForMessaging(selected));
       setCopiedId(selected.id);
       if (selected.status !== "copied") move("copied");
       window.setTimeout(() => setCopiedId((current) => current === selected.id ? null : current), 1600);
-      toast.success(tenantText("Prospect data copied.", "Datos del prospecto copiados."));
+      toast.success(isRental ? "Rental lead copied." : tenantText("Prospect data copied.", "Datos del prospecto copiados."));
     } catch {
       toast.error(tenantText("The data could not be copied.", "No se pudieron copiar los datos."));
     }
@@ -367,20 +408,22 @@ export default function FollowUps() {
   return (
     <DashboardShell
       activeNav="followups"
-      pageTitle={tenantText("Follow-ups", "Seguimientos")}
-      pageSubtitle={tenantText("Patient callback requests", "Solicitudes de contacto")}
+      pageTitle={isRental ? "Quote leads" : tenantText("Follow-ups", "Seguimientos")}
+      pageSubtitle={isRental ? "Complete rental requests" : tenantText("Patient callback requests", "Solicitudes de contacto")}
     >
       <div ref={pageRef} className="mx-auto w-full max-w-[1500px] space-y-6 p-4 md:p-7">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-primary">
-              {tenantText("Patient care queue", "Cola de personas interesadas")}
+              {isRental ? "Rental lead queue" : tenantText("Patient care queue", "Cola de personas interesadas")}
             </p>
             <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-900">
-              {tenantText("Patient follow-ups", "Seguimiento de personas interesadas")}
+              {isRental ? "Complete quote requests" : tenantText("Patient follow-ups", "Seguimiento de personas interesadas")}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              {tenantText(
+              {isRental ? (
+                "Carlos keeps collecting details until every mandatory field is complete."
+              ) : tenantText(
                 "Review each request, call the patient, and record the outcome.",
                 "Revisa cada solicitud, contacta con la persona y registra el resultado.",
               )}
@@ -450,7 +493,7 @@ export default function FollowUps() {
           <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,.68fr)_minmax(0,1.32fr)] xl:grid-cols-[minmax(0,.62fr)_minmax(0,1.38fr)]">
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                <span>{tenantText("Patient and request", "Persona y solicitud")}</span>
+                <span>{isRental ? "Customer and rental" : tenantText("Patient and request", "Persona y solicitud")}</span>
                 <span>{tenantText("Status", "Estado")}</span>
               </div>
               {visible.map((item) => (
@@ -469,13 +512,27 @@ export default function FollowUps() {
                     <span className="min-w-0">
                       <span className="block truncate font-semibold text-slate-800">{prospectName(item)}</span>
                       <span className="mt-1 block truncate text-xs text-slate-500">{prospectPhone(item)}</span>
-                      <span className="mt-1 block truncate text-xs text-slate-400">
-                        {item.visit_reason || tenantText("No reason provided", "Sin motivo indicado")}
-                      </span>
-                      <span className="mt-1.5 block truncate text-xs leading-5 text-slate-600">
-                        <Clock3 className="mr-1 inline h-3.5 w-3.5 text-slate-400" />
-                        {callbackPreference(item.callback_preference)}
-                      </span>
+                      {isRental ? (
+                        <>
+                          <span className="mt-1 block truncate text-xs text-slate-400">
+                            {item.vehicle_preference || "Vehicle/category not provided"}
+                          </span>
+                          <span className="mt-1.5 block truncate text-xs leading-5 text-slate-600">
+                            <Clock3 className="mr-1 inline h-3.5 w-3.5 text-slate-400" />
+                            {provided(item.pickup_datetime)}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="mt-1 block truncate text-xs text-slate-400">
+                            {item.visit_reason || tenantText("No reason provided", "Sin motivo indicado")}
+                          </span>
+                          <span className="mt-1.5 block truncate text-xs leading-5 text-slate-600">
+                            <Clock3 className="mr-1 inline h-3.5 w-3.5 text-slate-400" />
+                            {callbackPreference(item.callback_preference)}
+                          </span>
+                        </>
+                      )}
                     </span>
                   </span>
                   <span className="pt-1">
@@ -497,7 +554,7 @@ export default function FollowUps() {
                 <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {tenantText("Complete prospect file", "Ficha completa del prospecto")}
+                      {isRental ? "Complete rental lead" : tenantText("Complete prospect file", "Ficha completa del prospecto")}
                     </p>
                     <span className={cn("mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-medium", statusStyles[selected.status])}>
                       {followUpStatusLabel(selected.status)}
@@ -510,8 +567,8 @@ export default function FollowUps() {
                   <button
                     type="button"
                     onClick={copyProspect}
-                    aria-label={tenantText("Copy all prospect data", "Copiar todos los datos del prospecto")}
-                    title={tenantText("Copy all prospect data", "Copiar todos los datos del prospecto")}
+                    aria-label={isRental ? "Copy complete rental lead" : tenantText("Copy all prospect data", "Copiar todos los datos del prospecto")}
+                    title={isRental ? "Copy complete rental lead" : tenantText("Copy all prospect data", "Copiar todos los datos del prospecto")}
                     className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-primary/30 hover:bg-primary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                   >
                     {selected.status === "copied" || copiedId === selected.id
@@ -521,47 +578,65 @@ export default function FollowUps() {
                 </div>
 
                 <div className="space-y-5 p-5 text-sm">
-                  <div className="grid gap-4 rounded-xl border border-slate-100 bg-slate-50/60 p-4 sm:grid-cols-2">
-                    <Detail
-                      icon={<UserRound />}
-                      label={tenantText("Name and surnames", "Nombre y apellidos")}
-                      value={prospectName(selected)}
-                    />
-                    <Detail
-                      icon={<Phone />}
-                      label={tenantText("Phone", "Teléfono")}
-                      value={prospectPhone(selected)}
-                    />
-                    <Detail
-                      icon={<CalendarClock />}
-                      label={tenantText("Preferred appointment time", "Horario preferido para la cita")}
-                      value={appointmentPreference(selected)}
-                    />
-                    <Detail
-                      icon={<BellRing />}
-                      label={tenantText("Session type", "Tipo de sesión")}
-                      value={sessionType(selected)}
-                    />
-                    <Detail
-                      className="sm:col-span-2"
-                      icon={<Clock3 />}
-                      label={tenantText("When we can reach them", "Cuándo podemos localizarle")}
-                      value={callbackPreference(selected.callback_preference)}
-                    />
-                  </div>
-
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {tenantText("Reason for contact (optional)", "Motivo de la consulta (opcional)")}
-                    </p>
-                    <p className="leading-relaxed text-slate-700">
-                      {selected.visit_reason ||
-                        tenantText(
-                          "The patient has not provided a reason.",
-                          "La persona no ha indicado el motivo.",
-                        )}
-                    </p>
-                  </div>
+                  {isRental ? (
+                    <>
+                      {!!rentalMissingLabels(selected).length && (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
+                            Carlos must keep asking
+                          </p>
+                          <p className="mt-1 text-amber-900">
+                            Missing: {rentalMissingLabels(selected).join(", ")}
+                          </p>
+                          <p className="mt-2 text-xs text-amber-700">No quote can be sent yet.</p>
+                        </div>
+                      )}
+                      {selected.complete && (
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Complete lead</p>
+                          <p className="mt-1">All mandatory details are present. Carlos may now send a verified quote.</p>
+                        </div>
+                      )}
+                      <div className="grid gap-4 rounded-xl border border-slate-100 bg-slate-50/60 p-4 sm:grid-cols-2">
+                        <Detail icon={<UserRound />} label="Full name" value={prospectName(selected)} />
+                        <Detail icon={<Phone />} label="Telephone" value={prospectPhone(selected)} />
+                        <Detail icon={<CalendarClock />} label="Pickup date and time" value={provided(selected.pickup_datetime)} />
+                        <Detail icon={<CalendarClock />} label="Return date and time" value={provided(selected.return_datetime)} />
+                        <Detail icon={<MapPin />} label="Pickup location" value={provided(selected.pickup_location)} />
+                        <Detail icon={<MapPin />} label="Return location" value={provided(selected.return_location)} />
+                        <Detail icon={<UserRound />} label="Driver's age" value={provided(String(selected.driver_age ?? ""))} />
+                        <Detail icon={<UsersRound />} label="Number of passengers" value={provided(String(selected.passenger_count ?? ""))} />
+                        <Detail className="sm:col-span-2" icon={<Car />} label="Preferred vehicle/category" value={provided(selected.vehicle_preference)} />
+                      </div>
+                      <div className="rounded-xl bg-slate-50 p-4">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Optional details</p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <Detail icon={<BellRing />} label="Flight number" value={provided(selected.flight_number)} />
+                          <Detail icon={<UsersRound />} label="Luggage" value={provided(selected.luggage)} />
+                          <Detail icon={<UserRound />} label="Child seat" value={provided(selected.child_seat)} />
+                          <Detail icon={<MessageCircle />} label="Notes" value={provided(selected.notes)} />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="grid gap-4 rounded-xl border border-slate-100 bg-slate-50/60 p-4 sm:grid-cols-2">
+                        <Detail icon={<UserRound />} label={tenantText("Name and surnames", "Nombre y apellidos")} value={prospectName(selected)} />
+                        <Detail icon={<Phone />} label={tenantText("Phone", "Teléfono")} value={prospectPhone(selected)} />
+                        <Detail icon={<CalendarClock />} label={tenantText("Preferred appointment time", "Horario preferido para la cita")} value={appointmentPreference(selected)} />
+                        <Detail icon={<BellRing />} label={tenantText("Session type", "Tipo de sesión")} value={sessionType(selected)} />
+                        <Detail className="sm:col-span-2" icon={<Clock3 />} label={tenantText("When we can reach them", "Cuándo podemos localizarle")} value={callbackPreference(selected.callback_preference)} />
+                      </div>
+                      <div className="rounded-xl bg-slate-50 p-4">
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          {tenantText("Reason for contact (optional)", "Motivo de la consulta (opcional)")}
+                        </p>
+                        <p className="leading-relaxed text-slate-700">
+                          {selected.visit_reason || tenantText("The patient has not provided a reason.", "La persona no ha indicado el motivo.")}
+                        </p>
+                      </div>
+                    </>
+                  )}
 
                   {selected.status === "needs_human_answer" && (
                     <div className="rounded-xl border border-violet-100 bg-violet-50 p-4">
@@ -584,7 +659,7 @@ export default function FollowUps() {
                     <div
                       className={cn(
                         "grid gap-2",
-                        isDespertares && selected.status !== "closed"
+                        (isDespertares || isRental) && selected.status !== "closed"
                           ? "grid-cols-1 sm:grid-cols-3"
                           : "grid-cols-2",
                       )}
@@ -596,7 +671,7 @@ export default function FollowUps() {
                         onClick={copyProspect}
                         selected={selected.status === "copied" || copiedId === selected.id}
                       />
-                      {isDespertares && selected.status !== "closed" && (
+                      {(isDespertares || isRental) && selected.status !== "closed" && (
                         <Action
                           label={tenantText("Archive", "Archivar")}
                           icon={<Archive />}
