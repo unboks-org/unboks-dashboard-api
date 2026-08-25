@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import type { NavId } from "@/components/inbox/Drawer";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
 import { getClientSlug } from "@/lib/tenant";
-import { getTenantUiConfig, tenantText } from "@/lib/tenant-ui";
+import { getTenantUiConfig, isAliRentalTenant, tenantText } from "@/lib/tenant-ui";
 
 interface BottomNavProps {
   active: NavId;
@@ -26,8 +26,9 @@ export function BottomNav({
   const bottomActive = activeBottomId(active);
   const { label: bookingsLabel } = useBookingsLabel();
   const isDespertares = getClientSlug() === "consulta-despertares";
+  const isRental = isAliRentalTenant();
   const ui = getTenantUiConfig();
-  const items = (isDespertares ? [
+  const items = (isDespertares || isRental ? [
     { id: "inbox" as const, label: ui.conversationsLabel, icon: Inbox },
     { id: "followups" as const, label: ui.followUpsLabel, icon: PhoneCall },
     { id: "settings" as const, label: ui.settingsLabel, icon: Settings },
