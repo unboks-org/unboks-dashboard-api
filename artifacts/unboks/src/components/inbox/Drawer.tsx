@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { Channel } from "@/data/conversations";
 import { motion, AnimatePresence } from "framer-motion";
 import { getClientSlug } from "@/lib/tenant";
-import { getTenantUiConfig, tenantText } from "@/lib/tenant-ui";
+import { getTenantUiConfig, isAliRentalTenant, tenantText } from "@/lib/tenant-ui";
 
 const XIcon = ({ className, strokeWidth: _sw }: { className?: string; strokeWidth?: number }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
@@ -77,6 +77,7 @@ export function Drawer({
   }, [open, onClose]);
 
   const isDespertares = getClientSlug() === "consulta-despertares";
+  const isRental = isAliRentalTenant();
   const ui = getTenantUiConfig();
   const PRIMARY: NavItem[] = isDespertares
     ? [
@@ -107,7 +108,7 @@ export function Drawer({
     return isChannelVisible(ch as Parameters<typeof isChannelVisible>[0]);
   });
 
-  const WORKSPACE: NavItem[] = isDespertares
+  const WORKSPACE: NavItem[] = isDespertares || isRental
     ? [
         { id: "followups", icon: PhoneCall, label: ui.followUpsLabel },
         { id: "settings", icon: SettingsIcon, label: ui.settingsLabel },
