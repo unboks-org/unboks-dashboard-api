@@ -339,11 +339,17 @@ export interface OrdersResponse {
   items: Appointment[];
 }
 
-export type FollowUpStatus = "collecting" | "ready_to_call" | "needs_human_answer" | "in_progress" | "copied" | "appointment_coordinated" | "no_answer" | "closed";
+export type FollowUpStatus = "collecting" | "ready_to_call" | "ready_to_quote" | "needs_human_answer" | "in_progress" | "copied" | "appointment_coordinated" | "no_answer" | "closed";
 export interface FollowUp {
   id: number; conversation_id: string; channel: string; first_name: string;
   surnames: string; phone_raw: string; phone_normalized?: string; callback_preference: string;
   appointment_preference?: string; session_type?: string;
+  customer_name?: string; pickup_datetime?: string; return_datetime?: string;
+  pickup_location?: string; return_location?: string; driver_age?: number | string;
+  passenger_count?: number | string; vehicle_preference?: string;
+  flight_number?: string; luggage?: string; child_seat?: string; notes?: string;
+  workflow_type?: string; required_fields?: string[]; missing_fields?: string[];
+  field_labels?: Record<string, string>; complete?: boolean;
   visit_reason: string; status: FollowUpStatus; handoff_reason: string;
   created_at: string; updated_at: string;
 }
