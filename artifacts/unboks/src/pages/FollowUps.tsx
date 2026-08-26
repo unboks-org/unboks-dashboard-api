@@ -14,6 +14,7 @@ import {
 import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import { getTenantUiConfig, isAliRentalTenant, tenantText } from "@/lib/tenant-ui";
+import { quoteLeadConversationUrl } from "@/lib/direct-whatsapp-reply";
 
 const statusLabels: Record<FollowUpStatus, string> = {
   active: "Active",
@@ -419,7 +420,7 @@ export default function FollowUps() {
       selectedId: selected.id,
       scrollTop: scrollContainer instanceof HTMLElement ? scrollContainer.scrollTop : 0,
     });
-    navigate(`/?c=${encodeURIComponent(selected.conversation_id)}&from=follow-ups`);
+    navigate(quoteLeadConversationUrl(selected.conversation_id));
   };
   const copyProspect = async () => {
     if (!selected) return;

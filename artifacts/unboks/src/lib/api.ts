@@ -2163,9 +2163,9 @@ export async function replyToWhatsAppConversation(
   message: string,
 ): Promise<WhatsAppConversationReplyResponse> {
   const key = (conversationId ?? "").replace(/[\r\n]+/g, "").trim();
-  const text = (message ?? "").trim();
+  const text = message ?? "";
   if (!key) throw new ApiError(400, "Conversation id is missing.");
-  if (!text) throw new ApiError(400, "Message is required.");
+  if (!text.trim()) throw new ApiError(400, "Message is required.");
   if (text.length > 4096) {
     throw new ApiError(400, "WhatsApp messages cannot exceed 4096 characters.");
   }

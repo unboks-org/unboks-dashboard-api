@@ -82,6 +82,7 @@ import {
   MessageTranslationView,
 } from "@/components/inbox/ConversationTranslation";
 import { getTenantUiConfig, isSpainSpanishTenant, tenantText } from "@/lib/tenant-ui";
+import { canShowDirectWhatsAppReply } from "@/lib/direct-whatsapp-reply";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
@@ -481,11 +482,11 @@ function ConversationDetailPane({
   // detail payload — resolved escalation rows still carry escalated:true but
   // must never surface the reply composer or mode toggle.
   const isEscalation = Boolean(showBanner) && !resolvedContext;
-  const showDirectReply =
-    isSpainSpanishTenant() &&
-    conversation.channel.toLowerCase() === "whatsapp" &&
-    !archived &&
-    !resolvedContext;
+  const showDirectReply = canShowDirectWhatsAppReply({
+    channel: conversation.channel,
+    archived,
+    resolved: resolvedContext,
+  });
   const [trailOpen, setTrailOpen] = useState(false);
   useEffect(() => {
     setTrailOpen(false);
@@ -973,8 +974,8 @@ function ConversationDetailPane({
         </div>
       ) : (
         // ----- STANDARD (non-escalation) LAYOUT -------------------------
-        // Consulta Despertares gets a direct, provider-confirmed WhatsApp
-        // reply composer. Other tenants retain the existing read-only view.
+        // Clínica Despertares and Ali Car Rental share one provider-confirmed
+        // WhatsApp reply composer. Other tenants retain the read-only view.
         <div className="flex min-h-0 flex-1 flex-col">
           <ConversationTranslationProvider
             conversationId={conversation.id}
