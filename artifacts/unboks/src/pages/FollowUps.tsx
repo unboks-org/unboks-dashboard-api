@@ -2,41 +2,19 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
-  Archive,
-  BellRing,
-  CalendarClock,
-  Car,
-  Check,
-  Clock3,
-  Copy,
-  MapPin,
-  MessageCircle,
-  Phone,
-  RefreshCw,
-  UserRound,
-  UsersRound,
+  Archive, BellRing, CalendarClock, Car, Check, Clock3, Copy, MapPin,
+  MessageCircle, Phone, RefreshCw, UserRound, UsersRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import {
-  archiveConversation,
-  fetchFollowUps,
-  fetchQuoteLeads,
-  updateFollowUpStatus,
-  type FollowUp,
-  type FollowUpStatus,
+  fetchFollowUps, updateFollowUpStatus, type FollowUp, type FollowUpStatus,
 } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
-import {
-  getTenantUiConfig,
-  isAliRentalTenant,
-  tenantText,
-} from "@/lib/tenant-ui";
+import { getTenantUiConfig, isAliRentalTenant, tenantText } from "@/lib/tenant-ui";
 
 const statusLabels: Record<FollowUpStatus, string> = {
-  active: "Active",
-  missing_information: "Missing information",
   collecting: "Missing information",
   ready_to_call: "Ready to call",
   ready_to_quote: "Ready to quote",
@@ -49,8 +27,6 @@ const statusLabels: Record<FollowUpStatus, string> = {
 };
 
 const spanishStatusLabels: Record<FollowUpStatus, string> = {
-  active: "Activo",
-  missing_information: "Faltan datos",
   collecting: "Faltan datos",
   ready_to_call: "Listo para llamar",
   ready_to_quote: "Listo para cotizar",
@@ -63,8 +39,6 @@ const spanishStatusLabels: Record<FollowUpStatus, string> = {
 };
 
 const statusStyles: Record<FollowUpStatus, string> = {
-  active: "border-slate-200 bg-slate-50 text-slate-700",
-  missing_information: "border-amber-200 bg-amber-50 text-amber-700",
   collecting: "border-amber-200 bg-amber-50 text-amber-700",
   ready_to_call: "border-emerald-200 bg-emerald-50 text-emerald-700",
   ready_to_quote: "border-emerald-200 bg-emerald-50 text-emerald-700",
@@ -77,17 +51,7 @@ const statusStyles: Record<FollowUpStatus, string> = {
 };
 
 const tabs: { label: string; statuses: FollowUpStatus[] }[] = [
-  {
-    label: "Active",
-    statuses: [
-      "collecting",
-      "ready_to_call",
-      "ready_to_quote",
-      "needs_human_answer",
-      "in_progress",
-      "copied",
-    ],
-  },
+  { label: "Active", statuses: ["collecting", "ready_to_call", "ready_to_quote", "needs_human_answer", "in_progress", "copied"] },
   { label: "Ready to call", statuses: ["ready_to_call", "ready_to_quote"] },
   { label: "Missing information", statuses: ["collecting"] },
   { label: "Needs an answer", statuses: ["needs_human_answer"] },
@@ -95,23 +59,6 @@ const tabs: { label: string; statuses: FollowUpStatus[] }[] = [
   { label: "Copied", statuses: ["copied"] },
   { label: "Completed", statuses: ["appointment_coordinated", "no_answer"] },
   { label: "Archived", statuses: ["closed"] },
-];
-
-const rentalTabs: { label: string; statuses: FollowUpStatus[] }[] = [
-  {
-    label: "Active",
-    statuses: [
-      "active",
-      "missing_information",
-      "ready_to_quote",
-      "needs_human_answer",
-      "in_progress",
-    ],
-  },
-  { label: "Ready to quote", statuses: ["ready_to_quote"] },
-  { label: "Missing information", statuses: ["missing_information"] },
-  { label: "Needs an answer", statuses: ["needs_human_answer"] },
-  { label: "In progress", statuses: ["in_progress"] },
 ];
 
 const spanishTabLabels = [
@@ -129,7 +76,7 @@ const FOLLOW_UPS_QUEUE_STATE_KEY = "unboks:follow-ups:queue-state";
 
 interface FollowUpsQueueState {
   activeTab: number;
-  selectedId: number | string | null;
+  selectedId: number | null;
   scrollTop: number;
 }
 
@@ -148,11 +95,7 @@ function readQueueState(): FollowUpsQueueState | null {
     }
     return {
       activeTab: parsed.activeTab,
-      selectedId:
-        typeof parsed.selectedId === "number" ||
-        typeof parsed.selectedId === "string"
-          ? parsed.selectedId
-          : null,
+      selectedId: typeof parsed.selectedId === "number" ? parsed.selectedId : null,
       scrollTop: Math.max(0, parsed.scrollTop),
     };
   } catch {
@@ -162,26 +105,15 @@ function readQueueState(): FollowUpsQueueState | null {
 
 function writeQueueState(state: FollowUpsQueueState): void {
   try {
-    window.sessionStorage.setItem(
-      FOLLOW_UPS_QUEUE_STATE_KEY,
-      JSON.stringify(state),
-    );
+    window.sessionStorage.setItem(FOLLOW_UPS_QUEUE_STATE_KEY, JSON.stringify(state));
   } catch {
     // Queue restoration is a convenience; navigation still works if storage is unavailable.
   }
 }
 
 function rawProspectPhone(item: FollowUp): string {
-  const candidates = [
-    item.phone_raw,
-    item.phone_normalized,
-    item.conversation_id,
-  ];
-  return (
-    candidates
-      .find((value) => value?.trim() && !/^[a-f0-9]{24}$/i.test(value.trim()))
-      ?.trim() ?? ""
-  );
+  const candidates = [item.phone_raw, item.phone_normalized, item.conversation_id];
+  return candidates.find((value) => value?.trim() && !/^[a-f0-9]{24}$/i.test(value.trim()))?.trim() ?? "";
 }
 
 function usablePhone(value?: string): string {
@@ -216,9 +148,7 @@ function provided(value?: string): string {
 }
 
 function prospectName(item: FollowUp): string {
-  const collectedName = [item.first_name, item.surnames]
-    .filter(Boolean)
-    .join(" ");
+  const collectedName = [item.first_name, item.surnames].filter(Boolean).join(" ");
   if (collectedName) return collectedName;
   const phone = rawProspectPhone(item);
   if (phone) return tenantText(`Contact ${phone}`, `Contacto ${phone}`);
@@ -272,16 +202,12 @@ async function copyText(value: string): Promise<void> {
 }
 
 function initials(item: FollowUp): string {
-  return (
-    `${item.first_name?.[0] ?? ""}${item.surnames?.[0] ?? ""}`.toUpperCase() ||
-    "?"
-  );
+  return `${item.first_name?.[0] ?? ""}${item.surnames?.[0] ?? ""}`.toUpperCase() || "?";
 }
 
 function received(value: string): string {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime()))
-    return tenantText("Recently", "Recientemente");
+  if (Number.isNaN(date.getTime())) return tenantText("Recently", "Recientemente");
   return new Intl.DateTimeFormat(getTenantUiConfig().dateLocale, {
     dateStyle: "medium",
     timeStyle: "short",
@@ -292,8 +218,8 @@ function followUpStatusLabel(status: FollowUpStatus): string {
   return tenantText(statusLabels[status], spanishStatusLabels[status]);
 }
 
-function followUpTabLabel(index: number, pageTabs = tabs): string {
-  if (isAliRentalTenant()) return pageTabs[index].label;
+function followUpTabLabel(index: number): string {
+  if (isAliRentalTenant() && index === 1) return "Ready to quote";
   return tenantText(tabs[index].label, spanishTabLabels[index]);
 }
 
@@ -311,10 +237,7 @@ const rentalFieldLabels: Record<string, string> = {
 
 function rentalMissingLabels(item: FollowUp): string[] {
   return (item.missing_fields ?? []).map(
-    (key) =>
-      item.field_labels?.[key] ||
-      rentalFieldLabels[key] ||
-      key.replaceAll("_", " "),
+    (key) => item.field_labels?.[key] || rentalFieldLabels[key] || key.replaceAll("_", " "),
   );
 }
 
@@ -341,25 +264,16 @@ export default function FollowUps() {
   const client = useQueryClient();
   const isDespertares = getTenantUiConfig().locale === "es-ES";
   const isRental = isAliRentalTenant();
-  const pageTabs = isRental ? rentalTabs : tabs;
   const initialQueueState = useRef(readQueueState()).current;
   const pageRef = useRef<HTMLDivElement>(null);
-  const pendingScrollTopRef = useRef<number | null>(
-    initialQueueState?.scrollTop ?? null,
-  );
-  const [activeTab, setActiveTab] = useState(
-    initialQueueState && initialQueueState.activeTab < pageTabs.length
-      ? initialQueueState.activeTab
-      : 0,
-  );
+  const pendingScrollTopRef = useRef<number | null>(initialQueueState?.scrollTop ?? null);
+  const [activeTab, setActiveTab] = useState(initialQueueState?.activeTab ?? 0);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
-  const [copiedId, setCopiedId] = useState<number | string | null>(null);
-  const [selectedId, setSelectedId] = useState<number | string | null>(
-    initialQueueState?.selectedId ?? null,
-  );
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(initialQueueState?.selectedId ?? null);
   const query = useQuery({
-    queryKey: [isRental ? "quote-leads" : "follow-ups"],
-    queryFn: () => (isRental ? fetchQuoteLeads() : fetchFollowUps()),
+    queryKey: ["follow-ups"],
+    queryFn: () => fetchFollowUps(),
     refetchInterval: 10_000,
     refetchIntervalInBackground: false,
     refetchOnMount: "always",
@@ -371,12 +285,10 @@ export default function FollowUps() {
   });
   const rows = query.data ?? [];
   const visible = useMemo(
-    () =>
-      rows.filter((row) => pageTabs[activeTab].statuses.includes(row.status)),
-    [rows, activeTab, pageTabs],
+    () => rows.filter((row) => tabs[activeTab].statuses.includes(row.status)),
+    [rows, activeTab],
   );
-  const selected =
-    rows.find((row) => row.id === selectedId) ?? visible[0] ?? null;
+  const selected = rows.find((row) => row.id === selectedId) ?? visible[0] ?? null;
 
   useEffect(() => {
     if (visible.length && !visible.some((row) => row.id === selectedId)) {
@@ -409,17 +321,13 @@ export default function FollowUps() {
       updateFollowUpStatus(id, status),
     retry: (failureCount, error) =>
       failureCount < 1 &&
-      (!(error instanceof ApiError) ||
-        error.status === 0 ||
-        error.status >= 500),
+      (!(error instanceof ApiError) || error.status === 0 || error.status >= 500),
     onMutate: async (variables) => {
       await client.cancelQueries({ queryKey: ["follow-ups"] });
       const previous = client.getQueryData<FollowUp[]>(["follow-ups"]);
       client.setQueryData<FollowUp[]>(["follow-ups"], (current = []) =>
         current.map((item) =>
-          item.id === variables.id
-            ? { ...item, status: variables.status }
-            : item,
+          item.id === variables.id ? { ...item, status: variables.status } : item,
         ),
       );
       return { previous };
@@ -452,9 +360,7 @@ export default function FollowUps() {
   });
 
   const move = (status: FollowUpStatus) => {
-    if (selected && typeof selected.id === "number") {
-      update.mutate({ id: selected.id, status });
-    }
+    if (selected) update.mutate({ id: selected.id, status });
   };
   const refresh = async () => {
     if (isManualRefreshing) return;
@@ -463,12 +369,10 @@ export default function FollowUps() {
       const result = await query.refetch({ cancelRefetch: true });
       if (result.error) throw result.error;
       toast.success(
-        isRental
-          ? `Queue refreshed — ${result.data?.length ?? 0} quote leads loaded.`
-          : tenantText(
-              `Queue refreshed — ${result.data?.length ?? 0} follow-ups loaded.`,
-              `Cola actualizada: ${result.data?.length ?? 0} seguimientos cargados.`,
-            ),
+        tenantText(
+          `Queue refreshed — ${result.data?.length ?? 0} follow-ups loaded.`,
+          `Cola actualizada: ${result.data?.length ?? 0} seguimientos cargados.`,
+        ),
       );
     } catch {
       toast.error(
@@ -482,111 +386,57 @@ export default function FollowUps() {
     }
   };
   const count = (index: number) =>
-    rows.filter((row) => pageTabs[index].statuses.includes(row.status)).length;
+    rows.filter((row) => tabs[index].statuses.includes(row.status)).length;
   const openConversation = () => {
     if (!selected) return;
     const scrollContainer = pageRef.current?.closest("main");
     writeQueueState({
       activeTab,
       selectedId: selected.id,
-      scrollTop:
-        scrollContainer instanceof HTMLElement ? scrollContainer.scrollTop : 0,
+      scrollTop: scrollContainer instanceof HTMLElement ? scrollContainer.scrollTop : 0,
     });
-    navigate(
-      `/?c=${encodeURIComponent(selected.conversation_id)}&from=follow-ups`,
-    );
+    navigate(`/?c=${encodeURIComponent(selected.conversation_id)}&from=follow-ups`);
   };
   const copyProspect = async () => {
     if (!selected) return;
     try {
-      await copyText(
-        isRental
-          ? formatRentalLead(selected)
-          : formatProspectForMessaging(selected),
-      );
+      await copyText(isRental ? formatRentalLead(selected) : formatProspectForMessaging(selected));
       setCopiedId(selected.id);
-      if (!isRental && selected.status !== "copied") move("copied");
-      window.setTimeout(
-        () =>
-          setCopiedId((current) => (current === selected.id ? null : current)),
-        1600,
-      );
-      toast.success(
-        isRental
-          ? "Rental lead copied."
-          : tenantText(
-              "Prospect data copied.",
-              "Datos del prospecto copiados.",
-            ),
-      );
+      if (selected.status !== "copied") move("copied");
+      window.setTimeout(() => setCopiedId((current) => current === selected.id ? null : current), 1600);
+      toast.success(isRental ? "Rental lead copied." : tenantText("Prospect data copied.", "Datos del prospecto copiados."));
     } catch {
-      toast.error(
-        tenantText(
-          "The data could not be copied.",
-          "No se pudieron copiar los datos.",
-        ),
-      );
-    }
-  };
-  const archiveRentalLead = async () => {
-    if (!selected || !isRental) return;
-    try {
-      await archiveConversation(selected.conversation_id);
-      setSelectedId(null);
-      await query.refetch({ cancelRefetch: true });
-      toast.success("Rental lead archived.");
-    } catch {
-      toast.error("The rental lead could not be archived.");
+      toast.error(tenantText("The data could not be copied.", "No se pudieron copiar los datos."));
     }
   };
 
   return (
     <DashboardShell
       activeNav="followups"
-      pageTitle={
-        isRental ? "Quote leads" : tenantText("Follow-ups", "Seguimientos")
-      }
-      pageSubtitle={
-        isRental
-          ? "Complete rental requests"
-          : tenantText("Patient callback requests", "Solicitudes de contacto")
-      }
+      pageTitle={isRental ? "Quote leads" : tenantText("Follow-ups", "Seguimientos")}
+      pageSubtitle={isRental ? "Complete rental requests" : tenantText("Patient callback requests", "Solicitudes de contacto")}
     >
-      <div
-        ref={pageRef}
-        className="mx-auto w-full max-w-[1500px] space-y-6 p-4 md:p-7"
-      >
+      <div ref={pageRef} className="mx-auto w-full max-w-[1500px] space-y-6 p-4 md:p-7">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-primary">
-              {isRental
-                ? "Rental lead queue"
-                : tenantText(
-                    "Patient care queue",
-                    "Cola de personas interesadas",
-                  )}
+              {isRental ? "Rental lead queue" : tenantText("Patient care queue", "Cola de personas interesadas")}
             </p>
             <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-900">
-              {isRental
-                ? "Complete quote requests"
-                : tenantText(
-                    "Patient follow-ups",
-                    "Seguimiento de personas interesadas",
-                  )}
+              {isRental ? "Complete quote requests" : tenantText("Patient follow-ups", "Seguimiento de personas interesadas")}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              {isRental
-                ? "Carlos keeps collecting details until every mandatory field is complete."
-                : tenantText(
-                    "Review each request, call the patient, and record the outcome.",
-                    "Revisa cada solicitud, contacta con la persona y registra el resultado.",
-                  )}
+              {isRental ? (
+                "Carlos keeps collecting details until every mandatory field is complete."
+              ) : tenantText(
+                "Review each request, call the patient, and record the outcome.",
+                "Revisa cada solicitud, contacta con la persona y registra el resultado.",
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <span className="hidden items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 sm:flex">
-              <BellRing className="h-4 w-4" />{" "}
-              {tenantText("Live queue", "Cola en directo")}
+              <BellRing className="h-4 w-4" /> {tenantText("Live queue", "Cola en directo")}
             </span>
             <button
               type="button"
@@ -595,10 +445,7 @@ export default function FollowUps() {
               className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 hover:bg-slate-50 disabled:cursor-wait disabled:opacity-70"
               aria-label={
                 isManualRefreshing
-                  ? tenantText(
-                      "Refreshing follow-ups",
-                      "Actualizando seguimientos",
-                    )
+                  ? tenantText("Refreshing follow-ups", "Actualizando seguimientos")
                   : tenantText("Refresh follow-ups", "Actualizar seguimientos")
               }
               title={
@@ -607,15 +454,13 @@ export default function FollowUps() {
                   : tenantText("Refresh follow-ups", "Actualizar seguimientos")
               }
             >
-              <RefreshCw
-                className={cn("h-4 w-4", isManualRefreshing && "animate-spin")}
-              />
+              <RefreshCw className={cn("h-4 w-4", isManualRefreshing && "animate-spin")} />
             </button>
           </div>
         </header>
 
         <div className="flex gap-1 overflow-x-auto border-b border-slate-200">
-          {pageTabs.map((tab, index) => (
+          {tabs.map((tab, index) => (
             <button
               key={tab.label}
               type="button"
@@ -632,38 +477,28 @@ export default function FollowUps() {
                   : "border-transparent text-slate-500 hover:text-slate-800",
               )}
             >
-              {followUpTabLabel(index, pageTabs)}
-              <span
-                className={cn(
-                  "ml-2 rounded-full px-2 py-0.5 text-xs",
-                  activeTab === index
-                    ? isDespertares
-                      ? "bg-emerald-600 text-white"
-                      : "bg-primary/10"
-                    : "bg-slate-100",
-                )}
-              >
-                {count(index)}
-              </span>
+              {followUpTabLabel(index)}
+              <span className={cn(
+                "ml-2 rounded-full px-2 py-0.5 text-xs",
+                activeTab === index
+                  ? isDespertares
+                    ? "bg-emerald-600 text-white"
+                    : "bg-primary/10"
+                  : "bg-slate-100",
+              )}>{count(index)}</span>
             </button>
           ))}
         </div>
 
         {query.isLoading ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-500">
-            {isRental
-              ? "Loading quote leads…"
-              : tenantText("Loading follow-ups…", "Cargando seguimientos…")}
+            {tenantText("Loading follow-ups…", "Cargando seguimientos…")}
           </div>
         ) : (
           <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,.68fr)_minmax(0,1.32fr)] xl:grid-cols-[minmax(0,.62fr)_minmax(0,1.38fr)]">
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                <span>
-                  {isRental
-                    ? "Customer and rental"
-                    : tenantText("Patient and request", "Persona y solicitud")}
-                </span>
+                <span>{isRental ? "Customer and rental" : tenantText("Patient and request", "Persona y solicitud")}</span>
                 <span>{tenantText("Status", "Estado")}</span>
               </div>
               {visible.map((item) => (
@@ -674,26 +509,18 @@ export default function FollowUps() {
                   aria-pressed={selected?.id === item.id}
                   className={cn(
                     "grid min-h-[106px] w-full grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-slate-100 px-4 py-4 text-left last:border-0 hover:bg-slate-50",
-                    selected?.id === item.id &&
-                      "bg-blue-50/70 hover:bg-blue-50/70",
+                    selected?.id === item.id && "bg-blue-50/70 hover:bg-blue-50/70",
                   )}
                 >
                   <span className="flex min-w-0 gap-3">
-                    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                      {initials(item)}
-                    </span>
+                    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{initials(item)}</span>
                     <span className="min-w-0">
-                      <span className="block truncate font-semibold text-slate-800">
-                        {prospectName(item)}
-                      </span>
-                      <span className="mt-1 block truncate text-xs text-slate-500">
-                        {prospectPhone(item)}
-                      </span>
+                      <span className="block truncate font-semibold text-slate-800">{prospectName(item)}</span>
+                      <span className="mt-1 block truncate text-xs text-slate-500">{prospectPhone(item)}</span>
                       {isRental ? (
                         <>
                           <span className="mt-1 block truncate text-xs text-slate-400">
-                            {item.vehicle_preference ||
-                              "Vehicle/category not provided"}
+                            {item.vehicle_preference || "Vehicle/category not provided"}
                           </span>
                           <span className="mt-1.5 block truncate text-xs leading-5 text-slate-600">
                             <Clock3 className="mr-1 inline h-3.5 w-3.5 text-slate-400" />
@@ -703,11 +530,7 @@ export default function FollowUps() {
                       ) : (
                         <>
                           <span className="mt-1 block truncate text-xs text-slate-400">
-                            {item.visit_reason ||
-                              tenantText(
-                                "No reason provided",
-                                "Sin motivo indicado",
-                              )}
+                            {item.visit_reason || tenantText("No reason provided", "Sin motivo indicado")}
                           </span>
                           <span className="mt-1.5 block truncate text-xs leading-5 text-slate-600">
                             <Clock3 className="mr-1 inline h-3.5 w-3.5 text-slate-400" />
@@ -718,12 +541,7 @@ export default function FollowUps() {
                     </span>
                   </span>
                   <span className="pt-1">
-                    <span
-                      className={cn(
-                        "inline-flex max-w-[105px] rounded-full border px-2.5 py-1 text-[11px] font-medium leading-tight",
-                        statusStyles[item.status],
-                      )}
-                    >
+                    <span className={cn("inline-flex max-w-[105px] rounded-full border px-2.5 py-1 text-[11px] font-medium leading-tight", statusStyles[item.status])}>
                       {followUpStatusLabel(item.status)}
                     </span>
                   </span>
@@ -731,12 +549,7 @@ export default function FollowUps() {
               ))}
               {!visible.length && (
                 <div className="px-6 py-16 text-center text-sm text-slate-500">
-                  {isRental
-                    ? "No quote leads in this view."
-                    : tenantText(
-                        "No follow-ups in this view.",
-                        "No hay seguimientos en esta vista.",
-                      )}
+                  {tenantText("No follow-ups in this view.", "No hay seguimientos en esta vista.")}
                 </div>
               )}
             </section>
@@ -746,56 +559,26 @@ export default function FollowUps() {
                 <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {isRental
-                        ? "Complete rental lead"
-                        : tenantText(
-                            "Complete prospect file",
-                            "Ficha completa del prospecto",
-                          )}
+                      {isRental ? "Complete rental lead" : tenantText("Complete prospect file", "Ficha completa del prospecto")}
                     </p>
-                    <span
-                      className={cn(
-                        "mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-medium",
-                        statusStyles[selected.status],
-                      )}
-                    >
+                    <span className={cn("mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-medium", statusStyles[selected.status])}>
                       {followUpStatusLabel(selected.status)}
                     </span>
-                    <h2 className="mt-3 truncate text-xl font-semibold text-slate-900">
-                      {prospectName(selected)}
-                    </h2>
+                    <h2 className="mt-3 truncate text-xl font-semibold text-slate-900">{prospectName(selected)}</h2>
                     <p className="mt-1 text-sm text-slate-500">
-                      {tenantText("Received", "Recibido el")}{" "}
-                      {received(selected.updated_at)}
+                      {tenantText("Received", "Recibido el")} {received(selected.updated_at)}
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={copyProspect}
-                    aria-label={
-                      isRental
-                        ? "Copy complete rental lead"
-                        : tenantText(
-                            "Copy all prospect data",
-                            "Copiar todos los datos del prospecto",
-                          )
-                    }
-                    title={
-                      isRental
-                        ? "Copy complete rental lead"
-                        : tenantText(
-                            "Copy all prospect data",
-                            "Copiar todos los datos del prospecto",
-                          )
-                    }
+                    aria-label={isRental ? "Copy complete rental lead" : tenantText("Copy all prospect data", "Copiar todos los datos del prospecto")}
+                    title={isRental ? "Copy complete rental lead" : tenantText("Copy all prospect data", "Copiar todos los datos del prospecto")}
                     className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-primary/30 hover:bg-primary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                   >
-                    {selected.status === "copied" ||
-                    copiedId === selected.id ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
+                    {selected.status === "copied" || copiedId === selected.id
+                      ? <Check className="h-4 w-4" />
+                      : <Copy className="h-4 w-4" />}
                   </button>
                 </div>
 
@@ -810,190 +593,52 @@ export default function FollowUps() {
                           <p className="mt-1 text-amber-900">
                             Missing: {rentalMissingLabels(selected).join(", ")}
                           </p>
-                          <p className="mt-2 text-xs text-amber-700">
-                            No quote can be sent yet.
-                          </p>
+                          <p className="mt-2 text-xs text-amber-700">No quote can be sent yet.</p>
                         </div>
                       )}
                       {selected.complete && (
                         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                            Complete lead
-                          </p>
-                          <p className="mt-1">
-                            All mandatory details are present. Carlos can
-                            continue to summary confirmation and the official
-                            quote.
-                          </p>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Complete lead</p>
+                          <p className="mt-1">All mandatory details are present. Carlos may now send a verified quote.</p>
                         </div>
                       )}
                       <div className="grid gap-4 rounded-xl border border-slate-100 bg-slate-50/60 p-4 sm:grid-cols-2">
-                        <Detail
-                          icon={<UserRound />}
-                          label="Full name"
-                          value={prospectName(selected)}
-                        />
-                        <Detail
-                          icon={<Phone />}
-                          label="Telephone"
-                          value={prospectPhone(selected)}
-                        />
-                        <Detail
-                          icon={<CalendarClock />}
-                          label="Pickup date and time"
-                          value={provided(selected.pickup_datetime)}
-                        />
-                        <Detail
-                          icon={<CalendarClock />}
-                          label="Return date and time"
-                          value={provided(selected.return_datetime)}
-                        />
-                        <Detail
-                          icon={<MapPin />}
-                          label="Pickup location"
-                          value={provided(selected.pickup_location)}
-                        />
-                        <Detail
-                          icon={<MapPin />}
-                          label="Return location"
-                          value={provided(selected.return_location)}
-                        />
-                        <Detail
-                          icon={<UserRound />}
-                          label="Driver's age"
-                          value={provided(String(selected.driver_age ?? ""))}
-                        />
-                        <Detail
-                          icon={<UsersRound />}
-                          label="Number of passengers"
-                          value={provided(
-                            String(selected.passenger_count ?? ""),
-                          )}
-                        />
-                        <Detail
-                          className="sm:col-span-2"
-                          icon={<Car />}
-                          label="Preferred vehicle/category"
-                          value={provided(selected.vehicle_preference)}
-                        />
+                        <Detail icon={<UserRound />} label="Full name" value={prospectName(selected)} />
+                        <Detail icon={<Phone />} label="Telephone" value={prospectPhone(selected)} />
+                        <Detail icon={<CalendarClock />} label="Pickup date and time" value={provided(selected.pickup_datetime)} />
+                        <Detail icon={<CalendarClock />} label="Return date and time" value={provided(selected.return_datetime)} />
+                        <Detail icon={<MapPin />} label="Pickup location" value={provided(selected.pickup_location)} />
+                        <Detail icon={<MapPin />} label="Return location" value={provided(selected.return_location)} />
+                        <Detail icon={<UserRound />} label="Driver's age" value={provided(String(selected.driver_age ?? ""))} />
+                        <Detail icon={<UsersRound />} label="Number of passengers" value={provided(String(selected.passenger_count ?? ""))} />
+                        <Detail className="sm:col-span-2" icon={<Car />} label="Preferred vehicle/category" value={provided(selected.vehicle_preference)} />
                       </div>
                       <div className="rounded-xl bg-slate-50 p-4">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          Optional details
-                        </p>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Optional details</p>
                         <div className="grid gap-3 sm:grid-cols-2">
-                          <Detail
-                            icon={<BellRing />}
-                            label="Flight number"
-                            value={provided(selected.flight_number)}
-                          />
-                          <Detail
-                            icon={<UsersRound />}
-                            label="Luggage"
-                            value={provided(selected.luggage)}
-                          />
-                          <Detail
-                            icon={<UserRound />}
-                            label="Child seat"
-                            value={provided(selected.child_seat)}
-                          />
-                          <Detail
-                            icon={<MessageCircle />}
-                            label="Notes"
-                            value={provided(selected.notes)}
-                          />
+                          <Detail icon={<BellRing />} label="Flight number" value={provided(selected.flight_number)} />
+                          <Detail icon={<UsersRound />} label="Luggage" value={provided(selected.luggage)} />
+                          <Detail icon={<UserRound />} label="Child seat" value={provided(selected.child_seat)} />
+                          <Detail icon={<MessageCircle />} label="Notes" value={provided(selected.notes)} />
                         </div>
-                      </div>
-                      <div className="grid gap-3 rounded-xl border border-slate-100 bg-white p-4 sm:grid-cols-2">
-                        <Detail
-                          icon={<CalendarClock />}
-                          label="Rental period"
-                          value={provided(selected.rental_period)}
-                        />
-                        <Detail
-                          icon={<MessageCircle />}
-                          label="Unanswered messages"
-                          value={String(selected.unread_count ?? 0)}
-                        />
-                        <Detail
-                          icon={<BellRing />}
-                          label="Next action"
-                          value={provided(selected.next_action)}
-                        />
-                        <Detail
-                          icon={<Car />}
-                          label="Quote reference"
-                          value={provided(selected.quote_reference ?? "")}
-                        />
-                        <Detail
-                          icon={<Clock3 />}
-                          label="Quote delivery"
-                          value={provided(selected.quote_delivery_state)}
-                        />
                       </div>
                     </>
                   ) : (
                     <>
                       <div className="grid gap-4 rounded-xl border border-slate-100 bg-slate-50/60 p-4 sm:grid-cols-2">
-                        <Detail
-                          icon={<UserRound />}
-                          label={tenantText(
-                            "Name and surnames",
-                            "Nombre y apellidos",
-                          )}
-                          value={prospectName(selected)}
-                        />
-                        <Detail
-                          icon={<Phone />}
-                          label={tenantText("Phone", "Teléfono")}
-                          value={prospectPhone(selected)}
-                        />
-                        <Detail
-                          icon={<CalendarClock />}
-                          label={tenantText(
-                            "Preferred appointment time",
-                            "Horario preferido para la cita",
-                          )}
-                          value={appointmentPreference(selected)}
-                        />
-                        <Detail
-                          icon={<BellRing />}
-                          label={tenantText("Session type", "Tipo de sesión")}
-                          value={sessionType(selected)}
-                        />
-                        <Detail
-                          icon={<MapPin />}
-                          label={tenantText(
-                            "Preferred clinic",
-                            "Centro preferido",
-                          )}
-                          value={preferredClinic(selected)}
-                        />
-                        <Detail
-                          className="sm:col-span-2"
-                          icon={<Clock3 />}
-                          label={tenantText(
-                            "When we can reach them",
-                            "Cuándo podemos localizarle",
-                          )}
-                          value={callbackPreference(
-                            selected.callback_preference,
-                          )}
-                        />
+                        <Detail icon={<UserRound />} label={tenantText("Name and surnames", "Nombre y apellidos")} value={prospectName(selected)} />
+                        <Detail icon={<Phone />} label={tenantText("Phone", "Teléfono")} value={prospectPhone(selected)} />
+                        <Detail icon={<CalendarClock />} label={tenantText("Preferred appointment time", "Horario preferido para la cita")} value={appointmentPreference(selected)} />
+                        <Detail icon={<BellRing />} label={tenantText("Session type", "Tipo de sesión")} value={sessionType(selected)} />
+                        <Detail icon={<MapPin />} label={tenantText("Preferred clinic", "Centro preferido")} value={preferredClinic(selected)} />
+                        <Detail className="sm:col-span-2" icon={<Clock3 />} label={tenantText("When we can reach them", "Cuándo podemos localizarle")} value={callbackPreference(selected.callback_preference)} />
                       </div>
                       <div className="rounded-xl bg-slate-50 p-4">
                         <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          {tenantText(
-                            "Reason for contact (optional)",
-                            "Motivo de la consulta (opcional)",
-                          )}
+                          {tenantText("Reason for contact (optional)", "Motivo de la consulta (opcional)")}
                         </p>
                         <p className="leading-relaxed text-slate-700">
-                          {selected.visit_reason ||
-                            tenantText(
-                              "The patient has not provided a reason.",
-                              "La persona no ha indicado el motivo.",
-                            )}
+                          {selected.visit_reason || tenantText("The patient has not provided a reason.", "La persona no ha indicado el motivo.")}
                         </p>
                       </div>
                     </>
@@ -1002,10 +647,7 @@ export default function FollowUps() {
                   {selected.status === "needs_human_answer" && (
                     <div className="rounded-xl border border-violet-100 bg-violet-50 p-4">
                       <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-violet-700">
-                        {tenantText(
-                          "Client question",
-                          "Pregunta de la persona",
-                        )}
+                        {tenantText("Client question", "Pregunta de la persona")}
                       </p>
                       <p className="text-violet-900">
                         {tenantText(
@@ -1023,41 +665,25 @@ export default function FollowUps() {
                     <div
                       className={cn(
                         "grid gap-2",
-                        (isDespertares || isRental) &&
-                          selected.status !== "closed"
+                        (isDespertares || isRental) && selected.status !== "closed"
                           ? "grid-cols-1 sm:grid-cols-3"
                           : "grid-cols-2",
                       )}
                     >
-                      <Action
-                        label={tenantText(
-                          "Open conversation",
-                          "Abrir conversación",
-                        )}
-                        icon={<MessageCircle />}
-                        onClick={openConversation}
-                      />
+                      <Action label={tenantText("Open conversation", "Abrir conversación")} icon={<MessageCircle />} onClick={openConversation} />
                       <Action
                         label={tenantText("Copied", "Copiado")}
                         icon={<Check />}
                         onClick={copyProspect}
-                        selected={
-                          selected.status === "copied" ||
-                          copiedId === selected.id
-                        }
+                        selected={selected.status === "copied" || copiedId === selected.id}
                       />
-                      {(isDespertares || isRental) &&
-                        selected.status !== "closed" && (
-                          <Action
-                            label={tenantText("Archive", "Archivar")}
-                            icon={<Archive />}
-                            onClick={
-                              isRental
-                                ? archiveRentalLead
-                                : () => move("closed")
-                            }
-                          />
-                        )}
+                      {(isDespertares || isRental) && selected.status !== "closed" && (
+                        <Action
+                          label={tenantText("Archive", "Archivar")}
+                          icon={<Archive />}
+                          onClick={() => move("closed")}
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1077,41 +703,16 @@ export default function FollowUps() {
   );
 }
 
-function Detail({
-  icon,
-  label,
-  value,
-  className,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  className?: string;
-}) {
+function Detail({ icon, label, value, className }: { icon: ReactNode; label: string; value: string; className?: string }) {
   return (
     <div className={cn("flex min-w-0 gap-3", className)}>
-      <span className="mt-0.5 shrink-0 text-slate-400 [&>svg]:h-4 [&>svg]:w-4">
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <p className="text-xs text-slate-500">{label}</p>
-        <p className="mt-0.5 break-words font-medium text-slate-800">{value}</p>
-      </div>
+      <span className="mt-0.5 shrink-0 text-slate-400 [&>svg]:h-4 [&>svg]:w-4">{icon}</span>
+      <div className="min-w-0"><p className="text-xs text-slate-500">{label}</p><p className="mt-0.5 break-words font-medium text-slate-800">{value}</p></div>
     </div>
   );
 }
 
-function Action({
-  label,
-  icon,
-  onClick,
-  selected,
-}: {
-  label: string;
-  icon: ReactNode;
-  onClick: () => void;
-  selected?: boolean;
-}) {
+function Action({ label, icon, onClick, selected }: { label: string; icon: ReactNode; onClick: () => void; selected?: boolean }) {
   return (
     <button
       type="button"
@@ -1124,8 +725,7 @@ function Action({
           : "border-slate-200 text-slate-700 hover:bg-slate-50",
       )}
     >
-      <span className="[&>svg]:h-3.5 [&>svg]:w-3.5">{icon}</span>
-      {label}
+      <span className="[&>svg]:h-3.5 [&>svg]:w-3.5">{icon}</span>{label}
     </button>
   );
 }
