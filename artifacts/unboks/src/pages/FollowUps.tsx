@@ -8,13 +8,16 @@ import {
 import { toast } from "sonner";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import {
-  fetchFollowUps, updateFollowUpStatus, type FollowUp, type FollowUpStatus,
+  archiveConversation, fetchFollowUps, fetchQuoteLeads, updateFollowUpStatus,
+  type FollowUp, type FollowUpStatus,
 } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import { getTenantUiConfig, isAliRentalTenant, tenantText } from "@/lib/tenant-ui";
 
 const statusLabels: Record<FollowUpStatus, string> = {
+  active: "Active",
+  missing_information: "Missing information",
   collecting: "Missing information",
   ready_to_call: "Ready to call",
   ready_to_quote: "Ready to quote",
@@ -27,6 +30,8 @@ const statusLabels: Record<FollowUpStatus, string> = {
 };
 
 const spanishStatusLabels: Record<FollowUpStatus, string> = {
+  active: "Activo",
+  missing_information: "Faltan datos",
   collecting: "Faltan datos",
   ready_to_call: "Listo para llamar",
   ready_to_quote: "Listo para cotizar",
@@ -39,6 +44,8 @@ const spanishStatusLabels: Record<FollowUpStatus, string> = {
 };
 
 const statusStyles: Record<FollowUpStatus, string> = {
+  active: "border-slate-200 bg-slate-50 text-slate-700",
+  missing_information: "border-amber-200 bg-amber-50 text-amber-700",
   collecting: "border-amber-200 bg-amber-50 text-amber-700",
   ready_to_call: "border-emerald-200 bg-emerald-50 text-emerald-700",
   ready_to_quote: "border-emerald-200 bg-emerald-50 text-emerald-700",
@@ -61,6 +68,14 @@ const tabs: { label: string; statuses: FollowUpStatus[] }[] = [
   { label: "Archived", statuses: ["closed"] },
 ];
 
+const rentalTabs: { label: string; statuses: FollowUpStatus[] }[] = [
+  { label: "Active", statuses: ["active", "missing_information", "ready_to_quote", "needs_human_answer", "in_progress"] },
+  { label: "Ready to quote", statuses: ["ready_to_quote"] },
+  { label: "Missing information", statuses: ["missing_information"] },
+  { label: "Needs an answer", statuses: ["needs_human_answer"] },
+  { label: "In progress", statuses: ["in_progress"] },
+];
+
 const spanishTabLabels = [
   "Activos",
   "Listos para llamar",
@@ -76,7 +91,7 @@ const FOLLOW_UPS_QUEUE_STATE_KEY = "unboks:follow-ups:queue-state";
 
 interface FollowUpsQueueState {
   activeTab: number;
-  selectedId: number | null;
+  selectedId: number | string | null;
   scrollTop: number;
 }
 
@@ -95,7 +110,9 @@ function readQueueState(): FollowUpsQueueState | null {
     }
     return {
       activeTab: parsed.activeTab,
-      selectedId: typeof parsed.selectedId === "number" ? parsed.selectedId : null,
+      selectedId: typeof parsed.selectedId === "number" || typeof parsed.selectedId === "string"
+        ? parsed.selectedId
+        : null,
       scrollTop: Math.max(0, parsed.scrollTop),
     };
   } catch {
@@ -218,8 +235,8 @@ function followUpStatusLabel(status: FollowUpStatus): string {
   return tenantText(statusLabels[status], spanishStatusLabels[status]);
 }
 
-function followUpTabLabel(index: number): string {
-  if (isAliRentalTenant() && index === 1) return "Ready to quote";
+function followUpTabLabel(index: number, pageTabs = tabs): string {
+  if (isAliRentalTenant()) return pageTabs[index].label;
   return tenantText(tabs[index].label, spanishTabLabels[index]);
 }
 
@@ -264,16 +281,21 @@ export default function FollowUps() {
   const client = useQueryClient();
   const isDespertares = getTenantUiConfig().locale === "es-ES";
   const isRental = isAliRentalTenant();
+  const pageTabs = isRental ? rentalTabs : tabs;
   const initialQueueState = useRef(readQueueState()).current;
   const pageRef = useRef<HTMLDivElement>(null);
   const pendingScrollTopRef = useRef<number | null>(initialQueueState?.scrollTop ?? null);
-  const [activeTab, setActiveTab] = useState(initialQueueState?.activeTab ?? 0);
+  const [activeTab, setActiveTab] = useState(
+    initialQueueState && initialQueueState.activeTab < pageTabs.length
+      ? initialQueueState.activeTab
+      : 0,
+  );
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
-  const [selectedId, setSelectedId] = useState<number | null>(initialQueueState?.selectedId ?? null);
+  const [copiedId, setCopiedId] = useState<number | string | null>(null);
+  const [selectedId, setSelectedId] = useState<number | string | null>(initialQueueState?.selectedId ?? null);
   const query = useQuery({
-    queryKey: ["follow-ups"],
-    queryFn: () => fetchFollowUps(),
+    queryKey: [isRental ? "quote-leads" : "follow-ups"],
+    queryFn: () => isRental ? fetchQuoteLeads() : fetchFollowUps(),
     refetchInterval: 10_000,
     refetchIntervalInBackground: false,
     refetchOnMount: "always",
@@ -285,8 +307,8 @@ export default function FollowUps() {
   });
   const rows = query.data ?? [];
   const visible = useMemo(
-    () => rows.filter((row) => tabs[activeTab].statuses.includes(row.status)),
-    [rows, activeTab],
+    () => rows.filter((row) => pageTabs[activeTab].statuses.includes(row.status)),
+    [rows, activeTab, pageTabs],
   );
   const selected = rows.find((row) => row.id === selectedId) ?? visible[0] ?? null;
 
@@ -360,7 +382,9 @@ export default function FollowUps() {
   });
 
   const move = (status: FollowUpStatus) => {
-    if (selected) update.mutate({ id: selected.id, status });
+    if (selected && typeof selected.id === "number") {
+      update.mutate({ id: selected.id, status });
+    }
   };
   const refresh = async () => {
     if (isManualRefreshing) return;
@@ -369,7 +393,7 @@ export default function FollowUps() {
       const result = await query.refetch({ cancelRefetch: true });
       if (result.error) throw result.error;
       toast.success(
-        tenantText(
+        isRental ? `Queue refreshed — ${result.data?.length ?? 0} quote leads loaded.` : tenantText(
           `Queue refreshed — ${result.data?.length ?? 0} follow-ups loaded.`,
           `Cola actualizada: ${result.data?.length ?? 0} seguimientos cargados.`,
         ),
@@ -386,7 +410,7 @@ export default function FollowUps() {
     }
   };
   const count = (index: number) =>
-    rows.filter((row) => tabs[index].statuses.includes(row.status)).length;
+    rows.filter((row) => pageTabs[index].statuses.includes(row.status)).length;
   const openConversation = () => {
     if (!selected) return;
     const scrollContainer = pageRef.current?.closest("main");
@@ -402,11 +426,22 @@ export default function FollowUps() {
     try {
       await copyText(isRental ? formatRentalLead(selected) : formatProspectForMessaging(selected));
       setCopiedId(selected.id);
-      if (selected.status !== "copied") move("copied");
+      if (!isRental && selected.status !== "copied") move("copied");
       window.setTimeout(() => setCopiedId((current) => current === selected.id ? null : current), 1600);
       toast.success(isRental ? "Rental lead copied." : tenantText("Prospect data copied.", "Datos del prospecto copiados."));
     } catch {
       toast.error(tenantText("The data could not be copied.", "No se pudieron copiar los datos."));
+    }
+  };
+  const archiveRentalLead = async () => {
+    if (!selected || !isRental) return;
+    try {
+      await archiveConversation(selected.conversation_id);
+      setSelectedId(null);
+      await query.refetch({ cancelRefetch: true });
+      toast.success("Rental lead archived.");
+    } catch {
+      toast.error("The rental lead could not be archived.");
     }
   };
 
@@ -460,7 +495,7 @@ export default function FollowUps() {
         </header>
 
         <div className="flex gap-1 overflow-x-auto border-b border-slate-200">
-          {tabs.map((tab, index) => (
+          {pageTabs.map((tab, index) => (
             <button
               key={tab.label}
               type="button"
@@ -477,7 +512,7 @@ export default function FollowUps() {
                   : "border-transparent text-slate-500 hover:text-slate-800",
               )}
             >
-              {followUpTabLabel(index)}
+              {followUpTabLabel(index, pageTabs)}
               <span className={cn(
                 "ml-2 rounded-full px-2 py-0.5 text-xs",
                 activeTab === index
@@ -492,7 +527,7 @@ export default function FollowUps() {
 
         {query.isLoading ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-500">
-            {tenantText("Loading follow-ups…", "Cargando seguimientos…")}
+            {isRental ? "Loading quote leads…" : tenantText("Loading follow-ups…", "Cargando seguimientos…")}
           </div>
         ) : (
           <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,.68fr)_minmax(0,1.32fr)] xl:grid-cols-[minmax(0,.62fr)_minmax(0,1.38fr)]">
@@ -549,7 +584,7 @@ export default function FollowUps() {
               ))}
               {!visible.length && (
                 <div className="px-6 py-16 text-center text-sm text-slate-500">
-                  {tenantText("No follow-ups in this view.", "No hay seguimientos en esta vista.")}
+                  {isRental ? "No quote leads in this view." : tenantText("No follow-ups in this view.", "No hay seguimientos en esta vista.")}
                 </div>
               )}
             </section>
@@ -599,7 +634,7 @@ export default function FollowUps() {
                       {selected.complete && (
                         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
                           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Complete lead</p>
-                          <p className="mt-1">All mandatory details are present. Carlos may now send a verified quote.</p>
+                          <p className="mt-1">All mandatory details are present. Carlos can continue to summary confirmation and the official quote.</p>
                         </div>
                       )}
                       <div className="grid gap-4 rounded-xl border border-slate-100 bg-slate-50/60 p-4 sm:grid-cols-2">
@@ -621,6 +656,13 @@ export default function FollowUps() {
                           <Detail icon={<UserRound />} label="Child seat" value={provided(selected.child_seat)} />
                           <Detail icon={<MessageCircle />} label="Notes" value={provided(selected.notes)} />
                         </div>
+                      </div>
+                      <div className="grid gap-3 rounded-xl border border-slate-100 bg-white p-4 sm:grid-cols-2">
+                        <Detail icon={<CalendarClock />} label="Rental period" value={provided(selected.rental_period)} />
+                        <Detail icon={<MessageCircle />} label="Unanswered messages" value={String(selected.unread_count ?? 0)} />
+                        <Detail icon={<BellRing />} label="Next action" value={provided(selected.next_action)} />
+                        <Detail icon={<Car />} label="Quote reference" value={provided(selected.quote_reference ?? "")} />
+                        <Detail icon={<Clock3 />} label="Quote delivery" value={provided(selected.quote_delivery_state)} />
                       </div>
                     </>
                   ) : (
@@ -681,7 +723,7 @@ export default function FollowUps() {
                         <Action
                           label={tenantText("Archive", "Archivar")}
                           icon={<Archive />}
-                          onClick={() => move("closed")}
+                          onClick={isRental ? archiveRentalLead : () => move("closed")}
                         />
                       )}
                     </div>
