@@ -345,6 +345,8 @@ export interface OrdersResponse {
 }
 
 export type FollowUpStatus = "active" | "missing_information" | "collecting" | "ready_to_call" | "ready_to_quote" | "needs_human_answer" | "in_progress" | "copied" | "appointment_coordinated" | "no_answer" | "closed";
+export type AliReservationStatus = "availability_pending" | "requirements_pending" | "alternative_required" | "declined" | "ready_to_confirm" | "confirmed" | "cancelled" | "superseded";
+export type AliChecklistStatus = "awaiting_external_check" | "not_sent" | "sent_external" | "not_requested" | "awaiting_manual_verification" | "verified" | "not_required" | "rejected";
 export interface FollowUp {
   id: number | string; conversation_id: string; channel: string; first_name: string;
   surnames: string; phone_raw: string; phone_normalized?: string; callback_preference: string;
@@ -359,6 +361,14 @@ export interface FollowUp {
   quote_reference?: string | null; quote_status?: string | null;
   quote_delivery_state?: "not_started" | "pending" | "failed" | "delivered";
   whatsapp_status?: string | null; staff_email_status?: string | null;
+  post_quote_status?: AliReservationStatus | null;
+  availability_status?: "pending" | "approved" | "alternative" | "declined" | null;
+  identity_status?: AliChecklistStatus | null;
+  agreement_status?: AliChecklistStatus | null;
+  payment_status?: AliChecklistStatus | null;
+  reservation_public_id?: string | null;
+  reservation_reference?: string | null;
+  reservation_revision?: number | null;
   visit_reason: string; status: FollowUpStatus; handoff_reason: string;
   created_at: string; updated_at: string;
 }
@@ -392,6 +402,45 @@ export async function fetchQuoteLeads(status?: FollowUpStatus): Promise<FollowUp
     },
   );
   return raw.items ?? raw.quoteLeads ?? [];
+}
+
+export async function decideAliReservationAvailability(
+  publicId: string,
+  decision: "approve" | "decline",
+  expectedRevision?: number | null,
+): Promise<unknown> {
+  return apiFetch(`/ali-reservations/${encodeURIComponent(publicId)}/availability-decision`, {
+    method: "POST",
+    body: JSON.stringify({
+      decision,
+      ...(expectedRevision ? { expectedRevision } : {}),
+    }),
+  });
+}
+
+export async function updateAliReservationChecklist(
+  publicId: string,
+  field: "identity" | "agreement" | "payment",
+  status: "verified" | "not_required",
+  expectedRevision?: number | null,
+): Promise<unknown> {
+  return apiFetch(`/ali-reservations/${encodeURIComponent(publicId)}/checklist`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      [field]: status,
+      ...(expectedRevision ? { expectedRevision } : {}),
+    }),
+  });
+}
+
+export async function confirmAliReservation(
+  publicId: string,
+  expectedRevision?: number | null,
+): Promise<unknown> {
+  return apiFetch(`/ali-reservations/${encodeURIComponent(publicId)}/confirm`, {
+    method: "POST",
+    body: JSON.stringify(expectedRevision ? { expectedRevision } : {}),
+  });
 }
 
 export async function updateFollowUpStatus(id: number, status: FollowUpStatus): Promise<FollowUp> {

@@ -2,14 +2,16 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
-  Archive, BellRing, CalendarClock, Car, Check, Clock3, Copy, MapPin,
-  MessageCircle, Phone, RefreshCw, UserRound, UsersRound,
+  Archive, BadgeDollarSign, BellRing, CalendarClock, Car, Check, CheckCircle2,
+  Clock3, Copy, FileCheck2, MapPin, MessageCircle, Phone, RefreshCw,
+  ShieldCheck, UserRound, UsersRound, XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import {
-  archiveConversation, fetchFollowUps, fetchQuoteLeads, updateFollowUpStatus,
-  type FollowUp, type FollowUpStatus,
+  archiveConversation, confirmAliReservation, decideAliReservationAvailability,
+  fetchFollowUps, fetchQuoteLeads, updateAliReservationChecklist,
+  updateFollowUpStatus, type FollowUp, type FollowUpStatus,
 } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
@@ -261,6 +263,34 @@ function rentalMissingLabels(item: FollowUp): string[] {
   );
 }
 
+function postQuoteStatusLabel(item: FollowUp): string {
+  const labels = {
+    availability_pending: "Availability check requested",
+    requirements_pending: "Rental checks in progress",
+    alternative_required: "Alternative vehicle needed",
+    declined: "Availability declined",
+    ready_to_confirm: "Ready to confirm",
+    confirmed: "Reservation confirmed",
+    cancelled: "Reservation cancelled",
+    superseded: "Reservation superseded",
+  } as const;
+  return item.post_quote_status ? labels[item.post_quote_status] : "Waiting for customer choice";
+}
+
+function checklistLabel(value?: string | null): string {
+  const labels: Record<string, string> = {
+    awaiting_external_check: "Awaiting external check",
+    not_sent: "Not sent",
+    sent_external: "Sent externally",
+    not_requested: "Not requested",
+    awaiting_manual_verification: "Awaiting manual verification",
+    verified: "Verified",
+    not_required: "Not required",
+    rejected: "Rejected",
+  };
+  return value ? labels[value] ?? value.replaceAll("_", " ") : "Not started";
+}
+
 function formatRentalLead(item: FollowUp): string {
   return [
     "*Complete car-rental lead*",
@@ -384,6 +414,46 @@ export default function FollowUps() {
     },
   });
 
+  const reservationAction = useMutation({
+    mutationFn: async (action: {
+      kind: "approve" | "decline" | "identity" | "agreement" | "payment" | "confirm";
+      publicId: string;
+      revision?: number | null;
+    }) => {
+      if (action.kind === "approve" || action.kind === "decline") {
+        return decideAliReservationAvailability(
+          action.publicId,
+          action.kind,
+          action.revision,
+        );
+      }
+      if (action.kind === "confirm") {
+        return confirmAliReservation(action.publicId, action.revision);
+      }
+      return updateAliReservationChecklist(
+        action.publicId,
+        action.kind,
+        "verified",
+        action.revision,
+      );
+    },
+    onSuccess: async (_data, action) => {
+      await client.invalidateQueries({ queryKey: tenantKey("quote-leads") });
+      toast.success(
+        action.kind === "confirm"
+          ? "Reservation confirmed and customer confirmation prepared."
+          : "Reservation workflow updated.",
+      );
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof ApiError && error.status === 409
+          ? "This reservation changed. Refresh and review the latest status."
+          : "The reservation could not be updated.",
+      );
+    },
+  });
+
   const move = (status: FollowUpStatus) => {
     if (selected && typeof selected.id === "number") {
       update.mutate({ id: selected.id, status });
@@ -465,7 +535,7 @@ export default function FollowUps() {
             </h1>
             <p className="mt-1 text-sm text-slate-500">
               {isRental ? (
-                "Carlos keeps collecting details until every mandatory field is complete."
+                "Nick keeps the conversation moving from car choice to official quote and reservation."
               ) : tenantText(
                 "Review each request, call the patient, and record the outcome.",
                 "Revisa cada solicitud, contacta con la persona y registra el resultado.",
@@ -623,10 +693,22 @@ export default function FollowUps() {
                 <div className="space-y-5 p-5 text-sm">
                   {isRental ? (
                     <>
+                      <ReservationPipeline
+                        item={selected}
+                        busy={reservationAction.isPending}
+                        onAction={(kind) => {
+                          if (!selected.reservation_public_id) return;
+                          reservationAction.mutate({
+                            kind,
+                            publicId: selected.reservation_public_id,
+                            revision: selected.reservation_revision,
+                          });
+                        }}
+                      />
                       {!!rentalMissingLabels(selected).length && (
                         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
                           <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
-                            Carlos must keep asking
+                            Nick must keep asking
                           </p>
                           <p className="mt-1 text-amber-900">
                             Missing: {rentalMissingLabels(selected).join(", ")}
@@ -637,7 +719,7 @@ export default function FollowUps() {
                       {selected.complete && (
                         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
                           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Complete lead</p>
-                          <p className="mt-1">All mandatory details are present. Carlos can continue to summary confirmation and the official quote.</p>
+                          <p className="mt-1">All mandatory details are present. Nick can continue to summary confirmation and the official quote.</p>
                         </div>
                       )}
                       <div className="grid gap-4 rounded-xl border border-slate-100 bg-slate-50/60 p-4 sm:grid-cols-2">
@@ -745,6 +827,144 @@ export default function FollowUps() {
         )}
       </div>
     </DashboardShell>
+  );
+}
+
+type ReservationActionKind = "approve" | "decline" | "identity" | "agreement" | "payment" | "confirm";
+
+function ReservationPipeline({
+  item,
+  busy,
+  onAction,
+}: {
+  item: FollowUp;
+  busy: boolean;
+  onAction: (kind: ReservationActionKind) => void;
+}) {
+  const hasReservation = Boolean(item.reservation_public_id);
+  const status = item.post_quote_status;
+  const checklist = [
+    { key: "identity" as const, icon: <ShieldCheck />, label: "Identity", value: item.identity_status },
+    { key: "agreement" as const, icon: <FileCheck2 />, label: "Agreement", value: item.agreement_status },
+    { key: "payment" as const, icon: <BadgeDollarSign />, label: "Payment", value: item.payment_status },
+  ];
+  const verified = (value?: string | null) => value === "verified" || value === "not_required";
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white shadow-lg shadow-slate-200/60">
+      <div className="border-b border-white/10 px-5 py-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300">
+              Post-quote reservation
+            </p>
+            <h3 className="mt-1 text-lg font-semibold">{postQuoteStatusLabel(item)}</h3>
+            <p className="mt-1 text-xs leading-5 text-slate-300">
+              A quote is not a booking. Confirmation becomes available only after availability and every required check are verified.
+            </p>
+          </div>
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-400/15 text-amber-300">
+            {status === "confirmed" ? <CheckCircle2 className="h-5 w-5" /> : <Car className="h-5 w-5" />}
+          </span>
+        </div>
+      </div>
+
+      {!hasReservation ? (
+        <div className="px-5 py-4 text-sm text-slate-200">
+          The customer has the quote choices. When they tap <strong className="text-white">Reserve this car</strong>, the availability request appears here automatically.
+        </div>
+      ) : (
+        <div className="space-y-4 px-5 py-4">
+          <div className="grid grid-cols-4 gap-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+            {[
+              ["Quote", true],
+              ["Availability", item.availability_status === "approved"],
+              ["Checks", checklist.every((entry) => verified(entry.value))],
+              ["Confirmed", status === "confirmed"],
+            ].map(([label, complete]) => (
+              <div key={String(label)}>
+                <span className={cn(
+                  "mx-auto mb-1.5 block h-1.5 rounded-full",
+                  complete ? "bg-emerald-400" : "bg-white/15",
+                )} />
+                {label}
+              </div>
+            ))}
+          </div>
+
+          {status === "availability_pending" && (
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onAction("approve")}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:opacity-50"
+              >
+                <CheckCircle2 className="h-4 w-4" /> Approve availability
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onAction("decline")}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-semibold text-slate-100 transition hover:bg-white/10 disabled:opacity-50"
+              >
+                <XCircle className="h-4 w-4" /> Decline
+              </button>
+            </div>
+          )}
+
+          {item.availability_status === "approved" && status !== "confirmed" && (
+            <div className="space-y-2">
+              {checklist.map((entry) => (
+                <div key={entry.key} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.06] p-3">
+                  <span className="flex min-w-0 items-center gap-3">
+                    <span className="text-slate-300 [&>svg]:h-4 [&>svg]:w-4">{entry.icon}</span>
+                    <span>
+                      <span className="block text-sm font-medium">{entry.label}</span>
+                      <span className="block text-xs text-slate-400">{checklistLabel(entry.value)}</span>
+                    </span>
+                  </span>
+                  {!verified(entry.value) && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => onAction(entry.key)}
+                      className="shrink-0 rounded-lg border border-emerald-300/30 bg-emerald-400/10 px-3 py-2 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-400/20 disabled:opacity-50"
+                    >
+                      Mark verified
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {status === "ready_to_confirm" && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onAction("confirm")}
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 text-sm font-bold text-slate-950 shadow-lg shadow-amber-950/20 transition hover:bg-amber-300 disabled:opacity-50"
+            >
+              <CheckCircle2 className="h-4 w-4" /> Confirm reservation and send document
+            </button>
+          )}
+
+          {status === "confirmed" && (
+            <div className="rounded-xl border border-emerald-300/20 bg-emerald-400/10 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-200">Confirmed reference</p>
+              <p className="mt-1 font-mono text-sm font-semibold text-white">{item.reservation_reference || "Generated"}</p>
+            </div>
+          )}
+
+          {status === "alternative_required" && (
+            <p className="rounded-xl border border-amber-300/20 bg-amber-300/10 p-3 text-sm text-amber-100">
+              An alternative vehicle must be discussed with the customer before a new quote is confirmed.
+            </p>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 
