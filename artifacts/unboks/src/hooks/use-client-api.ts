@@ -54,12 +54,13 @@ import {
   type KnowledgeMedia,
 } from "@/lib/api";
 import { ApiError } from "@/lib/error";
+import { tenantKey } from "@/lib/query-keys";
 
 // ------ Conversations ------
 
 export function useConversations() {
   return useQuery({
-    queryKey: ["conversations"],
+    queryKey: tenantKey("conversations"),
     queryFn: fetchConversations,
     staleTime: 30_000,
     // Quiet 10s heartbeat so the inbox list reflects newly-arrived
@@ -77,7 +78,7 @@ export function useConversations() {
 
 export function useConversation(phone: string | null) {
   return useQuery({
-    queryKey: ["conversation", phone],
+    queryKey: tenantKey("conversation", phone),
     queryFn: () => fetchConversation(phone!),
     enabled: Boolean(phone),
     staleTime: 30_000,
@@ -96,7 +97,7 @@ export function useDeleteConversation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: deleteConversation,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["conversations"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: tenantKey("conversations") }),
   });
 }
 
@@ -106,7 +107,7 @@ export function useSuggestReply() {
 
 export function useArchivedConversationsList() {
   return useQuery({
-    queryKey: ["conversations", "archived"],
+    queryKey: tenantKey("conversations", "archived"),
     queryFn: fetchArchivedConversations,
     staleTime: 30_000,
     retry: 1,
@@ -116,7 +117,7 @@ export function useArchivedConversationsList() {
 export function useArchiveMutation() {
   const qc = useQueryClient();
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["conversations"] });
+    qc.invalidateQueries({ queryKey: tenantKey("conversations") });
   };
   return useMutation({
     mutationFn: (conversationId: string) => archiveConversation(conversationId),
@@ -127,7 +128,7 @@ export function useArchiveMutation() {
 export function useUnarchiveMutation() {
   const qc = useQueryClient();
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["conversations"] });
+    qc.invalidateQueries({ queryKey: tenantKey("conversations") });
   };
   return useMutation({
     mutationFn: (conversationId: string) => unarchiveConversation(conversationId),
@@ -139,7 +140,7 @@ export function useUnarchiveMutation() {
 
 export function useEscalations(mode?: "soft" | "hard" | "order" | "all") {
   return useQuery({
-    queryKey: ["escalations", mode ?? "all"],
+    queryKey: tenantKey("escalations", mode ?? "all"),
     queryFn: () => fetchEscalations(mode),
     staleTime: 30_000,
     // Quiet 10s heartbeat so newly-raised escalations land in the
@@ -153,7 +154,7 @@ export function useEscalations(mode?: "soft" | "hard" | "order" | "all") {
 
 export function useResolvedEscalations() {
   return useQuery({
-    queryKey: ["escalations", "resolved"],
+    queryKey: tenantKey("escalations", "resolved"),
     queryFn: fetchResolvedEscalations,
     staleTime: 30_000,
     retry: 1,
@@ -163,10 +164,10 @@ export function useResolvedEscalations() {
 export function useEscalationMutations() {
   const qc = useQueryClient();
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["escalations"] });
-    qc.invalidateQueries({ queryKey: ["conversations"] });
-    qc.invalidateQueries({ queryKey: ["conversation"] });
-    qc.invalidateQueries({ queryKey: ["status"] });
+    qc.invalidateQueries({ queryKey: tenantKey("escalations") });
+    qc.invalidateQueries({ queryKey: tenantKey("conversations") });
+    qc.invalidateQueries({ queryKey: tenantKey("conversation") });
+    qc.invalidateQueries({ queryKey: tenantKey("status") });
   };
 
   const resolve = useMutation({
@@ -209,7 +210,7 @@ export function useEscalationMutations() {
 
 export function useKnowledgeMediaLibrary(enabled = true) {
   return useQuery<KnowledgeMedia[]>({
-    queryKey: ["knowledge", "media", "library"],
+    queryKey: tenantKey("knowledge", "media", "library"),
     queryFn: fetchKnowledgeMediaLibrary,
     enabled,
     staleTime: 30_000,
@@ -221,7 +222,7 @@ export function useKnowledgeMediaLibrary(enabled = true) {
 
 export function useLearningEntries(status?: string) {
   return useQuery({
-    queryKey: ["learning", status ?? "all"],
+    queryKey: tenantKey("learning", status ?? "all"),
     queryFn: () => fetchLearningEntries(status),
     staleTime: 30_000,
     retry: 1,
@@ -230,7 +231,7 @@ export function useLearningEntries(status?: string) {
 
 export function useLearningMutations() {
   const qc = useQueryClient();
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["learning"] });
+  const invalidate = () => qc.invalidateQueries({ queryKey: tenantKey("learning") });
   const approve = useMutation({ mutationFn: approveLearning, onSuccess: invalidate });
   const save = useMutation({ mutationFn: saveLearning, onSuccess: invalidate });
   const remove = useMutation({ mutationFn: deleteLearning, onSuccess: invalidate });
@@ -246,7 +247,7 @@ export function useLearningMutations() {
 
 export function useEscalationLearnings(status?: EscalationLearningStatus) {
   return useQuery({
-    queryKey: ["escalation-learnings", status ?? "all"],
+    queryKey: tenantKey("escalation-learnings", status ?? "all"),
     queryFn: () => fetchEscalationLearnings(status),
     staleTime: 30_000,
     retry: 1,
@@ -256,7 +257,7 @@ export function useEscalationLearnings(status?: EscalationLearningStatus) {
 export function useEscalationLearningMutations() {
   const qc = useQueryClient();
   const invalidate = () =>
-    qc.invalidateQueries({ queryKey: ["escalation-learnings"] });
+    qc.invalidateQueries({ queryKey: tenantKey("escalation-learnings") });
 
   const suggest = useMutation({
     mutationFn: ({
@@ -303,7 +304,7 @@ export function useEscalationLearningMutations() {
 
 export function useAgentLearningPrefs() {
   return useQuery<AgentLearningPrefs>({
-    queryKey: ["agent-learning-prefs"],
+    queryKey: tenantKey("agent-learning-prefs"),
     queryFn: fetchAgentLearningPrefs,
     // Treat the value as immediately stale on focus so cross-device
     // changes propagate as soon as the operator returns to the tab.
@@ -321,16 +322,16 @@ export function useAgentLearningPrefsMutation() {
     // in flight. Rolled back on error so the UI never shows a value
     // that isn't on the server.
     onMutate: async (prefs) => {
-      await qc.cancelQueries({ queryKey: ["agent-learning-prefs"] });
-      const prev = qc.getQueryData<AgentLearningPrefs>(["agent-learning-prefs"]);
-      qc.setQueryData(["agent-learning-prefs"], prefs);
+      await qc.cancelQueries({ queryKey: tenantKey("agent-learning-prefs") });
+      const prev = qc.getQueryData<AgentLearningPrefs>(tenantKey("agent-learning-prefs"));
+      qc.setQueryData(tenantKey("agent-learning-prefs"), prefs);
       return { prev };
     },
     onError: (_err, _prefs, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["agent-learning-prefs"], ctx.prev);
+      if (ctx?.prev) qc.setQueryData(tenantKey("agent-learning-prefs"), ctx.prev);
     },
     onSuccess: (server) => {
-      qc.setQueryData(["agent-learning-prefs"], server);
+      qc.setQueryData(tenantKey("agent-learning-prefs"), server);
     },
   });
 }
@@ -341,7 +342,7 @@ export { DEFAULT_AGENT_LEARNING_PREFS };
 
 export function useAvailability(days = 7) {
   return useQuery({
-    queryKey: ["availability", days],
+    queryKey: tenantKey("availability", days),
     queryFn: () => fetchAvailability(days),
     staleTime: 60_000,
     retry: 1,
@@ -352,7 +353,7 @@ export function useAvailability(days = 7) {
 
 export function useConfig() {
   return useQuery({
-    queryKey: ["config"],
+    queryKey: tenantKey("config"),
     queryFn: fetchConfig,
     staleTime: 120_000,
     retry: 1,
@@ -363,7 +364,7 @@ export function useConfig() {
 
 export function useScheduleSlots() {
   return useQuery({
-    queryKey: ["schedule-slots"],
+    queryKey: tenantKey("schedule-slots"),
     queryFn: fetchScheduleSlots,
     staleTime: 60_000,
     retry: 1,
@@ -374,7 +375,7 @@ export function useScheduleSlotMutations() {
   const qc = useQueryClient();
   const save = useMutation({
     mutationFn: (slots: ScheduleSlot[]) => saveScheduleSlots(slots),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["schedule-slots"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: tenantKey("schedule-slots") }),
   });
   return { save, isSaving: save.isPending };
 }
@@ -383,7 +384,7 @@ export function useScheduleSlotMutations() {
 
 export function useStatus() {
   return useQuery({
-    queryKey: ["status"],
+    queryKey: tenantKey("status"),
     queryFn: fetchStatus,
     staleTime: 60_000,
     retry: 1,
@@ -422,8 +423,8 @@ export function useEmailReply() {
     mutationFn: ({ conversationId, payload }: { conversationId: string; payload: EmailReplyPayload }) =>
       replyToEmail(conversationId, payload),
     onSuccess: (_data, vars) => {
-      qc.invalidateQueries({ queryKey: ["conversations"] });
-      qc.invalidateQueries({ queryKey: ["conversation", vars.conversationId] });
+      qc.invalidateQueries({ queryKey: tenantKey("conversations") });
+      qc.invalidateQueries({ queryKey: tenantKey("conversation", vars.conversationId) });
     },
   });
 }
@@ -434,7 +435,7 @@ export function useEmailForward() {
     mutationFn: ({ conversationId, payload }: { conversationId: string; payload: EmailForwardPayload }) =>
       forwardEmail(conversationId, payload),
     onSuccess: (_data, vars) => {
-      qc.invalidateQueries({ queryKey: ["conversation", vars.conversationId] });
+      qc.invalidateQueries({ queryKey: tenantKey("conversation", vars.conversationId) });
     },
   });
 }
@@ -445,8 +446,8 @@ export function useEmailDelete() {
     mutationFn: ({ conversationId, payload }: { conversationId: string; payload?: EmailDeletePayload }) =>
       deleteEmail(conversationId, payload),
     onSuccess: (_data, vars) => {
-      qc.invalidateQueries({ queryKey: ["conversations"] });
-      qc.removeQueries({ queryKey: ["conversation", vars.conversationId] });
+      qc.invalidateQueries({ queryKey: tenantKey("conversations") });
+      qc.removeQueries({ queryKey: tenantKey("conversation", vars.conversationId) });
     },
   });
 }

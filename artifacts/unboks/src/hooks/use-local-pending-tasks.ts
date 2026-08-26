@@ -5,13 +5,14 @@ import {
   type TaskStatus,
   type TaskImageMime,
 } from "@/lib/tasks-api";
+import { tenantStorageKey } from "@/lib/tenant";
 
-const STORAGE_KEY = "unboks_pending_tasks";
+const storageKey = () => tenantStorageKey("pending-tasks");
 const EVENT_NAME = "unboks_pending_tasks_changed";
 /** Counter for the next human-friendly task number ("TASK-007").
  *  Persisted in localStorage so refreshing the page keeps numbering stable
  *  and so deleting a task does not "free up" its number for reuse. */
-const NEXT_NUMBER_KEY = "unboks_next_task_number";
+const nextNumberKey = () => tenantStorageKey("next-task-number");
 
 /** Per-attachment cap for localStorage-backed tasks. base64 inflates by ~37%, so
  *  500 KB on disk ≈ ~685 KB serialized; with up to 5 images per task we stay
@@ -66,7 +67,7 @@ function backfillAuthor(task: LocalPendingTask): { task: LocalPendingTask; chang
 
 function readNextNumber(): number {
   try {
-    const raw = localStorage.getItem(NEXT_NUMBER_KEY);
+    const raw = localStorage.getItem(nextNumberKey());
     if (!raw) return 1;
     const n = parseInt(raw, 10);
     if (!Number.isFinite(n) || n < 1) return 1;
@@ -78,7 +79,7 @@ function readNextNumber(): number {
 
 function writeNextNumber(n: number) {
   try {
-    localStorage.setItem(NEXT_NUMBER_KEY, String(n));
+    localStorage.setItem(nextNumberKey(), String(n));
   } catch {
     // Quota / privacy mode — non-fatal.
   }
@@ -93,7 +94,7 @@ function writeNextNumber(n: number) {
 export function allocateNextTaskNumber(): number {
   let existingMax = 0;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey());
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
@@ -112,7 +113,7 @@ export function allocateNextTaskNumber(): number {
   // shared sequence. Importing the overlay key here avoids a circular
   // import; the overlay module owns the writes.
   try {
-    const raw = localStorage.getItem("unboks_task_numbers");
+    const raw = localStorage.getItem(tenantStorageKey("task-numbers"));
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === "object") {
@@ -226,7 +227,7 @@ function dedupeTaskNumbers(list: LocalPendingTask[]): {
 
 function readFromStorage(): LocalPendingTask[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey());
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -245,7 +246,7 @@ function readFromStorage(): LocalPendingTask[] {
     if (deduped.changed) migrated = true;
     if (migrated) {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(deduped.list));
+        localStorage.setItem(storageKey(), JSON.stringify(deduped.list));
       } catch {
         // Quota or privacy mode — non-fatal; the in-memory copy is still fixed
         // for this session.
@@ -259,7 +260,7 @@ function readFromStorage(): LocalPendingTask[] {
 
 function persist(list: LocalPendingTask[]) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    localStorage.setItem(storageKey(), JSON.stringify(list));
     window.dispatchEvent(new CustomEvent(EVENT_NAME));
   } catch (err) {
     // Quota exceeded or similar — surface so caller can warn the user.

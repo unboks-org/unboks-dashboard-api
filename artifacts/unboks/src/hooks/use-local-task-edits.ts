@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { tenantStorageKey } from "@/lib/tenant";
 
 /**
  * Local edit overrides for backend/synced tasks.
@@ -28,7 +29,7 @@ import { useCallback, useEffect, useState } from "react";
  * `storage` event for other tabs, plus a custom event for the same tab.
  */
 
-const STORAGE_KEY = "unboks_task_local_edits";
+const storageKey = () => tenantStorageKey("task-local-edits");
 const EVENT_NAME = "unboks_task_local_edits_changed";
 
 export interface LocalTaskEdit {
@@ -41,7 +42,7 @@ export type LocalTaskEditMap = Record<string, LocalTaskEdit>;
 
 function readFromStorage(): LocalTaskEditMap {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey());
     if (!raw) return {};
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
@@ -64,7 +65,7 @@ function readFromStorage(): LocalTaskEditMap {
 
 function persist(map: LocalTaskEditMap) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+    localStorage.setItem(storageKey(), JSON.stringify(map));
     window.dispatchEvent(new CustomEvent(EVENT_NAME));
   } catch {
     // Quota or privacy mode, non-fatal. The in-memory copy still reflects

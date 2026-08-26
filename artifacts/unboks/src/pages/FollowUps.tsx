@@ -15,6 +15,8 @@ import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import { getTenantUiConfig, isAliRentalTenant, tenantText } from "@/lib/tenant-ui";
 import { quoteLeadConversationUrl } from "@/lib/direct-whatsapp-reply";
+import { tenantKey } from "@/lib/query-keys";
+import { tenantStorageKey } from "@/lib/tenant";
 
 const statusLabels: Record<FollowUpStatus, string> = {
   active: "Active",
@@ -88,7 +90,7 @@ const spanishTabLabels = [
   "Archivados",
 ] as const;
 
-const FOLLOW_UPS_QUEUE_STATE_KEY = "unboks:follow-ups:queue-state";
+const followUpsQueueStateKey = () => tenantStorageKey("follow-ups-queue-state");
 
 interface FollowUpsQueueState {
   activeTab: number;
@@ -98,7 +100,7 @@ interface FollowUpsQueueState {
 
 function readQueueState(): FollowUpsQueueState | null {
   try {
-    const stored = window.sessionStorage.getItem(FOLLOW_UPS_QUEUE_STATE_KEY);
+    const stored = window.sessionStorage.getItem(followUpsQueueStateKey());
     if (!stored) return null;
     const parsed = JSON.parse(stored) as Partial<FollowUpsQueueState>;
     if (
@@ -123,7 +125,7 @@ function readQueueState(): FollowUpsQueueState | null {
 
 function writeQueueState(state: FollowUpsQueueState): void {
   try {
-    window.sessionStorage.setItem(FOLLOW_UPS_QUEUE_STATE_KEY, JSON.stringify(state));
+    window.sessionStorage.setItem(followUpsQueueStateKey(), JSON.stringify(state));
   } catch {
     // Queue restoration is a convenience; navigation still works if storage is unavailable.
   }
@@ -295,7 +297,7 @@ export default function FollowUps() {
   const [copiedId, setCopiedId] = useState<number | string | null>(null);
   const [selectedId, setSelectedId] = useState<number | string | null>(initialQueueState?.selectedId ?? null);
   const query = useQuery({
-    queryKey: [isRental ? "quote-leads" : "follow-ups"],
+    queryKey: tenantKey(isRental ? "quote-leads" : "follow-ups"),
     queryFn: () => isRental ? fetchQuoteLeads() : fetchFollowUps(),
     refetchInterval: 10_000,
     refetchIntervalInBackground: false,
@@ -346,9 +348,9 @@ export default function FollowUps() {
       failureCount < 1 &&
       (!(error instanceof ApiError) || error.status === 0 || error.status >= 500),
     onMutate: async (variables) => {
-      await client.cancelQueries({ queryKey: ["follow-ups"] });
-      const previous = client.getQueryData<FollowUp[]>(["follow-ups"]);
-      client.setQueryData<FollowUp[]>(["follow-ups"], (current = []) =>
+      await client.cancelQueries({ queryKey: tenantKey("follow-ups") });
+      const previous = client.getQueryData<FollowUp[]>(tenantKey("follow-ups"));
+      client.setQueryData<FollowUp[]>(tenantKey("follow-ups"), (current = []) =>
         current.map((item) =>
           item.id === variables.id ? { ...item, status: variables.status } : item,
         ),
@@ -356,7 +358,7 @@ export default function FollowUps() {
       return { previous };
     },
     onSuccess: (_, variables) => {
-      client.invalidateQueries({ queryKey: ["follow-ups"] });
+      client.invalidateQueries({ queryKey: tenantKey("follow-ups") });
       if (variables.status === "copied") return;
       if (variables.status === "closed") {
         toast.success(tenantText("Prospect archived.", "Prospecto archivado."));
@@ -371,7 +373,7 @@ export default function FollowUps() {
     },
     onError: (_error, _variables, context) => {
       if (context?.previous) {
-        client.setQueryData(["follow-ups"], context.previous);
+        client.setQueryData(tenantKey("follow-ups"), context.previous);
       }
       toast.error(
         tenantText(

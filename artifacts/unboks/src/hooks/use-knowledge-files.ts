@@ -8,6 +8,7 @@ import {
   type KnowledgeFileStatus,
 } from "@/lib/api";
 import { getClientSlug } from "@/lib/tenant";
+import { tenantKeyFor } from "@/lib/query-keys";
 
 export type { KnowledgeFile, KnowledgeFileStatus };
 
@@ -37,8 +38,8 @@ export function isAllowedKnowledgeFile(file: File): boolean {
   return ALLOWED_EXTENSIONS.some((ext) => lower.endsWith(ext));
 }
 
-function knowledgeFilesQueryKey(slug: string): readonly [string, string, string] {
-  return ["knowledge", "files", slug] as const;
+function knowledgeFilesQueryKey(slug: string) {
+  return tenantKeyFor(slug, "knowledge", "files");
 }
 
 /**

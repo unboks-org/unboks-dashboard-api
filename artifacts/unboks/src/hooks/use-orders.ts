@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchOrders, type Appointment } from "@/lib/api";
+import { tenantKey } from "@/lib/query-keys";
 
-const ORDERS_KEY = ["orders"] as const;
+const ordersKey = () => tenantKey("orders");
 
 export interface UseOrdersResult {
   orders: Appointment[];
@@ -11,7 +12,7 @@ export interface UseOrdersResult {
 
 export function useOrders(): UseOrdersResult {
   const query = useQuery({
-    queryKey: ORDERS_KEY,
+    queryKey: ordersKey(),
     queryFn: fetchOrders,
     staleTime: 30_000,
     refetchInterval: 20_000,

@@ -7,9 +7,10 @@
 //  more than one channel, do NOT remove a channel from the union.
 //  If a new channel is added it joins this list as a new entry.
 // =============================================================
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { Channel } from "@/data/conversations";
 import { useIcpOverrides, type IcpEnvelope } from "./use-icp-overrides";
+import { getClientSlug, tenantStorageKey } from "@/lib/tenant";
 
 export type VisibleChannel =
   | "WhatsApp"
@@ -78,7 +79,7 @@ function toggleIsOn(raw: unknown): boolean {
   return (raw as { value?: unknown }).value === true;
 }
 
-function classifyToggles(envelope?: IcpEnvelope) {
+export function classifyToggles(envelope?: IcpEnvelope) {
   const toggles =
     (envelope?.feature_toggles && typeof envelope.feature_toggles === "object"
       ? (envelope.feature_toggles as Record<string, unknown>)
@@ -120,14 +121,51 @@ function classifyToggles(envelope?: IcpEnvelope) {
   return { visible: visibleOrdered, matchedKeys, truthyKeys, unmatchedTruthyKeys };
 }
 
+export function resolveVisibleChannels(
+  envelope: IcpEnvelope | undefined,
+  storedRaw: string | null,
+): VisibleChannel[] {
+  if (envelope?.available !== false) return classifyToggles(envelope).visible;
+  try {
+    const parsed = storedRaw ? JSON.parse(storedRaw) : null;
+    if (!Array.isArray(parsed)) return [];
+    return CANONICAL_CHANNELS.filter((channel) => parsed.includes(channel));
+  } catch {
+    return [];
+  }
+}
+
 export function useIcpChannelVisibility() {
   const query = useIcpOverrides();
+  const slug = getClientSlug();
 
   const bridgeUnavailable = query.data?.available === false;
+  const confirmedChannels = useMemo(
+    () => classifyToggles(query.data).visible,
+    [query.data],
+  );
+
+  useEffect(() => {
+    if (bridgeUnavailable || !query.data?.available) return;
+    try {
+      localStorage.setItem(
+        tenantStorageKey("confirmed-channels", slug),
+        JSON.stringify(confirmedChannels),
+      );
+    } catch {
+      // The current response remains authoritative for this tab.
+    }
+  }, [bridgeUnavailable, confirmedChannels, query.data?.available, slug]);
+
   const visibleChannels = useMemo(() => {
-    if (bridgeUnavailable) return CANONICAL_CHANNELS;
-    return classifyToggles(query.data).visible;
-  }, [query.data, bridgeUnavailable]);
+    let storedRaw: string | null = null;
+    try {
+      storedRaw = localStorage.getItem(tenantStorageKey("confirmed-channels", slug));
+    } catch {
+      storedRaw = null;
+    }
+    return resolveVisibleChannels(query.data, storedRaw);
+  }, [bridgeUnavailable, confirmedChannels, query.data, slug]);
 
   const isChannelVisible = useCallback(
     (channel: Channel) => {
@@ -142,5 +180,6 @@ export function useIcpChannelVisibility() {
     isChannelVisible,
     bridgeUnavailable,
     bridgeUnavailableReason: bridgeUnavailable ? query.data?.reason : undefined,
+    retry: query.refetch,
   };
 }

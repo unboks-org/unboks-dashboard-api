@@ -9,18 +9,19 @@ import {
   type IgnoredContactPayload,
   type IgnoredContactImportPreviewContact,
 } from "@/lib/api";
+import { tenantKey } from "@/lib/query-keys";
 
-const QUERY_KEY = ["ignored-contacts"] as const;
+const queryKey = () => tenantKey("ignored-contacts");
 
 function invalidate(qc: ReturnType<typeof useQueryClient>) {
-  qc.invalidateQueries({ queryKey: QUERY_KEY });
-  qc.invalidateQueries({ queryKey: ["conversations"] });
-  qc.invalidateQueries({ queryKey: ["escalations"] });
+  qc.invalidateQueries({ queryKey: queryKey() });
+  qc.invalidateQueries({ queryKey: tenantKey("conversations") });
+  qc.invalidateQueries({ queryKey: tenantKey("escalations") });
 }
 
 export function useIgnoredContacts() {
   return useQuery({
-    queryKey: QUERY_KEY,
+    queryKey: queryKey(),
     queryFn: fetchIgnoredContacts,
     staleTime: 30_000,
     retry: 1,

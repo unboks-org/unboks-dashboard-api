@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { tenantStorageKey } from "@/lib/tenant";
 
 /**
  * Local-only Data Retention & Archive settings.
@@ -15,7 +16,7 @@ import { useCallback, useEffect, useState } from "react";
  * exists, so the `status.policyActive` flag stays `false` for now.
  */
 
-const STORAGE_KEY = "unboks_data_retention_settings";
+const storageKey = () => tenantStorageKey("data-retention-settings");
 const EVENT_NAME = "unboks_data_retention_settings_changed";
 
 export type ActiveInboxArchiveAfterDays = 30 | 60 | 90 | 180 | null;
@@ -123,7 +124,7 @@ function sanitize(parsed: unknown): DataRetentionSettings {
 
 function readFromStorage(): DataRetentionSettings {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey());
     if (!raw) return { ...DEFAULT_DATA_RETENTION };
     return sanitize(JSON.parse(raw));
   } catch {
@@ -147,7 +148,7 @@ export function useDataRetentionSettings() {
   const save = useCallback((next: DataRetentionSettings) => {
     const safe = sanitize(next);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(safe));
+      localStorage.setItem(storageKey(), JSON.stringify(safe));
       window.dispatchEvent(new CustomEvent(EVENT_NAME));
     } catch {
       // Quota / privacy mode, non-fatal.

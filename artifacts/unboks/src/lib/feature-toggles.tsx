@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, ReactNode } from "react";
+import { tenantStorageKey } from "@/lib/tenant";
 
 interface FeatureToggles {
   dryRun: boolean;
@@ -6,11 +7,11 @@ interface FeatureToggles {
   aiSuggestReply: boolean;
 }
 
-const STORAGE_KEY = "unboks_feature_toggles";
+const storageKey = () => tenantStorageKey("feature-toggles");
 
 function load(): FeatureToggles {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey());
     if (raw) return JSON.parse(raw);
   } catch {
     // ignore
@@ -31,7 +32,7 @@ export function FeatureTogglesProvider({ children }: { children: ReactNode }) {
   const setToggle = (key: keyof FeatureToggles, value: boolean) => {
     setToggles((prev) => {
       const next = { ...prev, [key]: value };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      localStorage.setItem(storageKey(), JSON.stringify(next));
       return next;
     });
   };

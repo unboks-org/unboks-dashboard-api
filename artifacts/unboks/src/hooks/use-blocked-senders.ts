@@ -7,12 +7,13 @@ import {
   type BlockConversationPayload,
   type BlockedSender,
 } from "@/lib/api";
+import { tenantKey } from "@/lib/query-keys";
 
-const QUERY_KEY = ["blocked-senders"] as const;
+const queryKey = () => tenantKey("blocked-senders");
 
 export function useBlockedSenders() {
   return useQuery({
-    queryKey: QUERY_KEY,
+    queryKey: queryKey(),
     queryFn: fetchBlockedSenders,
     staleTime: 30_000,
     retry: 1,
@@ -20,10 +21,10 @@ export function useBlockedSenders() {
 }
 
 function invalidateConversationCaches(qc: ReturnType<typeof useQueryClient>) {
-  qc.invalidateQueries({ queryKey: QUERY_KEY });
-  qc.invalidateQueries({ queryKey: ["conversations"] });
-  qc.invalidateQueries({ queryKey: ["escalations"] });
-  qc.invalidateQueries({ queryKey: ["status"] });
+  qc.invalidateQueries({ queryKey: queryKey() });
+  qc.invalidateQueries({ queryKey: tenantKey("conversations") });
+  qc.invalidateQueries({ queryKey: tenantKey("escalations") });
+  qc.invalidateQueries({ queryKey: tenantKey("status") });
 }
 
 export function useBlockMutation() {

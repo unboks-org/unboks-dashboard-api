@@ -7,10 +7,8 @@ import {
   updateInfoUpdate,
   type InfoUpdateApiItem,
 } from "@/lib/api";
-import { getClientSlug } from "@/lib/tenant";
+import { getClientSlug, tenantStorageKey } from "@/lib/tenant";
 
-const STORAGE_KEY_PREFIX = "unboks_your_info_updates";
-const LEGACY_STORAGE_KEY = "unboks_your_info_updates";
 const EVENT_NAME = "unboks_your_info_updates_changed";
 
 export type YourInfoUpdateType =
@@ -50,7 +48,7 @@ export const UPDATE_TYPES: { value: YourInfoUpdateType; label: string }[] = [
 const UPDATE_TYPE_VALUES = new Set<string>(UPDATE_TYPES.map((t) => t.value));
 
 function storageKey(slug = getClientSlug()): string {
-  return `${STORAGE_KEY_PREFIX}:${slug}`;
+  return tenantStorageKey("your-info-updates", slug);
 }
 
 function asUpdateType(value: unknown): YourInfoUpdateType {
@@ -81,10 +79,7 @@ function normalizeApiUpdate(item: InfoUpdateApiItem): YourInfoUpdate | null {
 
 function readFromStorage(slug = getClientSlug()): YourInfoUpdate[] {
   try {
-    let raw = localStorage.getItem(storageKey(slug));
-    // Preserve old Unboks notes only for the Unboks tenant. Never let
-    // pricing or other Unboks-specific notes leak into new tenants.
-    if (!raw && slug === "unboks") raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey(slug));
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getClientProfile, type ClientProfile } from "@/lib/api";
 import { getClientSlug } from "@/lib/tenant";
+import { tenantKey } from "@/lib/query-keys";
 
 /**
  * Tenant workspace profile (business name + status) for sidebar/header display.
@@ -14,7 +15,7 @@ import { getClientSlug } from "@/lib/tenant";
 export function useClientProfile() {
   const slug = getClientSlug();
   return useQuery<ClientProfile>({
-    queryKey: ["client-profile", slug],
+    queryKey: tenantKey("client-profile", slug),
     queryFn: getClientProfile,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,

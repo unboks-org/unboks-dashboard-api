@@ -5,10 +5,10 @@ import {
   setAgentStatus,
   type AgentStatus,
 } from "@/lib/api";
-import { getClientSlug } from "@/lib/tenant";
+import { tenantKey } from "@/lib/query-keys";
 
 function key() {
-  return ["agent-status", getClientSlug()] as const;
+  return tenantKey("agent-status");
 }
 
 export function useAgentStatus() {

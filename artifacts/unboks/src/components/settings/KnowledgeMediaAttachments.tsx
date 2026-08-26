@@ -11,6 +11,7 @@ import {
 import { getClientSlug } from "@/lib/tenant";
 import { cn } from "@/lib/utils";
 import { tenantText } from "@/lib/tenant-ui";
+import { tenantKeyFor } from "@/lib/query-keys";
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ACCEPT = ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp";
@@ -18,7 +19,7 @@ const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const ALLOWED_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 
 function mediaQueryKey(slug: string, knowledgeId: string) {
-  return ["knowledge", "media", slug, knowledgeId] as const;
+  return tenantKeyFor(slug, "knowledge", "media", knowledgeId);
 }
 
 function formatBytes(n: number): string {

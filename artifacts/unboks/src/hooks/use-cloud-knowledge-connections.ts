@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { tenantKey } from "@/lib/query-keys";
 
 import {
   fetchCloudConnections,
@@ -32,7 +33,7 @@ export type {
  */
 export function useCloudKnowledgeConnections() {
   return useQuery({
-    queryKey: ["knowledge", "cloud-connections"],
+    queryKey: tenantKey("knowledge", "cloud-connections"),
     queryFn: fetchCloudConnections,
     // No staleTime + refetch on focus / mount: when the operator
     // returns from a provider OAuth consent screen, React Query

@@ -51,8 +51,6 @@ function isInboxContext(id: NavId): boolean {
  * sidebar. Exported only so Inbox can drain any leftover value parked by
  * a previous build, then it can be retired entirely.
  */
-export const PENDING_NAV_KEY = "unboks:pending-nav";
-
 /**
  * Canonical URL for an inbox-context nav id. Used by both DashboardShell
  * (sidebar clicks) and Inbox (in-page nav handler) so navigation always

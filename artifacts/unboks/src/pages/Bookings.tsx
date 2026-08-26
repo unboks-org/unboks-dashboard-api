@@ -1,3 +1,4 @@
+import { tenantKey } from "@/lib/query-keys";
 /**
  * Appointments page (mounted at /bookings and /appointments).
  *
@@ -206,7 +207,7 @@ export default function Bookings() {
     onSuccess: (data) => {
       // Refresh /appointments either way so a duplicate confirm still
       // pulls the canonical confirmedAt + status into the cache.
-      void queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      void queryClient.invalidateQueries({ queryKey: tenantKey("appointments") });
       if (data.alreadyConfirmed) {
         toast.message("Appointment was already confirmed");
       } else {
@@ -219,7 +220,7 @@ export default function Bookings() {
       // removed or stale local state). Refresh the list so the bad row
       // disappears, and tell the operator clearly.
       if (err instanceof ApiError && err.status === 404) {
-        void queryClient.invalidateQueries({ queryKey: ["appointments"] });
+        void queryClient.invalidateQueries({ queryKey: tenantKey("appointments") });
         toast.error("This appointment is no longer available. Refreshing.");
         setPendingConfirm(null);
         return;
@@ -236,11 +237,11 @@ export default function Bookings() {
       await markOrderPhoneConfirmed(escalationId);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["orders"] });
-      void queryClient.invalidateQueries({ queryKey: ["appointments"] });
-      void queryClient.invalidateQueries({ queryKey: ["escalations"] });
-      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      void queryClient.invalidateQueries({ queryKey: ["status"] });
+      void queryClient.invalidateQueries({ queryKey: tenantKey("orders") });
+      void queryClient.invalidateQueries({ queryKey: tenantKey("appointments") });
+      void queryClient.invalidateQueries({ queryKey: tenantKey("escalations") });
+      void queryClient.invalidateQueries({ queryKey: tenantKey("conversations") });
+      void queryClient.invalidateQueries({ queryKey: tenantKey("status") });
       toast.success("Phone confirmation saved");
       setPendingPhoneConfirm(null);
       setSelectedApt((current) =>
@@ -273,11 +274,11 @@ export default function Bookings() {
       await archiveConversation(appointment.conversationId);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["appointments"] });
-      void queryClient.invalidateQueries({ queryKey: ["escalations"] });
-      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      void queryClient.invalidateQueries({ queryKey: ["conversations", "archived"] });
-      void queryClient.invalidateQueries({ queryKey: ["status"] });
+      void queryClient.invalidateQueries({ queryKey: tenantKey("appointments") });
+      void queryClient.invalidateQueries({ queryKey: tenantKey("escalations") });
+      void queryClient.invalidateQueries({ queryKey: tenantKey("conversations") });
+      void queryClient.invalidateQueries({ queryKey: tenantKey("conversations", "archived") });
+      void queryClient.invalidateQueries({ queryKey: tenantKey("status") });
       toast.success("Order fulfilled and archived");
       setPendingProcessOrder(null);
       setSelectedApt(null);

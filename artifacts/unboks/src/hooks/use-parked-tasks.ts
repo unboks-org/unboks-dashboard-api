@@ -1,3 +1,4 @@
+import { tenantStorageKey } from "@/lib/tenant";
 /**
  * Local "parked" overrides for backend/shared tasks.
  *
@@ -18,12 +19,12 @@
  */
 import { useCallback, useEffect, useState } from "react";
 
-const STORAGE_KEY = "unboks_parked_task_ids";
+const storageKey = () => tenantStorageKey("parked-task-ids");
 
 function readFromStorage(): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey());
     if (!raw) return new Set();
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return new Set();
@@ -35,7 +36,7 @@ function readFromStorage(): Set<string> {
 
 function persist(ids: Set<string>): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(ids)));
+    localStorage.setItem(storageKey(), JSON.stringify(Array.from(ids)));
   } catch {
     // Quota / privacy mode — silently drop. Worst case the override is
     // session-only, but we never block the user's action.
@@ -62,7 +63,7 @@ export function useParkedTasks(): UseParkedTasksApi {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onStorage = (e: StorageEvent) => {
-      if (e.key !== STORAGE_KEY) return;
+      if (e.key !== storageKey()) return;
       setIds(readFromStorage());
     };
     window.addEventListener("storage", onStorage);

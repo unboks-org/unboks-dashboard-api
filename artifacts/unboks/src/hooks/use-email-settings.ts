@@ -1,15 +1,16 @@
 import { useState } from "react";
+import { tenantStorageKey } from "@/lib/tenant";
 
 export type EmailClient = "gmail" | "mailto";
-const STORAGE_KEY = "unboks_email_client";
+const storageKey = () => tenantStorageKey("email-client");
 
 export function useEmailSettings() {
   const [emailClient, setEmailClientState] = useState<EmailClient>(() => {
-    return (localStorage.getItem(STORAGE_KEY) as EmailClient) ?? "gmail";
+    return (localStorage.getItem(storageKey()) as EmailClient) ?? "gmail";
   });
 
   const setEmailClient = (value: EmailClient) => {
-    localStorage.setItem(STORAGE_KEY, value);
+    localStorage.setItem(storageKey(), value);
     setEmailClientState(value);
   };
 

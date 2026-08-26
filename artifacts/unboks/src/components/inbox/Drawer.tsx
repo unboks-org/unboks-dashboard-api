@@ -88,7 +88,7 @@ export function Drawer({
         { id: "inbox", icon: InboxIcon, label: "Inbox", count: inboxCount },
       ];
 
-  const { isChannelVisible, bridgeUnavailable, bridgeUnavailableReason } =
+  const { isChannelVisible, bridgeUnavailable, bridgeUnavailableReason, retry } =
     useIcpChannelVisibility();
   const { label: bookingsLabel } = useBookingsLabel();
 
@@ -150,10 +150,17 @@ export function Drawer({
         {!isDespertares && <SectionHeader label="Channels" />}
         {!isDespertares && bridgeUnavailable && (
           <div className="mx-1 mb-2 rounded-xl border border-[#f6d48f] bg-[#fff8e1] px-3 py-2 text-[12px] leading-5 text-[#7a5a00]">
-            ICP channel sync unavailable. Showing all channels until it reconnects.
+            Channel settings temporarily unavailable. Showing the last confirmed channels only.
             {bridgeUnavailableReason ? (
               <span className="block text-[#8a6d1d]">{bridgeUnavailableReason}</span>
             ) : null}
+            <button
+              type="button"
+              className="mt-1 font-semibold underline underline-offset-2"
+              onClick={() => void retry()}
+            >
+              Retry
+            </button>
           </div>
         )}
         {!isDespertares && <NavGroup>

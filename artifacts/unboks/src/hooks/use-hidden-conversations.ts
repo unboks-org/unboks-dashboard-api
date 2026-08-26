@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { tenantStorageKey } from "@/lib/tenant";
 
 /**
  * Local "hide" fallback for email/escalation rows whose backend
@@ -23,12 +24,12 @@ import { useCallback, useEffect, useState } from "react";
  * everywhere on the same render tick.
  */
 
-const STORAGE_KEY = "unboks_hidden_conversations";
+const storageKey = () => tenantStorageKey("hidden-conversations");
 const EVENT_NAME = "unboks_hidden_conversations_changed";
 
 function readFromStorage(): Set<string> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey());
     if (!raw) return new Set();
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return new Set();
@@ -47,7 +48,7 @@ function readFromStorage(): Set<string> {
 
 function writeToStorage(set: Set<string>): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
+    localStorage.setItem(storageKey(), JSON.stringify([...set]));
     window.dispatchEvent(new CustomEvent(EVENT_NAME));
   } catch {
     // Quota / privacy mode: non-fatal, the in-memory set still works

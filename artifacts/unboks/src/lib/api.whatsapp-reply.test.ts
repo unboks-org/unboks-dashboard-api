@@ -5,7 +5,8 @@ import { replyToWhatsAppConversation } from "@/lib/api";
 describe("replyToWhatsAppConversation", () => {
   beforeEach(() => {
     localStorage.clear();
-    localStorage.setItem("wtyj_client", "ali-car-rental");
+    sessionStorage.clear();
+    sessionStorage.setItem("unboks_active_tenant", "ali-car-rental");
     localStorage.setItem("wtyj_token_ali-car-rental", "test-token");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
       ok: true,

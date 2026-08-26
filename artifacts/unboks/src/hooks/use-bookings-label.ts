@@ -4,9 +4,10 @@ import {
   saveWorkspaceLabelsSettings,
   type WorkspaceLabelsSettings,
 } from "@/lib/api";
+import { tenantKey } from "@/lib/query-keys";
 
 export const DEFAULT_BOOKINGS_LABEL = "Appointments";
-const QUERY_KEY = ["workspace-labels"] as const;
+const queryKey = () => tenantKey("workspace-labels");
 
 const FALLBACK: WorkspaceLabelsSettings = {
   bookingsLabel: DEFAULT_BOOKINGS_LABEL,
@@ -16,7 +17,7 @@ const FALLBACK: WorkspaceLabelsSettings = {
 
 export function useWorkspaceLabels() {
   return useQuery<WorkspaceLabelsSettings>({
-    queryKey: QUERY_KEY,
+    queryKey: queryKey(),
     queryFn: fetchWorkspaceLabelsSettings,
     staleTime: 30_000,
     retry: 1,
@@ -36,8 +37,8 @@ export function useSaveWorkspaceLabels() {
   return useMutation({
     mutationFn: (bookingsLabel: string) => saveWorkspaceLabelsSettings(bookingsLabel),
     onSuccess: (settings) => {
-      qc.setQueryData(QUERY_KEY, settings);
-      qc.invalidateQueries({ queryKey: QUERY_KEY });
+      qc.setQueryData(queryKey(), settings);
+      qc.invalidateQueries({ queryKey: queryKey() });
     },
   });
 }

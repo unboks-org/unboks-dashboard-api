@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { TaskUser } from "@/lib/tasks-api";
+import { tenantStorageKey } from "@/lib/tenant";
 
 /**
  * Operator identity toggle — Calvin vs Jr — backed by localStorage.
@@ -15,7 +16,7 @@ import type { TaskUser } from "@/lib/tasks-api";
  *   custom event, so the header pill and any consumer always agree.
  */
 
-const STORAGE_KEY = "unboks_dashboard_identity";
+const storageKey = () => tenantStorageKey("dashboard-identity");
 const EVENT_NAME = "unboks_dashboard_identity_changed";
 const VALID: TaskUser[] = ["Calvin", "Jr"];
 const DEFAULT_IDENTITY: TaskUser = "Calvin";
@@ -23,7 +24,7 @@ const DEFAULT_IDENTITY: TaskUser = "Calvin";
 function readIdentity(): TaskUser {
   if (typeof localStorage === "undefined") return DEFAULT_IDENTITY;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey());
     if (raw && (VALID as string[]).includes(raw)) return raw as TaskUser;
   } catch {
     // SSR / privacy-mode — fall through to default.
@@ -61,7 +62,7 @@ export function useDashboardIdentity(): {
   const setIdentity = useCallback((next: TaskUser) => {
     if (!(VALID as string[]).includes(next)) return;
     try {
-      localStorage.setItem(STORAGE_KEY, next);
+      localStorage.setItem(storageKey(), next);
     } catch {
       // Storage may be full or blocked; in-memory update still keeps UI
       // honest for this session.

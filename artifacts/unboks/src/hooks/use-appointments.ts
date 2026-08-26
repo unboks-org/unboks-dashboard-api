@@ -1,3 +1,4 @@
+import { tenantKey } from "@/lib/query-keys";
 /**
  * `useAppointments` — combines two data sources for the Appointments page:
  *
@@ -42,7 +43,7 @@ import {
 import { hasOrderSignals } from "@/lib/appointment-detector";
 import { mapApiConversation } from "@/lib/conversation-mapper";
 
-const APPOINTMENTS_KEY = ["appointments"] as const;
+const appointmentsKey = () => tenantKey("appointments");
 
 export interface UseAppointmentsResult {
   appointments: Appointment[];
@@ -57,7 +58,7 @@ export interface UseAppointmentsResult {
 
 export function useAppointments(): UseAppointmentsResult {
   const backend = useQuery({
-    queryKey: APPOINTMENTS_KEY,
+    queryKey: appointmentsKey(),
     queryFn: fetchAppointments,
     staleTime: 60_000,
     // Appointments change less often than inbox traffic — a 30s
@@ -80,7 +81,7 @@ export function useAppointments(): UseAppointmentsResult {
 
   const detailQueries = useQueries({
     queries: candidates.map((c) => ({
-      queryKey: ["conversation", c.phone],
+      queryKey: tenantKey("conversation", c.phone),
       queryFn: () => fetchConversation(c.phone),
       enabled: Boolean(c.phone),
       staleTime: 30_000,

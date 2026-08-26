@@ -45,7 +45,8 @@
  *     honestly instead of silently pretending the channel list is empty.
  */
 import { useQuery } from "@tanstack/react-query";
-import { getApiBase, getClientSlug, getToken } from "@/lib/tenant";
+import { captureTenantRequestScope, getApiBase, getClientSlug } from "@/lib/tenant";
+import { tenantKey } from "@/lib/query-keys";
 
 export interface IcpFeatureToggle {
   value: boolean | null;
@@ -76,8 +77,7 @@ const ICP_OVERRIDE_STALE_MS = 15_000;
 const ICP_OVERRIDE_POLL_MS = 15_000;
 
 async function fetchIcpEnvelope(): Promise<IcpEnvelope> {
-  const slug = getClientSlug();
-  const token = getToken();
+  const { tenantSlug: slug, token } = captureTenantRequestScope();
   if (!slug || !token) {
     return { ...EMPTY_ENVELOPE, reason: "Dashboard session is not authenticated." };
   }
@@ -103,6 +103,16 @@ async function fetchIcpEnvelope(): Promise<IcpEnvelope> {
       ...EMPTY_ENVELOPE,
       reason: `ICP override endpoint returned HTTP ${resp.status}.`,
     };
+  }
+  const responseTenant = resp.headers.get("X-Unboks-Tenant");
+  if (responseTenant && responseTenant !== slug) {
+    console.error("[tenant-security] response_tenant_mismatch", {
+      expectedTenant: slug,
+      actualTenant: responseTenant,
+      endpointClass: "icp-overrides",
+      status: resp.status,
+    });
+    return { ...EMPTY_ENVELOPE, reason: "Workspace response rejected." };
   }
   let body: IcpEnvelope | undefined;
   try {
@@ -130,7 +140,7 @@ async function fetchIcpEnvelope(): Promise<IcpEnvelope> {
 
 export function useIcpOverrides() {
   return useQuery({
-    queryKey: ["icp-overrides", getClientSlug()],
+    queryKey: tenantKey("icp-overrides"),
     queryFn: fetchIcpEnvelope,
     // Keep active tabs reasonably fresh without hammering ICP from
     // every open dashboard tab. Focus/reconnect handles the common
