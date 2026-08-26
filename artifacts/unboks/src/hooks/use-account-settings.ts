@@ -4,10 +4,8 @@ import {
   saveAccountSettings,
   type AccountSettingsApiResponse,
 } from "@/lib/api";
-import { getClientSlug } from "@/lib/tenant";
+import { getClientSlug, tenantStorageKey } from "@/lib/tenant";
 
-const STORAGE_KEY_PREFIX = "unboks_account_settings";
-const LEGACY_STORAGE_KEY = "unboks_account_settings";
 const EVENT_NAME = "unboks_account_settings_changed";
 
 export interface AccountSettings {
@@ -26,7 +24,7 @@ const DEFAULT: AccountSettings = {
 };
 
 function storageKey(slug = getClientSlug()): string {
-  return `${STORAGE_KEY_PREFIX}:${slug}`;
+  return tenantStorageKey("account-settings", slug);
 }
 
 function clean(value: unknown): string {
@@ -44,10 +42,7 @@ function fromApi(data: AccountSettingsApiResponse): AccountSettings {
 
 function readFromStorage(slug = getClientSlug()): AccountSettings | null {
   try {
-    let raw = localStorage.getItem(storageKey(slug));
-    // Preserve the old local-only Unboks workspace settings without
-    // letting them leak into every new tenant in the same browser.
-    if (!raw && slug === "unboks") raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey(slug));
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === "object") {

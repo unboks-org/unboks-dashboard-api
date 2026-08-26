@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import { useKnowledgeMediaLibrary } from "@/hooks/use-client-api";
 import { cn } from "@/lib/utils";
+import { tenantKey } from "@/lib/query-keys";
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ACCEPT = ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp";
@@ -51,7 +52,7 @@ export default function Images() {
   const [busy, setBusy] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const productSettingsQuery = useQuery<ProductSettings>({
-    queryKey: ["settings", "product"],
+    queryKey: tenantKey("settings", "product"),
     queryFn: fetchProductSettings,
     staleTime: 30_000,
   });
@@ -63,7 +64,7 @@ export default function Images() {
     onSuccess: async (next) => {
       setDeliveryAmount(next.deliveryCostAmount == null ? "" : String(next.deliveryCostAmount));
       setDeliveryCurrency(next.deliveryCostCurrency || "XCG");
-      await qc.invalidateQueries({ queryKey: ["settings", "product"] });
+      await qc.invalidateQueries({ queryKey: tenantKey("settings", "product") });
       toast.success("Delivery cost saved.");
     },
     onError: (err) => {
@@ -123,7 +124,7 @@ export default function Images() {
       setTitle("");
       setDescription("");
       setPendingFile(null);
-      await qc.invalidateQueries({ queryKey: ["knowledge", "media", "library"] });
+      await qc.invalidateQueries({ queryKey: tenantKey("knowledge", "media", "library") });
       toast.success("Image uploaded. Your Agent can now use it when customers ask.");
     } catch (err) {
       const message = err instanceof Error && err.message ? err.message : "Image upload failed.";
@@ -137,7 +138,7 @@ export default function Images() {
     if (!window.confirm(`Remove "${media.caption || media.originalFilename || "image"}"?`)) return;
     try {
       await deleteKnowledgeMedia(media.id);
-      await qc.invalidateQueries({ queryKey: ["knowledge", "media", "library"] });
+      await qc.invalidateQueries({ queryKey: tenantKey("knowledge", "media", "library") });
       toast.success("Image removed.");
     } catch (err) {
       const message = err instanceof Error && err.message ? err.message : "Could not remove image.";

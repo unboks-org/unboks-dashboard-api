@@ -5,7 +5,6 @@ import {
   DashboardShell,
   inboxContextUrl,
   navIdFromInboxUrl,
-  PENDING_NAV_KEY,
 } from "@/components/inbox/DashboardShell";
 import { MessageRow } from "@/components/inbox/MessageRow";
 import type { Channel, Conversation } from "@/data/conversations";
@@ -1564,33 +1563,6 @@ export default function Inbox() {
     escIsError,
     navigate,
   ]);
-
-  // Drain any leftover legacy PENDING_NAV_KEY parked by the previous
-  // build (sessionStorage entries from before nav became URL-driven).
-  // Translates the parked intent into a navigation, then clears the key
-  // so the next mount can't re-fire it.
-  useEffect(() => {
-    let pending: string | null = null;
-    try {
-      pending = sessionStorage.getItem(PENDING_NAV_KEY);
-      if (pending) sessionStorage.removeItem(PENDING_NAV_KEY);
-    } catch {
-      pending = null;
-    }
-    if (!pending) return;
-    if (
-      pending === "inbox" ||
-      pending === "escalations" ||
-      pending.startsWith("channel:")
-    ) {
-      const target = inboxContextUrl(pending as NavId);
-      const here = window.location.pathname + window.location.search;
-      const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
-      const inner =
-        base && here.startsWith(base) ? here.slice(base.length) || "/" : here;
-      if (inner !== target) navigate(target);
-    }
-  }, [navigate]);
 
   const activeChannel: Channel | null = useMemo(() => {
     if (activeNav.startsWith("channel:")) return activeNav.split(":")[1] as Channel;

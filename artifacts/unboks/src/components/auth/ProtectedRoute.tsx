@@ -1,7 +1,7 @@
 import { useContext } from "react";
 import { Redirect } from "wouter";
 import { AuthContext } from "./AuthContext";
-import { LOGIN_REDIRECT_STORAGE_KEY } from "@/lib/deep-link";
+import { loginRedirectStorageKey } from "@/lib/deep-link";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -28,7 +28,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         base && here.startsWith(base) ? here.slice(base.length) || "/" : here;
       // Never round-trip back to /login itself — that would be a loop.
       if (!inner.startsWith("/login")) {
-        sessionStorage.setItem(LOGIN_REDIRECT_STORAGE_KEY, inner);
+        sessionStorage.setItem(loginRedirectStorageKey(), inner);
       }
     } catch {
       // sessionStorage can throw in private modes / sandboxed iframes;

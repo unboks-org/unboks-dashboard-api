@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import { tenantStorageKey } from "@/lib/tenant";
 
-const STORAGE_KEY = "unboks_feature_toggles";
+const storageKey = () => tenantStorageKey("feature-toggles");
 
 const DEFAULTS = {
   dryRun: false,
@@ -12,7 +13,7 @@ export function useFeatureToggles() {
   const [toggles, setTogglesState] = useState(() => {
     if (typeof localStorage === "undefined") return DEFAULTS;
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(storageKey());
       return raw ? { ...DEFAULTS, ...JSON.parse(raw) } : DEFAULTS;
     } catch {
       return DEFAULTS;
@@ -22,7 +23,7 @@ export function useFeatureToggles() {
   useEffect(() => {
     const sync = () => {
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const raw = localStorage.getItem(storageKey());
         if (raw) setTogglesState({ ...DEFAULTS, ...JSON.parse(raw) });
       } catch {}
     };
@@ -33,7 +34,7 @@ export function useFeatureToggles() {
   const setToggle = useCallback((key: keyof typeof DEFAULTS, value: boolean) => {
     const next = { ...toggles, [key]: value };
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      localStorage.setItem(storageKey(), JSON.stringify(next));
     } catch {}
     setTogglesState(next);
     window.dispatchEvent(new CustomEvent("unboks_feature_toggles_changed"));

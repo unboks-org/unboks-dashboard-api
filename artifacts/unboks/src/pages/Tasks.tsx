@@ -35,6 +35,7 @@ import { useLocalTaskEdits } from "@/hooks/use-local-task-edits";
 import { useTaskNotes } from "@/hooks/use-task-notes";
 import { ApiError } from "@/lib/error";
 import { cn } from "@/lib/utils";
+import { tenantKey } from "@/lib/query-keys";
 
 type Filter = "open" | "parked" | "done" | "all";
 
@@ -193,7 +194,7 @@ export default function Tasks() {
     useTaskNotes();
 
   const { data: backendTasks, isLoading, isError, error } = useQuery({
-    queryKey: ["tasks"],
+    queryKey: tenantKey("tasks"),
     queryFn: listTasks,
     refetchInterval: 30_000,
     retry: (failureCount, err) => {
@@ -208,7 +209,7 @@ export default function Tasks() {
   const updateMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: TaskStatus }) =>
       updateTaskStatus(id, status),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: tenantKey("tasks") }),
   });
 
   const buildLocalAttachments = useCallback(async (files: File[]): Promise<LocalAttachment[]> => {
@@ -315,7 +316,7 @@ export default function Tasks() {
             // pending tasks, so numbering stays globally unique.
             setTaskNumber(created.id, allocateNextTaskNumber());
           }
-          await queryClient.invalidateQueries({ queryKey: ["tasks"] });
+          await queryClient.invalidateQueries({ queryKey: tenantKey("tasks") });
           toast.success("Task added.");
         } catch (err) {
           if (isAuthError(err)) {
@@ -487,7 +488,7 @@ export default function Tasks() {
       }
     }
     setSyncing(false);
-    await queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    await queryClient.invalidateQueries({ queryKey: tenantKey("tasks") });
     if (authStopped) {
       toast.error("Session expired. Please sign in again to finish syncing.");
     }

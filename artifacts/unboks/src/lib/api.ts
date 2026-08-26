@@ -1,6 +1,11 @@
 import { ApiError } from "@/lib/error";
 import { DEBUG_LOGS_ENABLED, debugInfo } from "@/lib/debug-log";
-import { getApiBase, getToken, clearAuth, getClientSlug } from "@/lib/tenant";
+import {
+  captureTenantRequestScope,
+  getApiBase,
+  clearAuth,
+  getClientSlug,
+} from "@/lib/tenant";
 import { formatConversationTimestamp, parseTimestampMs } from "@/lib/conversation-mapper";
 
 // ---------------------------------------------------------------------------
@@ -1520,7 +1525,7 @@ export interface InfoUpdateUpdatePayload {
 // ---------------------------------------------------------------------------
 
 let _onUnauthorized: (() => void) | null = null;
-let _authFailureFired = false;
+let _authFailureTenant: string | null = null;
 
 export function registerUnauthorizedHandler(fn: () => void) {
   _onUnauthorized = fn;
@@ -1534,11 +1539,56 @@ export function registerUnauthorizedHandler(fn: () => void) {
  * Idempotent: only fires the global handler once per session to avoid
  * redirect/toast storms when several queries fail at the same time.
  */
-function handleAuthFailure() {
-  if (_authFailureFired) return;
-  _authFailureFired = true;
-  clearAuth();
+function handleAuthFailure(expectedTenant: string) {
+  // A late 401 from an unmounted tenant must never sign the current tenant
+  // out. The request scope is immutable, so this comparison is safe.
+  if (getClientSlug() !== expectedTenant) {
+    console.info("[tenant-security] stale_auth_failure_discarded", {
+      expectedTenant,
+      activeTenant: getClientSlug(),
+    });
+    return;
+  }
+  if (_authFailureTenant === expectedTenant) return;
+  _authFailureTenant = expectedTenant;
+  clearAuth(expectedTenant);
   _onUnauthorized?.();
+}
+
+function endpointClass(path: string): string {
+  return path.split("?")[0].split("/").filter(Boolean)[0] ?? "root";
+}
+
+function responseTenantIdentity(res: Response, body: unknown, path: string): string | null {
+  const header = res.headers.get("X-Unboks-Tenant");
+  if (header) return header;
+  if (!body || typeof body !== "object" || Array.isArray(body)) return null;
+  const root = body as Record<string, unknown>;
+  const keys = path.startsWith("/client/profile")
+    ? ["tenantSlug", "tenant_slug", "tenant", "slug"]
+    : ["tenantSlug", "tenant_slug", "tenant"];
+  for (const key of keys) {
+    const value = root[key];
+    if (typeof value === "string" && value.length > 0) return value;
+  }
+  return null;
+}
+
+function assertResponseTenant(
+  res: Response,
+  body: unknown,
+  expectedTenant: string,
+  path: string,
+): void {
+  const actualTenant = responseTenantIdentity(res, body, path);
+  if (!actualTenant || actualTenant === expectedTenant) return;
+  console.error("[tenant-security] response_tenant_mismatch", {
+    expectedTenant,
+    actualTenant,
+    endpointClass: endpointClass(path),
+    status: res.status,
+  });
+  throw new ApiError(409, "Workspace response rejected");
 }
 
 async function apiFetch<T>(
@@ -1546,8 +1596,8 @@ async function apiFetch<T>(
   options: RequestInit = {},
   skipAuth = false,
 ): Promise<T> {
-  const base = getApiBase();
-  const token = getToken();
+  const { tenantSlug, token } = captureTenantRequestScope();
+  const base = getApiBase(tenantSlug);
 
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string> | undefined),
@@ -1574,7 +1624,7 @@ async function apiFetch<T>(
   // Only treat as an auth failure if the request actually sent a token.
   // Unauthenticated requests (e.g., login) returning 401 are not a session expiry.
   if ((res.status === 401 || res.status === 403) && !skipAuth && token) {
-    handleAuthFailure();
+    handleAuthFailure(tenantSlug);
     throw new ApiError(res.status, res.status === 401 ? "Unauthorized" : "Forbidden");
   }
 
@@ -1592,9 +1642,13 @@ async function apiFetch<T>(
     }
     throw new ApiError(res.status, msg);
   }
-
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
+  if (res.status === 204) {
+    assertResponseTenant(res, undefined, tenantSlug, path);
+    return undefined as T;
+  }
+  const body = await res.json() as T;
+  assertResponseTenant(res, body, tenantSlug, path);
+  return body;
 }
 
 // ---------------------------------------------------------------------------
@@ -1752,8 +1806,19 @@ export async function apiLogin(
     }
     throw new ApiError(res.status, msg);
   }
+  const expectedTenant = slug ?? getClientSlug();
+  const responseTenant = res.headers.get("X-Unboks-Tenant");
+  if (responseTenant && responseTenant !== expectedTenant) {
+    console.error("[tenant-security] response_tenant_mismatch", {
+      expectedTenant,
+      actualTenant: responseTenant,
+      endpointClass: "login",
+      status: res.status,
+    });
+    throw new ApiError(409, "Workspace response rejected");
+  }
   // A successful login starts a fresh session — re-arm the auth-failure latch
-  _authFailureFired = false;
+  _authFailureTenant = null;
   return (await res.json()) as LoginResponse;
 }
 

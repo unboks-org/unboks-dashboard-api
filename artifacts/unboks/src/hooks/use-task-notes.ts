@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { tenantStorageKey } from "@/lib/tenant";
 
 /**
  * Per-task notes overlay.
@@ -25,7 +26,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
  * the same tab. Same pattern as `useLocalTaskEdits`.
  */
 
-const STORAGE_KEY = "unboks_task_notes";
+const storageKey = () => tenantStorageKey("task-notes");
 const EVENT_NAME = "unboks_task_notes_changed";
 
 export const NOTE_IMAGE_MAX_BYTES = 500 * 1024;
@@ -49,7 +50,7 @@ export type TaskNotesMap = Record<string, TaskNote>;
 
 function readFromStorage(): TaskNotesMap {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey());
     if (!raw) return {};
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
@@ -97,7 +98,7 @@ function readFromStorage(): TaskNotesMap {
 
 function persist(map: TaskNotesMap): boolean {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+    localStorage.setItem(storageKey(), JSON.stringify(map));
     window.dispatchEvent(new CustomEvent(EVENT_NAME));
     return true;
   } catch {

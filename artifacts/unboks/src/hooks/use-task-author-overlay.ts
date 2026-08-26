@@ -1,3 +1,4 @@
+import { tenantStorageKey } from "@/lib/tenant";
 /**
  * Local authorship overlay for backend/shared tasks.
  *
@@ -28,7 +29,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { TaskUser } from "@/lib/tasks-api";
 
-const STORAGE_KEY = "unboks_task_author_overrides";
+const storageKey = () => tenantStorageKey("task-author-overrides");
 
 export interface TaskAuthorOverride {
   createdBy?: TaskUser;
@@ -46,7 +47,7 @@ function isValidUser(v: unknown): v is TaskUser {
 function readFromStorage(): OverrideMap {
   if (typeof window === "undefined") return {};
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey());
     if (!raw) return {};
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
@@ -67,7 +68,7 @@ function readFromStorage(): OverrideMap {
 
 function persist(map: OverrideMap): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+    localStorage.setItem(storageKey(), JSON.stringify(map));
   } catch {
     // Quota / privacy mode — silently drop. Worst case the override is
     // session-only, but we never block the user's action.
@@ -94,7 +95,7 @@ export function useTaskAuthorOverlay(): UseTaskAuthorOverlayApi {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onStorage = (e: StorageEvent) => {
-      if (e.key !== STORAGE_KEY) return;
+      if (e.key !== storageKey()) return;
       setOverrides(readFromStorage());
     };
     window.addEventListener("storage", onStorage);

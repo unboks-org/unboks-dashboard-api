@@ -20,7 +20,7 @@
  * "Tasks backend not available yet" error — no fake/local persistence.
  */
 import { ApiError } from "@/lib/error";
-import { getToken } from "@/lib/tenant";
+import { captureTenantRequestScope, tenantStorageKey } from "@/lib/tenant";
 
 export type TaskUser = "Calvin" | "Jr";
 
@@ -35,13 +35,13 @@ export type TaskUser = "Calvin" | "Jr";
  *
  * Do NOT infer the author from `assignedTo` — that's the recipient.
  */
-const IDENTITY_STORAGE_KEY = "unboks_dashboard_identity";
+const identityStorageKey = () => tenantStorageKey("dashboard-identity");
 const VALID_IDENTITIES: TaskUser[] = ["Calvin", "Jr"];
 
 export function getCurrentTaskUser(): TaskUser {
   if (typeof localStorage === "undefined") return "Calvin";
   try {
-    const raw = localStorage.getItem(IDENTITY_STORAGE_KEY);
+    const raw = localStorage.getItem(identityStorageKey());
     if (raw && (VALID_IDENTITIES as string[]).includes(raw)) return raw as TaskUser;
   } catch {
     // ignore — fall through
@@ -130,10 +130,9 @@ export const MAX_IMAGES_PER_TASK = 5;
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 
 const API_HOST: string = (import.meta.env.VITE_API_BASE_URL as string) ?? "";
-const TASKS_BASE = `${API_HOST}/api/unboks/tasks`;
-
 async function tasksFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = getToken();
+  const { tenantSlug, token } = captureTenantRequestScope();
+  const tasksBase = `${API_HOST}/api/${tenantSlug}/tasks`;
   const headers: Record<string, string> = {
     ...(init.headers as Record<string, string> | undefined),
   };
@@ -145,7 +144,7 @@ async function tasksFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   let res: Response;
   try {
-    res = await fetch(`${TASKS_BASE}${path}`, { ...init, headers });
+    res = await fetch(`${tasksBase}${path}`, { ...init, headers });
   } catch (err) {
     throw new ApiError(0, err instanceof Error ? err.message : "Network error");
   }
@@ -162,6 +161,17 @@ async function tasksFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
       msg = "Tasks backend not available yet. Ask the API team to ship /api/unboks/tasks.";
     }
     throw new ApiError(res.status, msg);
+  }
+
+  const responseTenant = res.headers.get("X-Unboks-Tenant");
+  if (responseTenant && responseTenant !== tenantSlug) {
+    console.error("[tenant-security] response_tenant_mismatch", {
+      expectedTenant: tenantSlug,
+      actualTenant: responseTenant,
+      endpointClass: "tasks",
+      status: res.status,
+    });
+    throw new ApiError(409, "Workspace response rejected");
   }
 
   if (res.status === 204) return undefined as T;

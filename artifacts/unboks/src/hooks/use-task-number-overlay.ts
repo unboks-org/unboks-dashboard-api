@@ -1,3 +1,4 @@
+import { getClientSlug, tenantStorageKey } from "@/lib/tenant";
 /**
  * Per-server-id task number overlay.
  *
@@ -35,8 +36,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { allocateNextTaskNumber } from "./use-local-pending-tasks";
 
-const STORAGE_KEY = "unboks_task_numbers";
-const COUNTER_KEY = "unboks_next_task_number";
+const storageKey = () => tenantStorageKey("task-numbers");
+const counterKey = () => tenantStorageKey("next-task-number");
 
 type NumberMap = Record<string, number>;
 
@@ -55,19 +56,20 @@ const ALLOC_CACHE = new Map<string, number>();
  *  next storage tick or via the explicit setters. */
 function ensureAllocated(taskId: string): number {
   if (!taskId) return 0;
-  const cached = ALLOC_CACHE.get(taskId);
+  const tenantTaskId = `${getClientSlug()}:${taskId}`;
+  const cached = ALLOC_CACHE.get(tenantTaskId);
   if (cached !== undefined) return cached;
 
   // Check persistent storage first — another tab (or a previous mount of
   // this tab) may have already allocated for this id.
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey());
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         const existing = (parsed as Record<string, unknown>)[taskId];
         if (typeof existing === "number" && Number.isFinite(existing) && existing >= 1) {
-          ALLOC_CACHE.set(taskId, existing);
+          ALLOC_CACHE.set(tenantTaskId, existing);
           return existing;
         }
       }
@@ -79,9 +81,9 @@ function ensureAllocated(taskId: string): number {
   // Allocate fresh from the shared counter and persist immediately so a
   // refresh (or another tab) sees the same number for this id.
   const n = allocateNextTaskNumber();
-  ALLOC_CACHE.set(taskId, n);
+  ALLOC_CACHE.set(tenantTaskId, n);
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey());
     const parsed =
       raw && typeof raw === "string" ? JSON.parse(raw) : {};
     const map =
@@ -89,7 +91,7 @@ function ensureAllocated(taskId: string): number {
         ? (parsed as Record<string, unknown>)
         : {};
     map[taskId] = n;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+    localStorage.setItem(storageKey(), JSON.stringify(map));
   } catch {
     // Quota / privacy mode — the in-memory cache still gives a stable
     // number for this session.
@@ -111,7 +113,7 @@ function dedupeNumberMap(map: NumberMap): { map: NumberMap; changed: boolean } {
   for (const id of ids) maxNumber = Math.max(maxNumber, map[id]);
   let nextFree = maxNumber + 1;
   try {
-    const raw = localStorage.getItem(COUNTER_KEY);
+    const raw = localStorage.getItem(counterKey());
     if (raw) {
       const c = parseInt(raw, 10);
       if (Number.isFinite(c) && c > nextFree) nextFree = c;
@@ -140,7 +142,7 @@ function dedupeNumberMap(map: NumberMap): { map: NumberMap; changed: boolean } {
   }
   if (changed) {
     try {
-      localStorage.setItem(COUNTER_KEY, String(nextFree));
+      localStorage.setItem(counterKey(), String(nextFree));
     } catch {
       // Non-fatal — the in-memory dedupe is still correct for this session.
     }
@@ -151,7 +153,7 @@ function dedupeNumberMap(map: NumberMap): { map: NumberMap; changed: boolean } {
 function readFromStorage(): NumberMap {
   if (typeof window === "undefined") return {};
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey());
     if (!raw) return {};
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
@@ -165,14 +167,17 @@ function readFromStorage(): NumberMap {
     const deduped = dedupeNumberMap(out);
     if (deduped.changed) {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(deduped.map));
+        localStorage.setItem(storageKey(), JSON.stringify(deduped.map));
       } catch {
         // Quota / privacy mode — the in-memory copy is still correct.
       }
     }
     // Hydrate the module cache so subsequent ensureAllocated() calls hit
     // the cache before allocating.
-    for (const [id, n] of Object.entries(deduped.map)) ALLOC_CACHE.set(id, n);
+    const slug = getClientSlug();
+    for (const [id, n] of Object.entries(deduped.map)) {
+      ALLOC_CACHE.set(`${slug}:${id}`, n);
+    }
     return deduped.map;
   } catch {
     return {};
@@ -181,7 +186,7 @@ function readFromStorage(): NumberMap {
 
 function persist(map: NumberMap): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+    localStorage.setItem(storageKey(), JSON.stringify(map));
   } catch {
     // Quota / privacy mode — non-fatal. The override is session-only in
     // that case but we never block the user's action.
@@ -206,7 +211,7 @@ export function useTaskNumberOverlay(): UseTaskNumberOverlayApi {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onStorage = (e: StorageEvent) => {
-      if (e.key !== STORAGE_KEY) return;
+      if (e.key !== storageKey()) return;
       setNumbers(readFromStorage());
     };
     window.addEventListener("storage", onStorage);

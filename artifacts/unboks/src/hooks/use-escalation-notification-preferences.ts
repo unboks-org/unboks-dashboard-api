@@ -7,6 +7,7 @@ import {
   type EscalationAlertTypes,
 } from "@/lib/api";
 import { ApiError } from "@/lib/error";
+import { tenantStorageKey } from "@/lib/tenant";
 
 export type NotifyChannelKey = "whatsapp" | "messenger" | "telegram";
 
@@ -74,7 +75,7 @@ export type DeliveryStatusMap = Partial<
  */
 export type PrefsSource = "backend" | "local" | "default";
 
-const STORAGE_KEY = "unboks_escalation_notify_prefs";
+const storageKey = () => tenantStorageKey("escalation-notify-prefs");
 
 const DEFAULT_PREFS: EscalationNotificationPrefs = {
   whatsapp: { enabled: false, destination: "" },
@@ -88,7 +89,7 @@ const DEFAULT_PREFS: EscalationNotificationPrefs = {
 
 function readFromStorage(): EscalationNotificationPrefs | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey());
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
@@ -128,7 +129,7 @@ function readFromStorage(): EscalationNotificationPrefs | null {
 
 function writeToStorage(prefs: EscalationNotificationPrefs) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+    localStorage.setItem(storageKey(), JSON.stringify(prefs));
   } catch {
     // ignore quota / private-mode failures — cache is non-essential
   }

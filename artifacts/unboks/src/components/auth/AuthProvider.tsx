@@ -10,13 +10,13 @@ import {
   clearAuth,
 } from "@/lib/tenant";
 import { apiLogin, registerUnauthorizedHandler } from "@/lib/api";
-import { LOGIN_REDIRECT_STORAGE_KEY } from "@/lib/deep-link";
+import { loginRedirectStorageKey } from "@/lib/deep-link";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [, navigate] = useLocation();
   const [clientSlug, setClientSlugState] = useState<string>(getClientSlug);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
-    () => Boolean(getToken()),
+    () => Boolean(getToken(getClientSlug())),
   );
 
   // Register global 401 handler. Mirrors `ProtectedRoute`: capture the
@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const inner =
           base && here.startsWith(base) ? here.slice(base.length) || "/" : here;
         if (!inner.startsWith("/login")) {
-          sessionStorage.setItem(LOGIN_REDIRECT_STORAGE_KEY, inner);
+          sessionStorage.setItem(loginRedirectStorageKey(), inner);
         }
       } catch {
         // sessionStorage may be unavailable; missed redirect just means
@@ -53,9 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // persisted client + token pair is left untouched and the user's
       // previous working session (if any) is preserved.
       const { token } = await apiLogin(password, slug);
+      setToken(token, slug);
       setClientSlug(slug);
       setClientSlugState(slug);
-      setToken(token, slug);
       setIsAuthenticated(true);
       // Honour the path the user was trying to reach before the auth
       // bounce (set by `ProtectedRoute`). This is what makes deep links
@@ -64,9 +64,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // appointment that was linked, instead of the inbox root.
       let dest = "/";
       try {
-        const stored = sessionStorage.getItem(LOGIN_REDIRECT_STORAGE_KEY);
+        const redirectKey = loginRedirectStorageKey();
+        const stored = sessionStorage.getItem(redirectKey);
         if (stored && !stored.startsWith("/login")) dest = stored;
-        sessionStorage.removeItem(LOGIN_REDIRECT_STORAGE_KEY);
+        sessionStorage.removeItem(redirectKey);
       } catch {
         // sessionStorage may be unavailable; fall back to "/".
       }
@@ -75,14 +76,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [navigate],
   );
 
+  const switchTenant = useCallback((slug: string) => {
+    const token = getToken(slug);
+    if (!token) return false;
+    try {
+      setClientSlug(slug);
+    } catch {
+      return false;
+    }
+    setClientSlugState(slug);
+    setIsAuthenticated(true);
+    return true;
+  }, []);
+
   const logout = useCallback(() => {
-    clearAuth();
+    clearAuth(clientSlug);
     setIsAuthenticated(false);
     navigate("/login");
-  }, [navigate]);
+  }, [clientSlug, navigate]);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, clientSlug, login, logout }}>
+    <AuthContext.Provider
+      value={{ isAuthenticated, clientSlug, login, switchTenant, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

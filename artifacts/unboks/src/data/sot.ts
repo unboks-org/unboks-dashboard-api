@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchSourceOfTruth, saveSourceOfTruth } from "@/lib/api";
 import { getClientSlug } from "@/lib/tenant";
+import { tenantKeyFor } from "@/lib/query-keys";
 
 export interface SotSubsection {
   title: string;
@@ -26,8 +27,8 @@ export const DEFAULT_SOT: SotBlock[] = [];
 // mid-session (App.tsx calls setClientSlug for both), the cache must
 // not surface the previous tenant's SOT. Stable for the duration the
 // slug is the same, which is the only window the data is valid.
-function sotQueryKey(slug: string): readonly [string, string] {
-  return ["source-of-truth", slug] as const;
+function sotQueryKey(slug: string) {
+  return tenantKeyFor(slug, "source-of-truth");
 }
 
 export interface UseSotResult {

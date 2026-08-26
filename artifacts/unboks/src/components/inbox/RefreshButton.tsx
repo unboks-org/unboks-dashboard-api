@@ -36,16 +36,17 @@ import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { tenantText } from "@/lib/tenant-ui";
+import { tenantKey } from "@/lib/query-keys";
 
-const REFRESHED_KEYS: ReadonlyArray<readonly string[]> = [
-  ["conversations"],
-  ["conversation"],
-  ["escalations"],
-  ["appointments"],
-  ["tasks"],
-  ["status"],
-  ["schedule-slots"],
-  ["learning"],
+const REFRESHED_KEYS = [
+  "conversations",
+  "conversation",
+  "escalations",
+  "appointments",
+  "tasks",
+  "status",
+  "schedule-slots",
+  "learning",
 ];
 
 function formatClock(d: Date): string {
@@ -76,7 +77,7 @@ export function RefreshButton({ className }: { className?: string }) {
     setErrored(false);
     const results = await Promise.allSettled(
       REFRESHED_KEYS.map((key) =>
-        qc.invalidateQueries({ queryKey: key as unknown as readonly unknown[] }),
+        qc.invalidateQueries({ queryKey: tenantKey(key) }),
       ),
     );
     setIsRefreshing(false);

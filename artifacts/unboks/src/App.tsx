@@ -1,16 +1,18 @@
-import { Component, lazy, Suspense, type ReactNode } from "react";
-import { Switch, Route, Router as WouterRouter, Redirect, useParams } from "wouter";
-import { setClientSlug, getClientSlug } from "@/lib/tenant";
+import { Component, lazy, Suspense, useEffect, useMemo, type ReactNode } from "react";
+import { Switch, Route, Router as WouterRouter, Redirect, useLocation, useParams } from "wouter";
+import { getToken } from "@/lib/tenant";
 import { isValidTenantSlug } from "@/lib/api";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { useAuth } from "@/components/auth/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SettingsErrorBoundary } from "@/components/SettingsErrorBoundary";
 import { FeatureTogglesProvider } from "@/lib/feature-toggles";
 import { DEBUG_LOGS_ENABLED, debugLog } from "@/lib/debug-log";
 import { isSpainSpanishTenant, tenantText } from "@/lib/tenant-ui";
+import { loginRedirectStorageKey } from "@/lib/deep-link";
 
 const NotFound = lazy(() => import("@/pages/not-found"));
 const Inbox = lazy(() => import("@/pages/Inbox"));
@@ -82,23 +84,42 @@ class AppErrorBoundary extends Component<
   }
 }
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: (failureCount, error: unknown) => {
-        if (
-          error &&
-          typeof error === "object" &&
-          "status" in error &&
-          (error as { status: number }).status === 401
-        )
-          return false;
-        return failureCount < 2;
+function createTenantQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        refetchOnWindowFocus: false,
+        retry: (failureCount, error: unknown) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "status" in error &&
+            (error as { status: number }).status === 401
+          )
+            return false;
+          return failureCount < 2;
+        },
       },
     },
-  },
-});
+  });
+}
+
+function AuthenticatedTenantRedirect({
+  slug,
+  target,
+}: {
+  slug: string;
+  target: string;
+}) {
+  const { switchTenant } = useAuth();
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (switchTenant(slug)) navigate(target, { replace: true });
+  }, [navigate, slug, switchTenant, target]);
+
+  return <RouteLoading />;
+}
 
 /**
  * Handles bare tenant URLs of the form:
@@ -161,24 +182,18 @@ function TenantRootRedirect() {
   const slug = tenant as string;
   const hasTokenForSlug = (() => {
     try {
-      return !!localStorage.getItem(`wtyj_token_${slug}`);
+      return Boolean(getToken(slug));
     } catch {
       return false;
     }
   })();
   if (hasTokenForSlug) {
     // Existing session for this slug — treat as workspace switch.
-    const previousSlug = getClientSlug();
-    if (slug !== previousSlug) {
-      setClientSlug(slug);
-    }
     logTenantNav("tenant_root.has_token", {
       slug,
-      previous_slug: previousSlug,
-      switched: slug !== previousSlug,
       next: "/",
     });
-    return <Redirect to="/" />;
+    return <AuthenticatedTenantRedirect slug={slug} target="/" />;
   }
   // No session yet for this slug. DO NOT touch localStorage — that was
   // the J3-N2-06 bug. Pass the slug to /login via sessionStorage as a
@@ -186,6 +201,7 @@ function TenantRootRedirect() {
   let hintWritten = false;
   try {
     sessionStorage.setItem(WORKSPACE_HINT_KEY, slug);
+    sessionStorage.setItem(loginRedirectStorageKey(slug), "/");
     hintWritten = true;
   } catch {
     // sessionStorage unavailable; login just renders with empty workspace.
@@ -230,25 +246,21 @@ function TenantSectionRedirect() {
   const target = section === "inbox" ? "/" : `/${section}`;
   const hasTokenForSlug = (() => {
     try {
-      return !!localStorage.getItem(`wtyj_token_${slug}`);
+      return Boolean(getToken(slug));
     } catch {
       return false;
     }
   })();
   if (hasTokenForSlug) {
-    const previousSlug = getClientSlug();
-    if (slug !== previousSlug) {
-      setClientSlug(slug);
-    }
     logTenantNav("tenant_section.has_token", {
-      slug, section, previous_slug: previousSlug,
-      switched: slug !== previousSlug, next: target,
+      slug, section, next: target,
     });
-    return <Redirect to={target} />;
+    return <AuthenticatedTenantRedirect slug={slug} target={target} />;
   }
   let hintWritten = false;
   try {
     sessionStorage.setItem(WORKSPACE_HINT_KEY, slug);
+    sessionStorage.setItem(loginRedirectStorageKey(slug), target);
     hintWritten = true;
   } catch {
     // sessionStorage unavailable; login renders with empty workspace.
@@ -281,11 +293,8 @@ function TenantDeepLinkRedirect({ section }: { section: "escalations" | "appoint
   let switched = false;
   let hasTokenForSlug = false;
   try {
-    hasTokenForSlug = !!localStorage.getItem(`wtyj_token_${tenant}`);
-    if (hasTokenForSlug && tenant !== getClientSlug()) {
-      setClientSlug(tenant);
-      switched = true;
-    }
+    hasTokenForSlug = Boolean(getToken(tenant));
+    switched = hasTokenForSlug;
   } catch {
     // localStorage unavailable — let the deep link still navigate; the
     // protected route will bounce to /login and the workspace hint
@@ -301,7 +310,17 @@ function TenantDeepLinkRedirect({ section }: { section: "escalations" | "appoint
       switched,
       next: `/${section}/${id}`,
     });
-  return <Redirect to={`/${section}/${encodeURIComponent(id)}`} />;
+  const target = `/${section}/${encodeURIComponent(id)}`;
+  if (hasTokenForSlug) {
+    return <AuthenticatedTenantRedirect slug={tenant} target={target} />;
+  }
+  try {
+    sessionStorage.setItem(WORKSPACE_HINT_KEY, tenant);
+    sessionStorage.setItem(loginRedirectStorageKey(tenant), target);
+  } catch {
+    // Login still works; only the post-login deep-link restoration is lost.
+  }
+  return <Redirect to="/login" />;
 }
 
 function Router() {
@@ -390,23 +409,39 @@ function Router() {
   );
 }
 
+function TenantRuntime() {
+  const { clientSlug, isAuthenticated } = useAuth();
+  const queryClient = useMemo(createTenantQueryClient, [clientSlug, isAuthenticated]);
+
+  useEffect(() => {
+    return () => {
+      void queryClient.cancelQueries();
+      queryClient.clear();
+    };
+  }, [queryClient]);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <FeatureTogglesProvider key={clientSlug}>
+        <Suspense fallback={<RouteLoading />}>
+          <Router key={`${clientSlug}:${isAuthenticated ? "auth" : "guest"}`} />
+        </Suspense>
+      </FeatureTogglesProvider>
+    </QueryClientProvider>
+  );
+}
+
 function App() {
   return (
     <AppErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <FeatureTogglesProvider>
-          <TooltipProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <AuthProvider>
-                <Suspense fallback={<RouteLoading />}>
-                  <Router />
-                </Suspense>
-              </AuthProvider>
-            </WouterRouter>
-            <Toaster richColors position="top-right" />
-          </TooltipProvider>
-        </FeatureTogglesProvider>
-      </QueryClientProvider>
+      <TooltipProvider>
+        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <AuthProvider>
+            <TenantRuntime />
+          </AuthProvider>
+        </WouterRouter>
+        <Toaster richColors position="top-right" />
+      </TooltipProvider>
     </AppErrorBoundary>
   );
 }

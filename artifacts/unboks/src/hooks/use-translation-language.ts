@@ -1,3 +1,4 @@
+import { tenantStorageKey } from "@/lib/tenant";
 /**
  * useTranslationLanguage — shared, persistent translation target language.
  *
@@ -26,7 +27,7 @@ export const TRANSLATION_LANGUAGES: AIEditorLanguage[] = [
   "Swedish",
 ];
 
-const STORAGE_KEY = "unboks_translation_target_language";
+const storageKey = () => tenantStorageKey("translation-target-language");
 const EVENT_NAME = "unboks:translation-lang";
 const DEFAULT_LANGUAGE: AIEditorLanguage = "English";
 
@@ -37,7 +38,7 @@ function isLanguage(v: unknown): v is AIEditorLanguage {
 function readStored(): AIEditorLanguage {
   if (typeof window === "undefined") return DEFAULT_LANGUAGE;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(storageKey());
     return isLanguage(raw) ? raw : DEFAULT_LANGUAGE;
   } catch {
     return DEFAULT_LANGUAGE;
@@ -56,7 +57,7 @@ export function useTranslationLanguage(): [
       if (isLanguage(detail)) setLanguageState(detail);
     };
     const onStorage = (e: StorageEvent) => {
-      if (e.key !== STORAGE_KEY) return;
+      if (e.key !== storageKey()) return;
       if (isLanguage(e.newValue)) setLanguageState(e.newValue);
     };
     window.addEventListener(EVENT_NAME, onLocal as EventListener);
@@ -70,7 +71,7 @@ export function useTranslationLanguage(): [
   const setLanguage = useCallback((next: AIEditorLanguage) => {
     if (!isLanguage(next)) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, next);
+      window.localStorage.setItem(storageKey(), next);
     } catch {
       // localStorage may be unavailable (private mode, quota); the in-tab
       // event below still keeps every mounted control in sync.

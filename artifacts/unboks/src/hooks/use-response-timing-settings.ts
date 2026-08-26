@@ -5,12 +5,13 @@ import {
   type ResponseTimingSettings,
   type ResponseTimingValue,
 } from "@/lib/api";
+import { tenantKey } from "@/lib/query-keys";
 
-const QUERY_KEY = ["response-timing-settings"] as const;
+const queryKey = () => tenantKey("response-timing-settings");
 
 export function useResponseTimingSettings() {
   return useQuery<ResponseTimingSettings>({
-    queryKey: QUERY_KEY,
+    queryKey: queryKey(),
     queryFn: fetchResponseTimingSettings,
     staleTime: 30_000,
     retry: 1,
@@ -22,9 +23,8 @@ export function useSaveResponseTimingSettings() {
   return useMutation({
     mutationFn: (settings: ResponseTimingValue) => saveResponseTimingSettings(settings),
     onSuccess: (settings) => {
-      qc.setQueryData(QUERY_KEY, settings);
-      qc.invalidateQueries({ queryKey: QUERY_KEY });
+      qc.setQueryData(queryKey(), settings);
+      qc.invalidateQueries({ queryKey: queryKey() });
     },
   });
 }
-

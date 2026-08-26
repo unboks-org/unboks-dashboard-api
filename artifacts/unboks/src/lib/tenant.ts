@@ -1,88 +1,95 @@
 // ---------------------------------------------------------------------------
-// Deploy-time tenant (Restored to stable J3-N2-14 version)
+// Tab-local tenant session
 // ---------------------------------------------------------------------------
-//
-// This file was rolled back to the J3-N2-14 checkpoint logic as part of a
-// targeted rollback to fix new tenant welcome email flow issues.
-// Mobile redesign and UI work from later commits have been preserved.
-//
-// VITE_CLIENT_SLUG is baked into the bundle at build time so the correct
-// tenant is wired in without relying on per-device localStorage. Set it in
-// .env.local (dev) or as an environment variable in the deployment runner:
-//
-//   VITE_CLIENT_SLUG=unboks
-//
-// Fallback chain (highest priority first):
-//   1. URL path / login flow via setClientSlug() → written to localStorage
-//   2. VITE_CLIENT_SLUG build-time constant → baked into the JS bundle
-//   3. Hard-coded "unboks" default → correct for the primary production deploy
-//
-// The result: a fresh mobile browser with empty localStorage always hits
-// the right tenant as long as the deploy was built with VITE_CLIENT_SLUG
-// or the user opens a URL that contains the tenant slug (see TenantRootRedirect
-// in App.tsx).
+
 const DEPLOY_CLIENT: string =
   (import.meta.env.VITE_CLIENT_SLUG as string | undefined) || "unboks";
 
-// One-shot self-heal at module load.
-//
-// A persisted client slug without a paired auth token is dead weight:
-// every authenticated API call needs both, and the token is keyed by
-// slug. The stuck-slug state happens when a user visits a /<slug>
-// deep link (welcome email, shared URL, manual test) for a tenant
-// they have no session for — the slug sticks in localStorage, the
-// inbox tries to load against that backend, the API 404s, and the
-// dashboard shows "Couldn't load conversations" with no escape
-// except clearing localStorage by hand. Wiping the orphan slug here
-// makes recovery automatic on the next page load: getClientSlug
-// falls back to DEPLOY_CLIENT, AuthProvider re-checks the token, and
-// the user lands either on the working inbox (if a default-tenant
-// token exists) or on /login (clean slate).
-try {
-  const _persistedSlug = localStorage.getItem("wtyj_client");
-  if (_persistedSlug &&
-      !localStorage.getItem(`wtyj_token_${_persistedSlug}`)) {
-    localStorage.removeItem("wtyj_client");
-  }
-} catch {
-  // localStorage unavailable (private mode quotas, etc.); the worst
-  // case is the user keeps seeing the stuck-slug failure until they
-  // sign in to a real tenant.
+const ACTIVE_TENANT_KEY = "unboks_active_tenant";
+const LEGACY_GLOBAL_TENANT_KEY = "wtyj_client";
+const TENANT_SLUG_PATTERN = /^[A-Za-z0-9_-]{1,100}$/;
+
+function validSlug(value: string | null): value is string {
+  return Boolean(value && TENANT_SLUG_PATTERN.test(value));
 }
 
+/**
+ * The active workspace is deliberately sessionStorage-backed: each browser
+ * tab owns its tenant identity. Authentication tokens remain tenant-keyed in
+ * localStorage so an operator does not need to sign in again in every tab,
+ * but no tab may change another tab's active workspace.
+ */
 export function getClientSlug(): string {
-  return localStorage.getItem("wtyj_client") || DEPLOY_CLIENT;
+  try {
+    const slug = sessionStorage.getItem(ACTIVE_TENANT_KEY);
+    if (slug === null) return DEPLOY_CLIENT;
+    return validSlug(slug) ? slug : "";
+  } catch {
+    return "";
+  }
 }
 
 export function setClientSlug(slug: string): void {
-  localStorage.setItem("wtyj_client", slug);
+  if (!validSlug(slug)) throw new Error("Invalid workspace slug");
+  sessionStorage.setItem(ACTIVE_TENANT_KEY, slug);
+  try {
+    // The retired cross-tab runtime key is intentionally not migrated: it
+    // may identify a different tenant from the current tab.
+    localStorage.removeItem(LEGACY_GLOBAL_TENANT_KEY);
+  } catch {
+    // Removing an obsolete shared key is best-effort. The tab-local session
+    // is already authoritative and never reads this value.
+  }
 }
 
-export function getTokenKey(slug?: string): string {
-  return `wtyj_token_${slug ?? getClientSlug()}`;
+export function getTokenKey(slug: string): string {
+  return `wtyj_token_${slug}`;
 }
 
-export function getToken(slug?: string): string | null {
-  return localStorage.getItem(getTokenKey(slug));
+export function getToken(slug = getClientSlug()): string | null {
+  if (!validSlug(slug)) return null;
+  try {
+    return localStorage.getItem(getTokenKey(slug));
+  } catch {
+    return null;
+  }
 }
 
-export function setToken(token: string, slug?: string): void {
+export function setToken(token: string, slug = getClientSlug()): void {
+  if (!validSlug(slug)) throw new Error("Invalid workspace slug");
   localStorage.setItem(getTokenKey(slug), token);
 }
 
-export function clearAuth(): void {
-  const slug = getClientSlug();
-  localStorage.removeItem(getTokenKey(slug));
+export function clearAuth(slug = getClientSlug()): void {
+  try {
+    localStorage.removeItem(getTokenKey(slug));
+  } catch {
+    // Storage can be unavailable in hardened browser contexts.
+  }
 }
 
-// Production dashboard is served as static files from dashboard.unboks.org,
-// while tenant APIs live on api.unboks.org. Default production builds to the
-// API host so a missing build env cannot make login POST to the static site.
-// Development keeps the relative /api/... path so Vite's local proxy works.
+export interface TenantRequestScope {
+  tenantSlug: string;
+  token: string | null;
+}
+
+/** Capture one immutable tenant/token pair before constructing a request. */
+export function captureTenantRequestScope(
+  tenantSlug = getClientSlug(),
+): TenantRequestScope {
+  return Object.freeze({ tenantSlug, token: getToken(tenantSlug) });
+}
+
+/** Tenant-data browser persistence. Unsafe generic legacy keys are ignored. */
+export function tenantStorageKey(feature: string, slug = getClientSlug()): string {
+  const safeFeature = feature.replace(/[^A-Za-z0-9:_-]/g, "-");
+  return `unboks:${slug}:${safeFeature}`;
+}
+
 const API_HOST: string =
   import.meta.env.VITE_API_BASE_URL ??
   (import.meta.env.PROD ? "https://api.unboks.org" : "");
 
-export function getApiBase(slug?: string): string {
-  return `${API_HOST}/api/${slug ?? getClientSlug()}/dashboard/api`;
+export function getApiBase(slug = getClientSlug()): string {
+  return `${API_HOST}/api/${slug}/dashboard/api`;
 }

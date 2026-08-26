@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchDryRunStatus, setDryRun } from "@/lib/api";
+import { tenantKey } from "@/lib/query-keys";
 
 export function useDryRun() {
   const qc = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["dry-run"],
+    queryKey: tenantKey("dry-run"),
     queryFn: fetchDryRunStatus,
     staleTime: 60_000,
     retry: 1,
@@ -13,7 +14,7 @@ export function useDryRun() {
 
   const mutation = useMutation({
     mutationFn: setDryRun,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["dry-run"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: tenantKey("dry-run") }),
   });
 
   return {

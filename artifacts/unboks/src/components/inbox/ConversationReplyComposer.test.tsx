@@ -18,7 +18,8 @@ vi.mock("sonner", () => ({
 
 function useTenant(slug: string) {
   localStorage.clear();
-  localStorage.setItem("wtyj_client", slug);
+  sessionStorage.clear();
+  sessionStorage.setItem("unboks_active_tenant", slug);
   localStorage.setItem(`wtyj_token_${slug}`, "test-token");
 }
 

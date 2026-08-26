@@ -1,3 +1,5 @@
+import { tenantStorageKey } from "@/lib/tenant";
+
 /**
  * Deep-link intent reader.
  *
@@ -169,4 +171,6 @@ export function clearDeepLinkQuery(): void {
  * (per-tab, cleared on browser close) so a deep link from email opens
  * exactly once and never haunts a future tab.
  */
-export const LOGIN_REDIRECT_STORAGE_KEY = "unboks_login_redirect";
+export function loginRedirectStorageKey(tenantSlug?: string): string {
+  return tenantStorageKey("login-redirect", tenantSlug);
+}

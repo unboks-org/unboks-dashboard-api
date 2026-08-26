@@ -6,9 +6,10 @@ import {
   type AgentPersonalitySettings,
 } from "@/lib/api";
 import { getClientSlug } from "@/lib/tenant";
+import { tenantKey, tenantKeyFor } from "@/lib/query-keys";
 
 function key(slug: string) {
-  return ["agent-personality", slug] as const;
+  return tenantKeyFor(slug, "agent-personality");
 }
 
 export function useAgentPersonality() {
@@ -31,7 +32,7 @@ export function useAgentPersonality() {
     mutationFn: saveAgentPersonality,
     onSuccess: (saved) => {
       queryClient.setQueryData(queryKey, saved);
-      queryClient.invalidateQueries({ queryKey: ["source-of-truth", slug] });
+      queryClient.invalidateQueries({ queryKey: tenantKey("source-of-truth") });
     },
   });
 

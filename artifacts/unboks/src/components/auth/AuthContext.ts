@@ -4,6 +4,7 @@ export interface AuthState {
   isAuthenticated: boolean;
   clientSlug: string;
   login: (password: string, clientSlug?: string) => Promise<void>;
+  switchTenant: (clientSlug: string) => boolean;
   logout: () => void;
 }
 
