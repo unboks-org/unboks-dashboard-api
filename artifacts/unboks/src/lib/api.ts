@@ -339,9 +339,9 @@ export interface OrdersResponse {
   items: Appointment[];
 }
 
-export type FollowUpStatus = "collecting" | "ready_to_call" | "ready_to_quote" | "needs_human_answer" | "in_progress" | "copied" | "appointment_coordinated" | "no_answer" | "closed";
+export type FollowUpStatus = "active" | "missing_information" | "collecting" | "ready_to_call" | "ready_to_quote" | "needs_human_answer" | "in_progress" | "copied" | "appointment_coordinated" | "no_answer" | "closed";
 export interface FollowUp {
-  id: number; conversation_id: string; channel: string; first_name: string;
+  id: number | string; conversation_id: string; channel: string; first_name: string;
   surnames: string; phone_raw: string; phone_normalized?: string; callback_preference: string;
   appointment_preference?: string; session_type?: string; preferred_clinic?: string;
   customer_name?: string; pickup_datetime?: string; return_datetime?: string;
@@ -350,6 +350,10 @@ export interface FollowUp {
   flight_number?: string; luggage?: string; child_seat?: string; notes?: string;
   workflow_type?: string; required_fields?: string[]; missing_fields?: string[];
   field_labels?: Record<string, string>; complete?: boolean;
+  rental_period?: string; unread_count?: number; next_action?: string;
+  quote_reference?: string | null; quote_status?: string | null;
+  quote_delivery_state?: "not_started" | "pending" | "failed" | "delivered";
+  whatsapp_status?: string | null; staff_email_status?: string | null;
   visit_reason: string; status: FollowUpStatus; handoff_reason: string;
   created_at: string; updated_at: string;
 }
@@ -369,6 +373,20 @@ export async function fetchFollowUps(status?: FollowUpStatus): Promise<FollowUp[
     },
   );
   return raw.items ?? raw.followUps ?? [];
+}
+
+export async function fetchQuoteLeads(status?: FollowUpStatus): Promise<FollowUp[]> {
+  const params = new URLSearchParams();
+  if (status) params.set("status", status);
+  params.set("_refresh", Date.now().toString());
+  const raw = await apiFetch<{ items?: FollowUp[]; quoteLeads?: FollowUp[] }>(
+    `/quote-leads?${params.toString()}`,
+    {
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+    },
+  );
+  return raw.items ?? raw.quoteLeads ?? [];
 }
 
 export async function updateFollowUpStatus(id: number, status: FollowUpStatus): Promise<FollowUp> {
