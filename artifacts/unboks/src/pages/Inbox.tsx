@@ -55,6 +55,10 @@ import { toast } from "sonner";
 import type { ApiMessage, ConversationDetail } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { EscalationReplyComposer } from "@/components/inbox/EscalationReplyComposer";
+import {
+  canShowEscalationHeaderResolve,
+  EscalationHeaderResolveButton,
+} from "@/components/inbox/EscalationHeaderResolveButton";
 import { ConversationReplyComposer } from "@/components/inbox/ConversationReplyComposer";
 import {
   useEscalationLearningMutations,
@@ -401,7 +405,7 @@ function ConversationDetailPane({
     error,
     refetch: refetchConversation,
   } = useConversation(conversation.id);
-  const { unresolve } = useEscalationMutations();
+  const { unresolve, resolve: headerResolve } = useEscalationMutations();
   const badgeColor = CHANNEL_BADGE_COLORS[conversation.channel] ?? "#9aa0a6";
   // Sort newest-first by parsed backend timestamp so the latest message is
   // always at the top of the thread (Inbox / Escalation trail / WhatsApp /
@@ -599,6 +603,39 @@ function ConversationDetailPane({
     ],
   );
 
+  const showHeaderResolve = canShowEscalationHeaderResolve({
+    activeEscalation: isEscalation,
+    archived,
+    resolved: resolvedContext,
+    mode: selectedMode,
+    escalationId: dbId,
+  });
+
+  const onResolveFromHeader = useCallback(() => {
+    if (!dbId || headerResolve.isPending) return;
+    headerResolve.mutate(
+      { id: dbId, payload: {} },
+      {
+        onSuccess: () => {
+          toast.success(tenantText("Escalation resolved", "Solicitud resuelta"));
+          onClose();
+        },
+        onError: (err) => {
+          const detail = err instanceof Error
+            ? err.message
+            : tenantText("Please try again.", "Inténtalo de nuevo.");
+          toast.error(
+            tenantText(
+              "Couldn't resolve escalation",
+              "No se pudo resolver la solicitud",
+            ),
+            { description: detail },
+          );
+        },
+      },
+    );
+  }, [dbId, headerResolve, onClose]);
+
 
   const onChipAction = useCallback((action: ChipAction) => {
     const c = composerRef.current;
@@ -706,6 +743,13 @@ function ConversationDetailPane({
                 onChange={setSelectedMode}
               />
             </div>
+          )}
+          {showHeaderResolve && (
+            <EscalationHeaderResolveButton
+              onResolve={onResolveFromHeader}
+              pending={headerResolve.isPending}
+              className="hidden md:inline-flex md:h-9 md:min-h-0 flex-shrink-0"
+            />
           )}
           {resolvedContext && conversation.escalationId && (
             <motion.button
@@ -846,6 +890,13 @@ function ConversationDetailPane({
               conversationDbId={dbId}
               selectedMode={selectedMode}
               onChange={setSelectedMode}
+            />
+          )}
+          {showHeaderResolve && (
+            <EscalationHeaderResolveButton
+              onResolve={onResolveFromHeader}
+              pending={headerResolve.isPending}
+              className="md:hidden"
             />
           )}
           {conversation.timestamp && (
