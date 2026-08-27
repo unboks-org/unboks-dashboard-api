@@ -1,0 +1,445 @@
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CheckCircle2, FileKey2, Loader2, ShieldCheck } from "lucide-react";
+import { toast } from "sonner";
+
+import {
+  fetchAliDossierSettings,
+  updateAliDossierSettings,
+  uploadAliContractTemplate,
+  type AliDossierTenantSettings,
+} from "@/lib/api";
+import { ApiError } from "@/lib/error";
+import { tenantKey } from "@/lib/query-keys";
+
+const SETTINGS_KEY = "ali-dossier-settings";
+const TEMPLATE_TYPES = [".txt", ".md", ".pdf", ".docx"];
+const MAX_TEMPLATE_BYTES = 2 * 1024 * 1024;
+
+function useAliDossierSettings() {
+  return useQuery({
+    queryKey: tenantKey(SETTINGS_KEY),
+    queryFn: fetchAliDossierSettings,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof ApiError && error.message) {
+    return error.message.replaceAll("_", " ");
+  }
+  return "The rental settings could not be saved.";
+}
+
+function SettingsCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-[#e8eaed] bg-white">
+      <header className="border-b border-[#f1f3f4] px-5 py-4 sm:px-6">
+        <h3 className="text-[14px] font-semibold text-[#202124]">{title}</h3>
+        <p className="mt-0.5 text-[13px] text-[#5f6368]">{description}</p>
+      </header>
+      <div className="space-y-5 p-5 sm:p-6">{children}</div>
+    </section>
+  );
+}
+
+function LoadingCard() {
+  return (
+    <div className="flex min-h-32 items-center justify-center rounded-2xl border border-[#e8eaed] bg-white">
+      <Loader2 className="h-5 w-5 animate-spin text-[#1a73e8]" aria-label="Loading rental settings" />
+    </div>
+  );
+}
+
+export function AliDossierSettings() {
+  const queryClient = useQueryClient();
+  const query = useAliDossierSettings();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [version, setVersion] = useState("");
+  const [template, setTemplate] = useState<File | null>(null);
+  const [paymentMode, setPaymentMode] = useState<"fixed_link" | "per_reservation">(
+    "per_reservation",
+  );
+  const [providerName, setProviderName] = useState("");
+  const [paymentUrl, setPaymentUrl] = useState("");
+  const [domains, setDomains] = useState("");
+
+  useEffect(() => {
+    if (!query.data) return;
+    setPaymentMode(query.data.payment.mode);
+    setProviderName(query.data.payment.providerName);
+    setPaymentUrl("");
+    setDomains(query.data.payment.allowedDomains.join("\n"));
+  }, [query.data]);
+
+  const refresh = async (next?: AliDossierTenantSettings) => {
+    if (next) {
+      queryClient.setQueryData(tenantKey(SETTINGS_KEY), next);
+    }
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: tenantKey(SETTINGS_KEY) }),
+      queryClient.invalidateQueries({
+        queryKey: tenantKey("ali-dossier-configuration"),
+      }),
+    ]);
+  };
+
+  const upload = useMutation({
+    mutationFn: () => {
+      if (!template || !version.trim()) {
+        throw new Error("Choose a template and enter its version name.");
+      }
+      return uploadAliContractTemplate(version.trim(), template);
+    },
+    onSuccess: async (next) => {
+      setVersion("");
+      setTemplate(null);
+      if (fileInput.current) fileInput.current.value = "";
+      await refresh(next);
+      toast.success("Pre-contract template uploaded and activated.");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const savePayment = useMutation({
+    mutationFn: () => {
+      if (!query.data) throw new Error("Rental settings are not loaded.");
+      return updateAliDossierSettings({
+        paymentMode,
+        paymentProviderName: providerName.trim(),
+        ...(paymentUrl.trim() ? { paymentUrl: paymentUrl.trim() } : {}),
+        clearPaymentUrl: paymentMode === "per_reservation",
+        paymentAllowedDomains: domains
+          .split(/[\n,]/)
+          .map((value) => value.trim())
+          .filter(Boolean),
+        documentRetentionDays: query.data.retention.documentRetentionDays,
+        paperShreddingPolicy: query.data.retention.paperShreddingPolicy,
+      });
+    },
+    onSuccess: async (next) => {
+      setPaymentUrl("");
+      await refresh(next);
+      toast.success("Tenant payment settings saved.");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  if (query.isLoading) return <LoadingCard />;
+  if (!query.data) {
+    return (
+      <SettingsCard
+        title="Rental customer file"
+        description="Tenant-owned pre-contract and payment settings."
+      >
+        <p className="text-sm text-rose-700">
+          These settings are unavailable. Refresh the page or contact your Unboks team.
+        </p>
+      </SettingsCard>
+    );
+  }
+
+  const current = query.data;
+  const fixedLinkMissing =
+    paymentMode === "fixed_link" &&
+    !current.payment.defaultLinkConfigured &&
+    !paymentUrl.startsWith("https://");
+
+  return (
+    <div className="space-y-5">
+      <div
+        className={`rounded-2xl border px-5 py-4 text-sm ${
+          current.status.ready
+            ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+            : "border-amber-200 bg-amber-50 text-amber-950"
+        }`}
+      >
+        <p className="font-semibold">
+          {current.status.ready
+            ? "Secure customer file is active"
+            : current.status.configurationReady
+              ? "Configuration complete — activation pending"
+              : "Complete the tenant setup below"}
+        </p>
+        {!current.status.configurationReady && (
+          <p className="mt-1 text-xs leading-relaxed">
+            {current.status.blockers
+              .filter((blocker) => blocker !== "feature_disabled")
+              .map((blocker) => blocker.replaceAll("_", " "))
+              .join(" · ")}
+          </p>
+        )}
+      </div>
+      <SettingsCard
+        title="Pre-contract template"
+        description="Upload the approved template for this tenant. Every version is immutable and auditable."
+      >
+        {current.contractTemplate ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+            <CheckCircle2 className="h-5 w-5 shrink-0" />
+            <div>
+              <p className="font-semibold">Active version {current.contractTemplate.version}</p>
+              <p className="text-xs text-emerald-800">
+                {current.contractTemplate.sourceFilename}
+                {current.contractTemplate.uploadedAt
+                  ? ` · uploaded ${new Date(current.contractTemplate.uploadedAt).toLocaleString()}`
+                  : ""}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            No approved pre-contract template is active yet.
+          </p>
+        )}
+
+        <div className="grid gap-3 md:grid-cols-[13rem_minmax(0,1fr)_auto] md:items-end">
+          <label className="block text-sm font-medium text-[#202124]">
+            Version name
+            <input
+              value={version}
+              maxLength={80}
+              onChange={(event) => setVersion(event.target.value)}
+              placeholder="Ali rental terms v1"
+              className="mt-1 h-11 w-full rounded-xl border border-[#dadce0] px-3 font-normal outline-none focus:border-[#1a73e8]"
+            />
+          </label>
+          <label className="block text-sm font-medium text-[#202124]">
+            Approved template
+            <input
+              ref={fileInput}
+              type="file"
+              accept={TEMPLATE_TYPES.join(",")}
+              onChange={(event) => {
+                const selected = event.target.files?.[0] ?? null;
+                if (selected && selected.size > MAX_TEMPLATE_BYTES) {
+                  event.target.value = "";
+                  setTemplate(null);
+                  toast.error("Template must be 2 MB or smaller.");
+                  return;
+                }
+                setTemplate(selected);
+              }}
+              className="mt-1 block min-h-11 w-full rounded-xl border border-[#dadce0] bg-white px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-[#eef3fb] file:px-3 file:py-1.5 file:font-medium"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={upload.isPending || !template || !version.trim()}
+            onClick={() => upload.mutate()}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#1a73e8] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#c8d4e6]"
+          >
+            {upload.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileKey2 className="h-4 w-4" />}
+            Upload version
+          </button>
+        </div>
+        <p className="text-xs leading-relaxed text-[#5f6368]">
+          TXT, Markdown, PDF, or DOCX. Supported placeholders include customer_name,
+          rental dates, locations, vehicle, totals, quote reference, and reservation reference.
+          Uploading a new version never rewrites an already signed contract.
+        </p>
+      </SettingsCard>
+
+      <SettingsCard
+        title="Deposit payment method"
+        description="Choose one tenant link or require a fresh approved link for every reservation."
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          {([
+            ["per_reservation", "Per-reservation link", "Staff creates or pastes a unique payment link in the customer file."],
+            ["fixed_link", "One tenant payment link", "Nick uses the tenant’s approved payment page for each rental."],
+          ] as const).map(([value, label, detail]) => (
+            <label
+              key={value}
+              className={`cursor-pointer rounded-xl border p-4 ${paymentMode === value ? "border-[#1a73e8] bg-[#f3f7ff]" : "border-[#dadce0]"}`}
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-[#202124]">
+                <input
+                  type="radio"
+                  name="payment-mode"
+                  value={value}
+                  checked={paymentMode === value}
+                  onChange={() => setPaymentMode(value)}
+                />
+                {label}
+              </span>
+              <span className="mt-1 block pl-6 text-xs leading-relaxed text-[#5f6368]">{detail}</span>
+            </label>
+          ))}
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="block text-sm font-medium text-[#202124]">
+            Provider or payment method name
+            <input
+              value={providerName}
+              maxLength={80}
+              onChange={(event) => setProviderName(event.target.value)}
+              placeholder="Payment provider"
+              className="mt-1 h-11 w-full rounded-xl border border-[#dadce0] px-3 font-normal outline-none focus:border-[#1a73e8]"
+            />
+          </label>
+          <label className="block text-sm font-medium text-[#202124]">
+            Approved HTTPS domains
+            <textarea
+              value={domains}
+              rows={2}
+              onChange={(event) => setDomains(event.target.value)}
+              placeholder="payments.example.com"
+              className="mt-1 w-full rounded-xl border border-[#dadce0] px-3 py-2 font-normal outline-none focus:border-[#1a73e8]"
+            />
+          </label>
+        </div>
+
+        {paymentMode === "fixed_link" && (
+          <label className="block text-sm font-medium text-[#202124]">
+            Tenant payment link
+            <input
+              type="url"
+              value={paymentUrl}
+              autoComplete="off"
+              onChange={(event) => setPaymentUrl(event.target.value)}
+              placeholder={
+                current.payment.defaultLinkConfigured
+                  ? `Configured for ${current.payment.defaultDomain ?? "approved provider"} — enter only to replace`
+                  : "https://payments.example.com/..."
+              }
+              className="mt-1 h-11 w-full rounded-xl border border-[#dadce0] px-3 font-normal outline-none focus:border-[#1a73e8]"
+            />
+            <span className="mt-1 block text-xs font-normal text-[#5f6368]">
+              The stored URL is never returned to the browser after saving.
+            </span>
+          </label>
+        )}
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs text-[#5f6368]">
+            <ShieldCheck className="h-4 w-4 text-emerald-600" />
+            Nick sends only a server-validated HTTPS link. Customer messages can never set it.
+          </div>
+          <button
+            type="button"
+            disabled={savePayment.isPending || fixedLinkMissing}
+            onClick={() => savePayment.mutate()}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#1a73e8] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#c8d4e6]"
+          >
+            {savePayment.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            Save payment settings
+          </button>
+        </div>
+      </SettingsCard>
+    </div>
+  );
+}
+
+export function AliDossierRetentionSettings() {
+  const queryClient = useQueryClient();
+  const query = useAliDossierSettings();
+  const [days, setDays] = useState(90);
+  const [policy, setPolicy] = useState(
+    "Securely shred paper copies after the 90-day retention period.",
+  );
+
+  useEffect(() => {
+    if (!query.data) return;
+    setDays(query.data.retention.documentRetentionDays);
+    setPolicy(query.data.retention.paperShreddingPolicy);
+  }, [query.data]);
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      if (!query.data) throw new Error("Rental settings are not loaded.");
+      return updateAliDossierSettings({
+        paymentMode: query.data.payment.mode,
+        paymentProviderName: query.data.payment.providerName,
+        clearPaymentUrl: false,
+        paymentAllowedDomains: query.data.payment.allowedDomains,
+        documentRetentionDays: days,
+        paperShreddingPolicy: policy.trim(),
+      });
+    },
+    onSuccess: async (next) => {
+      queryClient.setQueryData(tenantKey(SETTINGS_KEY), next);
+      await queryClient.invalidateQueries({ queryKey: tenantKey(SETTINGS_KEY) });
+      toast.success("Rental document-retention policy saved.");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const dirty = useMemo(
+    () =>
+      Boolean(query.data) &&
+      (days !== query.data?.retention.documentRetentionDays ||
+        policy.trim() !== query.data?.retention.paperShreddingPolicy),
+    [days, policy, query.data],
+  );
+
+  if (query.isLoading) return <LoadingCard />;
+  if (!query.data) return null;
+
+  return (
+    <SettingsCard
+      title="Rental identity-document retention"
+      description="Tenant-specific policy for private licence and ID copies collected during a rental."
+    >
+      <div className="grid gap-4 md:grid-cols-[12rem_minmax(0,1fr)]">
+        <label className="block text-sm font-medium text-[#202124]">
+          Keep private copies for
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              type="number"
+              min={1}
+              max={3650}
+              value={days}
+              onChange={(event) => setDays(Number(event.target.value))}
+              className="h-11 w-28 rounded-xl border border-[#dadce0] px-3 font-normal outline-none focus:border-[#1a73e8]"
+            />
+            <span className="text-sm font-normal text-[#5f6368]">days</span>
+          </div>
+        </label>
+        <label className="block text-sm font-medium text-[#202124]">
+          Paper-copy shredding policy
+          <textarea
+            rows={3}
+            maxLength={500}
+            value={policy}
+            onChange={(event) => setPolicy(event.target.value)}
+            className="mt-1 w-full rounded-xl border border-[#dadce0] px-3 py-2 font-normal outline-none focus:border-[#1a73e8]"
+          />
+        </label>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#f8f9fa] px-4 py-3">
+        <p className="text-xs leading-relaxed text-[#5f6368]">
+          Default: 90 days. Deletion removes private document bytes while preserving only a minimal audit event.
+        </p>
+        <button
+          type="button"
+          disabled={
+            mutation.isPending ||
+            !dirty ||
+            !Number.isInteger(days) ||
+            days < 1 ||
+            days > 3650 ||
+            policy.trim().length < 10
+          }
+          onClick={() => mutation.mutate()}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#1a73e8] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#c8d4e6]"
+        >
+          {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+          Save rental retention
+        </button>
+      </div>
+    </SettingsCard>
+  );
+}

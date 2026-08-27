@@ -535,6 +535,10 @@ export interface AliCustomerFile {
   contract: AliReservationContract | null;
   payment: {
     status: string;
+    mode: "fixed_link" | "per_reservation";
+    providerName: string;
+    tenantDefaultAvailable: boolean;
+    tenantDefaultDomain: string | null;
     domain: string | null;
     reference: string | null;
     linkSentAt: string | null;
@@ -549,13 +553,76 @@ export interface AliCustomerFile {
 export interface AliDossierConfiguration {
   enabled: boolean;
   ready: boolean;
+  configurationReady: boolean;
   blockers: string[];
+}
+
+export interface AliDossierTenantSettings {
+  status: AliDossierConfiguration;
+  contractTemplate: {
+    publicId: string | null;
+    version: string;
+    sourceFilename: string;
+    sha256: string | null;
+    uploadedAt: string | null;
+  } | null;
+  payment: {
+    mode: "fixed_link" | "per_reservation";
+    providerName: string;
+    defaultLinkConfigured: boolean;
+    defaultDomain: string | null;
+    allowedDomains: string[];
+  };
+  retention: {
+    documentRetentionDays: number;
+    paperShreddingPolicy: string;
+  };
+}
+
+export interface AliDossierTenantSettingsUpdate {
+  paymentMode: "fixed_link" | "per_reservation";
+  paymentProviderName: string;
+  paymentUrl?: string;
+  clearPaymentUrl: boolean;
+  paymentAllowedDomains: string[];
+  documentRetentionDays: number;
+  paperShreddingPolicy: string;
 }
 
 export function fetchAliDossierConfiguration(): Promise<AliDossierConfiguration> {
   return apiFetch<AliDossierConfiguration>("/ali-dossier/configuration", {
     cache: "no-store",
   });
+}
+
+export function fetchAliDossierSettings(): Promise<AliDossierTenantSettings> {
+  return apiFetch<AliDossierTenantSettings>("/ali-dossier/settings", {
+    cache: "no-store",
+    headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+  });
+}
+
+export function updateAliDossierSettings(
+  value: AliDossierTenantSettingsUpdate,
+): Promise<AliDossierTenantSettings> {
+  return apiFetch<AliDossierTenantSettings>("/ali-dossier/settings", {
+    method: "PUT",
+    cache: "no-store",
+    body: JSON.stringify(value),
+  });
+}
+
+export function uploadAliContractTemplate(
+  version: string,
+  file: File,
+): Promise<AliDossierTenantSettings> {
+  const body = new FormData();
+  body.set("version", version);
+  body.set("file", file);
+  return apiFetch<AliDossierTenantSettings>(
+    "/ali-dossier/settings/contract-template",
+    { method: "POST", cache: "no-store", body },
+  );
 }
 
 export function fetchAliCustomerFile(

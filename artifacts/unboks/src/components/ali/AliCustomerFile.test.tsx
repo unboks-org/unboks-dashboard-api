@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   confirm: vi.fn(),
   requestDocuments: vi.fn(),
   pickup: vi.fn(),
+  setPayment: vi.fn(),
 }));
 
 vi.mock("@/lib/api", async (importOriginal) => {
@@ -19,6 +20,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
     confirmAliReservation: mocks.confirm,
     requestAliDocuments: mocks.requestDocuments,
     recordAliPickupInspection: mocks.pickup,
+    setAliPaymentLink: mocks.setPayment,
   };
 });
 
@@ -73,6 +75,10 @@ function customerFile(
     contract: null,
     payment: {
       status: "not_sent",
+      mode: "per_reservation",
+      providerName: "",
+      tenantDefaultAvailable: false,
+      tenantDefaultDomain: null,
       domain: null,
       reference: null,
       linkSentAt: null,
@@ -111,6 +117,7 @@ describe("AliCustomerFile", () => {
     mocks.confirm.mockReset().mockResolvedValue({ status: "confirmed" });
     mocks.requestDocuments.mockReset().mockResolvedValue({ delivered: true });
     mocks.pickup.mockReset().mockResolvedValue({ status: "confirmed" });
+    mocks.setPayment.mockReset().mockResolvedValue({ status: "not_sent" });
   });
 
   it("shows missing requirements and keeps final approval locked", async () => {
@@ -188,5 +195,39 @@ describe("AliCustomerFile", () => {
         7,
       ),
     );
+  });
+
+  it("applies a tenant payment link without exposing the stored URL", async () => {
+    renderFile(
+      customerFile({
+        payment: {
+          status: "not_sent",
+          mode: "fixed_link",
+          providerName: "Synthetic Pay",
+          tenantDefaultAvailable: true,
+          tenantDefaultDomain: "pay.example.test",
+          domain: null,
+          reference: null,
+          linkSentAt: null,
+          customerReportedAt: null,
+          verifiedAt: null,
+          verifiedBy: null,
+        },
+      }),
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /use tenant link/i }),
+    );
+
+    await waitFor(() =>
+      expect(mocks.setPayment).toHaveBeenCalledWith(
+        "reservation-120",
+        "",
+        "",
+        7,
+      ),
+    );
+    expect(screen.queryByDisplayValue(/https:\/\//i)).toBeNull();
   });
 });

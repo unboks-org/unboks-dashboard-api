@@ -41,6 +41,10 @@ import { KnowledgeFileUploader } from "@/components/settings/KnowledgeFileUpload
 import { KnowledgeMediaAttachments } from "@/components/settings/KnowledgeMediaAttachments";
 import { CloudKnowledgeConnections } from "@/components/settings/CloudKnowledgeConnections";
 import { DataRetentionSettings } from "@/components/settings/DataRetentionSettings";
+import {
+  AliDossierRetentionSettings,
+  AliDossierSettings,
+} from "@/components/settings/rental/AliDossierSettings";
 import { BlockedSendersList } from "@/components/settings/BlockedSendersList";
 import { AutoBlockRulesSettings } from "@/components/settings/AutoBlockRulesSettings";
 import { ExcludedContactsSettings } from "@/components/settings/ExcludedContactsSettings";
@@ -49,7 +53,12 @@ import { AgentPersonalityWizard } from "@/components/settings/AgentPersonalityWi
 import { useSot, type SotBlock, type SotSubsection } from "@/data/sot";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { getTenantUiConfig, isSpainSpanishTenant, tenantText } from "@/lib/tenant-ui";
+import {
+  getTenantUiConfig,
+  isAliRentalTenant,
+  isSpainSpanishTenant,
+  tenantText,
+} from "@/lib/tenant-ui";
 import { RentalControlCenter } from "@/components/settings/rental/RentalControlCenter";
 import { useRentalControlCapability } from "@/hooks/use-rental-control-capability";
 
@@ -1523,7 +1532,10 @@ export default function Settings() {
               />
 
               {active === "rental" && rentalCapability.enabled ? (
-                <RentalControlCenter onDirtyChange={setRentalDirty} />
+                <div className="space-y-5">
+                  <RentalControlCenter onDirtyChange={setRentalDirty} />
+                  {isAliRentalTenant() && <AliDossierSettings />}
+                </div>
               ) : null}
 
               {active === "workspace" && (
@@ -2290,6 +2302,7 @@ export default function Settings() {
 
               {active === "data-retention" && (
                 <div className="space-y-5">
+                  {isAliRentalTenant() && <AliDossierRetentionSettings />}
                   <DataRetentionSettings />
                 </div>
               )}
