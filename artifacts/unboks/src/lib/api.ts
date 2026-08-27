@@ -344,7 +344,7 @@ export interface OrdersResponse {
   items: Appointment[];
 }
 
-export type FollowUpStatus = "active" | "missing_information" | "collecting" | "ready_to_call" | "ready_to_quote" | "needs_human_answer" | "in_progress" | "copied" | "appointment_coordinated" | "no_answer" | "closed";
+export type FollowUpStatus = "active" | "missing_information" | "collecting" | "ready_to_call" | "ready_to_quote" | "needs_an_answer" | "needs_human_answer" | "in_progress" | "copied" | "appointment_coordinated" | "no_answer" | "closed";
 export type AliReservationStatus = "availability_pending" | "requirements_pending" | "alternative_required" | "declined" | "ready_to_confirm" | "confirmed" | "cancelled" | "superseded";
 export type AliChecklistStatus = "awaiting_external_check" | "not_sent" | "sent_external" | "not_requested" | "awaiting_manual_verification" | "verified" | "not_required" | "rejected";
 export interface FollowUp {

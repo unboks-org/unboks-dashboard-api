@@ -27,6 +27,7 @@ const statusLabels: Record<FollowUpStatus, string> = {
   collecting: "Missing information",
   ready_to_call: "Ready to call",
   ready_to_quote: "Ready to quote",
+  needs_an_answer: "Needs an answer",
   needs_human_answer: "Needs an answer",
   in_progress: "In progress",
   copied: "Copied",
@@ -41,6 +42,7 @@ const spanishStatusLabels: Record<FollowUpStatus, string> = {
   collecting: "Faltan datos",
   ready_to_call: "Listo para llamar",
   ready_to_quote: "Listo para cotizar",
+  needs_an_answer: "Necesita respuesta",
   needs_human_answer: "Necesita respuesta",
   in_progress: "En seguimiento",
   copied: "Copiado",
@@ -55,6 +57,7 @@ const statusStyles: Record<FollowUpStatus, string> = {
   collecting: "border-amber-200 bg-amber-50 text-amber-700",
   ready_to_call: "border-emerald-200 bg-emerald-50 text-emerald-700",
   ready_to_quote: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  needs_an_answer: "border-violet-200 bg-violet-50 text-violet-700",
   needs_human_answer: "border-violet-200 bg-violet-50 text-violet-700",
   in_progress: "border-blue-200 bg-blue-50 text-blue-700",
   copied: "border-emerald-600 bg-emerald-600 text-white",
@@ -75,10 +78,10 @@ const tabs: { label: string; statuses: FollowUpStatus[] }[] = [
 ];
 
 const rentalTabs: { label: string; statuses: FollowUpStatus[] }[] = [
-  { label: "Active", statuses: ["active", "missing_information", "ready_to_quote", "needs_human_answer", "in_progress"] },
+  { label: "Active", statuses: ["active", "missing_information", "ready_to_quote", "needs_an_answer", "in_progress"] },
   { label: "Ready to quote", statuses: ["ready_to_quote"] },
   { label: "Missing information", statuses: ["missing_information"] },
-  { label: "Needs an answer", statuses: ["needs_human_answer"] },
+  { label: "Needs an answer", statuses: ["needs_an_answer"] },
   { label: "In progress", statuses: ["in_progress"] },
 ];
 
@@ -815,7 +818,7 @@ export default function FollowUps() {
                     </>
                   )}
 
-                  {selected.status === "needs_human_answer" && (
+                  {(selected.status === "needs_an_answer" || selected.status === "needs_human_answer") && (
                     <div className="rounded-xl border border-violet-100 bg-violet-50 p-4">
                       <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-violet-700">
                         {tenantText("Client question", "Pregunta de la persona")}
