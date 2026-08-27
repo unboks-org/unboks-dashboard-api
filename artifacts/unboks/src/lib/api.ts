@@ -443,6 +443,361 @@ export async function confirmAliReservation(
   });
 }
 
+export type AliDocumentSlot = "license_front" | "license_back" | "identity";
+export type AliDocumentStatus =
+  | "received"
+  | "verified"
+  | "rejected"
+  | "replacement_requested"
+  | "replaced"
+  | "deleted"
+  | "not_required";
+
+export interface AliReservationDocument {
+  public_id: string;
+  slot: AliDocumentSlot;
+  version: number;
+  mime_type: string | null;
+  size_bytes: number;
+  sha256: string | null;
+  status: AliDocumentStatus;
+  previous_document_public_id: string | null;
+  created_at: string;
+  updated_at: string;
+  verified_at: string | null;
+  verified_by: string | null;
+  deleted_at: string | null;
+  deleted_by: string | null;
+}
+
+export interface AliReservationContract {
+  public_id: string;
+  version: number;
+  template_version: string;
+  template_sha256: string;
+  snapshot_sha256: string;
+  status: "not_sent" | "sent" | "viewed" | "signed" | "rejected" | "superseded";
+  signed_pdf_sha256: string | null;
+  sent_at: string | null;
+  viewed_at: string | null;
+  signed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AliReservationEvent {
+  event_public_id: string;
+  event_type: string;
+  actor_type: string;
+  actor_id: string;
+  from_status: string;
+  to_status: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface AliCustomerFile {
+  public_id: string;
+  revision: number;
+  status: AliReservationStatus;
+  availability_status: "pending" | "approved" | "alternative" | "declined";
+  identity_status:
+    | AliChecklistStatus
+    | "requested"
+    | "partially_received"
+    | "received"
+    | "replacement_requested";
+  agreement_status: AliChecklistStatus | "sent" | "viewed" | "signed";
+  payment_status:
+    | AliChecklistStatus
+    | "not_sent"
+    | "link_sent"
+    | "customer_reports_paid";
+  dossier_status: "incomplete" | "ready_for_review" | "approved";
+  dossier_version: number;
+  checklist_complete: boolean;
+  can_confirm: boolean;
+  pickup_checklist: {
+    original_license_inspected: boolean;
+    original_license_inspected_at: string | null;
+    original_license_inspected_by: string | null;
+    original_identity_inspected: boolean;
+    original_identity_inspected_at: string | null;
+    original_identity_inspected_by: string | null;
+  };
+  missing_requirements: string[];
+  quote_reference: string;
+  confirmation_reference: string | null;
+  customer: Record<string, unknown>;
+  rental: Record<string, unknown>;
+  pricing: Record<string, unknown>;
+  documents: AliReservationDocument[];
+  contract: AliReservationContract | null;
+  payment: {
+    status: string;
+    domain: string | null;
+    reference: string | null;
+    linkSentAt: string | null;
+    customerReportedAt: string | null;
+    verifiedAt: string | null;
+    verifiedBy: string | null;
+  };
+  events: AliReservationEvent[];
+  final_notes: string;
+}
+
+export interface AliDossierConfiguration {
+  enabled: boolean;
+  ready: boolean;
+  blockers: string[];
+}
+
+export function fetchAliDossierConfiguration(): Promise<AliDossierConfiguration> {
+  return apiFetch<AliDossierConfiguration>("/ali-dossier/configuration", {
+    cache: "no-store",
+  });
+}
+
+export function fetchAliCustomerFile(
+  publicId: string,
+): Promise<AliCustomerFile> {
+  return apiFetch<AliCustomerFile>(
+    `/ali-reservations/${encodeURIComponent(publicId)}/customer-file`,
+    {
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+    },
+  );
+}
+
+function revisionBody(
+  expectedRevision: number,
+  extra: Record<string, unknown> = {},
+): string {
+  return JSON.stringify({ ...extra, expectedRevision });
+}
+
+export function requestAliDocuments(
+  publicId: string,
+  expectedRevision: number,
+): Promise<unknown> {
+  return apiFetch(
+    `/ali-reservations/${encodeURIComponent(publicId)}/documents/request`,
+    {
+      method: "POST",
+      body: revisionBody(expectedRevision),
+    },
+  );
+}
+
+export function reviewAliDocument(
+  publicId: string,
+  documentId: string,
+  decision: "verified" | "rejected" | "replacement_requested",
+  expectedRevision: number,
+): Promise<unknown> {
+  return apiFetch(
+    `/ali-reservations/${encodeURIComponent(publicId)}/documents/${encodeURIComponent(documentId)}/review`,
+    { method: "POST", body: revisionBody(expectedRevision, { decision }) },
+  );
+}
+
+export function requestAliDocumentReplacement(
+  publicId: string,
+  documentId: string,
+  expectedRevision: number,
+): Promise<unknown> {
+  return apiFetch(
+    `/ali-reservations/${encodeURIComponent(publicId)}/documents/${encodeURIComponent(documentId)}/request-replacement`,
+    { method: "POST", body: revisionBody(expectedRevision) },
+  );
+}
+
+export function markAliLicenseBackNotRequired(
+  publicId: string,
+  expectedRevision: number,
+): Promise<unknown> {
+  return apiFetch(
+    `/ali-reservations/${encodeURIComponent(publicId)}/documents/not-required`,
+    {
+      method: "POST",
+      body: revisionBody(expectedRevision, { slot: "license_back" }),
+    },
+  );
+}
+
+export function deleteAliDocument(
+  publicId: string,
+  documentId: string,
+  expectedRevision: number,
+): Promise<unknown> {
+  const revision = new URLSearchParams({
+    expectedRevision: String(expectedRevision),
+  });
+  return apiFetch(
+    `/ali-reservations/${encodeURIComponent(publicId)}/documents/${encodeURIComponent(documentId)}?${revision}`,
+    { method: "DELETE" },
+  );
+}
+
+export function sendAliContract(
+  publicId: string,
+  expectedRevision: number,
+): Promise<unknown> {
+  return apiFetch(
+    `/ali-reservations/${encodeURIComponent(publicId)}/contract/send`,
+    {
+      method: "POST",
+      body: revisionBody(expectedRevision),
+    },
+  );
+}
+
+export function setAliPaymentLink(
+  publicId: string,
+  url: string,
+  reference: string,
+  expectedRevision: number,
+): Promise<unknown> {
+  return apiFetch(
+    `/ali-reservations/${encodeURIComponent(publicId)}/payment-link`,
+    {
+      method: "PUT",
+      body: revisionBody(expectedRevision, { url, reference }),
+    },
+  );
+}
+
+export function sendAliPaymentLink(publicId: string): Promise<unknown> {
+  return apiFetch(
+    `/ali-reservations/${encodeURIComponent(publicId)}/payment-link/send`,
+    {
+      method: "POST",
+      body: "{}",
+    },
+  );
+}
+
+export function reviewAliPayment(
+  publicId: string,
+  decision: "verified" | "rejected" | "not_required",
+  expectedRevision: number,
+): Promise<unknown> {
+  return apiFetch(
+    `/ali-reservations/${encodeURIComponent(publicId)}/payment/review`,
+    {
+      method: "POST",
+      body: revisionBody(expectedRevision, { decision }),
+    },
+  );
+}
+
+export function updateAliFinalNotes(
+  publicId: string,
+  notes: string,
+  expectedRevision: number,
+): Promise<unknown> {
+  return apiFetch(
+    `/ali-reservations/${encodeURIComponent(publicId)}/final-notes`,
+    {
+      method: "PATCH",
+      body: revisionBody(expectedRevision, { notes }),
+    },
+  );
+}
+
+export function recordAliPickupInspection(
+  publicId: string,
+  item: "license" | "identity",
+  expectedRevision: number,
+): Promise<unknown> {
+  return apiFetch(
+    `/ali-reservations/${encodeURIComponent(publicId)}/pickup-inspection`,
+    {
+      method: "POST",
+      body: revisionBody(expectedRevision, { item }),
+    },
+  );
+}
+
+async function fetchAliPrivateBlob(
+  path: string,
+  expectedMimes: readonly string[],
+): Promise<Blob> {
+  const { tenantSlug, token } = captureTenantRequestScope();
+  const response = await fetch(`${getApiBase(tenantSlug)}${path}`, {
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+    },
+  });
+  if ((response.status === 401 || response.status === 403) && token) {
+    handleAuthFailure(tenantSlug);
+  }
+  if (!response.ok)
+    throw new ApiError(
+      response.status,
+      "Private document could not be loaded.",
+    );
+  if (getClientSlug() !== tenantSlug)
+    throw new ApiError(409, "Workspace response rejected");
+  const blob = await response.blob();
+  if (!expectedMimes.some((mime) => blob.type.startsWith(mime))) {
+    throw new ApiError(422, "Unexpected private document format.");
+  }
+  return blob;
+}
+
+export function fetchAliDocumentBlob(
+  publicId: string,
+  documentId: string,
+): Promise<Blob> {
+  return fetchAliPrivateBlob(
+    `/ali-reservations/${encodeURIComponent(publicId)}/documents/${encodeURIComponent(documentId)}/content`,
+    ["image/", "application/pdf"],
+  );
+}
+
+export function fetchAliSignedContractBlob(publicId: string): Promise<Blob> {
+  return fetchAliPrivateBlob(
+    `/ali-reservations/${encodeURIComponent(publicId)}/contract/signed`,
+    ["application/pdf"],
+  );
+}
+
+export function fetchAliDossierBlob(
+  publicId: string,
+  expectedRevision: number,
+  allowIncomplete: boolean,
+  pageSize: "A4" | "LETTER" = "A4",
+): Promise<Blob> {
+  const path = `/ali-reservations/${encodeURIComponent(publicId)}/dossier.pdf`;
+  const { tenantSlug, token } = captureTenantRequestScope();
+  return fetch(`${getApiBase(tenantSlug)}${path}`, {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "Cache-Control": "no-cache",
+    },
+    body: revisionBody(expectedRevision, { allowIncomplete, pageSize }),
+  }).then(async (response) => {
+    if ((response.status === 401 || response.status === 403) && token)
+      handleAuthFailure(tenantSlug);
+    if (!response.ok)
+      throw new ApiError(response.status, "Dossier could not be generated.");
+    if (getClientSlug() !== tenantSlug)
+      throw new ApiError(409, "Workspace response rejected");
+    const blob = await response.blob();
+    if (!blob.type.startsWith("application/pdf"))
+      throw new ApiError(422, "Unexpected dossier format.");
+    return blob;
+  });
+}
+
 export async function updateFollowUpStatus(id: number, status: FollowUpStatus): Promise<FollowUp> {
   return apiFetch<FollowUp>(`/follow-ups/${id}/status`, {
     method: "POST", body: JSON.stringify({ status }),
