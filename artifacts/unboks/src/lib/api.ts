@@ -6,7 +6,10 @@ import {
   clearAuth,
   getClientSlug,
 } from "@/lib/tenant";
-import { formatConversationTimestamp, parseTimestampMs } from "@/lib/conversation-mapper";
+import {
+  formatConversationTimestamp,
+  parseTimestampMs,
+} from "@/lib/conversation-mapper";
 
 // ---------------------------------------------------------------------------
 // Tenant slug validation (NO hardcoded list)
@@ -273,7 +276,11 @@ export interface LearningEntry {
 // rows can land alongside detected ones without losing fidelity.
 
 export type AppointmentStatus = "confirmed" | "pending" | "detected";
-export type AppointmentSource = "conversation" | "backend" | "order_escalation" | "order_state";
+export type AppointmentSource =
+  | "conversation"
+  | "backend"
+  | "order_escalation"
+  | "order_state";
 
 export interface Appointment {
   id: string;
@@ -344,36 +351,97 @@ export interface OrdersResponse {
   items: Appointment[];
 }
 
-export type FollowUpStatus = "active" | "missing_information" | "collecting" | "ready_to_call" | "ready_to_quote" | "needs_an_answer" | "needs_human_answer" | "in_progress" | "copied" | "appointment_coordinated" | "no_answer" | "closed";
-export type AliReservationStatus = "availability_pending" | "requirements_pending" | "alternative_required" | "declined" | "ready_to_confirm" | "confirmed" | "cancelled" | "superseded";
-export type AliChecklistStatus = "awaiting_external_check" | "not_sent" | "sent_external" | "not_requested" | "awaiting_manual_verification" | "verified" | "not_required" | "rejected";
+export type FollowUpStatus =
+  | "active"
+  | "missing_information"
+  | "collecting"
+  | "ready_to_call"
+  | "ready_to_quote"
+  | "needs_an_answer"
+  | "needs_human_answer"
+  | "in_progress"
+  | "copied"
+  | "appointment_coordinated"
+  | "no_answer"
+  | "closed";
+export type AliReservationStatus =
+  | "availability_pending"
+  | "requirements_pending"
+  | "alternative_required"
+  | "declined"
+  | "ready_to_confirm"
+  | "confirmed"
+  | "cancelled"
+  | "superseded";
+export type AliChecklistStatus =
+  | "awaiting_external_check"
+  | "not_sent"
+  | "sent_external"
+  | "not_requested"
+  | "awaiting_manual_verification"
+  | "verified"
+  | "not_required"
+  | "rejected";
 export interface FollowUp {
-  id: number | string; conversation_id: string; channel: string; first_name: string;
-  surnames: string; phone_raw: string; phone_normalized?: string; callback_preference: string;
-  appointment_preference?: string; session_type?: string; preferred_clinic?: string;
-  customer_name?: string; pickup_datetime?: string; return_datetime?: string;
-  pickup_location?: string; return_location?: string; driver_age?: number | string;
-  passenger_count?: number | string; vehicle_preference?: string;
-  flight_number?: string; luggage?: string; child_seat?: string; notes?: string;
-  workflow_type?: string; required_fields?: string[]; missing_fields?: string[];
-  field_labels?: Record<string, string>; complete?: boolean;
-  rental_period?: string; unread_count?: number; next_action?: string;
-  quote_reference?: string | null; quote_status?: string | null;
+  id: number | string;
+  conversation_id: string;
+  channel: string;
+  first_name: string;
+  surnames: string;
+  phone_raw: string;
+  phone_normalized?: string;
+  callback_preference: string;
+  appointment_preference?: string;
+  session_type?: string;
+  preferred_clinic?: string;
+  customer_name?: string;
+  pickup_datetime?: string;
+  return_datetime?: string;
+  pickup_location?: string;
+  return_location?: string;
+  driver_age?: number | string;
+  passenger_count?: number | string;
+  vehicle_preference?: string;
+  flight_number?: string;
+  luggage?: string;
+  child_seat?: string;
+  notes?: string;
+  workflow_type?: string;
+  required_fields?: string[];
+  missing_fields?: string[];
+  field_labels?: Record<string, string>;
+  complete?: boolean;
+  rental_period?: string;
+  unread_count?: number;
+  next_action?: string;
+  quote_reference?: string | null;
+  quote_status?: string | null;
   quote_delivery_state?: "not_started" | "pending" | "failed" | "delivered";
-  whatsapp_status?: string | null; staff_email_status?: string | null;
+  whatsapp_status?: string | null;
+  staff_email_status?: string | null;
   post_quote_status?: AliReservationStatus | null;
-  availability_status?: "pending" | "approved" | "alternative" | "declined" | null;
+  availability_status?:
+    | "pending"
+    | "approved"
+    | "alternative"
+    | "declined"
+    | null;
   identity_status?: AliChecklistStatus | null;
   agreement_status?: AliChecklistStatus | null;
   payment_status?: AliChecklistStatus | null;
   reservation_public_id?: string | null;
   reservation_reference?: string | null;
   reservation_revision?: number | null;
-  visit_reason: string; status: FollowUpStatus; handoff_reason: string;
-  created_at: string; updated_at: string;
+  visit_reason: string;
+  status: FollowUpStatus;
+  handoff_reason: string;
+  created_at: string;
+  updated_at: string;
 }
 
-export async function fetchFollowUps(status?: FollowUpStatus): Promise<FollowUp[]> {
+export async function fetchFollowUps(
+  status?: FollowUpStatus,
+): Promise<FollowUp[]> {
   const params = new URLSearchParams();
   if (status) params.set("status", status);
   params.set("_refresh", Date.now().toString());
@@ -390,7 +458,9 @@ export async function fetchFollowUps(status?: FollowUpStatus): Promise<FollowUp[
   return raw.items ?? raw.followUps ?? [];
 }
 
-export async function fetchQuoteLeads(status?: FollowUpStatus): Promise<FollowUp[]> {
+export async function fetchQuoteLeads(
+  status?: FollowUpStatus,
+): Promise<FollowUp[]> {
   const params = new URLSearchParams();
   if (status) params.set("status", status);
   params.set("_refresh", Date.now().toString());
@@ -409,13 +479,16 @@ export async function decideAliReservationAvailability(
   decision: "approve" | "decline",
   expectedRevision?: number | null,
 ): Promise<unknown> {
-  return apiFetch(`/ali-reservations/${encodeURIComponent(publicId)}/availability-decision`, {
-    method: "POST",
-    body: JSON.stringify({
-      decision,
-      ...(expectedRevision ? { expectedRevision } : {}),
-    }),
-  });
+  return apiFetch(
+    `/ali-reservations/${encodeURIComponent(publicId)}/availability-decision`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        decision,
+        ...(expectedRevision ? { expectedRevision } : {}),
+      }),
+    },
+  );
 }
 
 export async function updateAliReservationChecklist(
@@ -424,13 +497,16 @@ export async function updateAliReservationChecklist(
   status: "verified" | "not_required",
   expectedRevision?: number | null,
 ): Promise<unknown> {
-  return apiFetch(`/ali-reservations/${encodeURIComponent(publicId)}/checklist`, {
-    method: "PATCH",
-    body: JSON.stringify({
-      [field]: status,
-      ...(expectedRevision ? { expectedRevision } : {}),
-    }),
-  });
+  return apiFetch(
+    `/ali-reservations/${encodeURIComponent(publicId)}/checklist`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        [field]: status,
+        ...(expectedRevision ? { expectedRevision } : {}),
+      }),
+    },
+  );
 }
 
 export async function confirmAliReservation(
@@ -443,9 +519,18 @@ export async function confirmAliReservation(
   });
 }
 
-export type AliDocumentSlot = "license_front" | "license_back" | "identity";
+export type AliDocumentSlot =
+  | "license_front"
+  | "license_back"
+  | "identity"
+  | "passport"
+  | "identity_front"
+  | "identity_back"
+  | "unclassified";
 export type AliDocumentStatus =
   | "received"
+  | "unclassified"
+  | "quarantined"
   | "verified"
   | "rejected"
   | "replacement_requested"
@@ -468,6 +553,42 @@ export interface AliReservationDocument {
   verified_by: string | null;
   deleted_at: string | null;
   deleted_by: string | null;
+  original_filename?: string | null;
+  quarantine_status?: string | null;
+  classification_source?: string | null;
+  unclassified_expires_at?: string | null;
+  review_reason?: string | null;
+}
+
+export interface AliReservationWorkflowV2 {
+  reservationPublicId: string;
+  workflowVersion: 2;
+  state: string;
+  responsibleParty: "Client" | "Staff" | "System";
+  clock: {
+    state: "running" | "paused" | "stopped";
+    pauseReason: string | null;
+    activeClientSeconds: number;
+    remainingSeconds: number;
+    holdSeconds: number;
+    clientTimezone: string;
+  };
+  reminders: {
+    milestonesSeconds: number[];
+    nextMilestoneSeconds: number | null;
+    sendEnabled: boolean;
+  };
+  nextAction: string;
+  doNotContact: boolean;
+  cancellationReason: string | null;
+  negativeIntentPending: boolean;
+  identityType: "passport" | "id_card" | null;
+  expectedDocumentSlot: AliDocumentSlot | null;
+  revision: number;
+  lastClientActivityAt: string | null;
+  lastOutboundAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AliReservationContract {
@@ -545,9 +666,11 @@ export interface AliCustomerFile {
     customerReportedAt: string | null;
     verifiedAt: string | null;
     verifiedBy: string | null;
+    reviewReason: string | null;
   };
   events: AliReservationEvent[];
   final_notes: string;
+  workflow_v2?: AliReservationWorkflowV2;
 }
 
 export interface AliDossierConfiguration {
@@ -589,6 +712,20 @@ export interface AliDossierTenantSettingsUpdate {
   paperShreddingPolicy: string;
 }
 
+export interface AliReservationV2Settings {
+  holdActiveClientHours: number;
+  reminderActiveClientHours: number[];
+  quietHoursStart: string;
+  quietHoursEnd: string;
+  defaultTimezone: string;
+  reminderSendEnabled: boolean;
+}
+
+export type AliReservationV2SettingsUpdate = Omit<
+  AliReservationV2Settings,
+  "reminderSendEnabled"
+>;
+
 export function fetchAliDossierConfiguration(): Promise<AliDossierConfiguration> {
   return apiFetch<AliDossierConfiguration>("/ali-dossier/configuration", {
     cache: "no-store",
@@ -599,6 +736,23 @@ export function fetchAliDossierSettings(): Promise<AliDossierTenantSettings> {
   return apiFetch<AliDossierTenantSettings>("/ali-dossier/settings", {
     cache: "no-store",
     headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+  });
+}
+
+export function fetchAliReservationV2Settings(): Promise<AliReservationV2Settings> {
+  return apiFetch<AliReservationV2Settings>("/ali-reservation-v2/settings", {
+    cache: "no-store",
+    headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+  });
+}
+
+export function updateAliReservationV2Settings(
+  value: AliReservationV2SettingsUpdate,
+): Promise<AliReservationV2Settings> {
+  return apiFetch<AliReservationV2Settings>("/ali-reservation-v2/settings", {
+    method: "PUT",
+    cache: "no-store",
+    body: JSON.stringify(value),
   });
 }
 
@@ -675,10 +829,14 @@ export function reviewAliDocument(
   documentId: string,
   decision: "verified" | "rejected" | "replacement_requested",
   expectedRevision: number,
+  reason = "",
 ): Promise<unknown> {
   return apiFetch(
     `/ali-reservations/${encodeURIComponent(publicId)}/documents/${encodeURIComponent(documentId)}/review`,
-    { method: "POST", body: revisionBody(expectedRevision, { decision }) },
+    {
+      method: "POST",
+      body: revisionBody(expectedRevision, { decision, reason }),
+    },
   );
 }
 
@@ -686,10 +844,26 @@ export function requestAliDocumentReplacement(
   publicId: string,
   documentId: string,
   expectedRevision: number,
+  reason: string,
 ): Promise<unknown> {
   return apiFetch(
     `/ali-reservations/${encodeURIComponent(publicId)}/documents/${encodeURIComponent(documentId)}/request-replacement`,
-    { method: "POST", body: revisionBody(expectedRevision) },
+    { method: "POST", body: revisionBody(expectedRevision, { reason }) },
+  );
+}
+
+export function reclassifyAliDocument(
+  publicId: string,
+  documentId: string,
+  slot: Exclude<AliDocumentSlot, "identity" | "unclassified">,
+  expectedRevision: number,
+): Promise<unknown> {
+  return apiFetch(
+    `/ali-reservations/${encodeURIComponent(publicId)}/documents/${encodeURIComponent(documentId)}/reclassify`,
+    {
+      method: "POST",
+      body: revisionBody(expectedRevision, { slot }),
+    },
   );
 }
 
@@ -762,12 +936,13 @@ export function reviewAliPayment(
   publicId: string,
   decision: "verified" | "rejected" | "not_required",
   expectedRevision: number,
+  reason = "",
 ): Promise<unknown> {
   return apiFetch(
     `/ali-reservations/${encodeURIComponent(publicId)}/payment/review`,
     {
       method: "POST",
-      body: revisionBody(expectedRevision, { decision }),
+      body: revisionBody(expectedRevision, { decision, reason }),
     },
   );
 }
@@ -878,9 +1053,13 @@ export function fetchAliDossierBlob(
   });
 }
 
-export async function updateFollowUpStatus(id: number, status: FollowUpStatus): Promise<FollowUp> {
+export async function updateFollowUpStatus(
+  id: number,
+  status: FollowUpStatus,
+): Promise<FollowUp> {
   return apiFetch<FollowUp>(`/follow-ups/${id}/status`, {
-    method: "POST", body: JSON.stringify({ status }),
+    method: "POST",
+    body: JSON.stringify({ status }),
   });
 }
 
@@ -902,7 +1081,10 @@ export async function fetchAppointments(): Promise<AppointmentsResponse> {
     if (err instanceof ApiError && APPOINTMENTS_NOT_CONNECTED.has(err.status)) {
       return { connected: false, items: [] };
     }
-    if (err instanceof Error && (err.name === "TypeError" || err.message === "Failed to fetch")) {
+    if (
+      err instanceof Error &&
+      (err.name === "TypeError" || err.message === "Failed to fetch")
+    ) {
       return { connected: false, items: [] };
     }
     throw err;
@@ -919,7 +1101,10 @@ export async function fetchOrders(): Promise<OrdersResponse> {
     if (err instanceof ApiError && APPOINTMENTS_NOT_CONNECTED.has(err.status)) {
       return { connected: false, items: [] };
     }
-    if (err instanceof Error && (err.name === "TypeError" || err.message === "Failed to fetch")) {
+    if (
+      err instanceof Error &&
+      (err.name === "TypeError" || err.message === "Failed to fetch")
+    ) {
       return { connected: false, items: [] };
     }
     throw err;
@@ -968,11 +1153,9 @@ export interface CloudConnectionsResponse {
   providers: CloudConnectionProvider[];
 }
 
-const ALLOWED_CLOUD_PROVIDERS: ReadonlySet<CloudConnectionProviderId> = new Set([
-  "google_drive",
-  "onedrive",
-  "dropbox",
-]);
+const ALLOWED_CLOUD_PROVIDERS: ReadonlySet<CloudConnectionProviderId> = new Set(
+  ["google_drive", "onedrive", "dropbox"],
+);
 
 const ALLOWED_CLOUD_STATUSES: ReadonlySet<CloudConnectionStatus> = new Set([
   "connected",
@@ -1001,7 +1184,9 @@ function normalizeCloudConnections(raw: unknown): CloudConnectionProvider[] {
     // Hard filter: never render SharePoint / Box even if the backend
     // accidentally surfaces them. The product decision in #29 is
     // explicit — only Google Drive, OneDrive, Dropbox.
-    if (!ALLOWED_CLOUD_PROVIDERS.has(providerRaw as CloudConnectionProviderId)) {
+    if (
+      !ALLOWED_CLOUD_PROVIDERS.has(providerRaw as CloudConnectionProviderId)
+    ) {
       continue;
     }
     const statusRaw = (pickStr(o, "status") ?? "").toLowerCase();
@@ -1012,7 +1197,9 @@ function normalizeCloudConnections(raw: unknown): CloudConnectionProvider[] {
       : "not_configured";
     out.push({
       provider: providerRaw as CloudConnectionProviderId,
-      label: pickStr(o, "label") ?? defaultProviderLabel(providerRaw as CloudConnectionProviderId),
+      label:
+        pickStr(o, "label") ??
+        defaultProviderLabel(providerRaw as CloudConnectionProviderId),
       blurb: pickStr(o, "blurb") ?? "",
       status,
       needs_provider_app_registration:
@@ -1050,11 +1237,7 @@ function defaultProviderLabel(p: CloudConnectionProviderId): string {
 // rows with status="ready" into the prompt as uploaded source-of-truth
 // material. The frontend does not keep a local fake list.
 
-export type KnowledgeFileStatus =
-  | "pending"
-  | "processing"
-  | "ready"
-  | "failed";
+export type KnowledgeFileStatus = "pending" | "processing" | "ready" | "failed";
 
 export interface KnowledgeFile {
   id: string;
@@ -1066,12 +1249,8 @@ export interface KnowledgeFile {
   lastUsedAt?: string;
 }
 
-const ALLOWED_KNOWLEDGE_FILE_STATUSES: ReadonlySet<KnowledgeFileStatus> = new Set([
-  "pending",
-  "processing",
-  "ready",
-  "failed",
-]);
+const ALLOWED_KNOWLEDGE_FILE_STATUSES: ReadonlySet<KnowledgeFileStatus> =
+  new Set(["pending", "processing", "ready", "failed"]);
 
 function normalizeKnowledgeFile(raw: unknown): KnowledgeFile | null {
   if (!raw || typeof raw !== "object") return null;
@@ -1080,13 +1259,16 @@ function normalizeKnowledgeFile(raw: unknown): KnowledgeFile | null {
   const filename = pickStr(o, "filename", "name");
   if (!id || !filename) return null;
   const statusRaw = (pickStr(o, "status") ?? "pending").toLowerCase();
-  const status = ALLOWED_KNOWLEDGE_FILE_STATUSES.has(statusRaw as KnowledgeFileStatus)
+  const status = ALLOWED_KNOWLEDGE_FILE_STATUSES.has(
+    statusRaw as KnowledgeFileStatus,
+  )
     ? (statusRaw as KnowledgeFileStatus)
     : "pending";
   return {
     id,
     filename,
-    mimeType: pickStr(o, "mimeType", "mime_type", "contentType", "content_type") ?? "",
+    mimeType:
+      pickStr(o, "mimeType", "mime_type", "contentType", "content_type") ?? "",
     sizeBytes: Number(o.sizeBytes ?? o.size_bytes ?? 0) || 0,
     status,
     uploadedAt: pickStr(o, "uploadedAt", "uploaded_at") ?? "",
@@ -1097,7 +1279,9 @@ function normalizeKnowledgeFile(raw: unknown): KnowledgeFile | null {
 function normalizeKnowledgeFiles(raw: unknown): KnowledgeFile[] {
   const items = Array.isArray(raw)
     ? raw
-    : raw && typeof raw === "object" && Array.isArray((raw as Record<string, unknown>).files)
+    : raw &&
+        typeof raw === "object" &&
+        Array.isArray((raw as Record<string, unknown>).files)
       ? ((raw as Record<string, unknown>).files as unknown[])
       : [];
   return items
@@ -1119,7 +1303,10 @@ export async function uploadKnowledgeFile(file: File): Promise<KnowledgeFile> {
   });
   const normalized = normalizeKnowledgeFile(raw);
   if (!normalized) {
-    throw new ApiError(500, "Upload completed, but the server returned an invalid file record.");
+    throw new ApiError(
+      500,
+      "Upload completed, but the server returned an invalid file record.",
+    );
   }
   return normalized;
 }
@@ -1161,7 +1348,8 @@ function normalizeKnowledgeMedia(raw: unknown): KnowledgeMedia | null {
   if (!id || !knowledgeId) return null;
   return {
     id,
-    knowledgeSource: pickStr(o, "knowledgeSource", "knowledge_source") ?? "info_update",
+    knowledgeSource:
+      pickStr(o, "knowledgeSource", "knowledge_source") ?? "info_update",
     knowledgeId,
     filename: pickStr(o, "filename") ?? "",
     originalFilename: pickStr(o, "originalFilename", "original_filename") ?? "",
@@ -1177,7 +1365,9 @@ function normalizeKnowledgeMedia(raw: unknown): KnowledgeMedia | null {
 function normalizeKnowledgeMediaList(raw: unknown): KnowledgeMedia[] {
   const items = Array.isArray(raw)
     ? raw
-    : raw && typeof raw === "object" && Array.isArray((raw as Record<string, unknown>).media)
+    : raw &&
+        typeof raw === "object" &&
+        Array.isArray((raw as Record<string, unknown>).media)
       ? ((raw as Record<string, unknown>).media as unknown[])
       : [];
   return items
@@ -1219,7 +1409,10 @@ export async function uploadKnowledgeMedia(input: {
   });
   const normalized = normalizeKnowledgeMedia(raw);
   if (!normalized) {
-    throw new ApiError(500, "Upload completed, but the server returned an invalid image record.");
+    throw new ApiError(
+      500,
+      "Upload completed, but the server returned an invalid image record.",
+    );
   }
   return normalized;
 }
@@ -1250,7 +1443,10 @@ export async function deleteKnowledgeMedia(mediaId: string): Promise<void> {
 
 export type BlockReason = "spam" | "abusive" | "wrong_contact" | "other";
 
-export const BLOCK_REASONS: ReadonlyArray<{ value: BlockReason; label: string }> = [
+export const BLOCK_REASONS: ReadonlyArray<{
+  value: BlockReason;
+  label: string;
+}> = [
   { value: "spam", label: "Spam" },
   { value: "abusive", label: "Abusive" },
   { value: "wrong_contact", label: "Wrong contact" },
@@ -1369,26 +1565,31 @@ export async function blockConversation(
   payload: BlockConversationPayload,
 ): Promise<BlockConversationResponse> {
   const enc = encodeConversationKey(conversationId);
-  const raw = await apiFetch<unknown>(
-    `/messages/conversations/${enc}/block`,
-    { method: "POST", body: JSON.stringify(payload) },
-  );
-  const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const raw = await apiFetch<unknown>(`/messages/conversations/${enc}/block`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  const o = (raw && typeof raw === "object" ? raw : {}) as Record<
+    string,
+    unknown
+  >;
   return {
     ok: o.ok === true,
-    conversationId: pickStr(o, "conversationId", "conversation_id") ?? conversationId,
+    conversationId:
+      pickStr(o, "conversationId", "conversation_id") ?? conversationId,
     blocked: true,
     reason: pickStr(o, "reason") ?? payload.reason,
     blockedBy: pickStr(o, "blockedBy", "blocked_by") ?? payload.blocked_by,
   };
 }
 
-export async function unblockConversation(conversationId: string): Promise<void> {
+export async function unblockConversation(
+  conversationId: string,
+): Promise<void> {
   const enc = encodeConversationKey(conversationId);
-  return apiFetch<void>(
-    `/messages/conversations/${enc}/unblock`,
-    { method: "POST" },
-  );
+  return apiFetch<void>(`/messages/conversations/${enc}/unblock`, {
+    method: "POST",
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1411,7 +1612,11 @@ import type { SotBlock } from "@/data/sot";
  */
 export async function fetchSourceOfTruth(): Promise<SotBlock[]> {
   const raw = await apiFetch<unknown>("/source-of-truth");
-  if (raw && typeof raw === "object" && Array.isArray((raw as { blocks?: unknown }).blocks)) {
+  if (
+    raw &&
+    typeof raw === "object" &&
+    Array.isArray((raw as { blocks?: unknown }).blocks)
+  ) {
     return (raw as { blocks: SotBlock[] }).blocks;
   }
   if (Array.isArray(raw)) return raw as SotBlock[];
@@ -1427,12 +1632,18 @@ export async function fetchSourceOfTruth(): Promise<SotBlock[]> {
  * If the response is malformed we fall back to the array we just sent
  * so the UI doesn't lose the operator's edit on a successful 200.
  */
-export async function saveSourceOfTruth(blocks: SotBlock[]): Promise<SotBlock[]> {
+export async function saveSourceOfTruth(
+  blocks: SotBlock[],
+): Promise<SotBlock[]> {
   const raw = await apiFetch<unknown>("/source-of-truth", {
     method: "PUT",
     body: JSON.stringify({ blocks }),
   });
-  if (raw && typeof raw === "object" && Array.isArray((raw as { blocks?: unknown }).blocks)) {
+  if (
+    raw &&
+    typeof raw === "object" &&
+    Array.isArray((raw as { blocks?: unknown }).blocks)
+  ) {
     return (raw as { blocks: SotBlock[] }).blocks;
   }
   if (Array.isArray(raw)) return raw as SotBlock[];
@@ -1458,7 +1669,8 @@ function normalizeIgnoredContact(raw: unknown): IgnoredContact | null {
     email: pickStr(o, "email", "email_original") ?? "",
     emailNormalized: pickStr(o, "emailNormalized", "email_normalized") ?? "",
     channel: pickStr(o, "channel") ?? "",
-    externalSenderId: pickStr(o, "externalSenderId", "external_sender_id") ?? "",
+    externalSenderId:
+      pickStr(o, "externalSenderId", "external_sender_id") ?? "",
     label: pickStr(o, "label") ?? "",
     note: pickStr(o, "note") ?? "",
     createdBy: pickStr(o, "createdBy", "created_by") ?? "",
@@ -1482,7 +1694,9 @@ function normalizeImportPreview(raw: unknown): IgnoredContactImportPreview {
   };
   if (!raw || typeof raw !== "object") return fallback;
   const r = raw as Record<string, unknown>;
-  const s = (r.summary && typeof r.summary === "object" ? r.summary : {}) as Record<string, unknown>;
+  const s = (
+    r.summary && typeof r.summary === "object" ? r.summary : {}
+  ) as Record<string, unknown>;
   const contactsRaw = Array.isArray(r.contacts) ? r.contacts : [];
   return {
     summary: {
@@ -1499,55 +1713,77 @@ function normalizeImportPreview(raw: unknown): IgnoredContactImportPreview {
         if (!item || typeof item !== "object") return null;
         const o = item as Record<string, unknown>;
         return {
-          clientId: pickStr(o, "clientId", "client_id") ?? (
-            typeof crypto !== "undefined" && "randomUUID" in crypto
+          clientId:
+            pickStr(o, "clientId", "client_id") ??
+            (typeof crypto !== "undefined" && "randomUUID" in crypto
               ? crypto.randomUUID()
-              : `import-${Math.random().toString(36).slice(2)}`
-          ),
+              : `import-${Math.random().toString(36).slice(2)}`),
           name: pickStr(o, "name") ?? "",
           phone: pickStr(o, "phone") ?? "",
-          phoneNormalized: pickStr(o, "phoneNormalized", "phone_normalized") ?? "",
+          phoneNormalized:
+            pickStr(o, "phoneNormalized", "phone_normalized") ?? "",
           email: pickStr(o, "email") ?? "",
-          emailNormalized: pickStr(o, "emailNormalized", "email_normalized") ?? "",
+          emailNormalized:
+            pickStr(o, "emailNormalized", "email_normalized") ?? "",
           channel: pickStr(o, "channel") ?? "",
-          externalSenderId: pickStr(o, "externalSenderId", "external_sender_id") ?? "",
+          externalSenderId:
+            pickStr(o, "externalSenderId", "external_sender_id") ?? "",
           label: pickStr(o, "label") ?? "",
           note: pickStr(o, "note") ?? "",
           valid: o.valid === true,
           duplicate: o.duplicate === true,
-          alreadyIgnored: o.alreadyIgnored === true || o.already_ignored === true,
+          alreadyIgnored:
+            o.alreadyIgnored === true || o.already_ignored === true,
           selected: o.selected === true,
           errors: Array.isArray(o.errors) ? o.errors.map(String) : [],
         } satisfies IgnoredContactImportPreviewContact;
       })
-      .filter((item): item is IgnoredContactImportPreviewContact => item !== null),
+      .filter(
+        (item): item is IgnoredContactImportPreviewContact => item !== null,
+      ),
   };
 }
 
 export async function fetchIgnoredContacts(): Promise<IgnoredContactsResponse> {
   const raw = await apiFetch<unknown>("/ignored-contacts");
-  const items = raw && typeof raw === "object" && Array.isArray((raw as { contacts?: unknown }).contacts)
-    ? (raw as { contacts: unknown[] }).contacts
-    : [];
-  return { contacts: items.map(normalizeIgnoredContact).filter((x): x is IgnoredContact => x !== null) };
+  const items =
+    raw &&
+    typeof raw === "object" &&
+    Array.isArray((raw as { contacts?: unknown }).contacts)
+      ? (raw as { contacts: unknown[] }).contacts
+      : [];
+  return {
+    contacts: items
+      .map(normalizeIgnoredContact)
+      .filter((x): x is IgnoredContact => x !== null),
+  };
 }
 
-export async function addIgnoredContact(payload: IgnoredContactPayload): Promise<IgnoredContact> {
+export async function addIgnoredContact(
+  payload: IgnoredContactPayload,
+): Promise<IgnoredContact> {
   const raw = await apiFetch<unknown>("/ignored-contacts", {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  const contact = normalizeIgnoredContact((raw as { contact?: unknown })?.contact);
+  const contact = normalizeIgnoredContact(
+    (raw as { contact?: unknown })?.contact,
+  );
   if (!contact) throw new ApiError(500, "Invalid ignored contact response");
   return contact;
 }
 
-export async function updateIgnoredContact(id: number, payload: IgnoredContactPayload): Promise<IgnoredContact> {
+export async function updateIgnoredContact(
+  id: number,
+  payload: IgnoredContactPayload,
+): Promise<IgnoredContact> {
   const raw = await apiFetch<unknown>(`/ignored-contacts/${id}`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
-  const contact = normalizeIgnoredContact((raw as { contact?: unknown })?.contact);
+  const contact = normalizeIgnoredContact(
+    (raw as { contact?: unknown })?.contact,
+  );
   if (!contact) throw new ApiError(500, "Invalid ignored contact response");
   return contact;
 }
@@ -1556,7 +1792,9 @@ export async function deleteIgnoredContact(id: number): Promise<void> {
   return apiFetch<void>(`/ignored-contacts/${id}`, { method: "DELETE" });
 }
 
-export async function validateIgnoredContactsImport(file: File): Promise<IgnoredContactImportPreview> {
+export async function validateIgnoredContactsImport(
+  file: File,
+): Promise<IgnoredContactImportPreview> {
   const form = new FormData();
   form.append("file", file);
   const raw = await apiFetch<unknown>("/ignored-contacts/import/validate", {
@@ -1583,8 +1821,15 @@ export async function importIgnoredContacts(
       })),
     }),
   });
-  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const added = Array.isArray(r.added) ? r.added.map(normalizeIgnoredContact).filter((x): x is IgnoredContact => x !== null) : [];
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<
+    string,
+    unknown
+  >;
+  const added = Array.isArray(r.added)
+    ? r.added
+        .map(normalizeIgnoredContact)
+        .filter((x): x is IgnoredContact => x !== null)
+    : [];
   return { added, skipped: Array.isArray(r.skipped) ? r.skipped : [] };
 }
 
@@ -1592,7 +1837,9 @@ export async function fetchAutoBlockSettings(): Promise<AutoBlockSettings> {
   return apiFetch<AutoBlockSettings>("/settings/auto-block");
 }
 
-export async function saveAutoBlockSettings(settings: AutoBlockSettings): Promise<AutoBlockSettings> {
+export async function saveAutoBlockSettings(
+  settings: AutoBlockSettings,
+): Promise<AutoBlockSettings> {
   return apiFetch<AutoBlockSettings>("/settings/auto-block", {
     method: "PUT",
     body: JSON.stringify(settings),
@@ -1611,12 +1858,19 @@ function normalizeBlockedSenders(raw: unknown): BlockedSender[] {
   for (const it of items) {
     if (!it || typeof it !== "object") continue;
     const o = it as Record<string, unknown>;
-    const conversationId = pickStr(o, "conversationId", "conversation_id", "phone", "id");
+    const conversationId = pickStr(
+      o,
+      "conversationId",
+      "conversation_id",
+      "phone",
+      "id",
+    );
     if (!conversationId) continue;
     out.push({
       conversationId,
       channel: (pickStr(o, "channel", "platform") ?? "unknown").toLowerCase(),
-      updatedAt: pickStr(o, "updatedAt", "updated_at", "blockedAt", "blocked_at") ?? "",
+      updatedAt:
+        pickStr(o, "updatedAt", "updated_at", "blockedAt", "blocked_at") ?? "",
       reason: (pickStr(o, "reason") ?? "other") as BlockReason | string,
       blockedBy: pickStr(o, "blockedBy", "blocked_by") ?? "",
     });
@@ -1675,12 +1929,15 @@ export async function confirmAppointment(
       body: JSON.stringify(payload),
     },
   );
-  const o = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}) as Record<string, unknown>;
+  const o = (
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}
+  ) as Record<string, unknown>;
   return {
     id: pickStr(o, "id", "_id", "appointmentId") ?? id,
     status: pickStr(o, "status") ?? "confirmed",
     confirmedAt: pickStr(o, "confirmedAt", "confirmed_at"),
-    alreadyConfirmed: o.alreadyConfirmed === true || o.already_confirmed === true,
+    alreadyConfirmed:
+      o.alreadyConfirmed === true || o.already_confirmed === true,
   };
 }
 
@@ -1689,7 +1946,9 @@ function normalizeAppointmentList(raw: unknown): Appointment[] {
   let items: unknown[] = [];
   if (Array.isArray(raw)) items = raw;
   else if (raw && typeof raw === "object") {
-    const maybe = (raw as Record<string, unknown>).items ?? (raw as Record<string, unknown>).appointments;
+    const maybe =
+      (raw as Record<string, unknown>).items ??
+      (raw as Record<string, unknown>).appointments;
     if (Array.isArray(maybe)) items = maybe;
   }
   const out: Appointment[] = [];
@@ -1699,16 +1958,22 @@ function normalizeAppointmentList(raw: unknown): Appointment[] {
     const id = pickStr(o, "id", "_id", "appointmentId");
     const customerName = pickStr(o, "customerName", "customer_name", "name");
     const channel = pickStr(o, "channel", "platform") ?? "unknown";
-    const conversationId = pickStr(o, "conversationId", "conversation_id", "phone") ?? "";
+    const conversationId =
+      pickStr(o, "conversationId", "conversation_id", "phone") ?? "";
     const title = pickStr(o, "title", "topic", "subject") ?? "Appointment";
-    const dateTimeLabel = pickStr(o, "dateTimeLabel", "date_time_label", "when", "date", "time") ?? "";
+    const dateTimeLabel =
+      pickStr(o, "dateTimeLabel", "date_time_label", "when", "date", "time") ??
+      "";
     const location = pickStr(o, "location", "place");
     const statusRaw = (pickStr(o, "status") ?? "").toLowerCase();
     const status: AppointmentStatus =
-      statusRaw === "confirmed" || statusRaw === "pending" || statusRaw === "detected"
+      statusRaw === "confirmed" ||
+      statusRaw === "pending" ||
+      statusRaw === "detected"
         ? statusRaw
         : "confirmed";
-    const createdAt = pickStr(o, "createdAt", "created_at") ?? new Date().toISOString();
+    const createdAt =
+      pickStr(o, "createdAt", "created_at") ?? new Date().toISOString();
     if (!id || !customerName || !dateTimeLabel || !conversationId) continue;
     out.push({
       id,
@@ -1730,14 +1995,17 @@ function normalizeOrderList(raw: unknown): Appointment[] {
   let items: unknown[] = [];
   if (Array.isArray(raw)) items = raw;
   else if (raw && typeof raw === "object") {
-    const maybe = (raw as Record<string, unknown>).items ?? (raw as Record<string, unknown>).orders;
+    const maybe =
+      (raw as Record<string, unknown>).items ??
+      (raw as Record<string, unknown>).orders;
     if (Array.isArray(maybe)) items = maybe;
   }
   const out: Appointment[] = [];
   for (const it of items) {
     if (!it || typeof it !== "object") continue;
     const o = it as Record<string, unknown>;
-    const conversationId = pickStr(o, "conversation_id", "conversationId", "phone") ?? "";
+    const conversationId =
+      pickStr(o, "conversation_id", "conversationId", "phone") ?? "";
     if (!conversationId) continue;
     const payload = normalizeOrderPayload(
       (o.order_payload ?? o.orderPayload ?? {}) as Record<string, unknown>,
@@ -1758,9 +2026,15 @@ function normalizeOrderList(raw: unknown): Appointment[] {
     const escalationId = pickId(o, "escalation_id", "escalationId");
     const orderSummary = orderLineSummary(payload);
     out.push({
-      id: escalationId ? `order-escalation:${escalationId}` : `order-state:${conversationId}`,
+      id: escalationId
+        ? `order-escalation:${escalationId}`
+        : `order-state:${conversationId}`,
       customerName,
-      channel: (pickStr(o, "channel", "platform") ?? payload.channel ?? "whatsapp").toLowerCase(),
+      channel: (
+        pickStr(o, "channel", "platform") ??
+        payload.channel ??
+        "whatsapp"
+      ).toLowerCase(),
       conversationId,
       title: orderSummary || "Order",
       dateTimeLabel: formatOrderStatusLabel(orderStatus, payload),
@@ -1770,14 +2044,18 @@ function normalizeOrderList(raw: unknown): Appointment[] {
       createdAt,
       order: payload,
       orderStatus,
-      humanActionRequired: Boolean(o.human_action_required ?? o.humanActionRequired),
+      humanActionRequired: Boolean(
+        o.human_action_required ?? o.humanActionRequired,
+      ),
       nextOperatorAction:
         pickStr(o, "next_operator_action", "nextOperatorAction") ??
         defaultOrderNextAction(orderStatus),
       escalationId,
     });
   }
-  out.sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
+  out.sort(
+    (a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0),
+  );
   return out;
 }
 
@@ -1806,18 +2084,26 @@ function orderLineSummary(order: OrderDetails): string {
     .join(", ");
 }
 
-function formatOrderStatusLabel(status: OrderQueueStatus, order: OrderDetails): string {
+function formatOrderStatusLabel(
+  status: OrderQueueStatus,
+  order: OrderDetails,
+): string {
   const total = formatOrderTotal(order);
-  if (status === "awaiting_customer_confirmation") return `${total} · Awaiting customer confirmation`;
-  if (status === "awaiting_human_confirmation") return `${total} · Needs phone confirmation`;
+  if (status === "awaiting_customer_confirmation")
+    return `${total} · Awaiting customer confirmation`;
+  if (status === "awaiting_human_confirmation")
+    return `${total} · Needs phone confirmation`;
   if (status === "confirmed") return `${total} · Phone confirmed`;
   return total;
 }
 
 function defaultOrderNextAction(status: OrderQueueStatus): string {
-  if (status === "awaiting_customer_confirmation") return "Waiting for the customer to confirm the order summary.";
-  if (status === "awaiting_human_confirmation") return "Call the customer to confirm order details and delivery.";
-  if (status === "confirmed") return "Prepare, deliver, and mark this order fulfilled.";
+  if (status === "awaiting_customer_confirmation")
+    return "Waiting for the customer to confirm the order summary.";
+  if (status === "awaiting_human_confirmation")
+    return "Call the customer to confirm order details and delivery.";
+  if (status === "confirmed")
+    return "Prepare, deliver, and mark this order fulfilled.";
   return "Review this order.";
 }
 
@@ -1841,17 +2127,25 @@ function normalizeOrderPayload(
     });
   }
   return {
-    customerName: pickStr(payload, "customer_name", "customerName", "name") ?? fallbackName,
+    customerName:
+      pickStr(payload, "customer_name", "customerName", "name") ?? fallbackName,
     phone: normalizeOrderPhone(
-      pickStr(payload, "phone", "customer_phone", "customerPhone") ?? fallbackPhone,
+      pickStr(payload, "phone", "customer_phone", "customerPhone") ??
+        fallbackPhone,
     ),
-    address: pickStr(payload, "delivery_address", "deliveryAddress", "address") ?? "",
+    address:
+      pickStr(payload, "delivery_address", "deliveryAddress", "address") ?? "",
     products,
     productTotal: pickNum(payload, "product_total", "productTotal"),
     deliveryCost: pickNum(payload, "delivery_cost", "deliveryCost"),
     total: pickNum(payload, "total", "order_total", "orderTotal"),
     currency: pickStr(payload, "currency") ?? "XCG",
-    comments: pickStr(payload, "comments", "special_requests", "specialRequests"),
+    comments: pickStr(
+      payload,
+      "comments",
+      "special_requests",
+      "specialRequests",
+    ),
   };
 }
 
@@ -1860,7 +2154,8 @@ function normalizeOrderPhone(value: string | null): string {
   if (!raw) return "";
   const digits = raw.replace(/[^\d+]/g, "");
   const digitCount = raw.replace(/\D/g, "").length;
-  const looksLikeProviderObjectId = /^[a-f0-9]{20,32}$/i.test(raw) && digitCount < 10;
+  const looksLikeProviderObjectId =
+    /^[a-f0-9]{20,32}$/i.test(raw) && digitCount < 10;
   if (looksLikeProviderObjectId) return "";
   if (digitCount < 7) return "";
   return digits || raw;
@@ -1870,7 +2165,8 @@ function pickNum(o: Record<string, unknown>, ...keys: string[]): number | null {
   for (const k of keys) {
     const v = o[k];
     if (typeof v === "number" && Number.isFinite(v)) return v;
-    if (typeof v === "string" && v.trim() && Number.isFinite(Number(v))) return Number(v);
+    if (typeof v === "string" && v.trim() && Number.isFinite(Number(v)))
+      return Number(v);
   }
   return null;
 }
@@ -1886,7 +2182,9 @@ function pickId(o: Record<string, unknown>, ...keys: string[]): string | null {
 
 function formatOrderTotal(order: OrderDetails): string {
   if (order.total == null) return "Price not captured";
-  const display = Number.isInteger(order.total) ? String(order.total) : order.total.toFixed(2);
+  const display = Number.isInteger(order.total)
+    ? String(order.total)
+    : order.total.toFixed(2);
   return `${order.currency ? `${order.currency} ` : ""}${display}`;
 }
 
@@ -2043,7 +2341,11 @@ function endpointClass(path: string): string {
   return path.split("?")[0].split("/").filter(Boolean)[0] ?? "root";
 }
 
-function responseTenantIdentity(res: Response, body: unknown, path: string): string | null {
+function responseTenantIdentity(
+  res: Response,
+  body: unknown,
+  path: string,
+): string | null {
   const header = res.headers.get("X-Unboks-Tenant");
   if (header) {
     // Fetch combines repeated response headers with commas. Treat repeated,
@@ -2120,14 +2422,20 @@ export async function apiFetch<T>(
   } catch (networkErr) {
     // Network failure / CORS / DNS / offline — keep the user logged in.
     // Surface as ApiError(0) so callers can distinguish from auth errors.
-    throw new ApiError(0, networkErr instanceof Error ? networkErr.message : "Network error");
+    throw new ApiError(
+      0,
+      networkErr instanceof Error ? networkErr.message : "Network error",
+    );
   }
 
   // Only treat as an auth failure if the request actually sent a token.
   // Unauthenticated requests (e.g., login) returning 401 are not a session expiry.
   if ((res.status === 401 || res.status === 403) && !skipAuth && token) {
     handleAuthFailure(tenantSlug);
-    throw new ApiError(res.status, res.status === 401 ? "Unauthorized" : "Forbidden");
+    throw new ApiError(
+      res.status,
+      res.status === 401 ? "Unauthorized" : "Forbidden",
+    );
   }
 
   if (!res.ok) {
@@ -2152,10 +2460,16 @@ export async function apiFetch<T>(
     throw new ApiError(res.status, msg, details);
   }
   if (res.status === 204) {
-    assertResponseTenant(res, undefined, tenantSlug, path, requireTenantIdentity);
+    assertResponseTenant(
+      res,
+      undefined,
+      tenantSlug,
+      path,
+      requireTenantIdentity,
+    );
     return undefined as T;
   }
-  const body = await res.json() as T;
+  const body = (await res.json()) as T;
   assertResponseTenant(res, body, tenantSlug, path, requireTenantIdentity);
   return body;
 }
@@ -2214,7 +2528,9 @@ function prettifySlug(slug: string): string {
   return slug
     .split(/[-_]/g)
     .filter(Boolean)
-    .map((part) => (part.length > 0 ? part[0].toUpperCase() + part.slice(1) : part))
+    .map((part) =>
+      part.length > 0 ? part[0].toUpperCase() + part.slice(1) : part,
+    )
     .join(" ");
 }
 
@@ -2267,10 +2583,7 @@ export async function getClientProfile(): Promise<ClientProfile> {
     // Everything else (401/403 auth, 5xx server, malformed JSON, etc.)
     // must propagate so a real server regression doesn't get masked by
     // a permanently happy-looking sidebar.
-    if (
-      err instanceof ApiError &&
-      (err.status === 404 || err.status === 0)
-    ) {
+    if (err instanceof ApiError && (err.status === 404 || err.status === 0)) {
       return {
         slug,
         name: prettifySlug(slug),
@@ -2303,7 +2616,10 @@ export async function apiLogin(
       body: JSON.stringify({ password }),
     });
   } catch (networkErr) {
-    throw new ApiError(0, networkErr instanceof Error ? networkErr.message : "Network error");
+    throw new ApiError(
+      0,
+      networkErr instanceof Error ? networkErr.message : "Network error",
+    );
   }
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
@@ -2348,7 +2664,9 @@ export async function fetchAgentNameSettings(): Promise<AgentNameSettings> {
   return apiFetch<AgentNameSettings>("/settings/agent-name");
 }
 
-export async function saveAgentNameSettings(agentName: string): Promise<AgentNameSettings> {
+export async function saveAgentNameSettings(
+  agentName: string,
+): Promise<AgentNameSettings> {
   return apiFetch<AgentNameSettings>("/settings/agent-name", {
     method: "PUT",
     body: JSON.stringify({ agent_name: agentName }),
@@ -2392,8 +2710,12 @@ function normalizeProductSettings(raw: unknown): ProductSettings {
   return {
     deliveryCostAmount: amount,
     deliveryCostCurrency:
-      pickStr(r, "delivery_cost_currency", "deliveryCostCurrency", "currency") ??
-      fallback.deliveryCostCurrency,
+      pickStr(
+        r,
+        "delivery_cost_currency",
+        "deliveryCostCurrency",
+        "currency",
+      ) ?? fallback.deliveryCostCurrency,
   };
 }
 
@@ -2422,10 +2744,13 @@ export async function fetchInfoUpdates(): Promise<InfoUpdatesApiResponse> {
 export async function createInfoUpdate(
   payload: InfoUpdateCreatePayload,
 ): Promise<{ ok: boolean; id: number | string }> {
-  return apiFetch<{ ok: boolean; id: number | string }>("/settings/info-updates", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  return apiFetch<{ ok: boolean; id: number | string }>(
+    "/settings/info-updates",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 export async function setInfoUpdateActive(
@@ -2466,14 +2791,18 @@ export async function fetchArchivedConversations(): Promise<ApiConversation[]> {
   return apiFetch<ApiConversation[]>("/messages/conversations/archived");
 }
 
-export async function archiveConversation(conversationId: string): Promise<void> {
+export async function archiveConversation(
+  conversationId: string,
+): Promise<void> {
   return apiFetch<void>(
     `/messages/conversations/${encodeConversationKey(conversationId)}/archive`,
     { method: "POST" },
   );
 }
 
-export async function unarchiveConversation(conversationId: string): Promise<void> {
+export async function unarchiveConversation(
+  conversationId: string,
+): Promise<void> {
   return apiFetch<void>(
     `/messages/conversations/${encodeConversationKey(conversationId)}/unarchive`,
     { method: "POST" },
@@ -2541,13 +2870,14 @@ function normalizeMessage(raw: unknown, idx: number): ApiMessage | null {
   //   - everything else (incl. "agent", "marina", "ai", "bot",
   //     "outbound") → "assistant" (Marina, the AI)
   // Order matters: check operator BEFORE the catch-all assistant.
-  const role: "user" | "assistant" | "operator" = /^(incoming|inbound|in|customer|user|client|contact)$/.test(
-    roleRaw,
-  )
-    ? "user"
-    : /^(operator|staff|team|teammate|human|admin|support|takeover|human_reply|team_reply|from_team|outbound_human|manual_reply)$/.test(roleRaw)
-      ? "operator"
-      : "assistant";
+  const role: "user" | "assistant" | "operator" =
+    /^(incoming|inbound|in|customer|user|client|contact)$/.test(roleRaw)
+      ? "user"
+      : /^(operator|staff|team|teammate|human|admin|support|takeover|human_reply|team_reply|from_team|outbound_human|manual_reply)$/.test(
+            roleRaw,
+          )
+        ? "operator"
+        : "assistant";
 
   const timestampRaw = pickStr(
     o,
@@ -2586,7 +2916,9 @@ function extractRawMessages(raw: unknown): unknown[] {
   return [];
 }
 
-export async function fetchConversation(phone: string): Promise<ConversationDetail> {
+export async function fetchConversation(
+  phone: string,
+): Promise<ConversationDetail> {
   const key = (phone ?? "").replace(/[\r\n]+/g, "").trim();
   if (!key) {
     throw new ApiError(400, "Conversation id is missing.");
@@ -2609,9 +2941,11 @@ export async function fetchConversation(phone: string): Promise<ConversationDeta
   // Pull metadata from the envelope when present; otherwise fall back to
   // sensible defaults so the rest of the UI (header, escalation banner,
   // composer) keeps working even on minimal responses.
-  const env = (raw && typeof raw === "object" && !Array.isArray(raw)
-    ? (raw as Record<string, unknown>)
-    : {}) as Record<string, unknown>;
+  const env = (
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {}
+  ) as Record<string, unknown>;
 
   return {
     phone: pickStr(env, "phone", "external_id", "externalId") ?? key,
@@ -2624,7 +2958,8 @@ export async function fetchConversation(phone: string): Promise<ConversationDeta
     escalated:
       typeof env.escalated === "boolean"
         ? env.escalated
-        : typeof env.status === "string" && /^escalated$/i.test(env.status as string)
+        : typeof env.status === "string" &&
+            /^escalated$/i.test(env.status as string)
           ? true
           : undefined,
     escalationResolved:
@@ -2633,7 +2968,8 @@ export async function fetchConversation(phone: string): Promise<ConversationDeta
         : typeof env.escalation_resolved === "boolean"
           ? (env.escalation_resolved as boolean)
           : undefined,
-    escalationMode: (pickStr(env, "escalationMode", "escalation_mode") ?? null) as ConversationDetail["escalationMode"],
+    escalationMode: (pickStr(env, "escalationMode", "escalation_mode") ??
+      null) as ConversationDetail["escalationMode"],
     escalationReason: pickStr(env, "escalationReason", "escalation_reason"),
     escalationSummary: pickStr(env, "escalationSummary", "escalation_summary"),
     customerWants: pickStr(env, "customerWants", "customer_wants"),
@@ -2646,12 +2982,14 @@ export async function fetchConversation(phone: string): Promise<ConversationDeta
     humanResponder: pickStr(env, "humanResponder", "human_responder"),
     humanRespondedAt: pickStr(env, "humanRespondedAt", "human_responded_at"),
     humanTakeoverAt: pickStr(env, "humanTakeoverAt", "human_takeover_at"),
-    aiMuted: typeof env.aiMuted === "boolean"
-      ? env.aiMuted
-      : typeof env.ai_muted === "boolean"
-        ? (env.ai_muted as boolean)
-        : undefined,
-    learningStatus: (pickStr(env, "learningStatus", "learning_status") ?? undefined) as ConversationDetail["learningStatus"],
+    aiMuted:
+      typeof env.aiMuted === "boolean"
+        ? env.aiMuted
+        : typeof env.ai_muted === "boolean"
+          ? (env.ai_muted as boolean)
+          : undefined,
+    learningStatus: (pickStr(env, "learningStatus", "learning_status") ??
+      undefined) as ConversationDetail["learningStatus"],
     recommendedOptions: pickStringArray(
       env,
       "recommendedOptions",
@@ -2676,7 +3014,9 @@ function pickStringArray(
     const v = o[k];
     if (Array.isArray(v)) {
       const cleaned = v
-        .filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+        .filter(
+          (x): x is string => typeof x === "string" && x.trim().length > 0,
+        )
         .map((x) => x.trim());
       if (cleaned.length > 0) return cleaned;
     }
@@ -2821,13 +3161,19 @@ export async function replyToEmail(
   const primary = `/messages/conversations/${enc}/email/reply`;
   const fallback = `/messages/conversations/${enc}/reply`;
   try {
-    const result = await apiFetch<{ ok: boolean }>(primary, { method: "POST", body });
+    const result = await apiFetch<{ ok: boolean }>(primary, {
+      method: "POST",
+      body,
+    });
     if (DEBUG_LOGS_ENABLED) debugInfo(`[unboks] email reply via ${primary}`);
     return result;
   } catch (err) {
     if (err instanceof ApiError && (err.status === 404 || err.status === 405)) {
       try {
-        const result = await apiFetch<{ ok: boolean }>(fallback, { method: "POST", body });
+        const result = await apiFetch<{ ok: boolean }>(fallback, {
+          method: "POST",
+          body,
+        });
         if (DEBUG_LOGS_ENABLED) {
           debugInfo(
             `[unboks] email reply via ${fallback} (fell back from ${primary} → HTTP ${err.status})`,
@@ -2901,7 +3247,9 @@ export async function deleteEmail(
   }
 }
 
-export async function suggestReply(phone: string): Promise<{ suggestion: string }> {
+export async function suggestReply(
+  phone: string,
+): Promise<{ suggestion: string }> {
   return apiFetch<{ suggestion: string }>("/messages/suggest-reply", {
     method: "POST",
     body: JSON.stringify({ phone }),
@@ -2912,7 +3260,9 @@ export async function suggestReply(phone: string): Promise<{ suggestion: string 
 // Escalations
 // ---------------------------------------------------------------------------
 
-export async function fetchEscalations(mode?: "soft" | "hard" | "order" | "all"): Promise<Escalation[]> {
+export async function fetchEscalations(
+  mode?: "soft" | "hard" | "order" | "all",
+): Promise<Escalation[]> {
   const qs = mode && mode !== "all" ? `?mode=${mode}` : "";
   return apiFetch<Escalation[]>(`/escalations${qs}`);
 }
@@ -2931,7 +3281,9 @@ export async function resolveEscalation(
   });
 }
 
-export async function markOrderPhoneConfirmed(id: string): Promise<{ ok: boolean; status: "confirmed" }> {
+export async function markOrderPhoneConfirmed(
+  id: string,
+): Promise<{ ok: boolean; status: "confirmed" }> {
   return apiFetch(`/orders/${id}/phone-confirmed`, {
     method: "POST",
   });
@@ -2968,7 +3320,10 @@ export async function submitGuidance(
   });
 }
 
-export async function takeoverEscalation(id: string, note?: string): Promise<void> {
+export async function takeoverEscalation(
+  id: string,
+  note?: string,
+): Promise<void> {
   return apiFetch<void>(`/escalations/${id}/takeover`, {
     method: "POST",
     body: JSON.stringify({ note }),
@@ -3033,7 +3388,9 @@ export interface AIEditorResponse {
   text: string;
 }
 
-export async function aiEditorEdit(params: AIEditorParams): Promise<AIEditorResponse> {
+export async function aiEditorEdit(
+  params: AIEditorParams,
+): Promise<AIEditorResponse> {
   return apiFetch<AIEditorResponse>(`/ai-editor`, {
     method: "POST",
     body: JSON.stringify(params),
@@ -3099,7 +3456,9 @@ export async function translateMessage(
 // Learning entries
 // ---------------------------------------------------------------------------
 
-export async function fetchLearningEntries(status?: string): Promise<LearningEntry[]> {
+export async function fetchLearningEntries(
+  status?: string,
+): Promise<LearningEntry[]> {
   const qs = status ? `?status=${encodeURIComponent(status)}` : "";
   return apiFetch<LearningEntry[]>(`/learning${qs}`);
 }
@@ -3261,13 +3620,19 @@ export async function fetchOnboardingStatus(): Promise<OnboardingStatus> {
   return {
     tenantSlug: typeof raw.tenantSlug === "string" ? raw.tenantSlug : "",
     businessName: typeof raw.businessName === "string" ? raw.businessName : "",
-    billingStatus: typeof raw.billingStatus === "string" ? raw.billingStatus : "",
-    trialStartedAt: typeof raw.trialStartedAt === "string" ? raw.trialStartedAt : null,
+    billingStatus:
+      typeof raw.billingStatus === "string" ? raw.billingStatus : "",
+    trialStartedAt:
+      typeof raw.trialStartedAt === "string" ? raw.trialStartedAt : null,
     trialEndsAt: typeof raw.trialEndsAt === "string" ? raw.trialEndsAt : null,
     trialDaysRemaining:
-      typeof raw.trialDaysRemaining === "number" ? raw.trialDaysRemaining : null,
+      typeof raw.trialDaysRemaining === "number"
+        ? raw.trialDaysRemaining
+        : null,
     whatsappConnected:
-      typeof raw.whatsappConnected === "boolean" ? raw.whatsappConnected : false,
+      typeof raw.whatsappConnected === "boolean"
+        ? raw.whatsappConnected
+        : false,
     whatsappConnectionStatus:
       typeof raw.whatsappConnectionStatus === "string"
         ? raw.whatsappConnectionStatus
@@ -3305,7 +3670,8 @@ function normalizeAgentPersonality(raw: unknown): AgentPersonalitySettings {
     tone: typeof o.tone === "string" ? o.tone : "",
     formality: typeof o.formality === "string" ? o.formality : "",
     empathy: typeof o.empathy === "string" ? o.empathy : "",
-    appointmentStyle: typeof o.appointmentStyle === "string" ? o.appointmentStyle : "",
+    appointmentStyle:
+      typeof o.appointmentStyle === "string" ? o.appointmentStyle : "",
     instructions: typeof o.instructions === "string" ? o.instructions : "",
     examples,
   };
@@ -3410,7 +3776,9 @@ function coerceAgentLearningPrefs(raw: unknown): AgentLearningPrefs {
   const create = o.createPendingLearningFromOperatorReplies;
   return {
     showSuggestionAfterReplies:
-      typeof show === "boolean" ? show : DEFAULT_AGENT_LEARNING_PREFS.showSuggestionAfterReplies,
+      typeof show === "boolean"
+        ? show
+        : DEFAULT_AGENT_LEARNING_PREFS.showSuggestionAfterReplies,
     createPendingLearningFromOperatorReplies:
       typeof create === "boolean"
         ? create
@@ -3522,7 +3890,9 @@ export interface EscalationAlertTypes {
 }
 
 export interface EscalationAlertSettings {
-  channels: Partial<Record<EscalationAlertChannelKey, EscalationAlertChannelPref>>;
+  channels: Partial<
+    Record<EscalationAlertChannelKey, EscalationAlertChannelPref>
+  >;
   alertTypes: EscalationAlertTypes;
 }
 
@@ -3539,8 +3909,10 @@ function pickAlertTypes(raw: unknown): EscalationAlertTypes {
   const escRaw = o.escalations ?? o.escalation ?? o.escalation_alerts;
   const aptRaw = o.appointments ?? o.appointment ?? o.appointment_alerts;
   return {
-    escalations: typeof escRaw === "boolean" ? escRaw : DEFAULT_ALERT_TYPES.escalations,
-    appointments: typeof aptRaw === "boolean" ? aptRaw : DEFAULT_ALERT_TYPES.appointments,
+    escalations:
+      typeof escRaw === "boolean" ? escRaw : DEFAULT_ALERT_TYPES.escalations,
+    appointments:
+      typeof aptRaw === "boolean" ? aptRaw : DEFAULT_ALERT_TYPES.appointments,
   };
 }
 
@@ -3595,7 +3967,9 @@ function pickChannelPref(raw: unknown): EscalationAlertChannelPref | null {
     o.backup_email ??
     null;
   const alternativeDestination =
-    typeof altRaw === "string" && altRaw.trim().length > 0 ? altRaw.trim() : null;
+    typeof altRaw === "string" && altRaw.trim().length > 0
+      ? altRaw.trim()
+      : null;
   // Per the issue, the backend now reports WhatsApp activation state as
   // `channels.whatsapp.zernioResolved`. Tolerate the snake_case alias
   // and treat any non-boolean value as "unknown" so we never lie about
@@ -3606,8 +3980,7 @@ function pickChannelPref(raw: unknown): EscalationAlertChannelPref | null {
       : "zernio_resolved" in o
         ? o.zernio_resolved
         : undefined;
-  const zernioResolved =
-    typeof zernioRaw === "boolean" ? zernioRaw : undefined;
+  const zernioResolved = typeof zernioRaw === "boolean" ? zernioRaw : undefined;
   return {
     enabled,
     destination,
@@ -3623,7 +3996,9 @@ function pickChannelPref(raw: unknown): EscalationAlertChannelPref | null {
  * `{ channels: { email, whatsapp, messenger, telegram } }` shape. Accepts
  * either nested-under-`channels` or flat root-level keys.
  */
-export function normalizeEscalationAlertSettings(raw: unknown): EscalationAlertSettings {
+export function normalizeEscalationAlertSettings(
+  raw: unknown,
+): EscalationAlertSettings {
   const empty: EscalationAlertSettings = {
     channels: {},
     alertTypes: { ...DEFAULT_ALERT_TYPES },
@@ -3639,7 +4014,12 @@ export function normalizeEscalationAlertSettings(raw: unknown): EscalationAlertS
     // Tolerate both `alertTypes` (canonical) and `alert_types` (snake).
     alertTypes: pickAlertTypes(o.alertTypes ?? o.alert_types),
   };
-  for (const key of ["email", "whatsapp", "messenger", "telegram"] as EscalationAlertChannelKey[]) {
+  for (const key of [
+    "email",
+    "whatsapp",
+    "messenger",
+    "telegram",
+  ] as EscalationAlertChannelKey[]) {
     const pref = pickChannelPref(src[key]);
     if (pref) out.channels[key] = pref;
   }

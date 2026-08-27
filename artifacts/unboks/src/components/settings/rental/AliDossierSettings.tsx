@@ -1,19 +1,29 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, FileKey2, Loader2, ShieldCheck } from "lucide-react";
+import {
+  CheckCircle2,
+  Clock3,
+  FileKey2,
+  Loader2,
+  ShieldCheck,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import {
   fetchAliDossierSettings,
+  fetchAliReservationV2Settings,
   updateAliDossierActivation,
   updateAliDossierSettings,
+  updateAliReservationV2Settings,
   uploadAliContractTemplate,
   type AliDossierTenantSettings,
+  type AliReservationV2Settings,
 } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { tenantKey } from "@/lib/query-keys";
 
 const SETTINGS_KEY = "ali-dossier-settings";
+const V2_SETTINGS_KEY = "ali-reservation-v2-settings";
 const TEMPLATE_TYPES = [".txt", ".md", ".pdf", ".docx"];
 const MAX_TEMPLATE_BYTES = 2 * 1024 * 1024;
 
@@ -69,6 +79,14 @@ function LoadingCard() {
 export function AliDossierSettings() {
   const queryClient = useQueryClient();
   const query = useAliDossierSettings();
+  const v2Query = useQuery({
+    queryKey: tenantKey(V2_SETTINGS_KEY),
+    queryFn: fetchAliReservationV2Settings,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
   const fileInput = useRef<HTMLInputElement>(null);
   const [version, setVersion] = useState("");
   const [template, setTemplate] = useState<File | null>(null);
@@ -78,6 +96,11 @@ export function AliDossierSettings() {
   const [providerName, setProviderName] = useState("");
   const [paymentUrl, setPaymentUrl] = useState("");
   const [domains, setDomains] = useState("");
+  const [holdHours, setHoldHours] = useState(24);
+  const [reminderHours, setReminderHours] = useState("3, 12, 21");
+  const [quietStart, setQuietStart] = useState("20:30");
+  const [quietEnd, setQuietEnd] = useState("08:30");
+  const [defaultTimezone, setDefaultTimezone] = useState("America/Curacao");
 
   useEffect(() => {
     if (!query.data) return;
@@ -86,6 +109,15 @@ export function AliDossierSettings() {
     setPaymentUrl("");
     setDomains(query.data.payment.allowedDomains.join("\n"));
   }, [query.data]);
+
+  useEffect(() => {
+    if (!v2Query.data) return;
+    setHoldHours(v2Query.data.holdActiveClientHours);
+    setReminderHours(v2Query.data.reminderActiveClientHours.join(", "));
+    setQuietStart(v2Query.data.quietHoursStart);
+    setQuietEnd(v2Query.data.quietHoursEnd);
+    setDefaultTimezone(v2Query.data.defaultTimezone);
+  }, [v2Query.data]);
 
   const refresh = async (next: AliDossierTenantSettings) => {
     queryClient.setQueryData(tenantKey(SETTINGS_KEY), next);
@@ -148,6 +180,38 @@ export function AliDossierSettings() {
     onError: (error) => toast.error(errorMessage(error)),
   });
 
+  const saveTiming = useMutation({
+    mutationFn: () => {
+      const reminders = reminderHours
+        .split(",")
+        .map((value) => Number(value.trim()))
+        .filter((value) => Number.isFinite(value));
+      if (
+        !Number.isFinite(holdHours) ||
+        holdHours < 1 ||
+        reminders.length < 1 ||
+        reminders.length > 3 ||
+        reminders.some((value) => value <= 0 || value >= holdHours)
+      ) {
+        throw new Error(
+          "Use 1–3 reminder hours, each before the hold expires.",
+        );
+      }
+      return updateAliReservationV2Settings({
+        holdActiveClientHours: holdHours,
+        reminderActiveClientHours: reminders,
+        quietHoursStart: quietStart,
+        quietHoursEnd: quietEnd,
+        defaultTimezone: defaultTimezone.trim(),
+      });
+    },
+    onSuccess: (next: AliReservationV2Settings) => {
+      queryClient.setQueryData(tenantKey(V2_SETTINGS_KEY), next);
+      toast.success("Reservation timing settings saved.");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
   if (query.isLoading) return <LoadingCard />;
   if (!query.data) {
     return (
@@ -176,13 +240,15 @@ export function AliDossierSettings() {
 
   return (
     <div className="space-y-5">
-      <div className={`rounded-2xl border px-5 py-4 text-sm ${
-        current.status.ready
-          ? "border-emerald-200 bg-emerald-50 text-emerald-950"
-          : current.status.configurationReady
-            ? "border-amber-200 bg-amber-50 text-amber-950"
-            : "border-slate-200 bg-slate-50 text-slate-900"
-      }`}>
+      <div
+        className={`rounded-2xl border px-5 py-4 text-sm ${
+          current.status.ready
+            ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+            : current.status.configurationReady
+              ? "border-amber-200 bg-amber-50 text-amber-950"
+              : "border-slate-200 bg-slate-50 text-slate-900"
+        }`}
+      >
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
             <p className="font-semibold">
@@ -212,9 +278,11 @@ export function AliDossierSettings() {
               type="button"
               role="switch"
               aria-checked={activationOn}
-              aria-label={activationOn
-                ? "Deactivate secure customer file"
-                : "Activate secure customer file"}
+              aria-label={
+                activationOn
+                  ? "Deactivate secure customer file"
+                  : "Activate secure customer file"
+              }
               disabled={activation.isPending || !canToggleActivation}
               onClick={() => activation.mutate(!activationOn)}
               className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45 ${
@@ -233,6 +301,90 @@ export function AliDossierSettings() {
           </div>
         </div>
       </div>
+      <SettingsCard
+        title="Reservation hold and reminders"
+        description="Active-client time runs only while the customer is responsible for the next step."
+      >
+        {v2Query.isError ? (
+          <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            Reservation timing settings are unavailable.
+          </p>
+        ) : (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <label className="block text-sm font-medium text-[#202124]">
+                Hold duration (active hours)
+                <input
+                  type="number"
+                  min={1}
+                  max={720}
+                  step={1}
+                  value={holdHours}
+                  onChange={(event) => setHoldHours(Number(event.target.value))}
+                  className="mt-1 h-11 w-full rounded-xl border border-[#dadce0] px-3 font-normal outline-none focus:border-[#1a73e8]"
+                />
+              </label>
+              <label className="block text-sm font-medium text-[#202124]">
+                Reminder hours
+                <input
+                  value={reminderHours}
+                  onChange={(event) => setReminderHours(event.target.value)}
+                  placeholder="3, 12, 21"
+                  className="mt-1 h-11 w-full rounded-xl border border-[#dadce0] px-3 font-normal outline-none focus:border-[#1a73e8]"
+                />
+              </label>
+              <label className="block text-sm font-medium text-[#202124]">
+                Client timezone fallback
+                <input
+                  value={defaultTimezone}
+                  onChange={(event) => setDefaultTimezone(event.target.value)}
+                  placeholder="America/Curacao"
+                  className="mt-1 h-11 w-full rounded-xl border border-[#dadce0] px-3 font-normal outline-none focus:border-[#1a73e8]"
+                />
+              </label>
+              <label className="block text-sm font-medium text-[#202124]">
+                Quiet hours start
+                <input
+                  type="time"
+                  value={quietStart}
+                  onChange={(event) => setQuietStart(event.target.value)}
+                  className="mt-1 h-11 w-full rounded-xl border border-[#dadce0] px-3 font-normal outline-none focus:border-[#1a73e8]"
+                />
+              </label>
+              <label className="block text-sm font-medium text-[#202124]">
+                Quiet hours end
+                <input
+                  type="time"
+                  value={quietEnd}
+                  onChange={(event) => setQuietEnd(event.target.value)}
+                  className="mt-1 h-11 w-full rounded-xl border border-[#dadce0] px-3 font-normal outline-none focus:border-[#1a73e8]"
+                />
+              </label>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#f8f9fa] px-4 py-3">
+              <p className="flex items-center gap-2 text-xs leading-relaxed text-[#5f6368]">
+                <Clock3 className="h-4 w-4 text-[#1a73e8]" />
+                Reminder delivery safety gate:{" "}
+                <strong>
+                  {v2Query.data?.reminderSendEnabled ? "enabled" : "disabled"}
+                </strong>
+                . Schedule changes do not bypass this deployment gate.
+              </p>
+              <button
+                type="button"
+                disabled={saveTiming.isPending || v2Query.isLoading}
+                onClick={() => saveTiming.mutate()}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#1a73e8] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#c8d4e6]"
+              >
+                {saveTiming.isPending && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+                Save timing
+              </button>
+            </div>
+          </>
+        )}
+      </SettingsCard>
       <SettingsCard
         title="Pre-contract template"
         description="Upload the approved template for this tenant. Every version is immutable and auditable."

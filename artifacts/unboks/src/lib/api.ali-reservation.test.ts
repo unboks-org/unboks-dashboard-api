@@ -4,11 +4,15 @@ import {
   confirmAliReservation,
   decideAliReservationAvailability,
   fetchAliDossierSettings,
+  fetchAliReservationV2Settings,
   fetchAliDocumentBlob,
+  reclassifyAliDocument,
   recordAliPickupInspection,
+  reviewAliPayment,
   requestAliDocumentReplacement,
   updateAliDossierActivation,
   updateAliDossierSettings,
+  updateAliReservationV2Settings,
   updateAliReservationChecklist,
   uploadAliContractTemplate,
 } from "@/lib/api";
@@ -19,13 +23,21 @@ describe("Ali post-quote reservation API", () => {
     sessionStorage.clear();
     sessionStorage.setItem("unboks_active_tenant", "ali-car-rental");
     localStorage.setItem("wtyj_token_ali-car-rental", "test-token");
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      public_id: "AR-TEST-1",
-      revision: 4,
-    }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            public_id: "AR-TEST-1",
+            revision: 4,
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      ),
+    );
   });
 
   it("sends availability decisions with optimistic concurrency", async () => {
@@ -64,8 +76,33 @@ describe("Ali post-quote reservation API", () => {
       body: JSON.stringify({ expectedRevision: 5 }),
     });
   });
+
+  it("sends the audited payment override reason", async () => {
+    await reviewAliPayment(
+      "AR-TEST-1",
+      "verified",
+      8,
+      "Owner checked the bank receipt directly.",
+    );
+
+    const [url, request] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain("/ali-reservations/AR-TEST-1/payment/review");
+    expect(request).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({
+        decision: "verified",
+        reason: "Owner checked the bank receipt directly.",
+        expectedRevision: 8,
+      }),
+    });
+  });
   it("requests a fresh replacement link with optimistic concurrency", async () => {
-    await requestAliDocumentReplacement("AR-TEST-1", "doc/1", 6);
+    await requestAliDocumentReplacement(
+      "AR-TEST-1",
+      "doc/1",
+      6,
+      "Image is unreadable",
+    );
 
     const [url, request] = vi.mocked(fetch).mock.calls[0];
     expect(String(url)).toContain(
@@ -73,7 +110,26 @@ describe("Ali post-quote reservation API", () => {
     );
     expect(request).toMatchObject({
       method: "POST",
-      body: JSON.stringify({ expectedRevision: 6 }),
+      body: JSON.stringify({
+        reason: "Image is unreadable",
+        expectedRevision: 6,
+      }),
+    });
+  });
+
+  it("reclassifies only one explicit WhatsApp document slot", async () => {
+    await reclassifyAliDocument("AR-TEST-1", "doc/1", "license_front", 6);
+
+    const [url, request] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain(
+      "/ali-reservations/AR-TEST-1/documents/doc%2F1/reclassify",
+    );
+    expect(request).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({
+        slot: "license_front",
+        expectedRevision: 6,
+      }),
     });
   });
 
@@ -144,7 +200,10 @@ describe("Ali post-quote reservation API", () => {
 
     [url, request] = vi.mocked(fetch).mock.calls[0];
     expect(String(url)).toContain("/ali-dossier/settings");
-    expect(request).toMatchObject({ method: "PUT", body: JSON.stringify(value) });
+    expect(request).toMatchObject({
+      method: "PUT",
+      body: JSON.stringify(value),
+    });
   });
 
   it("updates tenant-controlled dossier activation without browser caching", async () => {
@@ -156,6 +215,45 @@ describe("Ali post-quote reservation API", () => {
       method: "PUT",
       cache: "no-store",
       body: JSON.stringify({ enabled: true }),
+    });
+  });
+
+  it("loads and saves V2 active-client timing without browser caching", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ reminderSendEnabled: false }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    await fetchAliReservationV2Settings();
+    let [url, request] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain("/ali-reservation-v2/settings");
+    expect(request).toMatchObject({
+      cache: "no-store",
+      headers: expect.objectContaining({ "Cache-Control": "no-cache" }),
+    });
+
+    vi.mocked(fetch).mockClear();
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ reminderSendEnabled: false }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const value = {
+      holdActiveClientHours: 24,
+      reminderActiveClientHours: [3, 12, 21],
+      quietHoursStart: "20:30",
+      quietHoursEnd: "08:30",
+      defaultTimezone: "America/Curacao",
+    };
+    await updateAliReservationV2Settings(value);
+    [url, request] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain("/ali-reservation-v2/settings");
+    expect(request).toMatchObject({
+      method: "PUT",
+      cache: "no-store",
+      body: JSON.stringify(value),
     });
   });
 
