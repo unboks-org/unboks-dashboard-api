@@ -8,16 +8,20 @@ export function useRentalControlCapability() {
     queryFn: ({ signal }) => fetchRentalCapability(signal),
     staleTime: 30_000,
     gcTime: 0,
-    refetchOnMount: "always",
+    // RentalControlCenter also observes this capability after the page-level
+    // check succeeds. Refetching fresh data for every new observer makes the
+    // page hide and unmount the editor, which mounts another observer and
+    // creates an endless fetch/mount loop.
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
   return {
     tenantSlug: query.data?.tenantSlug ?? null,
     enabled: query.data?.enabled === true,
-    // Refetches may begin with an older cached `enabled: false` value. Keep
-    // showing the verification state until the authoritative request settles
-    // instead of briefly claiming that the tenant is disabled.
-    isLoading: query.isPending || query.isFetching,
+    // Only the first request blocks the page. A background verification must
+    // not tear down already-authorized controls and restart their queries.
+    isLoading: query.isPending,
+    isRefreshing: query.isFetching && !query.isPending,
     isUnavailable: query.isError,
     error: query.error,
     retry: query.refetch,
