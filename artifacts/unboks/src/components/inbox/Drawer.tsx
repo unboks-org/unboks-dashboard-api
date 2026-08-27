@@ -24,6 +24,7 @@ import {
   Pause,
   Play,
   LoaderCircle,
+  CarFront,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Channel } from "@/data/conversations";
@@ -37,7 +38,7 @@ const XIcon = ({ className, strokeWidth: _sw }: { className?: string; strokeWidt
   </svg>
 );
 
-export type NavId = "inbox" | "escalations" | "bookings" | "followups" | "images" | "settings" | "analytics" | "help" | `channel:${Channel}`;
+export type NavId = "inbox" | "escalations" | "bookings" | "followups" | "rental" | "images" | "settings" | "analytics" | "help" | `channel:${Channel}`;
 
 interface DrawerProps {
   open: boolean;
@@ -108,11 +109,17 @@ export function Drawer({
     return isChannelVisible(ch as Parameters<typeof isChannelVisible>[0]);
   });
 
-  const WORKSPACE: NavItem[] = isDespertares || isRental
+  const WORKSPACE: NavItem[] = isDespertares
     ? [
         { id: "followups", icon: PhoneCall, label: ui.followUpsLabel },
         { id: "settings", icon: SettingsIcon, label: ui.settingsLabel },
       ]
+    : isRental
+      ? [
+          { id: "followups", icon: PhoneCall, label: ui.followUpsLabel },
+          { id: "rental", icon: CarFront, label: "Rental" },
+          { id: "settings", icon: SettingsIcon, label: ui.settingsLabel },
+        ]
     : [
         { id: "bookings", icon: Calendar, label: bookingsLabel, count: appointmentsCount },
         { id: "images", icon: ImageIcon, label: "Images" },
