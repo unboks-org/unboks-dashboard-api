@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { BottomNav } from "@/components/inbox/BottomNav";
+import { EXTERNAL_ROUTES } from "@/components/inbox/DashboardShell";
 import { Drawer } from "@/components/inbox/Drawer";
 
 vi.mock("@/hooks/use-icp-channel-visibility", () => ({
@@ -78,5 +79,10 @@ describe("Ali rental navigation", () => {
     render(<BottomNav active="settings" onChange={vi.fn()} />);
 
     expect(screen.queryByRole("button", { name: "Rental" })).toBeNull();
+  });
+
+  it("routes Rental to a distinct protected page instead of Settings", () => {
+    expect(EXTERNAL_ROUTES.rental).toBe("/rental");
+    expect(EXTERNAL_ROUTES.rental).not.toContain("settings");
   });
 });

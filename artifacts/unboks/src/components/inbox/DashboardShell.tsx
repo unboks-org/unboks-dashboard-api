@@ -26,11 +26,11 @@ import { RefreshButton } from "@/components/inbox/RefreshButton";
 import { OnboardingBanner } from "@/components/onboarding/OnboardingBanner";
 import { motion, AnimatePresence } from "framer-motion";
 
-const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
+export const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
   followups: "/follow-ups",
   images: "/images",
-  rental: "/settings?category=rental",
+  rental: "/rental",
   settings: "/settings",
   analytics: "/analytics",
   help: "/help",
