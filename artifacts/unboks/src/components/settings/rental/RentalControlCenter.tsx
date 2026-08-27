@@ -100,11 +100,7 @@ function errorMessage(error: unknown, fallback: string): string {
     : fallback;
 }
 
-export function RentalControlCenter({
-  onDirtyChange,
-}: {
-  onDirtyChange?: (dirty: boolean) => void;
-}) {
+export function RentalControlCenter() {
   const activeTenant = getClientSlug();
   const draftQuery = useRentalCatalogDraft();
   const [activeView, setActiveView] = useState<RentalView>("fleet");
@@ -154,11 +150,10 @@ export function RentalControlCenter({
     [document, savedDocument],
   );
 
-  useEffect(() => {
-    onDirtyChange?.(dirty);
-  }, [dirty, onDirtyChange]);
-
-  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
+  const clearPreview = () => {
+    setPreview(null);
+    setPdfUrl(null);
+  };
 
   useEffect(() => {
     if (!dirty) return undefined;
@@ -231,7 +226,7 @@ export function RentalControlCenter({
     setSavedDocument(cloneRentalDocument(result.data.document));
     setRevision(result.data.revision);
     setCurrentVersion(result.data.currentPublishedVersion);
-    setPreview(null);
+    clearPreview();
     setValidationErrors([]);
     setValidationWarnings([]);
     setConflict(false);
@@ -303,10 +298,7 @@ export function RentalControlCenter({
       const blob = await fetchRentalPreviewPdf(result.pdfPreviewId);
       if (getClientSlug() !== requestTenant) return;
       const nextUrl = URL.createObjectURL(blob);
-      setPdfUrl((current) => {
-        if (current) URL.revokeObjectURL(current);
-        return nextUrl;
-      });
+      setPdfUrl(nextUrl);
       setPreview(result);
       setValidationErrors([]);
       toast.success("Exact no-send preview generated.");
@@ -357,7 +349,7 @@ export function RentalControlCenter({
       setCurrentVersion(published.version);
       setSavedDocument(cloneRentalDocument(published.document));
       setDocument(cloneRentalDocument(published.document));
-      setPreview(null);
+      clearPreview();
       setConflict(false);
       toast.success(`Rental catalog version ${published.version} is live.`);
       await draftQuery.refetch();
@@ -392,7 +384,7 @@ export function RentalControlCenter({
       setCurrentVersion(rolledBack.version);
       setDocument(cloneRentalDocument(rolledBack.document));
       setSavedDocument(cloneRentalDocument(rolledBack.document));
-      setPreview(null);
+      clearPreview();
       setConflict(false);
       toast.success(`Rollback published as version ${rolledBack.version}.`);
       await draftQuery.refetch();
@@ -405,18 +397,6 @@ export function RentalControlCenter({
       setPendingAction(null);
     }
   };
-
-  if (draftQuery.capability.isLoading) {
-    return (
-      <div className="grid min-h-[280px] place-items-center rounded-2xl border border-[#e4e7ec] bg-white">
-        <div className="flex items-center gap-2 text-[13px] text-[#5f6368]">
-          <Loader2 className="h-4 w-4 animate-spin" /> Checking rental access…
-        </div>
-      </div>
-    );
-  }
-
-  if (!draftQuery.capability.enabled) return null;
 
   if (draftQuery.isError) {
     return (

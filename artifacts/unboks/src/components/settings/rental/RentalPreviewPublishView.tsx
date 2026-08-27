@@ -64,6 +64,9 @@ export function RentalPreviewPublishView({
   const activeCategories = document.categories.filter(
     (item) => item.active && !item.archivedAt,
   );
+  const activeSupplements = document.supplements.filter(
+    (item) => item.active && !item.archivedAt,
+  );
   const selectionValue = scenario.carId
     ? `car:${scenario.carId}`
     : scenario.categoryId
@@ -112,7 +115,7 @@ export function RentalPreviewPublishView({
                 });
               }}
             >
-              <option value="">Choose a published option</option>
+              <option value="">Choose a draft option</option>
               {activeCars.map((car) => (
                 <option key={car.id} value={`car:${car.id}`}>
                   {car.displayName}
@@ -142,78 +145,75 @@ export function RentalPreviewPublishView({
             </RentalSelect>
           </FieldShell>
         </div>
-        {document.supplements.filter((item) => item.active && !item.archivedAt)
-          .length > 0 ? (
+        {activeSupplements.length > 0 ? (
           <div className="mt-4 border-t border-[#eef0f3] pt-4">
             <p className="mb-2 text-[12px] font-medium text-[#3c4043]">
               Supplements
             </p>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {document.supplements
-                .filter((item) => item.active && !item.archivedAt)
-                .map((supplement) => {
-                  const selected = scenario.supplements.find(
-                    (item) => item.id === supplement.id,
-                  );
-                  return (
-                    <label
-                      key={supplement.id}
-                      className="flex items-center gap-3 rounded-lg border border-[#e5e7eb] bg-[#fbfcff] p-3"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={Boolean(selected)}
+              {activeSupplements.map((supplement) => {
+                const selected = scenario.supplements.find(
+                  (item) => item.id === supplement.id,
+                );
+                return (
+                  <label
+                    key={supplement.id}
+                    className="flex items-center gap-3 rounded-lg border border-[#e5e7eb] bg-[#fbfcff] p-3"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={Boolean(selected)}
+                      onChange={(event) =>
+                        onScenario({
+                          ...scenario,
+                          supplements: event.target.checked
+                            ? [
+                                ...scenario.supplements,
+                                { id: supplement.id, quantity: 1 },
+                              ]
+                            : scenario.supplements.filter(
+                                (item) => item.id !== supplement.id,
+                              ),
+                        })
+                      }
+                    />
+                    <span className="min-w-0 flex-1 text-[12px] text-[#202124]">
+                      <span className="block font-medium">
+                        {supplement.name}
+                      </span>
+                      <span className="text-[#5f6368]">
+                        USD {formatCents(supplement.priceCents)}{" "}
+                        {supplement.billingBasis === "per_day"
+                          ? "/ day"
+                          : "/ rental"}
+                      </span>
+                    </span>
+                    {selected && supplement.quantitySelectable ? (
+                      <RentalInput
+                        aria-label={`${supplement.name} quantity`}
+                        type="number"
+                        min={1}
+                        max={supplement.maxQuantity}
+                        value={selected.quantity}
                         onChange={(event) =>
                           onScenario({
                             ...scenario,
-                            supplements: event.target.checked
-                              ? [
-                                  ...scenario.supplements,
-                                  { id: supplement.id, quantity: 1 },
-                                ]
-                              : scenario.supplements.filter(
-                                  (item) => item.id !== supplement.id,
-                                ),
+                            supplements: scenario.supplements.map((item) =>
+                              item.id === supplement.id
+                                ? {
+                                    ...item,
+                                    quantity: Number(event.target.value),
+                                  }
+                                : item,
+                            ),
                           })
                         }
+                        className="w-20"
                       />
-                      <span className="min-w-0 flex-1 text-[12px] text-[#202124]">
-                        <span className="block font-medium">
-                          {supplement.name}
-                        </span>
-                        <span className="text-[#5f6368]">
-                          USD {formatCents(supplement.priceCents)}{" "}
-                          {supplement.billingBasis === "per_day"
-                            ? "/ day"
-                            : "/ rental"}
-                        </span>
-                      </span>
-                      {selected && supplement.quantitySelectable ? (
-                        <RentalInput
-                          aria-label={`${supplement.name} quantity`}
-                          type="number"
-                          min={1}
-                          max={supplement.maxQuantity}
-                          value={selected.quantity}
-                          onChange={(event) =>
-                            onScenario({
-                              ...scenario,
-                              supplements: scenario.supplements.map((item) =>
-                                item.id === supplement.id
-                                  ? {
-                                      ...item,
-                                      quantity: Number(event.target.value),
-                                    }
-                                  : item,
-                              ),
-                            })
-                          }
-                          className="w-20"
-                        />
-                      ) : null}
-                    </label>
-                  );
-                })}
+                    ) : null}
+                  </label>
+                );
+              })}
             </div>
           </div>
         ) : null}

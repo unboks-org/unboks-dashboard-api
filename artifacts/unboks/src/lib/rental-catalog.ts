@@ -2,10 +2,10 @@ import { apiFetch, type KnowledgeMedia } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { captureTenantRequestScope, getApiBase } from "@/lib/tenant";
 
-export type RentalTransmission = "automatic" | "manual";
-export type RentalBillingBasis = "per_day" | "per_rental";
+type RentalTransmission = "automatic" | "manual";
+type RentalBillingBasis = "per_day" | "per_rental";
 
-export interface RentalSettings {
+interface RentalSettings {
   currency: string;
   quoteValidityHours: number;
   staffQuoteEmail: string;
@@ -68,7 +68,7 @@ export interface RentalDraftEnvelope {
   updatedBy: string | null;
 }
 
-export interface RentalCapabilityEnvelope {
+interface RentalCapabilityEnvelope {
   tenantSlug: string;
   enabled: boolean;
 }
@@ -79,7 +79,7 @@ export interface RentalFieldError {
   message: string;
 }
 
-export interface RentalValidationResult {
+interface RentalValidationResult {
   tenantSlug: string;
   valid: boolean;
   errors: RentalFieldError[];
@@ -120,7 +120,7 @@ export interface RentalPreviewResult {
   pdfBytes: number;
 }
 
-export interface RentalPublishedVersion {
+interface RentalPublishedVersion {
   tenantSlug: string;
   version: number;
   contentHash: string;
@@ -131,6 +131,19 @@ export interface RentalPublishedVersion {
   current: boolean;
   draftRevision?: number;
   document: RentalCatalogDocument;
+}
+
+async function rentalApiFetch<T extends { tenantSlug: string }>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const { tenantSlug } = captureTenantRequestScope();
+  const result = await apiFetch<T>(path, options, false, true);
+  if (result.tenantSlug !== tenantSlug) {
+    console.error("[tenant-security] rental_body_tenant_mismatch");
+    throw new ApiError(409, "Workspace response rejected");
+  }
+  return result;
 }
 
 export function cloneRentalDocument(
@@ -179,22 +192,18 @@ export function rentalFieldErrors(error: unknown): RentalFieldError[] {
 export function fetchRentalDraft(
   signal?: AbortSignal,
 ): Promise<RentalDraftEnvelope> {
-  return apiFetch<RentalDraftEnvelope>(
-    "/rental-catalog/draft",
-    { signal, cache: "no-store" },
-    false,
-    true,
-  );
+  return rentalApiFetch<RentalDraftEnvelope>("/rental-catalog/draft", {
+    signal,
+    cache: "no-store",
+  });
 }
 
 export function fetchRentalCapability(
   signal?: AbortSignal,
 ): Promise<RentalCapabilityEnvelope> {
-  return apiFetch<RentalCapabilityEnvelope>(
+  return rentalApiFetch<RentalCapabilityEnvelope>(
     "/rental-catalog/capability",
     { signal, cache: "no-store" },
-    false,
-    true,
   );
 }
 
@@ -202,74 +211,49 @@ export function saveRentalDraft(
   expectedRevision: number,
   document: RentalCatalogDocument,
 ): Promise<RentalDraftEnvelope> {
-  return apiFetch<RentalDraftEnvelope>(
-    "/rental-catalog/draft",
-    {
-      method: "PUT",
-      body: JSON.stringify({ expectedRevision, document }),
-    },
-    false,
-    true,
-  );
+  return rentalApiFetch<RentalDraftEnvelope>("/rental-catalog/draft", {
+    method: "PUT",
+    body: JSON.stringify({ expectedRevision, document }),
+  });
 }
 
 export function validateRentalDraft(
   document: RentalCatalogDocument,
 ): Promise<RentalValidationResult> {
-  return apiFetch<RentalValidationResult>(
-    "/rental-catalog/validate",
-    {
-      method: "POST",
-      body: JSON.stringify({ document }),
-    },
-    false,
-    true,
-  );
+  return rentalApiFetch<RentalValidationResult>("/rental-catalog/validate", {
+    method: "POST",
+    body: JSON.stringify({ document }),
+  });
 }
 
 export function previewRentalDraft(
   document: RentalCatalogDocument,
   scenario: RentalPreviewScenario,
 ): Promise<RentalPreviewResult> {
-  return apiFetch<RentalPreviewResult>(
-    "/rental-catalog/preview",
-    {
-      method: "POST",
-      body: JSON.stringify({ document, scenario }),
-    },
-    false,
-    true,
-  );
+  return rentalApiFetch<RentalPreviewResult>("/rental-catalog/preview", {
+    method: "POST",
+    body: JSON.stringify({ document, scenario }),
+  });
 }
 
 export function publishRentalDraft(
   expectedRevision: number,
   idempotencyKey: string,
 ): Promise<RentalPublishedVersion> {
-  return apiFetch<RentalPublishedVersion>(
-    "/rental-catalog/publish",
-    {
-      method: "POST",
-      body: JSON.stringify({ expectedRevision, idempotencyKey }),
-    },
-    false,
-    true,
-  );
+  return rentalApiFetch<RentalPublishedVersion>("/rental-catalog/publish", {
+    method: "POST",
+    body: JSON.stringify({ expectedRevision, idempotencyKey }),
+  });
 }
 
 export function rollbackRentalCatalog(
   expectedCurrentVersion: number,
   idempotencyKey: string,
 ): Promise<RentalPublishedVersion> {
-  return apiFetch<RentalPublishedVersion>(
-    "/rental-catalog/rollback",
-    {
-      method: "POST",
-      body: JSON.stringify({ expectedCurrentVersion, idempotencyKey }),
-    },
-    false,
-    true,
-  );
+  return rentalApiFetch<RentalPublishedVersion>("/rental-catalog/rollback", {
+    method: "POST",
+    body: JSON.stringify({ expectedCurrentVersion, idempotencyKey }),
+  });
 }
 
 export async function fetchRentalPreviewPdf(previewId: string): Promise<Blob> {
@@ -309,37 +293,21 @@ export async function uploadRentalMedia(
   body.append("owner_id", ownerId);
   body.append("caption", caption);
   body.append("file", file);
-  const response = await apiFetch<{
+  const response = await rentalApiFetch<{
     tenantSlug: string;
     asset: KnowledgeMedia;
-  }>("/rental-catalog/media", { method: "POST", body }, false, true);
+  }>("/rental-catalog/media", { method: "POST", body });
   return response.asset;
 }
 
 export async function fetchRentalMedia(
   assetId: string,
 ): Promise<KnowledgeMedia> {
-  const response = await apiFetch<{
+  const response = await rentalApiFetch<{
     tenantSlug: string;
     asset: KnowledgeMedia;
-  }>(
-    `/rental-catalog/media/${encodeURIComponent(assetId)}`,
-    { cache: "no-store" },
-    false,
-    true,
-  );
+  }>(`/rental-catalog/media/${encodeURIComponent(assetId)}`, {
+    cache: "no-store",
+  });
   return response.asset;
-}
-
-export function deleteRentalMedia(
-  assetId: string,
-): Promise<{ tenantSlug: string; deleted: true }> {
-  return apiFetch(
-    `/rental-catalog/media/${encodeURIComponent(assetId)}`,
-    {
-      method: "DELETE",
-    },
-    false,
-    true,
-  );
 }

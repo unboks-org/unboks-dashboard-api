@@ -57,7 +57,10 @@ function SettingsCard({
 function LoadingCard() {
   return (
     <div className="flex min-h-32 items-center justify-center rounded-2xl border border-[#e8eaed] bg-white">
-      <Loader2 className="h-5 w-5 animate-spin text-[#1a73e8]" aria-label="Loading rental settings" />
+      <Loader2
+        className="h-5 w-5 animate-spin text-[#1a73e8]"
+        aria-label="Loading rental settings"
+      />
     </div>
   );
 }
@@ -68,9 +71,9 @@ export function AliDossierSettings() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [version, setVersion] = useState("");
   const [template, setTemplate] = useState<File | null>(null);
-  const [paymentMode, setPaymentMode] = useState<"fixed_link" | "per_reservation">(
-    "per_reservation",
-  );
+  const [paymentMode, setPaymentMode] = useState<
+    "fixed_link" | "per_reservation"
+  >("per_reservation");
   const [providerName, setProviderName] = useState("");
   const [paymentUrl, setPaymentUrl] = useState("");
   const [domains, setDomains] = useState("");
@@ -83,16 +86,11 @@ export function AliDossierSettings() {
     setDomains(query.data.payment.allowedDomains.join("\n"));
   }, [query.data]);
 
-  const refresh = async (next?: AliDossierTenantSettings) => {
-    if (next) {
-      queryClient.setQueryData(tenantKey(SETTINGS_KEY), next);
-    }
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: tenantKey(SETTINGS_KEY) }),
-      queryClient.invalidateQueries({
-        queryKey: tenantKey("ali-dossier-configuration"),
-      }),
-    ]);
+  const refresh = async (next: AliDossierTenantSettings) => {
+    queryClient.setQueryData(tenantKey(SETTINGS_KEY), next);
+    await queryClient.invalidateQueries({
+      queryKey: tenantKey("ali-dossier-configuration"),
+    });
   };
 
   const upload = useMutation({
@@ -144,7 +142,8 @@ export function AliDossierSettings() {
         description="Tenant-owned pre-contract and payment settings."
       >
         <p className="text-sm text-rose-700">
-          These settings are unavailable. Refresh the page or contact your Unboks team.
+          These settings are unavailable. Refresh the page or contact your
+          Unboks team.
         </p>
       </SettingsCard>
     );
@@ -189,7 +188,9 @@ export function AliDossierSettings() {
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
             <CheckCircle2 className="h-5 w-5 shrink-0" />
             <div>
-              <p className="font-semibold">Active version {current.contractTemplate.version}</p>
+              <p className="font-semibold">
+                Active version {current.contractTemplate.version}
+              </p>
               <p className="text-xs text-emerald-800">
                 {current.contractTemplate.sourceFilename}
                 {current.contractTemplate.uploadedAt
@@ -240,14 +241,19 @@ export function AliDossierSettings() {
             onClick={() => upload.mutate()}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#1a73e8] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#c8d4e6]"
           >
-            {upload.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileKey2 className="h-4 w-4" />}
+            {upload.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileKey2 className="h-4 w-4" />
+            )}
             Upload version
           </button>
         </div>
         <p className="text-xs leading-relaxed text-[#5f6368]">
-          TXT, Markdown, PDF, or DOCX. Supported placeholders include customer_name,
-          rental dates, locations, vehicle, totals, quote reference, and reservation reference.
-          Uploading a new version never rewrites an already signed contract.
+          TXT, Markdown, PDF, or DOCX. Supported placeholders include
+          customer_name, rental dates, locations, vehicle, totals, quote
+          reference, and reservation reference. Uploading a new version never
+          rewrites an already signed contract.
         </p>
       </SettingsCard>
 
@@ -256,10 +262,20 @@ export function AliDossierSettings() {
         description="Choose one tenant link or require a fresh approved link for every reservation."
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          {([
-            ["per_reservation", "Per-reservation link", "Staff creates or pastes a unique payment link in the customer file."],
-            ["fixed_link", "One tenant payment link", "Nick uses the tenant’s approved payment page for each rental."],
-          ] as const).map(([value, label, detail]) => (
+          {(
+            [
+              [
+                "per_reservation",
+                "Per-reservation link",
+                "Staff creates or pastes a unique payment link in the customer file.",
+              ],
+              [
+                "fixed_link",
+                "One tenant payment link",
+                "Nick uses the tenant’s approved payment page for each rental.",
+              ],
+            ] as const
+          ).map(([value, label, detail]) => (
             <label
               key={value}
               className={`cursor-pointer rounded-xl border p-4 ${paymentMode === value ? "border-[#1a73e8] bg-[#f3f7ff]" : "border-[#dadce0]"}`}
@@ -274,7 +290,9 @@ export function AliDossierSettings() {
                 />
                 {label}
               </span>
-              <span className="mt-1 block pl-6 text-xs leading-relaxed text-[#5f6368]">{detail}</span>
+              <span className="mt-1 block pl-6 text-xs leading-relaxed text-[#5f6368]">
+                {detail}
+              </span>
             </label>
           ))}
         </div>
@@ -326,7 +344,8 @@ export function AliDossierSettings() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs text-[#5f6368]">
             <ShieldCheck className="h-4 w-4 text-emerald-600" />
-            Nick sends only a server-validated HTTPS link. Customer messages can never set it.
+            Nick sends only a server-validated HTTPS link. Customer messages can
+            never set it.
           </div>
           <button
             type="button"
@@ -334,7 +353,9 @@ export function AliDossierSettings() {
             onClick={() => savePayment.mutate()}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#1a73e8] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#c8d4e6]"
           >
-            {savePayment.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            {savePayment.isPending && (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            )}
             Save payment settings
           </button>
         </div>
@@ -369,9 +390,8 @@ export function AliDossierRetentionSettings() {
         paperShreddingPolicy: policy.trim(),
       });
     },
-    onSuccess: async (next) => {
+    onSuccess: (next) => {
       queryClient.setQueryData(tenantKey(SETTINGS_KEY), next);
-      await queryClient.invalidateQueries({ queryKey: tenantKey(SETTINGS_KEY) });
       toast.success("Rental document-retention policy saved.");
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -421,7 +441,8 @@ export function AliDossierRetentionSettings() {
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#f8f9fa] px-4 py-3">
         <p className="text-xs leading-relaxed text-[#5f6368]">
-          Default: 90 days. Deletion removes private document bytes while preserving only a minimal audit event.
+          Default: 90 days. Deletion removes private document bytes while
+          preserving only a minimal audit event.
         </p>
         <button
           type="button"

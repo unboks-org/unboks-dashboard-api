@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { AliDossierSettings } from "@/components/settings/rental/AliDossierSettings";
 import { RentalControlCenter } from "@/components/settings/rental/RentalControlCenter";
@@ -7,16 +5,6 @@ import { useRentalControlCapability } from "@/hooks/use-rental-control-capabilit
 
 export default function Rental() {
   const capability = useRentalControlCapability();
-  const [dirty, setDirty] = useState(false);
-
-  useEffect(() => {
-    if (!dirty) return;
-    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-    };
-    window.addEventListener("beforeunload", warnBeforeUnload);
-    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
-  }, [dirty]);
 
   return (
     <DashboardShell
@@ -41,8 +29,7 @@ export default function Rental() {
               </p>
               <button
                 type="button"
-                className="mt-4 min-h-10 rounded-xl bg-[#1a73e8] px-4 text-sm font-semibold text-white hover:bg-[#1558b0] disabled:cursor-wait disabled:opacity-60"
-                disabled={capability.isLoading}
+                className="mt-4 min-h-10 rounded-xl bg-[#1a73e8] px-4 text-sm font-semibold text-white hover:bg-[#1558b0]"
                 onClick={() => void capability.retry()}
               >
                 Try again
@@ -50,14 +37,17 @@ export default function Rental() {
             </section>
           ) : capability.enabled ? (
             <>
-              <RentalControlCenter onDirtyChange={setDirty} />
+              <RentalControlCenter />
               <AliDossierSettings />
             </>
           ) : (
             <section className="rounded-2xl border border-[#f2c7c7] bg-white p-6 shadow-sm">
-              <h2 className="text-base font-semibold text-[#202124]">Rental controls unavailable</h2>
+              <h2 className="text-base font-semibold text-[#202124]">
+                Rental controls unavailable
+              </h2>
               <p className="mt-2 text-sm leading-6 text-[#5f6368]">
-                This workspace is not enabled for rental management. No settings were changed.
+                This workspace is not enabled for rental management. No settings
+                were changed.
               </p>
             </section>
           )}
