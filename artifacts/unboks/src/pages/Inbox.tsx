@@ -58,6 +58,7 @@ import { EscalationReplyComposer } from "@/components/inbox/EscalationReplyCompo
 import {
   canShowEscalationHeaderResolve,
   EscalationHeaderResolveButton,
+  resolveEscalationRenderState,
 } from "@/components/inbox/EscalationHeaderResolveButton";
 import { ConversationReplyComposer } from "@/components/inbox/ConversationReplyComposer";
 import {
@@ -437,6 +438,11 @@ function ConversationDetailPane({
   // row when the backend emits duplicates.
   const { data: escalations } = useEscalations("all");
   const dbId = useMemo(() => {
+    // A row created by `escalationToConversationRow` already carries the
+    // canonical active escalation id. Prefer it so the action remains
+    // available even when the detail endpoint omits escalation fields or the
+    // row's display id cannot be matched back to a phone number.
+    if (conversation.escalationId) return conversation.escalationId;
     if (!escalations) return null;
     const active = [];
     for (const raw of escalations as unknown[]) {
@@ -448,10 +454,20 @@ function ConversationDetailPane({
       if (n.phone && n.phone === conversation.id) return n.id;
     }
     return null;
-  }, [escalations, conversation.id]);
+  }, [escalations, conversation.escalationId, conversation.id]);
 
-  const showBanner = detail?.escalated && !detail?.escalationResolved;
-  const backendMode = detail?.escalationMode ?? null;
+  const escalationState = resolveEscalationRenderState({
+    detailEscalated: detail?.escalated,
+    detailResolved: detail?.escalationResolved,
+    detailMode: detail?.escalationMode,
+    rowEscalated: conversation.escalated,
+    rowResolved: resolvedContext,
+    rowEscalationId: conversation.escalationId,
+    rowMode: conversation.escalationMode,
+    matchedEscalationId: dbId,
+  });
+  const showBanner = escalationState.active;
+  const backendMode = escalationState.mode;
   // Hard signals on the detail payload — used to infer the initial mode when
   // the backend hasn't set escalationMode yet, per spec.
   const hasHardSignals = Boolean(
