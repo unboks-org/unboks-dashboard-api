@@ -12,6 +12,53 @@ export interface EscalationHeaderResolveVisibility {
   escalationId: string | null;
 }
 
+export interface EscalationRenderStateInput {
+  detailEscalated?: boolean | null;
+  detailResolved?: boolean | null;
+  detailMode?: "soft" | "hard" | "order" | null;
+  rowEscalated: boolean;
+  rowResolved: boolean;
+  rowEscalationId?: string | null;
+  rowMode?: "soft" | "hard" | "order" | null;
+  matchedEscalationId?: string | null;
+}
+
+export interface EscalationRenderState {
+  active: boolean;
+  escalationId: string | null;
+  mode: "soft" | "hard" | "order" | null;
+}
+
+/**
+ * Reconcile the two independently-loaded escalation projections used by the
+ * inbox. Rows sourced from `/escalations` are authoritative for active state
+ * and identity; the conversation-detail endpoint may legitimately omit its
+ * optional escalation fields. A resolved signal from either projection still
+ * fails closed into history/read-only mode.
+ */
+export function resolveEscalationRenderState({
+  detailEscalated,
+  detailResolved,
+  detailMode,
+  rowEscalated,
+  rowResolved,
+  rowEscalationId,
+  rowMode,
+  matchedEscalationId,
+}: EscalationRenderStateInput): EscalationRenderState {
+  const escalationId = rowEscalationId || matchedEscalationId || null;
+  const resolved = Boolean(detailResolved || rowResolved);
+  const activeSignal = Boolean(
+    detailEscalated || rowEscalated || escalationId,
+  );
+
+  return {
+    active: activeSignal && !resolved,
+    escalationId,
+    mode: detailMode ?? rowMode ?? null,
+  };
+}
+
 export function canShowEscalationHeaderResolve({
   activeEscalation,
   archived,

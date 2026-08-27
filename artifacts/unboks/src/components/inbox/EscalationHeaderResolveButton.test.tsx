@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   canShowEscalationHeaderResolve,
   EscalationHeaderResolveButton,
+  resolveEscalationRenderState,
 } from "./EscalationHeaderResolveButton";
 
 describe("EscalationHeaderResolveButton", () => {
@@ -54,5 +55,70 @@ describe("EscalationHeaderResolveButton", () => {
     expect(canShowEscalationHeaderResolve({ ...base, resolved: true })).toBe(false);
     expect(canShowEscalationHeaderResolve({ ...base, activeEscalation: false })).toBe(false);
     expect(canShowEscalationHeaderResolve({ ...base, escalationId: null })).toBe(false);
+  });
+
+  it("trusts an active escalation row when detail omits escalation state", () => {
+    const state = resolveEscalationRenderState({
+      detailEscalated: false,
+      detailResolved: false,
+      detailMode: null,
+      rowEscalated: true,
+      rowResolved: false,
+      rowEscalationId: "sofia-soft-escalation",
+      rowMode: "soft",
+      matchedEscalationId: null,
+    });
+
+    expect(state).toEqual({
+      active: true,
+      escalationId: "sofia-soft-escalation",
+      mode: "soft",
+    });
+    expect(canShowEscalationHeaderResolve({
+      activeEscalation: state.active,
+      archived: false,
+      resolved: false,
+      mode: state.mode,
+      escalationId: state.escalationId,
+    })).toBe(true);
+  });
+
+  it("uses the active-list match when a plain inbox row lacks escalation fields", () => {
+    expect(resolveEscalationRenderState({
+      detailEscalated: undefined,
+      detailResolved: undefined,
+      rowEscalated: false,
+      rowResolved: false,
+      matchedEscalationId: "active-list-id",
+      rowMode: null,
+      detailMode: "hard",
+    })).toEqual({
+      active: true,
+      escalationId: "active-list-id",
+      mode: "hard",
+    });
+  });
+
+  it("fails closed for resolved rows and ordinary conversations", () => {
+    expect(resolveEscalationRenderState({
+      detailEscalated: true,
+      detailResolved: false,
+      rowEscalated: true,
+      rowResolved: true,
+      rowEscalationId: "resolved-id",
+      rowMode: "soft",
+    }).active).toBe(false);
+
+    expect(resolveEscalationRenderState({
+      detailEscalated: false,
+      detailResolved: false,
+      rowEscalated: false,
+      rowResolved: false,
+      rowMode: null,
+    })).toEqual({
+      active: false,
+      escalationId: null,
+      mode: null,
+    });
   });
 });
