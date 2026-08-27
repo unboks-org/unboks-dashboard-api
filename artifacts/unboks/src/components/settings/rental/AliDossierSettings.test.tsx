@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   updateActivation: vi.fn(),
   updateSettings: vi.fn(),
   uploadTemplate: vi.fn(),
+  fetchV2Settings: vi.fn(),
+  updateV2Settings: vi.fn(),
 }));
 
 vi.mock("@/lib/api", async (importOriginal) => {
@@ -20,6 +22,8 @@ vi.mock("@/lib/api", async (importOriginal) => {
     updateAliDossierActivation: mocks.updateActivation,
     updateAliDossierSettings: mocks.updateSettings,
     uploadAliContractTemplate: mocks.uploadTemplate,
+    fetchAliReservationV2Settings: mocks.fetchV2Settings,
+    updateAliReservationV2Settings: mocks.updateV2Settings,
   };
 });
 
@@ -78,6 +82,22 @@ describe("Ali tenant-owned dossier settings", () => {
     mocks.updateActivation.mockReset();
     mocks.updateSettings.mockReset();
     mocks.uploadTemplate.mockReset();
+    mocks.fetchV2Settings.mockReset().mockResolvedValue({
+      holdActiveClientHours: 24,
+      reminderActiveClientHours: [3, 12, 21],
+      quietHoursStart: "20:30",
+      quietHoursEnd: "08:30",
+      defaultTimezone: "America/Curacao",
+      reminderSendEnabled: false,
+    });
+    mocks.updateV2Settings.mockReset().mockResolvedValue({
+      holdActiveClientHours: 26,
+      reminderActiveClientHours: [4, 13, 22],
+      quietHoursStart: "21:00",
+      quietHoursEnd: "07:30",
+      defaultTimezone: "Europe/Lisbon",
+      reminderSendEnabled: false,
+    });
   });
 
   it("uploads an immutable tenant contract template with its version", async () => {
@@ -117,7 +137,9 @@ describe("Ali tenant-owned dossier settings", () => {
     });
 
     expect((toggle as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText(/approved contract template missing/i)).toBeTruthy();
+    expect(
+      screen.getByText(/approved contract template missing/i),
+    ).toBeTruthy();
     fireEvent.click(toggle);
     expect(mocks.updateActivation).not.toHaveBeenCalled();
   });
@@ -176,8 +198,12 @@ describe("Ali tenant-owned dossier settings", () => {
     );
     expect(screen.queryByText(/active version/i)).toBeNull();
     expect(screen.queryByDisplayValue(/https:\/\//i)).toBeNull();
-    expect(screen.getByPlaceholderText(/configured for pay\.example\.test/i)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /save payment settings/i }));
+    expect(
+      screen.getByPlaceholderText(/configured for pay\.example\.test/i),
+    ).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole("button", { name: /save payment settings/i }),
+    );
 
     await waitFor(() =>
       expect(mocks.updateSettings).toHaveBeenCalledWith(
@@ -189,7 +215,9 @@ describe("Ali tenant-owned dossier settings", () => {
         }),
       ),
     );
-    expect(mocks.updateSettings.mock.calls[0][0]).not.toHaveProperty("paymentUrl");
+    expect(mocks.updateSettings.mock.calls[0][0]).not.toHaveProperty(
+      "paymentUrl",
+    );
   });
 
   it("saves the 90-day tenant retention and shredding policy", async () => {
@@ -210,7 +238,9 @@ describe("Ali tenant-owned dossier settings", () => {
     fireEvent.change(screen.getByLabelText(/paper-copy shredding policy/i), {
       target: { value: "Securely shred paper copies after 120 days." },
     });
-    fireEvent.click(screen.getByRole("button", { name: /save rental retention/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /save rental retention/i }),
+    );
 
     await waitFor(() =>
       expect(mocks.updateSettings).toHaveBeenCalledWith(
@@ -220,5 +250,36 @@ describe("Ali tenant-owned dossier settings", () => {
         }),
       ),
     );
+  });
+
+  it("saves active-client hold, reminder and quiet-hour settings", async () => {
+    renderSettings(<AliDossierSettings />);
+    fireEvent.change(await screen.findByLabelText(/hold duration/i), {
+      target: { value: "26" },
+    });
+    fireEvent.change(screen.getByLabelText(/reminder hours/i), {
+      target: { value: "4, 13, 22" },
+    });
+    fireEvent.change(screen.getByLabelText(/quiet hours start/i), {
+      target: { value: "21:00" },
+    });
+    fireEvent.change(screen.getByLabelText(/quiet hours end/i), {
+      target: { value: "07:30" },
+    });
+    fireEvent.change(screen.getByLabelText(/client timezone fallback/i), {
+      target: { value: "Europe/Lisbon" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save timing/i }));
+
+    await waitFor(() =>
+      expect(mocks.updateV2Settings).toHaveBeenCalledWith({
+        holdActiveClientHours: 26,
+        reminderActiveClientHours: [4, 13, 22],
+        quietHoursStart: "21:00",
+        quietHoursEnd: "07:30",
+        defaultTimezone: "Europe/Lisbon",
+      }),
+    );
+    expect(screen.getByText(/safety gate:/i).textContent).toContain("disabled");
   });
 });

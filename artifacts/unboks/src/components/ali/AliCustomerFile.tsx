@@ -33,6 +33,7 @@ import {
   fetchAliDossierBlob,
   fetchAliSignedContractBlob,
   markAliLicenseBackNotRequired,
+  reclassifyAliDocument,
   recordAliPickupInspection,
   requestAliDocumentReplacement,
   requestAliDocuments,
@@ -42,6 +43,7 @@ import {
   sendAliPaymentLink,
   setAliPaymentLink,
   updateAliFinalNotes,
+  type AliDocumentSlot,
   type AliReservationDocument,
 } from "@/lib/api";
 import { ApiError } from "@/lib/error";
@@ -60,8 +62,19 @@ type DossierAction =
       kind: "review-document";
       documentId: string;
       decision: "verified" | "rejected";
+      reason?: string;
     }
-  | { kind: "replace-document"; documentId: string }
+  | { kind: "replace-document"; documentId: string; reason: string }
+  | {
+      kind: "reclassify-document";
+      documentId: string;
+      slot:
+        | "license_front"
+        | "license_back"
+        | "passport"
+        | "identity_front"
+        | "identity_back";
+    }
   | { kind: "delete-document"; documentId: string }
   | { kind: "license-back-not-required" }
   | { kind: "send-contract" }
@@ -70,6 +83,7 @@ type DossierAction =
   | {
       kind: "review-payment";
       decision: "verified" | "rejected" | "not_required";
+      reason?: string;
     }
   | { kind: "save-notes"; notes: string }
   | { kind: "confirm" }
@@ -79,6 +93,10 @@ const slotLabels = {
   license_front: "Driver’s licence — front",
   license_back: "Driver’s licence — back",
   identity: "Passport or national ID",
+  passport: "Passport",
+  identity_front: "ID card — front",
+  identity_back: "ID card — back",
+  unclassified: "Unclassified WhatsApp document",
 } as const;
 
 const statusTone: Record<string, string> = {
@@ -87,6 +105,8 @@ const statusTone: Record<string, string> = {
   approved: "border-emerald-200 bg-emerald-50 text-emerald-700",
   confirmed: "border-emerald-200 bg-emerald-50 text-emerald-700",
   received: "border-sky-200 bg-sky-50 text-sky-700",
+  unclassified: "border-violet-200 bg-violet-50 text-violet-700",
+  quarantined: "border-rose-200 bg-rose-50 text-rose-700",
   viewed: "border-sky-200 bg-sky-50 text-sky-700",
   sent: "border-sky-200 bg-sky-50 text-sky-700",
   link_sent: "border-sky-200 bg-sky-50 text-sky-700",
@@ -137,30 +157,43 @@ function safeAmount(value: unknown): string {
     : "Not available";
 }
 
-function latestDocuments(
-  documents: AliReservationDocument[],
-): AliReservationDocument[] {
+function latestDocuments(documents: AliReservationDocument[]) {
   const latest = new Map<string, AliReservationDocument>();
   for (const document of documents) {
     const current = latest.get(document.slot);
     if (!current || document.version > current.version)
       latest.set(document.slot, document);
   }
-  return (["license_front", "license_back", "identity"] as const)
-    .map((slot) => latest.get(slot))
-    .filter((document): document is AliReservationDocument =>
-      Boolean(document),
-    );
+  const order = [
+    "license_front",
+    "license_back",
+    "passport",
+    "identity_front",
+    "identity_back",
+    "identity",
+    "unclassified",
+  ];
+  return [...latest.values()].sort(
+    (a, b) => order.indexOf(a.slot) - order.indexOf(b.slot),
+  );
 }
 
 function eventLabel(eventType: string): string {
   return eventType.replaceAll("_", " ");
 }
 
+function formatRemaining(seconds: number): string {
+  const safe = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
+  return `${hours}h ${minutes}m`;
+}
+
 export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
   const client = useQueryClient();
   const [paymentUrl, setPaymentUrl] = useState("");
   const [paymentReference, setPaymentReference] = useState("");
+  const [paymentReviewReason, setPaymentReviewReason] = useState("");
   const [notes, setNotes] = useState<string | null>(null);
   const actionLock = useRef(false);
   const lastActionRef = useRef<string | null>(null);
@@ -168,6 +201,7 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
   useEffect(() => {
     setPaymentUrl("");
     setPaymentReference("");
+    setPaymentReviewReason("");
     setNotes(null);
   }, [publicId]);
 
@@ -212,11 +246,20 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
             request.documentId,
             request.decision,
             revision,
+            request.reason || "",
           );
         case "replace-document":
           return requestAliDocumentReplacement(
             publicId,
             request.documentId,
+            revision,
+            request.reason,
+          );
+        case "reclassify-document":
+          return reclassifyAliDocument(
+            publicId,
+            request.documentId,
+            request.slot,
             revision,
           );
         case "delete-document":
@@ -235,7 +278,12 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
         case "send-payment":
           return sendAliPaymentLink(publicId);
         case "review-payment":
-          return reviewAliPayment(publicId, request.decision, revision);
+          return reviewAliPayment(
+            publicId,
+            request.decision,
+            revision,
+            request.reason || "",
+          );
         case "save-notes":
           return updateAliFinalNotes(publicId, request.notes, revision);
         case "confirm":
@@ -250,6 +298,7 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
         setPaymentReference("");
       }
       if (request.kind === "save-notes") setNotes(request.notes);
+      if (request.kind === "review-payment") setPaymentReviewReason("");
       await refresh();
       toast.success(
         request.kind === "confirm"
@@ -359,6 +408,7 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
   );
   const finalNotes = notes ?? file.final_notes;
   const busy = action.isPending || printDossier.isPending || preview.isPending;
+  const workflowV2 = file.workflow_v2;
 
   return (
     <section
@@ -401,6 +451,53 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
       </div>
 
       <div className="space-y-5 p-5">
+        {workflowV2 && (
+          <div
+            className="rounded-xl border border-sky-200 bg-sky-50/70 p-4"
+            data-testid="ali-reservation-v2-progress"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-sky-700">
+                  Current reservation step
+                </p>
+                <p className="mt-1 text-base font-semibold capitalize text-slate-950">
+                  {readableStatus(workflowV2.state)}
+                </p>
+                <p className="mt-1 text-sm text-slate-600">
+                  Responsible now: {workflowV2.responsibleParty} · Next:{" "}
+                  {readableStatus(workflowV2.nextAction)}
+                </p>
+              </div>
+              <Status value={workflowV2.clock.state} />
+            </div>
+            <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+              <div className="rounded-lg bg-white p-3">
+                <span className="block text-slate-500">
+                  Active-client time left
+                </span>
+                <strong className="mt-1 block text-slate-900">
+                  {formatRemaining(workflowV2.clock.remainingSeconds)}
+                </strong>
+              </div>
+              <div className="rounded-lg bg-white p-3">
+                <span className="block text-slate-500">Clock</span>
+                <strong className="mt-1 block capitalize text-slate-900">
+                  {workflowV2.clock.state}
+                  {workflowV2.clock.pauseReason
+                    ? ` · ${readableStatus(workflowV2.clock.pauseReason)}`
+                    : ""}
+                </strong>
+              </div>
+              <div className="rounded-lg bg-white p-3">
+                <span className="block text-slate-500">Client timezone</span>
+                <strong className="mt-1 block text-slate-900">
+                  {workflowV2.clock.clientTimezone}
+                </strong>
+              </div>
+            </div>
+          </div>
+        )}
         {file.availability_status === "pending" && (
           <ControlBlock
             title="1. Confirm vehicle availability"
@@ -461,17 +558,31 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
                         decision: "verified",
                       })
                     }
-                    onReject={() =>
+                    onRejectWithReason={(reason) =>
                       runAction({
                         kind: "review-document",
                         documentId: document.public_id,
                         decision: "rejected",
+                        reason,
                       })
                     }
-                    onReplace={() =>
+                    onReplace={(reason) =>
                       runAction({
                         kind: "replace-document",
                         documentId: document.public_id,
+                        reason,
+                      })
+                    }
+                    reclassifySlot={
+                      document.slot === "unclassified"
+                        ? workflowV2?.expectedDocumentSlot || null
+                        : null
+                    }
+                    onReclassify={(slot) =>
+                      runAction({
+                        kind: "reclassify-document",
+                        documentId: document.public_id,
+                        slot,
                       })
                     }
                     onDelete={() => {
@@ -489,26 +600,28 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
                   />
                 ))}
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <PrimaryButton
-                  disabled={busy}
-                  onClick={() => runAction({ kind: "request-documents" })}
-                >
-                  <Send className="h-4 w-4" /> Request secure uploads
-                </PrimaryButton>
-                {!documents.some(
-                  (document) => document.slot === "license_back",
-                ) && (
-                  <SecondaryButton
+              {!workflowV2 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <PrimaryButton
                     disabled={busy}
-                    onClick={() =>
-                      runAction({ kind: "license-back-not-required" })
-                    }
+                    onClick={() => runAction({ kind: "request-documents" })}
                   >
-                    Back not required
-                  </SecondaryButton>
-                )}
-              </div>
+                    <Send className="h-4 w-4" /> Request secure uploads
+                  </PrimaryButton>
+                  {!documents.some(
+                    (document) => document.slot === "license_back",
+                  ) && (
+                    <SecondaryButton
+                      disabled={busy}
+                      onClick={() =>
+                        runAction({ kind: "license-back-not-required" })
+                      }
+                    >
+                      Back not required
+                    </SecondaryButton>
+                  )}
+                </div>
+              )}
             </ControlBlock>
 
             <ControlBlock
@@ -529,14 +642,14 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
                   >
                     <ExternalLink className="h-4 w-4" /> View signed PDF
                   </SecondaryButton>
-                ) : (
+                ) : !workflowV2 ? (
                   <PrimaryButton
                     disabled={busy}
                     onClick={() => runAction({ kind: "send-contract" })}
                   >
                     <Send className="h-4 w-4" /> Send pre-contract
                   </PrimaryButton>
-                )}
+                ) : null}
               </div>
             </ControlBlock>
 
@@ -597,13 +710,16 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
               file.payment.tenantDefaultAvailable ? (
                 <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_auto] sm:items-end">
                   <p className="text-xs leading-relaxed text-slate-500">
-                    Use the tenant-approved payment page. The saved URL stays server-side.
+                    Use the tenant-approved payment page. The saved URL stays
+                    server-side.
                   </p>
                   <input
                     type="text"
                     autoComplete="off"
                     value={paymentReference}
-                    onChange={(event) => setPaymentReference(event.target.value)}
+                    onChange={(event) =>
+                      setPaymentReference(event.target.value)
+                    }
                     placeholder="Reference"
                     aria-label="Payment reference"
                     className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-primary"
@@ -622,39 +738,78 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
                   </PrimaryButton>
                 </div>
               ) : null}
-              <div className="mt-3 flex flex-wrap gap-2">
-                {file.payment.domain && file.payment_status === "not_sent" && (
-                  <PrimaryButton
-                    disabled={busy}
-                    onClick={() => runAction({ kind: "send-payment" })}
+              {workflowV2 &&
+              ["link_sent", "customer_reports_paid"].includes(
+                file.payment_status,
+              ) ? (
+                <div className="mt-3 space-y-1.5">
+                  <label
+                    htmlFor={`payment-review-reason-${publicId}`}
+                    className="text-xs font-semibold text-slate-700"
                   >
-                    <Send className="h-4 w-4" /> Send link
-                  </PrimaryButton>
-                )}
+                    Review reason
+                    {file.payment_status === "link_sent"
+                      ? " (required for early override)"
+                      : " (required to reject)"}
+                  </label>
+                  <textarea
+                    id={`payment-review-reason-${publicId}`}
+                    value={paymentReviewReason}
+                    onChange={(event) =>
+                      setPaymentReviewReason(event.target.value)
+                    }
+                    rows={2}
+                    maxLength={500}
+                    placeholder="Record the reason for an override or rejection"
+                    className="w-full resize-y rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-primary"
+                  />
+                </div>
+              ) : null}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {!workflowV2 &&
+                  file.payment.domain &&
+                  file.payment_status === "not_sent" && (
+                    <PrimaryButton
+                      disabled={busy}
+                      onClick={() => runAction({ kind: "send-payment" })}
+                    >
+                      <Send className="h-4 w-4" /> Send link
+                    </PrimaryButton>
+                  )}
                 {["link_sent", "customer_reports_paid"].includes(
                   file.payment_status,
                 ) && (
                   <PrimaryButton
-                    disabled={busy}
+                    disabled={
+                      busy ||
+                      (Boolean(workflowV2) &&
+                        file.payment_status === "link_sent" &&
+                        !paymentReviewReason.trim())
+                    }
                     onClick={() =>
                       runAction({
                         kind: "review-payment",
                         decision: "verified",
+                        reason: paymentReviewReason,
                       })
                     }
                   >
                     Verify payment
                   </PrimaryButton>
                 )}
-                {!["verified", "not_required"].includes(
-                  file.payment_status,
-                ) && (
+                {(!workflowV2
+                  ? !["verified", "not_required"].includes(file.payment_status)
+                  : file.payment_status === "customer_reports_paid") && (
                   <SecondaryButton
-                    disabled={busy}
+                    disabled={
+                      busy ||
+                      (Boolean(workflowV2) && !paymentReviewReason.trim())
+                    }
                     onClick={() =>
                       runAction({
                         kind: "review-payment",
                         decision: "rejected",
+                        reason: paymentReviewReason,
                       })
                     }
                   >
@@ -883,18 +1038,30 @@ function DocumentRow({
   busy,
   onPreview,
   onVerify,
-  onReject,
+  onRejectWithReason,
   onReplace,
+  reclassifySlot,
+  onReclassify,
   onDelete,
 }: {
   document: AliReservationDocument;
   busy: boolean;
   onPreview: () => void;
   onVerify: () => void;
-  onReject: () => void;
-  onReplace: () => void;
+  onRejectWithReason: (reason: string) => void;
+  onReplace: (reason: string) => void;
+  reclassifySlot: AliDocumentSlot | null;
+  onReclassify: (
+    slot:
+      | "license_front"
+      | "license_back"
+      | "passport"
+      | "identity_front"
+      | "identity_back",
+  ) => void;
   onDelete: () => void;
 }) {
+  const [reason, setReason] = useState("");
   const hasContent = !["deleted", "not_required"].includes(document.status);
   const canReview = document.status === "received";
   const canReplace = ![
@@ -902,7 +1069,14 @@ function DocumentRow({
     "replaced",
     "not_required",
     "replacement_requested",
+    "unclassified",
+    "quarantined",
   ].includes(document.status);
+  const canReclassify =
+    document.status === "unclassified" &&
+    reclassifySlot !== null &&
+    reclassifySlot !== "identity" &&
+    reclassifySlot !== "unclassified";
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -916,6 +1090,17 @@ function DocumentRow({
         </span>
         <Status value={document.status} />
       </div>
+      {(canReview || canReplace) && (
+        <input
+          type="text"
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          maxLength={500}
+          placeholder="Reason required for rejection or replacement"
+          aria-label={`Review reason for ${slotLabels[document.slot]}`}
+          className="mt-3 min-h-10 w-full rounded-lg border border-slate-200 px-3 text-xs outline-none focus:border-primary"
+        />
+      )}
       <div className="mt-2 flex flex-wrap gap-2">
         {hasContent && (
           <SecondaryButton disabled={busy} onClick={onPreview}>
@@ -928,14 +1113,28 @@ function DocumentRow({
           </PrimaryButton>
         )}
         {canReview && (
-          <SecondaryButton disabled={busy} onClick={onReject}>
+          <SecondaryButton
+            disabled={busy || !reason.trim()}
+            onClick={() => onRejectWithReason(reason.trim())}
+          >
             Reject
           </SecondaryButton>
         )}
         {canReplace && (
-          <SecondaryButton disabled={busy} onClick={onReplace}>
+          <SecondaryButton
+            disabled={busy || !reason.trim()}
+            onClick={() => onReplace(reason.trim())}
+          >
             <RefreshCw className="h-3.5 w-3.5" /> Request replacement
           </SecondaryButton>
+        )}
+        {canReclassify && (
+          <PrimaryButton
+            disabled={busy}
+            onClick={() => onReclassify(reclassifySlot)}
+          >
+            Classify as {slotLabels[reclassifySlot]}
+          </PrimaryButton>
         )}
         {hasContent && (
           <SecondaryButton disabled={busy} onClick={onDelete}>
