@@ -1628,9 +1628,11 @@ function assertResponseTenant(
   body: unknown,
   expectedTenant: string,
   path: string,
+  requireIdentity = false,
 ): void {
   const actualTenant = responseTenantIdentity(res, body, path);
-  if (!actualTenant || actualTenant === expectedTenant) return;
+  if (!actualTenant && !requireIdentity) return;
+  if (actualTenant === expectedTenant) return;
   console.error("[tenant-security] response_tenant_mismatch", {
     expectedTenant,
     actualTenant,
@@ -1640,10 +1642,11 @@ function assertResponseTenant(
   throw new ApiError(409, "Workspace response rejected");
 }
 
-async function apiFetch<T>(
+export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
   skipAuth = false,
+  requireTenantIdentity = false,
 ): Promise<T> {
   const { tenantSlug, token } = captureTenantRequestScope();
   const base = getApiBase(tenantSlug);
@@ -1679,24 +1682,31 @@ async function apiFetch<T>(
 
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
+    let details: unknown;
     try {
       const body = await res.json();
+      details = body;
       // `body.detail` is what the new escalation-learning endpoints
       // (Claudia #32) return for human-friendly errors. Other endpoints
       // continue to use `message` / `error`. Order: message > error >
       // detail so we don't regress existing behaviour.
-      msg = body.message ?? body.error ?? body.detail ?? msg;
+      const candidate = body.message ?? body.error ?? body.detail;
+      if (typeof candidate === "string") msg = candidate;
+      else if (candidate && typeof candidate === "object") {
+        const code = (candidate as Record<string, unknown>).code;
+        if (typeof code === "string") msg = code;
+      }
     } catch {
       // ignore
     }
-    throw new ApiError(res.status, msg);
+    throw new ApiError(res.status, msg, details);
   }
   if (res.status === 204) {
-    assertResponseTenant(res, undefined, tenantSlug, path);
+    assertResponseTenant(res, undefined, tenantSlug, path, requireTenantIdentity);
     return undefined as T;
   }
   const body = await res.json() as T;
-  assertResponseTenant(res, body, tenantSlug, path);
+  assertResponseTenant(res, body, tenantSlug, path, requireTenantIdentity);
   return body;
 }
 
