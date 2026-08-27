@@ -90,6 +90,7 @@ import { canShowDirectWhatsAppReply } from "@/lib/direct-whatsapp-reply";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
+  rental: "/settings?category=rental",
   settings: "/settings",
   analytics: "/analytics",
 };

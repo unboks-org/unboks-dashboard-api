@@ -1457,7 +1457,7 @@ export default function Settings() {
 
   return (
     <DashboardShell
-      activeNav="settings"
+      activeNav={active === "rental" ? "rental" : "settings"}
       pageTitle={tenantText("Settings", "Configuración")}
       pageSubtitle={tenantText(
         "Manage your workspace, Agent information, alerts, and preferences.",

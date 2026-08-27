@@ -1,4 +1,4 @@
-import { Calendar, Image as ImageIcon, Inbox, Settings, PhoneCall } from "lucide-react";
+import { Calendar, CarFront, Image as ImageIcon, Inbox, Settings, PhoneCall } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavId } from "@/components/inbox/Drawer";
 import { useBookingsLabel } from "@/hooks/use-bookings-label";
@@ -13,7 +13,7 @@ interface BottomNavProps {
 }
 
 function activeBottomId(active: NavId): NavId {
-  if (active === "escalations" || active === "bookings" || active === "followups" || active === "images" || active === "settings") return active;
+  if (active === "escalations" || active === "bookings" || active === "followups" || active === "rental" || active === "images" || active === "settings") return active;
   return "inbox";
 }
 
@@ -28,9 +28,14 @@ export function BottomNav({
   const isDespertares = getClientSlug() === "consulta-despertares";
   const isRental = isAliRentalTenant();
   const ui = getTenantUiConfig();
-  const items = (isDespertares || isRental ? [
+  const items = (isDespertares ? [
     { id: "inbox" as const, label: ui.conversationsLabel, icon: Inbox },
     { id: "followups" as const, label: ui.followUpsLabel, icon: PhoneCall },
+    { id: "settings" as const, label: ui.settingsLabel, icon: Settings },
+  ] : isRental ? [
+    { id: "inbox" as const, label: ui.conversationsLabel, icon: Inbox },
+    { id: "followups" as const, label: ui.followUpsLabel, icon: PhoneCall },
+    { id: "rental" as const, label: "Rental", icon: CarFront },
     { id: "settings" as const, label: ui.settingsLabel, icon: Settings },
   ] : [
     { id: "inbox" as const, label: "Inbox", icon: Inbox },
