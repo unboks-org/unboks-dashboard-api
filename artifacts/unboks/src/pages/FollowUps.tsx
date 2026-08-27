@@ -8,9 +8,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
+import { AliCustomerFile } from "@/components/ali/AliCustomerFile";
 import {
   archiveConversation, confirmAliReservation, decideAliReservationAvailability,
-  fetchFollowUps, fetchQuoteLeads, updateAliReservationChecklist,
+  fetchAliDossierConfiguration, fetchFollowUps, fetchQuoteLeads, updateAliReservationChecklist,
   updateFollowUpStatus, type FollowUp, type FollowUpStatus,
 } from "@/lib/api";
 import { ApiError } from "@/lib/error";
@@ -337,6 +338,13 @@ export default function FollowUps() {
     staleTime: 0,
     gcTime: 0,
     structuralSharing: false,
+  });
+  const dossierConfiguration = useQuery({
+    queryKey: tenantKey("ali-dossier-configuration"),
+    queryFn: fetchAliDossierConfiguration,
+    enabled: isRental,
+    retry: false,
+    staleTime: 30_000,
   });
   const rows = query.data ?? [];
   const visible = useMemo(
@@ -693,18 +701,48 @@ export default function FollowUps() {
                 <div className="space-y-5 p-5 text-sm">
                   {isRental ? (
                     <>
-                      <ReservationPipeline
-                        item={selected}
-                        busy={reservationAction.isPending}
-                        onAction={(kind) => {
-                          if (!selected.reservation_public_id) return;
-                          reservationAction.mutate({
-                            kind,
-                            publicId: selected.reservation_public_id,
-                            revision: selected.reservation_revision,
-                          });
-                        }}
-                      />
+                      {selected.reservation_public_id &&
+                      dossierConfiguration.data?.enabled ? (
+                        dossierConfiguration.data.ready ? (
+                          <AliCustomerFile
+                            key={selected.reservation_public_id}
+                            publicId={selected.reservation_public_id}
+                            enabled
+                          />
+                        ) : (
+                          <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                              Customer file activation blocked
+                            </p>
+                            <p className="mt-2 text-sm">
+                              Complete the approved tenant configuration before
+                              collecting customer documents.
+                            </p>
+                            <ul className="mt-3 space-y-1 text-xs text-amber-800">
+                              {dossierConfiguration.data.blockers.map(
+                                (blocker) => (
+                                  <li key={blocker}>
+                                    • {blocker.replaceAll("_", " ")}
+                                  </li>
+                                ),
+                              )}
+                            </ul>
+                          </section>
+                        )
+                      ) : (
+                        <ReservationPipeline
+                          item={selected}
+                          busy={reservationAction.isPending}
+                          onAction={(kind) => {
+                            if (!selected.reservation_public_id) return;
+                            reservationAction.mutate({
+                              kind,
+                              publicId: selected.reservation_public_id,
+                              revision: selected.reservation_revision,
+                            });
+                          }}
+                        />
+                      )}
                       {!!rentalMissingLabels(selected).length && (
                         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
                           <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
