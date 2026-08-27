@@ -1,5 +1,5 @@
 import { Component, lazy, Suspense, useEffect, useMemo, type ReactNode } from "react";
-import { Switch, Route, Router as WouterRouter, Redirect, useLocation, useParams } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect, useLocation, useParams, useSearch } from "wouter";
 import { getToken } from "@/lib/tenant";
 import { isValidTenantSlug } from "@/lib/api";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -13,6 +13,7 @@ import { FeatureTogglesProvider } from "@/lib/feature-toggles";
 import { DEBUG_LOGS_ENABLED, debugLog } from "@/lib/debug-log";
 import { isSpainSpanishTenant, tenantText } from "@/lib/tenant-ui";
 import { loginRedirectStorageKey } from "@/lib/deep-link";
+import { isLegacyRentalSettingsSearch } from "@/lib/rental-navigation";
 
 const NotFound = lazy(() => import("@/pages/not-found"));
 const Inbox = lazy(() => import("@/pages/Inbox"));
@@ -225,6 +226,7 @@ function TenantRootRedirect() {
 const KNOWN_TENANT_SECTIONS = new Set([
   "inbox",          // canonical home -> "/"
   "settings",
+  "rental",
   "analytics",
   "help",
   "images",
@@ -233,6 +235,20 @@ const KNOWN_TENANT_SECTIONS = new Set([
   "escalations",
   "follow-ups",
 ]);
+
+function SettingsRoute() {
+  const search = useSearch();
+  if (isLegacyRentalSettingsSearch(search)) {
+    return <Redirect to="/rental" replace />;
+  }
+  return (
+    <ProtectedRoute>
+      <SettingsErrorBoundary>
+        <Settings />
+      </SettingsErrorBoundary>
+    </ProtectedRoute>
+  );
+}
 
 function TenantSectionRedirect() {
   const { tenant, section } = useParams<{ tenant: string; section: string }>();
@@ -356,11 +372,7 @@ function Router() {
         <EscalationsRoute />
       </Route>
       <Route path="/settings">
-        <ProtectedRoute>
-          <SettingsErrorBoundary>
-            <Settings />
-          </SettingsErrorBoundary>
-        </ProtectedRoute>
+        <SettingsRoute />
       </Route>
       <Route path="/rental">
         <ProtectedRoute>

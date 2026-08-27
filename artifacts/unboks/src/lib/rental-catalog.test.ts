@@ -97,6 +97,45 @@ describe("rental catalog client", () => {
     );
   });
 
+  it("tolerates identical proxy headers without weakening tenant isolation", async () => {
+    const headers = new Headers({ "Content-Type": "application/json" });
+    headers.append("X-Unboks-Tenant", "ali-car-rental");
+    headers.append("X-Unboks-Tenant", "ali-car-rental");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({ tenantSlug: "ali-car-rental", enabled: true }),
+          { status: 200, headers },
+        ),
+      ),
+    );
+
+    await expect(fetchRentalCapability()).resolves.toEqual({
+      tenantSlug: "ali-car-rental",
+      enabled: true,
+    });
+  });
+
+  it("rejects conflicting tenant values in a combined proxy header", async () => {
+    const headers = new Headers({ "Content-Type": "application/json" });
+    headers.append("X-Unboks-Tenant", "ali-car-rental");
+    headers.append("X-Unboks-Tenant", "consulta-despertares");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({ tenantSlug: "ali-car-rental", enabled: true }),
+          { status: 200, headers },
+        ),
+      ),
+    );
+
+    await expect(fetchRentalCapability()).rejects.toThrow(
+      "Workspace response rejected",
+    );
+  });
+
   it("rejects a cross-tenant rental response", async () => {
     vi.stubGlobal(
       "fetch",

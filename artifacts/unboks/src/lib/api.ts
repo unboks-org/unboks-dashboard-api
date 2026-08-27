@@ -2032,7 +2032,22 @@ function endpointClass(path: string): string {
 
 function responseTenantIdentity(res: Response, body: unknown, path: string): string | null {
   const header = res.headers.get("X-Unboks-Tenant");
-  if (header) return header;
+  if (header) {
+    // Fetch combines repeated response headers with commas. Treat repeated,
+    // identical tenant values as one identity, while leaving mixed values
+    // intact so the strict comparison below rejects the response.
+    const identities = header
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+    if (
+      identities.length > 0 &&
+      identities.every((value) => value === identities[0])
+    ) {
+      return identities[0];
+    }
+    return header;
+  }
   if (!body || typeof body !== "object" || Array.isArray(body)) return null;
   const root = body as Record<string, unknown>;
   const keys = path.startsWith("/client/profile")

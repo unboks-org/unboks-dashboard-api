@@ -728,7 +728,7 @@ export default function FollowUps() {
                               )}
                             </ul>
                             <a
-                              href="/settings?category=rental"
+                              href="/rental"
                               className="mt-4 inline-flex min-h-10 items-center rounded-xl bg-amber-400 px-4 text-sm font-semibold text-slate-950 hover:bg-amber-300"
                             >
                               Open rental settings
