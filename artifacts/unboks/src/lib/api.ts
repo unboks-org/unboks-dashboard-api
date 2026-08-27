@@ -612,6 +612,19 @@ export function updateAliDossierSettings(
   });
 }
 
+export function updateAliDossierActivation(
+  enabled: boolean,
+): Promise<AliDossierTenantSettings> {
+  return apiFetch<AliDossierTenantSettings>(
+    "/ali-dossier/settings/activation",
+    {
+      method: "PUT",
+      cache: "no-store",
+      body: JSON.stringify({ enabled }),
+    },
+  );
+}
+
 export function uploadAliContractTemplate(
   version: string,
   file: File,

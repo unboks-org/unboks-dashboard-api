@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import {
   fetchAliDossierSettings,
+  updateAliDossierActivation,
   updateAliDossierSettings,
   uploadAliContractTemplate,
   type AliDossierTenantSettings,
@@ -136,6 +137,19 @@ export function AliDossierSettings() {
     onError: (error) => toast.error(errorMessage(error)),
   });
 
+  const activation = useMutation({
+    mutationFn: (enabled: boolean) => updateAliDossierActivation(enabled),
+    onSuccess: async (next) => {
+      await refresh(next);
+      toast.success(
+        next.status.enabled
+          ? "Secure customer file activated."
+          : "Secure customer file deactivated.",
+      );
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
   if (query.isLoading) return <LoadingCard />;
   if (!query.data) {
     return (
@@ -151,6 +165,11 @@ export function AliDossierSettings() {
   }
 
   const current = query.data;
+  const missingRequirements = current.status.blockers.filter(
+    (blocker) => blocker !== "feature_disabled",
+  );
+  const activationOn = current.status.enabled;
+  const canToggleActivation = activationOn || current.status.configurationReady;
   const fixedLinkMissing =
     paymentMode === "fixed_link" &&
     !current.payment.defaultLinkConfigured &&
@@ -158,28 +177,62 @@ export function AliDossierSettings() {
 
   return (
     <div className="space-y-5">
-      <div
-        className={`rounded-2xl border px-5 py-4 text-sm ${
-          current.status.ready
-            ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-            : "border-amber-200 bg-amber-50 text-amber-950"
-        }`}
-      >
-        <p className="font-semibold">
-          {current.status.ready
-            ? "Secure customer file is active"
-            : current.status.configurationReady
-              ? "Configuration complete — activation pending"
-              : "Complete the tenant setup below"}
-        </p>
-        {!current.status.configurationReady && (
-          <p className="mt-1 text-xs leading-relaxed">
-            {current.status.blockers
-              .filter((blocker) => blocker !== "feature_disabled")
-              .map((blocker) => blocker.replaceAll("_", " "))
-              .join(" · ")}
-          </p>
-        )}
+      <div className={`rounded-2xl border px-5 py-4 text-sm ${
+        current.status.ready
+          ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+          : current.status.configurationReady
+            ? "border-amber-200 bg-amber-50 text-amber-950"
+            : "border-slate-200 bg-slate-50 text-slate-900"
+      }`}>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">
+              {current.status.ready
+                ? "Secure customer file is active"
+                : activationOn
+                  ? "Secure customer file is paused by incomplete setup"
+                  : current.status.configurationReady
+                    ? "Everything is ready — activate when you are ready"
+                    : "Complete the tenant setup before activation"}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed opacity-80">
+              {current.status.ready
+                ? "Nick and staff can continue accepted quotes through documents, pre-contract, payment and office approval."
+                : current.status.configurationReady
+                  ? "Turn this on to start the post-quote customer-file workflow. You can turn it off again at any time."
+                  : missingRequirements
+                      .map((blocker) => blocker.replaceAll("_", " "))
+                      .join(" · ")}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            <span className="text-xs font-semibold">
+              {activationOn ? "On" : "Off"}
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={activationOn}
+              aria-label={activationOn
+                ? "Deactivate secure customer file"
+                : "Activate secure customer file"}
+              disabled={activation.isPending || !canToggleActivation}
+              onClick={() => activation.mutate(!activationOn)}
+              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45 ${
+                activationOn ? "bg-emerald-600" : "bg-slate-400"
+              }`}
+            >
+              <span
+                className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                  activationOn ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+              {activation.isPending && (
+                <Loader2 className="absolute left-3.5 h-5 w-5 animate-spin text-white" />
+              )}
+            </button>
+          </div>
+        </div>
       </div>
       <SettingsCard
         title="Pre-contract template"
