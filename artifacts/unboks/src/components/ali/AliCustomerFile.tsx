@@ -548,12 +548,15 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
               <p className="text-sm text-slate-600">
                 {file.payment.domain
                   ? `Configured provider: ${file.payment.domain}`
-                  : "No reservation-specific payment link configured."}
+                  : file.payment.tenantDefaultAvailable
+                    ? `Tenant payment link ready${file.payment.tenantDefaultDomain ? ` · ${file.payment.tenantDefaultDomain}` : ""}.`
+                    : "No reservation-specific payment link configured."}
                 {file.payment.reference
                   ? ` · Reference ${file.payment.reference}`
                   : ""}
               </p>
-              {(!file.payment.domain || file.payment_status === "rejected") && (
+              {(!file.payment.domain || file.payment_status === "rejected") &&
+              file.payment.mode === "per_reservation" ? (
                 <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_11rem_auto]">
                   <input
                     type="url"
@@ -588,7 +591,37 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
                     Save link
                   </PrimaryButton>
                 </div>
-              )}
+              ) : null}
+              {(!file.payment.domain || file.payment_status === "rejected") &&
+              file.payment.mode === "fixed_link" &&
+              file.payment.tenantDefaultAvailable ? (
+                <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_auto] sm:items-end">
+                  <p className="text-xs leading-relaxed text-slate-500">
+                    Use the tenant-approved payment page. The saved URL stays server-side.
+                  </p>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    value={paymentReference}
+                    onChange={(event) => setPaymentReference(event.target.value)}
+                    placeholder="Reference"
+                    aria-label="Payment reference"
+                    className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-primary"
+                  />
+                  <PrimaryButton
+                    disabled={busy}
+                    onClick={() =>
+                      runAction({
+                        kind: "save-payment",
+                        url: "",
+                        reference: paymentReference,
+                      })
+                    }
+                  >
+                    Use tenant link
+                  </PrimaryButton>
+                </div>
+              ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
                 {file.payment.domain && file.payment_status === "not_sent" && (
                   <PrimaryButton

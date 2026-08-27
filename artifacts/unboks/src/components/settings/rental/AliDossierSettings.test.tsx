@@ -1,0 +1,174 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { AliDossierTenantSettings } from "@/lib/api";
+
+const mocks = vi.hoisted(() => ({
+  fetchSettings: vi.fn(),
+  updateSettings: vi.fn(),
+  uploadTemplate: vi.fn(),
+}));
+
+vi.mock("@/lib/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api")>();
+  return {
+    ...actual,
+    fetchAliDossierSettings: mocks.fetchSettings,
+    updateAliDossierSettings: mocks.updateSettings,
+    uploadAliContractTemplate: mocks.uploadTemplate,
+  };
+});
+
+vi.mock("sonner", () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}));
+
+import {
+  AliDossierRetentionSettings,
+  AliDossierSettings,
+} from "./AliDossierSettings";
+
+function settings(
+  overrides: Partial<AliDossierTenantSettings> = {},
+): AliDossierTenantSettings {
+  return {
+    status: {
+      enabled: false,
+      ready: false,
+      configurationReady: false,
+      blockers: ["feature_disabled", "approved_contract_template_missing"],
+    },
+    contractTemplate: null,
+    payment: {
+      mode: "per_reservation",
+      providerName: "",
+      defaultLinkConfigured: false,
+      defaultDomain: null,
+      allowedDomains: [],
+    },
+    retention: {
+      documentRetentionDays: 90,
+      paperShreddingPolicy:
+        "Securely shred paper copies after the 90-day retention period.",
+    },
+    ...overrides,
+  };
+}
+
+function renderSettings(node: ReactNode) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>{node}</QueryClientProvider>,
+  );
+}
+
+describe("Ali tenant-owned dossier settings", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    localStorage.clear();
+    sessionStorage.setItem("unboks_active_tenant", "ali-car-rental");
+    localStorage.setItem("wtyj_token_ali-car-rental", "test-token");
+    mocks.fetchSettings.mockReset().mockResolvedValue(settings());
+    mocks.updateSettings.mockReset();
+    mocks.uploadTemplate.mockReset();
+  });
+
+  it("uploads an immutable tenant contract template with its version", async () => {
+    const activated = settings({
+      contractTemplate: {
+        publicId: "template-1",
+        version: "Ali terms v1",
+        sourceFilename: "ali-contract.pdf",
+        sha256: "abc123",
+        uploadedAt: "2099-01-01T00:00:00Z",
+      },
+    });
+    mocks.uploadTemplate.mockResolvedValue(activated);
+    renderSettings(<AliDossierSettings />);
+
+    fireEvent.change(await screen.findByLabelText(/version name/i), {
+      target: { value: "Ali terms v1" },
+    });
+    const file = new File(["Approved rental terms"], "ali-contract.md", {
+      type: "text/markdown",
+    });
+    fireEvent.change(screen.getByLabelText(/approved template/i), {
+      target: { files: [file] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /upload version/i }));
+
+    await waitFor(() =>
+      expect(mocks.uploadTemplate).toHaveBeenCalledWith("Ali terms v1", file),
+    );
+  });
+
+  it("supports a server-only fixed tenant payment link", async () => {
+    const configured = settings({
+      payment: {
+        mode: "fixed_link",
+        providerName: "Synthetic Pay",
+        defaultLinkConfigured: true,
+        defaultDomain: "pay.example.test",
+        allowedDomains: ["pay.example.test"],
+      },
+    });
+    mocks.fetchSettings.mockResolvedValue(configured);
+    mocks.updateSettings.mockResolvedValue(configured);
+    renderSettings(<AliDossierSettings />);
+
+    await screen.findByText(/deposit payment method/i);
+    await waitFor(() =>
+      expect(screen.getByDisplayValue("Synthetic Pay")).toBeTruthy(),
+    );
+    expect(screen.queryByText(/active version/i)).toBeNull();
+    expect(screen.queryByDisplayValue(/https:\/\//i)).toBeNull();
+    expect(screen.getByPlaceholderText(/configured for pay\.example\.test/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /save payment settings/i }));
+
+    await waitFor(() =>
+      expect(mocks.updateSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          paymentMode: "fixed_link",
+          paymentProviderName: "Synthetic Pay",
+          paymentAllowedDomains: ["pay.example.test"],
+          clearPaymentUrl: false,
+        }),
+      ),
+    );
+    expect(mocks.updateSettings.mock.calls[0][0]).not.toHaveProperty("paymentUrl");
+  });
+
+  it("saves the 90-day tenant retention and shredding policy", async () => {
+    const current = settings();
+    const changed = settings({
+      retention: {
+        documentRetentionDays: 120,
+        paperShreddingPolicy: "Securely shred paper copies after 120 days.",
+      },
+    });
+    mocks.fetchSettings.mockResolvedValue(current);
+    mocks.updateSettings.mockResolvedValue(changed);
+    renderSettings(<AliDossierRetentionSettings />);
+
+    fireEvent.change(await screen.findByLabelText(/keep private copies for/i), {
+      target: { value: "120" },
+    });
+    fireEvent.change(screen.getByLabelText(/paper-copy shredding policy/i), {
+      target: { value: "Securely shred paper copies after 120 days." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save rental retention/i }));
+
+    await waitFor(() =>
+      expect(mocks.updateSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentRetentionDays: 120,
+          paperShreddingPolicy: "Securely shred paper copies after 120 days.",
+        }),
+      ),
+    );
+  });
+});

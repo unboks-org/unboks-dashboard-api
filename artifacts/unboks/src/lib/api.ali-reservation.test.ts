@@ -3,10 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   confirmAliReservation,
   decideAliReservationAvailability,
+  fetchAliDossierSettings,
   fetchAliDocumentBlob,
   recordAliPickupInspection,
   requestAliDocumentReplacement,
+  updateAliDossierSettings,
   updateAliReservationChecklist,
+  uploadAliContractTemplate,
 } from "@/lib/api";
 
 describe("Ali post-quote reservation API", () => {
@@ -106,5 +109,56 @@ describe("Ali post-quote reservation API", () => {
         "Cache-Control": "no-cache",
       }),
     });
+  });
+
+  it("loads and saves tenant dossier settings without browser caching", async () => {
+    await fetchAliDossierSettings();
+
+    let [url, request] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain("/ali-dossier/settings");
+    expect(request).toMatchObject({
+      cache: "no-store",
+      headers: expect.objectContaining({
+        Authorization: "Bearer test-token",
+        "Cache-Control": "no-cache",
+      }),
+    });
+
+    vi.mocked(fetch).mockClear();
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ public_id: "AR-TEST-1", revision: 4 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const value = {
+      paymentMode: "per_reservation" as const,
+      paymentProviderName: "Synthetic Pay",
+      clearPaymentUrl: true,
+      paymentAllowedDomains: ["pay.example.test"],
+      documentRetentionDays: 90,
+      paperShreddingPolicy: "Securely shred paper copies after 90 days.",
+    };
+    await updateAliDossierSettings(value);
+
+    [url, request] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain("/ali-dossier/settings");
+    expect(request).toMatchObject({ method: "PUT", body: JSON.stringify(value) });
+  });
+
+  it("uploads the contract as multipart data without a manual content type", async () => {
+    const file = new File(["Approved terms"], "contract.md", {
+      type: "text/markdown",
+    });
+
+    await uploadAliContractTemplate("owner-v1", file);
+
+    const [url, request] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain("/ali-dossier/settings/contract-template");
+    expect(request?.method).toBe("POST");
+    expect(request?.body).toBeInstanceOf(FormData);
+    const headers = request?.headers as Record<string, string>;
+    expect(headers.Authorization).toBe("Bearer test-token");
+    expect(headers["Content-Type"]).toBeUndefined();
   });
 });
