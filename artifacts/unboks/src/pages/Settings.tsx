@@ -5,7 +5,6 @@ import {
   Ban,
   Bell,
   Building2,
-  CarFront,
   Check,
   ChevronDown,
   Loader2,
@@ -41,10 +40,7 @@ import { KnowledgeFileUploader } from "@/components/settings/KnowledgeFileUpload
 import { KnowledgeMediaAttachments } from "@/components/settings/KnowledgeMediaAttachments";
 import { CloudKnowledgeConnections } from "@/components/settings/CloudKnowledgeConnections";
 import { DataRetentionSettings } from "@/components/settings/DataRetentionSettings";
-import {
-  AliDossierRetentionSettings,
-  AliDossierSettings,
-} from "@/components/settings/rental/AliDossierSettings";
+import { AliDossierRetentionSettings } from "@/components/settings/rental/AliDossierSettings";
 import { BlockedSendersList } from "@/components/settings/BlockedSendersList";
 import { AutoBlockRulesSettings } from "@/components/settings/AutoBlockRulesSettings";
 import { ExcludedContactsSettings } from "@/components/settings/ExcludedContactsSettings";
@@ -59,8 +55,6 @@ import {
   isSpainSpanishTenant,
   tenantText,
 } from "@/lib/tenant-ui";
-import { RentalControlCenter } from "@/components/settings/rental/RentalControlCenter";
-import { useRentalControlCapability } from "@/hooks/use-rental-control-capability";
 
 const ALLOWED_LOGO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
 const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2 MB
@@ -118,7 +112,6 @@ function agentNameDraftError(value: string): string | null {
 
 type CategoryId =
   | "workspace"
-  | "rental"
   | "your-info"
   | "agent-personality"
   | "agent-learnings"
@@ -140,12 +133,6 @@ const CATEGORIES: {
     label: "Workspace",
     description: "Manage the basic details shown in your Unboks workspace.",
     icon: Building2,
-  },
-  {
-    id: "rental",
-    label: "Rental",
-    description: "Manage the fleet, fixed charges, quote behavior, previews, and published catalog.",
-    icon: CarFront,
   },
   {
     id: "your-info",
@@ -210,10 +197,6 @@ const SPANISH_CATEGORIES: Record<CategoryId, { label: string; description: strin
   workspace: {
     label: "Espacio de trabajo",
     description: "Gestiona los datos básicos que se muestran en tu espacio de trabajo de Unboks.",
-  },
-  rental: {
-    label: "Alquiler",
-    description: "Gestiona la flota, los cargos fijos, las ofertas y el catálogo publicado.",
   },
   "your-info": {
     label: "Conocimiento de la empresa",
@@ -1177,7 +1160,6 @@ function SavedKnowledgeUpdateCard({
 
 const CATEGORY_IDS: ReadonlySet<string> = new Set<CategoryId>([
   "workspace",
-  "rental",
   "your-info",
   "agent-personality",
   "agent-learnings",
@@ -1208,47 +1190,20 @@ export default function Settings() {
   const search = useSearch();
   const urlCategory = categoryFromSearch(search);
   const [active, setActive] = useState<CategoryId>(urlCategory ?? "workspace");
-  const [rentalDirty, setRentalDirty] = useState(false);
-  const rentalCapability = useRentalControlCapability();
   // Keep local state in sync if the URL changes from outside (deep link
   // arrives, browser back/forward, etc.).
   useEffect(() => {
     const requested = urlCategory ?? "workspace";
     if (requested === active) return;
-    if (
-      active === "rental"
-      && rentalDirty
-      && !window.confirm("Leave Rental settings and discard the unsaved draft changes shown here?")
-    ) {
-      navigate("/settings?category=rental");
-      return;
-    }
     setActive(requested);
-  }, [urlCategory, active, navigate, rentalDirty]);
+  }, [urlCategory, active]);
   const selectCategory = (id: CategoryId) => {
-    if (
-      active === "rental"
-      && id !== "rental"
-      && rentalDirty
-      && !window.confirm("Leave Rental settings and discard the unsaved draft changes shown here?")
-    ) {
-      return;
-    }
     setActive(id);
     // Default tab keeps the URL clean; every other tab encodes itself
     // in the query string so the deep link survives refresh + share.
     if (id === "workspace") navigate("/settings");
     else navigate(`/settings?category=${encodeURIComponent(id)}`);
   };
-
-  useEffect(() => {
-    if (rentalCapability.isLoading || rentalCapability.enabled || active !== "rental") return;
-    if (rentalDirty) {
-      setRentalDirty(false);
-    }
-    setActive("workspace");
-    navigate("/settings");
-  }, [active, navigate, rentalCapability.enabled, rentalCapability.isLoading, rentalDirty]);
 
   // Hooks (unchanged behaviour) -------------------------
   const { emailClient, setEmailClient } = useEmailSettings();
@@ -1445,10 +1400,7 @@ export default function Settings() {
     const t = window.setTimeout(() => setNotifySaved(false), 1800);
     return () => window.clearTimeout(t);
   }, [notifySaved]);
-  const availableCategories = rentalCapability.enabled
-    ? CATEGORIES
-    : CATEGORIES.filter((category) => category.id !== "rental");
-  const currentCategoryBase = availableCategories.find((c) => c.id === active) ?? availableCategories[0];
+  const currentCategoryBase = CATEGORIES.find((c) => c.id === active) ?? CATEGORIES[0];
   const currentCategory = isSpainSpanishTenant()
     ? { ...currentCategoryBase, ...SPANISH_CATEGORIES[currentCategoryBase.id] }
     : currentCategoryBase;
@@ -1457,7 +1409,7 @@ export default function Settings() {
 
   return (
     <DashboardShell
-      activeNav={active === "rental" ? "rental" : "settings"}
+      activeNav="settings"
       pageTitle={tenantText("Settings", "Configuración")}
       pageSubtitle={tenantText(
         "Manage your workspace, Agent information, alerts, and preferences.",
@@ -1482,7 +1434,7 @@ export default function Settings() {
                 onChange={(event) => selectCategory(event.target.value as CategoryId)}
                 className="w-full rounded-xl border border-[#dadce0] bg-white px-3 py-2.5 text-[14px] font-medium text-[#202124] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
               >
-                {availableCategories.map((cat) => (
+                {CATEGORIES.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {categoryLabel(cat)}
                   </option>
@@ -1494,7 +1446,7 @@ export default function Settings() {
               className="-mb-px hidden gap-1 overflow-x-auto md:flex sm:gap-2"
               style={{ scrollbarWidth: "none" }}
             >
-              {availableCategories.map((cat) => {
+              {CATEGORIES.map((cat) => {
                 const Icon = cat.icon;
                 const isActive = cat.id === active;
                 return (
@@ -1530,13 +1482,6 @@ export default function Settings() {
                 title={currentCategory.label}
                 description={currentCategory.description}
               />
-
-              {active === "rental" && rentalCapability.enabled ? (
-                <div className="space-y-5">
-                  <RentalControlCenter onDirtyChange={setRentalDirty} />
-                  {isAliRentalTenant() && <AliDossierSettings />}
-                </div>
-              ) : null}
 
               {active === "workspace" && (
                 <div className="space-y-5">

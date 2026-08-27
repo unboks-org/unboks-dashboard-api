@@ -12,8 +12,14 @@ export function useRentalControlCapability() {
     refetchOnWindowFocus: false,
   });
   return {
+    tenantSlug: query.data?.tenantSlug ?? null,
     enabled: query.data?.enabled === true,
-    isLoading: query.isLoading,
+    // Refetches may begin with an older cached `enabled: false` value. Keep
+    // showing the verification state until the authoritative request settles
+    // instead of briefly claiming that the tenant is disabled.
+    isLoading: query.isPending || query.isFetching,
     isUnavailable: query.isError,
+    error: query.error,
+    retry: query.refetch,
   };
 }
