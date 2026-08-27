@@ -7,6 +7,7 @@ import {
   fetchAliDocumentBlob,
   recordAliPickupInspection,
   requestAliDocumentReplacement,
+  updateAliDossierActivation,
   updateAliDossierSettings,
   updateAliReservationChecklist,
   uploadAliContractTemplate,
@@ -144,6 +145,18 @@ describe("Ali post-quote reservation API", () => {
     [url, request] = vi.mocked(fetch).mock.calls[0];
     expect(String(url)).toContain("/ali-dossier/settings");
     expect(request).toMatchObject({ method: "PUT", body: JSON.stringify(value) });
+  });
+
+  it("updates tenant-controlled dossier activation without browser caching", async () => {
+    await updateAliDossierActivation(true);
+
+    const [url, request] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain("/ali-dossier/settings/activation");
+    expect(request).toMatchObject({
+      method: "PUT",
+      cache: "no-store",
+      body: JSON.stringify({ enabled: true }),
+    });
   });
 
   it("uploads the contract as multipart data without a manual content type", async () => {

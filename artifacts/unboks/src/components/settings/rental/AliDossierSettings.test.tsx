@@ -7,6 +7,7 @@ import type { AliDossierTenantSettings } from "@/lib/api";
 
 const mocks = vi.hoisted(() => ({
   fetchSettings: vi.fn(),
+  updateActivation: vi.fn(),
   updateSettings: vi.fn(),
   uploadTemplate: vi.fn(),
 }));
@@ -16,6 +17,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
   return {
     ...actual,
     fetchAliDossierSettings: mocks.fetchSettings,
+    updateAliDossierActivation: mocks.updateActivation,
     updateAliDossierSettings: mocks.updateSettings,
     uploadAliContractTemplate: mocks.uploadTemplate,
   };
@@ -73,6 +75,7 @@ describe("Ali tenant-owned dossier settings", () => {
     sessionStorage.setItem("unboks_active_tenant", "ali-car-rental");
     localStorage.setItem("wtyj_token_ali-car-rental", "test-token");
     mocks.fetchSettings.mockReset().mockResolvedValue(settings());
+    mocks.updateActivation.mockReset();
     mocks.updateSettings.mockReset();
     mocks.uploadTemplate.mockReset();
   });
@@ -103,6 +106,53 @@ describe("Ali tenant-owned dossier settings", () => {
 
     await waitFor(() =>
       expect(mocks.uploadTemplate).toHaveBeenCalledWith("Ali terms v1", file),
+    );
+  });
+
+  it("keeps activation unavailable until every required setting is complete", async () => {
+    renderSettings(<AliDossierSettings />);
+
+    const toggle = await screen.findByRole("switch", {
+      name: /activate secure customer file/i,
+    });
+
+    expect((toggle as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText(/approved contract template missing/i)).toBeTruthy();
+    fireEvent.click(toggle);
+    expect(mocks.updateActivation).not.toHaveBeenCalled();
+  });
+
+  it("lets the tenant activate a fully configured customer file", async () => {
+    const ready = settings({
+      status: {
+        enabled: false,
+        ready: false,
+        configurationReady: true,
+        blockers: ["feature_disabled"],
+      },
+    });
+    mocks.fetchSettings.mockResolvedValue(ready);
+    mocks.updateActivation.mockResolvedValue(
+      settings({
+        ...ready,
+        status: {
+          enabled: true,
+          ready: true,
+          configurationReady: true,
+          blockers: [],
+        },
+      }),
+    );
+    renderSettings(<AliDossierSettings />);
+
+    fireEvent.click(
+      await screen.findByRole("switch", {
+        name: /activate secure customer file/i,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(mocks.updateActivation).toHaveBeenCalledWith(true),
     );
   });
 
