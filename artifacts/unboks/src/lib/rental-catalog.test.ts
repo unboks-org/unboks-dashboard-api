@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/error";
 import {
+  fetchRentalCapability,
   fetchRentalDraft,
   formatCents,
   parseCents,
@@ -67,6 +68,32 @@ describe("rental catalog client", () => {
 
     await expect(fetchRentalDraft()).rejects.toThrow(
       "Workspace response rejected",
+    );
+  });
+
+  it("reads the server-owned capability with strict tenant identity", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({ tenantSlug: "ali-car-rental", enabled: true }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+              "X-Unboks-Tenant": "ali-car-rental",
+            },
+          },
+        ),
+      ),
+    );
+
+    await expect(fetchRentalCapability()).resolves.toEqual({
+      tenantSlug: "ali-car-rental",
+      enabled: true,
+    });
+    expect(String(vi.mocked(fetch).mock.calls[0][0])).toContain(
+      "/api/ali-car-rental/dashboard/api/rental-catalog/capability",
     );
   });
 

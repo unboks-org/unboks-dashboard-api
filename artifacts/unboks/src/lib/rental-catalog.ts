@@ -68,6 +68,11 @@ export interface RentalDraftEnvelope {
   updatedBy: string | null;
 }
 
+export interface RentalCapabilityEnvelope {
+  tenantSlug: string;
+  enabled: boolean;
+}
+
 export interface RentalFieldError {
   path: string;
   code: string;
@@ -176,6 +181,17 @@ export function fetchRentalDraft(
 ): Promise<RentalDraftEnvelope> {
   return apiFetch<RentalDraftEnvelope>(
     "/rental-catalog/draft",
+    { signal, cache: "no-store" },
+    false,
+    true,
+  );
+}
+
+export function fetchRentalCapability(
+  signal?: AbortSignal,
+): Promise<RentalCapabilityEnvelope> {
+  return apiFetch<RentalCapabilityEnvelope>(
+    "/rental-catalog/capability",
     { signal, cache: "no-store" },
     false,
     true,
