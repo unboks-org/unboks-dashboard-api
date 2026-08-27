@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   replaceDocument: vi.fn(),
   reclassifyDocument: vi.fn(),
   reviewPayment: vi.fn(),
+  toastError: vi.fn(),
+  toastSuccess: vi.fn(),
 }));
 
 vi.mock("@/lib/api", async (importOriginal) => {
@@ -33,7 +35,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 vi.mock("sonner", () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: mocks.toastSuccess, error: mocks.toastError },
 }));
 
 import { AliCustomerFile } from "./AliCustomerFile";
@@ -51,6 +53,8 @@ function customerFile(
     payment_status: "not_sent",
     dossier_status: "incomplete",
     dossier_version: 0,
+    dossier_review_status: "not_generated",
+    dossier_ready_for_approval: false,
     checklist_complete: false,
     can_confirm: false,
     pickup_checklist: {
@@ -137,6 +141,8 @@ describe("AliCustomerFile", () => {
     mocks.reviewPayment.mockReset().mockResolvedValue({
       payment_status: "verified",
     });
+    mocks.toastError.mockReset();
+    mocks.toastSuccess.mockReset();
   });
 
   it("shows missing requirements and keeps final approval locked", async () => {
@@ -149,6 +155,31 @@ describe("AliCustomerFile", () => {
       screen
         .getByRole("button", { name: /final human approval/i })
         .hasAttribute("disabled"),
+    ).toBe(true);
+  });
+
+  it("requires printing the completed dossier before final approval", async () => {
+    renderFile(
+      customerFile({
+        status: "ready_to_confirm",
+        identity_status: "verified",
+        agreement_status: "signed",
+        payment_status: "verified",
+        dossier_status: "ready_for_review",
+        dossier_version: 0,
+        dossier_review_status: "not_generated",
+        dossier_ready_for_approval: false,
+        checklist_complete: true,
+        can_confirm: false,
+        missing_requirements: [],
+      }),
+    );
+
+    expect(
+      await screen.findByText(/print the ready-for-review dossier before final human approval/i),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /final human approval/i }).hasAttribute("disabled"),
     ).toBe(true);
   });
 
@@ -174,6 +205,8 @@ describe("AliCustomerFile", () => {
         payment_status: "verified",
         dossier_status: "ready_for_review",
         dossier_version: 2,
+        dossier_review_status: "ready_for_review",
+        dossier_ready_for_approval: true,
         checklist_complete: true,
         can_confirm: true,
         missing_requirements: [],
@@ -189,6 +222,36 @@ describe("AliCustomerFile", () => {
 
     await waitFor(() => expect(mocks.confirm).toHaveBeenCalledTimes(1));
     expect(mocks.confirm).toHaveBeenCalledWith("reservation-120", 7);
+  });
+
+  it("explains the dossier gate instead of calling it a stale file", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    mocks.confirm.mockRejectedValueOnce(
+      new (await import("@/lib/error")).ApiError(409, "dossier_review_required"),
+    );
+    renderFile(
+      customerFile({
+        status: "ready_to_confirm",
+        identity_status: "verified",
+        agreement_status: "signed",
+        payment_status: "verified",
+        dossier_status: "ready_for_review",
+        dossier_version: 1,
+        dossier_review_status: "ready_for_review",
+        dossier_ready_for_approval: true,
+        checklist_complete: true,
+        can_confirm: true,
+        missing_requirements: [],
+      }),
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /final human approval/i }));
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "Print the ready-for-review dossier before final human approval.",
+      ),
+    );
   });
 
   it("keeps original-document inspection as a post-confirmation staff action", async () => {
