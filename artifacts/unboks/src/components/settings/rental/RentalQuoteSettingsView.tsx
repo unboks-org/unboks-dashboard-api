@@ -42,7 +42,7 @@ export function RentalQuoteSettingsView({
           </FieldShell>
           <FieldShell
             label="Availability mode"
-            hint="P0 remains request-only; staff confirms availability."
+            hint="Availability remains request-only; staff confirms each request."
           >
             <RentalInput
               value="Request only"
@@ -94,7 +94,7 @@ export function RentalQuoteSettingsView({
           </FieldShell>
           <FieldShell
             label="Reservation deposit"
-            hint="Preserved for compatibility; this is not changed by FRD-005."
+            hint="Calculated from rental charges; the refundable deposit is excluded."
           >
             <RentalInput
               value={`${settings.reservationDepositPercent}% of rental charges`}

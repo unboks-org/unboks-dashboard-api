@@ -6,11 +6,9 @@ import Rental from "@/pages/Rental";
 const retry = vi.hoisted(() => vi.fn());
 const capability = vi.hoisted(() => ({
   current: {
-    tenantSlug: "ali-car-rental" as string | null,
     enabled: true,
     isLoading: false,
     isUnavailable: false,
-    error: null as unknown,
     retry,
   },
 }));
@@ -46,11 +44,9 @@ describe("Rental page capability boundary", () => {
   beforeEach(() => {
     retry.mockReset();
     capability.current = {
-      tenantSlug: "ali-car-rental",
       enabled: true,
       isLoading: false,
       isUnavailable: false,
-      error: null,
       retry,
     };
   });
@@ -70,7 +66,6 @@ describe("Rental page capability boundary", () => {
       ...capability.current,
       enabled: false,
       isUnavailable: true,
-      error: new Error("tenant response rejected"),
     };
     render(<Rental />);
 

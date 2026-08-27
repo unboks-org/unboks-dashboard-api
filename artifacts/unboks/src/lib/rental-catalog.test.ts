@@ -103,12 +103,14 @@ describe("rental catalog client", () => {
     headers.append("X-Unboks-Tenant", "ali-car-rental");
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({ tenantSlug: "ali-car-rental", enabled: true }),
-          { status: 200, headers },
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ tenantSlug: "ali-car-rental", enabled: true }),
+            { status: 200, headers },
+          ),
         ),
-      ),
     );
 
     await expect(fetchRentalCapability()).resolves.toEqual({
@@ -123,12 +125,14 @@ describe("rental catalog client", () => {
     headers.append("X-Unboks-Tenant", "consulta-despertares");
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({ tenantSlug: "ali-car-rental", enabled: true }),
-          { status: 200, headers },
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ tenantSlug: "ali-car-rental", enabled: true }),
+            { status: 200, headers },
+          ),
         ),
-      ),
     );
 
     await expect(fetchRentalCapability()).rejects.toThrow(
@@ -161,6 +165,31 @@ describe("rental catalog client", () => {
     );
 
     await expect(fetchRentalDraft()).rejects.toThrow(
+      "Workspace response rejected",
+    );
+  });
+
+  it("rejects a body tenant that conflicts with the authenticated proxy tenant", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            tenantSlug: "consulta-despertares",
+            enabled: true,
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+              "X-Unboks-Tenant": "ali-car-rental",
+            },
+          },
+        ),
+      ),
+    );
+
+    await expect(fetchRentalCapability()).rejects.toThrow(
       "Workspace response rejected",
     );
   });

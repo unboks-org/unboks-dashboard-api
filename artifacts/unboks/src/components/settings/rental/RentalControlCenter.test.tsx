@@ -81,7 +81,6 @@ function setQuery(data: RentalDraftEnvelope) {
     isLoading: false,
     isError: false,
     refetch: mocks.refetch,
-    capability: { enabled: true, isLoading: false, isUnavailable: false },
   };
 }
 
