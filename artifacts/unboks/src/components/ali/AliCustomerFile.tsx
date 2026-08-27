@@ -309,7 +309,9 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
     onError: (error) => {
       lastActionRef.current = null;
       toast.error(
-        error instanceof ApiError && error.status === 409
+        error instanceof ApiError && error.message === "dossier_review_required"
+          ? "Print the ready-for-review dossier before final human approval."
+          : error instanceof ApiError && error.status === 409
           ? "This file changed. Review the latest status and try again."
           : "The customer file could not be updated.",
       );
@@ -409,6 +411,7 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
   const finalNotes = notes ?? file.final_notes;
   const busy = action.isPending || printDossier.isPending || preview.isPending;
   const workflowV2 = file.workflow_v2;
+  const dossierReadyForApproval = file.dossier_ready_for_approval;
 
   return (
     <section
@@ -859,7 +862,7 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
         <ControlBlock
           title="Printable dossier"
           icon={<Download />}
-          status={file.dossier_status}
+          status={file.dossier_review_status}
         >
           <p className="text-sm text-slate-600">
             Version {file.dossier_version || "not generated"}
@@ -867,6 +870,11 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
               ? ` · last generated ${new Date(lastPrint.created_at).toLocaleString()}`
               : ""}
           </p>
+          {!dossierReadyForApproval && file.can_confirm === false && !file.missing_requirements.length ? (
+            <p className="mt-2 text-sm font-medium text-amber-800">
+              Print the ready-for-review dossier before final human approval.
+            </p>
+          ) : null}
           <div className="mt-3 flex flex-wrap gap-2">
             {file.missing_requirements.length ? (
               <SecondaryButton
@@ -900,7 +908,7 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
             disabled={
               busy ||
               !file.can_confirm ||
-              file.dossier_status !== "ready_for_review"
+              !dossierReadyForApproval
             }
             onClick={() => {
               if (

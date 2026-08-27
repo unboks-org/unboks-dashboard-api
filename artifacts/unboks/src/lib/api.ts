@@ -636,6 +636,12 @@ export interface AliCustomerFile {
     | "customer_reports_paid";
   dossier_status: "incomplete" | "ready_for_review" | "approved";
   dossier_version: number;
+  dossier_review_status:
+    | "not_generated"
+    | "incomplete"
+    | "ready_for_review"
+    | "approved";
+  dossier_ready_for_approval: boolean;
   checklist_complete: boolean;
   can_confirm: boolean;
   pickup_checklist: {
