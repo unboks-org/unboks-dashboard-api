@@ -20,6 +20,7 @@ const Login = lazy(() => import("@/pages/Login"));
 const Bookings = lazy(() => import("@/pages/Bookings"));
 const FollowUps = lazy(() => import("@/pages/FollowUps"));
 const Settings = lazy(() => import("@/pages/Settings"));
+const Rental = lazy(() => import("@/pages/Rental"));
 const Analytics = lazy(() => import("@/pages/Analytics"));
 const Help = lazy(() => import("@/pages/Help"));
 const Images = lazy(() => import("@/pages/Images"));
@@ -358,6 +359,13 @@ function Router() {
         <ProtectedRoute>
           <SettingsErrorBoundary>
             <Settings />
+          </SettingsErrorBoundary>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/rental">
+        <ProtectedRoute>
+          <SettingsErrorBoundary>
+            <Rental />
           </SettingsErrorBoundary>
         </ProtectedRoute>
       </Route>
