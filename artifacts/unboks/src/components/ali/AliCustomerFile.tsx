@@ -25,6 +25,7 @@ import {
 import { toast } from "sonner";
 
 import {
+  approveAliPrepaymentFile,
   confirmAliReservation,
   decideAliReservationAvailability,
   deleteAliDocument,
@@ -79,6 +80,7 @@ type DossierAction =
   | { kind: "license-back-not-required" }
   | { kind: "send-contract" }
   | { kind: "save-payment"; url: string; reference: string }
+  | { kind: "approve-prepayment" }
   | { kind: "send-payment" }
   | {
       kind: "review-payment";
@@ -275,6 +277,10 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
             request.reference,
             revision,
           );
+        case "approve-prepayment":
+          if (!file.workflow_v2)
+            throw new ApiError(409, "Reservation V2 is not loaded.");
+          return approveAliPrepaymentFile(publicId, file.workflow_v2.revision);
         case "send-payment":
           return sendAliPaymentLink(publicId);
         case "review-payment":
@@ -292,7 +298,7 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
           return recordAliPickupInspection(publicId, request.item, revision);
       }
     },
-    onSuccess: async (_result, request) => {
+    onSuccess: async (result, request) => {
       if (request.kind === "save-payment") {
         setPaymentUrl("");
         setPaymentReference("");
@@ -300,11 +306,27 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
       if (request.kind === "save-notes") setNotes(request.notes);
       if (request.kind === "review-payment") setPaymentReviewReason("");
       await refresh();
-      toast.success(
-        request.kind === "confirm"
-          ? "Reservation approved and confirmation prepared."
-          : "Customer file updated.",
-      );
+      if (
+        request.kind === "approve-prepayment" &&
+        typeof result === "object" &&
+        result !== null &&
+        "delivered" in result &&
+        result.delivered === false
+      ) {
+        toast.error(
+          "File approved, but payment delivery failed. Retry the payment link below.",
+        );
+      } else {
+        toast.success(
+          request.kind === "confirm"
+            ? "Reservation approved and confirmation prepared."
+            : request.kind === "approve-prepayment"
+              ? "File approved and payment link sent."
+              : request.kind === "send-payment"
+                ? "Payment link sent."
+                : "Customer file updated.",
+        );
+      }
     },
     onError: (error) => {
       lastActionRef.current = null;
@@ -312,8 +334,8 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
         error instanceof ApiError && error.message === "dossier_review_required"
           ? "Print the ready-for-review dossier before final human approval."
           : error instanceof ApiError && error.status === 409
-          ? "This file changed. Review the latest status and try again."
-          : "The customer file could not be updated.",
+            ? "This file changed. Review the latest status and try again."
+            : "The customer file could not be updated.",
       );
       void refresh();
     },
@@ -428,8 +450,8 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
               Reservation {file.confirmation_reference || file.quote_reference}
             </h3>
             <p className="mt-1 text-xs leading-5 text-slate-300">
-              Human approval stays locked until availability, documents,
-              contract, payment and dossier review are complete.
+              One complete-file review releases payment. Final approval stays
+              locked until payment and dossier review are complete.
             </p>
           </div>
           <Status value={file.dossier_status} />
@@ -533,10 +555,21 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
         {file.availability_status === "approved" && (
           <>
             <ControlBlock
-              title="2. Identity documents"
+              title={
+                workflowV2
+                  ? "2. Secure documents — automatic collection"
+                  : "2. Identity documents"
+              }
               icon={<ShieldCheck />}
               status={file.identity_status}
             >
+              {workflowV2 ? (
+                <p className="mb-3 text-sm text-slate-600">
+                  Nick collects each upload in sequence. Individual verification
+                  is not required; review the complete bundle once after the
+                  pre-contract is signed.
+                </p>
+              ) : null}
               {!documents.length && (
                 <p className="text-sm text-slate-600">
                   No document copies received yet.
@@ -548,6 +581,7 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
                     key={document.public_id}
                     document={document}
                     busy={busy}
+                    individualReview={!workflowV2}
                     onPreview={() =>
                       preview.mutate({
                         kind: "document",
@@ -657,7 +691,7 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
             </ControlBlock>
 
             <ControlBlock
-              title="4. Refundable deposit"
+              title="4. Payment setup"
               icon={<FileCheck2 />}
               status={file.payment_status}
             >
@@ -821,6 +855,101 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
                 )}
               </div>
             </ControlBlock>
+
+            {workflowV2 && file.prepayment_review ? (
+              <ControlBlock
+                title="5. Complete file review"
+                icon={<ClipboardCheck />}
+                status={
+                  file.prepayment_review.approved
+                    ? "approved"
+                    : file.prepayment_review.approvalRequired
+                      ? "ready_for_review"
+                      : file.prepayment_review.status
+                }
+              >
+                <p className="text-sm leading-6 text-slate-600">
+                  Review all received identity documents and the signed
+                  pre-contract together. This is the only approval before
+                  payment; approving releases Nick’s payment-link message.
+                </p>
+                <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                  <div className="rounded-lg bg-slate-50 p-3 text-slate-700">
+                    <span className="block text-slate-500">
+                      Documents received
+                    </span>
+                    <strong className="mt-1 block text-slate-950">
+                      {file.prepayment_review.receivedDocumentCount} of{" "}
+                      {file.prepayment_review.requiredDocumentCount}
+                    </strong>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 p-3 text-slate-700">
+                    <span className="block text-slate-500">Payment route</span>
+                    <strong className="mt-1 block text-slate-950">
+                      {file.prepayment_review.paymentReady
+                        ? "Ready"
+                        : "Payment link required"}
+                    </strong>
+                  </div>
+                </div>
+                {file.prepayment_review.missingRequirements.length ? (
+                  <ul className="mt-3 space-y-1 text-sm text-amber-800">
+                    {file.prepayment_review.missingRequirements.map(
+                      (requirement) => (
+                        <li key={requirement}>
+                          •{" "}
+                          {readableStatus(requirement.replace("document:", ""))}
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                ) : null}
+                {file.prepayment_review.approvalRequired &&
+                !file.prepayment_review.paymentReady ? (
+                  <p className="mt-3 text-sm font-medium text-amber-800">
+                    Save the approved payment link above before releasing it.
+                  </p>
+                ) : null}
+                {file.prepayment_review.approvalRequired ? (
+                  <PrimaryButton
+                    disabled={busy || !file.prepayment_review.canApproveAndSend}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          "Approve the complete pre-payment file and send the payment link now?",
+                        )
+                      ) {
+                        runAction({ kind: "approve-prepayment" });
+                      }
+                    }}
+                  >
+                    <CheckCircle2 className="h-4 w-4" /> Approve File &amp; Send
+                    Payment Link
+                  </PrimaryButton>
+                ) : file.prepayment_review.approved &&
+                  !["link_sent", "customer_reports_paid", "verified"].includes(
+                    file.payment_status,
+                  ) ? (
+                  <div className="mt-3 space-y-3">
+                    <p className="text-sm font-semibold text-amber-800">
+                      File approved. The payment-link message still needs to be
+                      delivered.
+                    </p>
+                    <PrimaryButton
+                      disabled={busy}
+                      onClick={() => runAction({ kind: "send-payment" })}
+                    >
+                      <RefreshCw className="h-4 w-4" /> Retry Sending Payment
+                      Link
+                    </PrimaryButton>
+                  </div>
+                ) : file.prepayment_review.approved ? (
+                  <p className="mt-3 text-sm font-semibold text-emerald-700">
+                    Approved. The payment link has been sent.
+                  </p>
+                ) : null}
+              </ControlBlock>
+            ) : null}
           </>
         )}
 
@@ -870,7 +999,9 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
               ? ` · last generated ${new Date(lastPrint.created_at).toLocaleString()}`
               : ""}
           </p>
-          {!dossierReadyForApproval && file.can_confirm === false && !file.missing_requirements.length ? (
+          {!dossierReadyForApproval &&
+          file.can_confirm === false &&
+          !file.missing_requirements.length ? (
             <p className="mt-2 text-sm font-medium text-amber-800">
               Print the ready-for-review dossier before final human approval.
             </p>
@@ -905,11 +1036,7 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
         {file.status !== "confirmed" ? (
           <button
             type="button"
-            disabled={
-              busy ||
-              !file.can_confirm ||
-              !dossierReadyForApproval
-            }
+            disabled={busy || !file.can_confirm || !dossierReadyForApproval}
             onClick={() => {
               if (
                 window.confirm(
@@ -1044,6 +1171,7 @@ function SecondaryButton({
 function DocumentRow({
   document,
   busy,
+  individualReview,
   onPreview,
   onVerify,
   onRejectWithReason,
@@ -1054,6 +1182,7 @@ function DocumentRow({
 }: {
   document: AliReservationDocument;
   busy: boolean;
+  individualReview: boolean;
   onPreview: () => void;
   onVerify: () => void;
   onRejectWithReason: (reason: string) => void;
@@ -1071,7 +1200,7 @@ function DocumentRow({
 }) {
   const [reason, setReason] = useState("");
   const hasContent = !["deleted", "not_required"].includes(document.status);
-  const canReview = document.status === "received";
+  const canReview = individualReview && document.status === "received";
   const canReplace = ![
     "deleted",
     "replaced",

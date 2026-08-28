@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  approveAliPrepaymentFile,
   confirmAliReservation,
   decideAliReservationAvailability,
   fetchAliDossierSettings,
@@ -74,6 +75,22 @@ describe("Ali post-quote reservation API", () => {
     expect(request).toMatchObject({
       method: "POST",
       body: JSON.stringify({ expectedRevision: 5 }),
+    });
+  });
+
+  it("approves the complete pre-payment file with the V2 revision", async () => {
+    await approveAliPrepaymentFile("AR-TEST-1", 9);
+
+    const [url, request] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain(
+      "/ali-reservations/AR-TEST-1/prepayment-review",
+    );
+    expect(request).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({
+        decision: "approve",
+        expectedWorkflowRevision: 9,
+      }),
     });
   });
 

@@ -677,6 +677,17 @@ export interface AliCustomerFile {
   events: AliReservationEvent[];
   final_notes: string;
   workflow_v2?: AliReservationWorkflowV2;
+  prepayment_review?: {
+    status: string;
+    approvalRequired: boolean;
+    approved: boolean;
+    readyForApproval: boolean;
+    paymentReady: boolean;
+    canApproveAndSend: boolean;
+    requiredDocumentCount: number;
+    receivedDocumentCount: number;
+    missingRequirements: string[];
+  };
 }
 
 export interface AliDossierConfiguration {
@@ -934,6 +945,22 @@ export function sendAliPaymentLink(publicId: string): Promise<unknown> {
     {
       method: "POST",
       body: "{}",
+    },
+  );
+}
+
+export function approveAliPrepaymentFile(
+  publicId: string,
+  expectedWorkflowRevision: number,
+): Promise<{ approved: boolean; delivered: boolean }> {
+  return apiFetch<{ approved: boolean; delivered: boolean }>(
+    `/ali-reservations/${encodeURIComponent(publicId)}/prepayment-review`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        decision: "approve",
+        expectedWorkflowRevision,
+      }),
     },
   );
 }

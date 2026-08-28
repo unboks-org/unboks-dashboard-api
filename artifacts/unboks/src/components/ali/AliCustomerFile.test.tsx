@@ -2,10 +2,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { AliCustomerFile as AliCustomerFileRecord } from "@/lib/api";
+import type {
+  AliCustomerFile as AliCustomerFileRecord,
+  AliReservationWorkflowV2,
+} from "@/lib/api";
 
 const mocks = vi.hoisted(() => ({
   fetchFile: vi.fn(),
+  approvePrepayment: vi.fn(),
+  sendPayment: vi.fn(),
   confirm: vi.fn(),
   requestDocuments: vi.fn(),
   pickup: vi.fn(),
@@ -23,6 +28,8 @@ vi.mock("@/lib/api", async (importOriginal) => {
   return {
     ...actual,
     fetchAliCustomerFile: mocks.fetchFile,
+    approveAliPrepaymentFile: mocks.approvePrepayment,
+    sendAliPaymentLink: mocks.sendPayment,
     confirmAliReservation: mocks.confirm,
     requestAliDocuments: mocks.requestDocuments,
     recordAliPickupInspection: mocks.pickup,
@@ -120,6 +127,42 @@ function renderFile(file: AliCustomerFileRecord) {
   };
 }
 
+function workflowV2(
+  overrides: Partial<AliReservationWorkflowV2> = {},
+): AliReservationWorkflowV2 {
+  return {
+    reservationPublicId: "reservation-120",
+    workflowVersion: 2,
+    state: "prepayment_approval_pending",
+    responsibleParty: "Staff",
+    clock: {
+      state: "paused",
+      pauseReason: "prepayment_file_review",
+      activeClientSeconds: 0,
+      remainingSeconds: 86_400,
+      holdSeconds: 86_400,
+      clientTimezone: "America/Curacao",
+    },
+    reminders: {
+      milestonesSeconds: [10_800, 43_200, 75_600],
+      nextMilestoneSeconds: null,
+      sendEnabled: false,
+    },
+    nextAction: "approve_complete_file",
+    doNotContact: false,
+    cancellationReason: null,
+    negativeIntentPending: false,
+    identityType: "passport",
+    expectedDocumentSlot: null,
+    revision: 8,
+    lastClientActivityAt: null,
+    lastOutboundAt: null,
+    createdAt: "2099-01-01T00:00:00Z",
+    updatedAt: "2099-01-01T01:00:00Z",
+    ...overrides,
+  };
+}
+
 describe("AliCustomerFile", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -127,6 +170,8 @@ describe("AliCustomerFile", () => {
     sessionStorage.setItem("unboks_active_tenant", "ali-car-rental");
     localStorage.setItem("wtyj_token_ali-car-rental", "test-token");
     mocks.fetchFile.mockReset();
+    mocks.approvePrepayment.mockReset().mockResolvedValue({ delivered: true });
+    mocks.sendPayment.mockReset().mockResolvedValue({ delivered: true });
     mocks.confirm.mockReset().mockResolvedValue({ status: "confirmed" });
     mocks.requestDocuments.mockReset().mockResolvedValue({ delivered: true });
     mocks.pickup.mockReset().mockResolvedValue({ status: "confirmed" });
@@ -176,10 +221,14 @@ describe("AliCustomerFile", () => {
     );
 
     expect(
-      await screen.findByText(/print the ready-for-review dossier before final human approval/i),
+      await screen.findByText(
+        /print the ready-for-review dossier before final human approval/i,
+      ),
     ).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: /final human approval/i }).hasAttribute("disabled"),
+      screen
+        .getByRole("button", { name: /final human approval/i })
+        .hasAttribute("disabled"),
     ).toBe(true);
   });
 
@@ -227,7 +276,10 @@ describe("AliCustomerFile", () => {
   it("explains the dossier gate instead of calling it a stale file", async () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     mocks.confirm.mockRejectedValueOnce(
-      new (await import("@/lib/error")).ApiError(409, "dossier_review_required"),
+      new (await import("@/lib/error")).ApiError(
+        409,
+        "dossier_review_required",
+      ),
     );
     renderFile(
       customerFile({
@@ -245,7 +297,9 @@ describe("AliCustomerFile", () => {
       }),
     );
 
-    fireEvent.click(await screen.findByRole("button", { name: /final human approval/i }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /final human approval/i }),
+    );
 
     await waitFor(() =>
       expect(mocks.toastError).toHaveBeenCalledWith(
@@ -358,6 +412,102 @@ describe("AliCustomerFile", () => {
     ).toBeNull();
     expect(
       screen.queryByRole("button", { name: /send pre-contract/i }),
+    ).toBeNull();
+  });
+
+  it("uses one complete-file approval instead of per-document verification", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    renderFile(
+      customerFile({
+        identity_status: "received",
+        agreement_status: "signed",
+        documents: [
+          {
+            public_id: "doc-120",
+            slot: "passport",
+            version: 1,
+            mime_type: "image/png",
+            size_bytes: 100,
+            sha256: "synthetic",
+            status: "received",
+            previous_document_public_id: null,
+            created_at: "2099-01-01T00:00:00Z",
+            updated_at: "2099-01-01T00:00:00Z",
+            verified_at: null,
+            verified_by: null,
+            deleted_at: null,
+            deleted_by: null,
+          },
+        ],
+        workflow_v2: workflowV2(),
+        prepayment_review: {
+          status: "prepayment_approval_pending",
+          approvalRequired: true,
+          approved: false,
+          readyForApproval: true,
+          paymentReady: true,
+          canApproveAndSend: true,
+          requiredDocumentCount: 3,
+          receivedDocumentCount: 3,
+          missingRequirements: [],
+        },
+      }),
+    );
+
+    expect(
+      await screen.findByText(/individual verification is not required/i),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^verify$/i })).toBeNull();
+    const approval = screen.getByRole("button", {
+      name: /approve file & send payment link/i,
+    });
+    fireEvent.click(approval);
+
+    await waitFor(() =>
+      expect(mocks.approvePrepayment).toHaveBeenCalledWith(
+        "reservation-120",
+        8,
+      ),
+    );
+  });
+
+  it("retries payment delivery without asking for a second approval", async () => {
+    renderFile(
+      customerFile({
+        payment_status: "not_sent",
+        workflow_v2: workflowV2({
+          state: "prepayment_approved",
+          responsibleParty: "System",
+          nextAction: "send_payment_link",
+          revision: 9,
+        }),
+        prepayment_review: {
+          status: "prepayment_approved",
+          approvalRequired: false,
+          approved: true,
+          readyForApproval: true,
+          paymentReady: true,
+          canApproveAndSend: true,
+          requiredDocumentCount: 3,
+          receivedDocumentCount: 3,
+          missingRequirements: [],
+        },
+      }),
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: /retry sending payment link/i,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(mocks.sendPayment).toHaveBeenCalledWith("reservation-120"),
+    );
+    expect(
+      screen.queryByRole("button", {
+        name: /approve file & send payment link/i,
+      }),
     ).toBeNull();
   });
 
