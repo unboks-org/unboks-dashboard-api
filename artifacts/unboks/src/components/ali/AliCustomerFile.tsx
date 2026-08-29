@@ -523,7 +523,7 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
             </div>
           </div>
         )}
-        {file.availability_status === "pending" && (
+        {file.availability_status === "pending" && !workflowV2 && (
           <ControlBlock
             title="1. Confirm vehicle availability"
             icon={<BadgeCheck />}
@@ -557,7 +557,7 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
             <ControlBlock
               title={
                 workflowV2
-                  ? "2. Secure documents — automatic collection"
+                  ? "1. Secure documents — automatic collection"
                   : "2. Identity documents"
               }
               icon={<ShieldCheck />}
@@ -662,7 +662,7 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
             </ControlBlock>
 
             <ControlBlock
-              title="3. Pre-contract"
+              title={workflowV2 ? "2. Pre-contract" : "3. Pre-contract"}
               icon={<FileKey2 />}
               status={file.contract?.status || "missing"}
             >
@@ -691,7 +691,7 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
             </ControlBlock>
 
             <ControlBlock
-              title="4. Payment setup"
+              title={workflowV2 ? "3. Payment setup" : "4. Payment setup"}
               icon={<FileCheck2 />}
               status={file.payment_status}
             >
@@ -858,7 +858,7 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
 
             {workflowV2 && file.prepayment_review ? (
               <ControlBlock
-                title="5. Complete file review"
+                title="4. Complete file review"
                 icon={<ClipboardCheck />}
                 status={
                   file.prepayment_review.approved
