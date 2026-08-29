@@ -408,11 +408,35 @@ describe("AliCustomerFile", () => {
     expect(screen.getByText(/Responsible now: Client/i)).toBeTruthy();
     expect(screen.getByText("23h 0m")).toBeTruthy();
     expect(
+      screen.getByText("1. Secure documents — automatic collection"),
+    ).toBeTruthy();
+    expect(screen.getByText("2. Pre-contract")).toBeTruthy();
+    expect(screen.getByText("3. Payment setup")).toBeTruthy();
+    expect(
       screen.queryByRole("button", { name: /request secure uploads/i }),
     ).toBeNull();
     expect(
       screen.queryByRole("button", { name: /send pre-contract/i }),
     ).toBeNull();
+  });
+
+  it("never exposes the obsolete availability approval to V2 staff", async () => {
+    renderFile(
+      customerFile({
+        availability_status: "pending",
+        workflow_v2: workflowV2({
+          state: "documents_collecting",
+          responsibleParty: "Client",
+          nextAction: "send_next_document",
+        }),
+      }),
+    );
+
+    expect(await screen.findByText("Current reservation step")).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: /approve availability/i }),
+    ).toBeNull();
+    expect(screen.queryByText("1. Confirm vehicle availability")).toBeNull();
   });
 
   it("uses one complete-file approval instead of per-document verification", async () => {
@@ -457,6 +481,7 @@ describe("AliCustomerFile", () => {
     expect(
       await screen.findByText(/individual verification is not required/i),
     ).toBeTruthy();
+    expect(screen.getByText("4. Complete file review")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /^verify$/i })).toBeNull();
     const approval = screen.getByRole("button", {
       name: /approve file & send payment link/i,
