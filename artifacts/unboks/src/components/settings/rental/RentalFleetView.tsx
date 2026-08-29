@@ -216,6 +216,7 @@ export function RentalFleetView({
                     displayName: "New car or similar",
                     categoryId: category.id,
                     seats: 4,
+                    luggageCapacity: 2,
                     transmission: "automatic",
                     primaryImageAssetId: null,
                     active: true,
@@ -241,7 +242,7 @@ export function RentalFleetView({
                 key={car.id}
                 className="rounded-xl border border-[#e3e6eb] p-4"
               >
-                <div className="grid gap-4 lg:grid-cols-[180px_minmax(180px,1fr)_180px_100px_150px] lg:items-end">
+                <div className="grid gap-4 lg:grid-cols-[160px_minmax(180px,1fr)_160px_80px_120px_140px] lg:items-end">
                   <RentalMediaField
                     ownerId={car.id}
                     assetId={car.primaryImageAssetId}
@@ -291,6 +292,23 @@ export function RentalFleetView({
                       disabled={Boolean(car.archivedAt)}
                       onChange={(event) =>
                         updateCar(index, { seats: Number(event.target.value) })
+                      }
+                    />
+                  </FieldShell>
+                  <FieldShell
+                    label="Medium suitcases (approx.)"
+                    error={errorAt(`cars.${index}.luggageCapacity`)}
+                  >
+                    <RentalInput
+                      type="number"
+                      min={0}
+                      max={20}
+                      value={car.luggageCapacity ?? 0}
+                      disabled={Boolean(car.archivedAt)}
+                      onChange={(event) =>
+                        updateCar(index, {
+                          luggageCapacity: Number(event.target.value),
+                        })
                       }
                     />
                   </FieldShell>

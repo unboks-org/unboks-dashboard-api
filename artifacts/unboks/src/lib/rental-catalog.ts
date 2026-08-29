@@ -33,6 +33,7 @@ export interface RentalCar {
   displayName: string;
   categoryId: string;
   seats: number;
+  luggageCapacity?: number;
   transmission: RentalTransmission;
   primaryImageAssetId: string | null;
   active: boolean;
