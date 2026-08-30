@@ -102,13 +102,18 @@ export function RentalMediaField({
                   <button
                     type="button"
                     aria-label={`Open larger preview of ${alt}`}
-                    className="absolute inset-0 grid cursor-zoom-in place-items-center bg-white p-2 outline-none transition focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1a73e8] sm:p-3"
+                    className="absolute inset-0 cursor-zoom-in bg-white outline-none transition focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1a73e8]"
                   >
-                    <img
-                      src={media.data.url}
-                      alt={alt}
-                      className="h-full w-full object-contain transition duration-300 group-hover:scale-[1.025]"
-                    />
+                    <span
+                      data-vehicle-image-canvas
+                      className="absolute inset-x-1 bottom-2 top-0 grid place-items-center overflow-hidden"
+                    >
+                      <img
+                        src={media.data.url}
+                        alt={alt}
+                        className="block max-h-full max-w-full object-contain"
+                      />
+                    </span>
                     <span className="absolute right-2 top-2 grid h-9 w-9 place-items-center rounded-full border border-[#e1e4e8] bg-white/95 text-[#344054] opacity-0 shadow-sm backdrop-blur transition group-hover:opacity-100 group-focus-within:opacity-100">
                       <Maximize2 className="h-4 w-4" />
                     </span>
@@ -141,7 +146,7 @@ export function RentalMediaField({
               </div>
             )}
           </div>
-          <div className="relative z-10 flex flex-none items-center gap-2 border-t border-[#edf0f3] bg-white p-3">
+          <div className="relative z-10 flex flex-none items-center gap-2 border-t border-[#edf0f3] bg-white px-3 py-2">
             <Button
               type="button"
               variant="secondary"
