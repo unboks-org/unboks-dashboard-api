@@ -125,6 +125,26 @@ describe("RentalFleetView premium vehicle editor", () => {
     });
   });
 
+  it("provides deliberate vehicle controls without changing draft semantics", () => {
+    const onChange = renderFleet();
+
+    expect(
+      (screen.getByRole("spinbutton", { name: "Seats" }) as HTMLInputElement)
+        .value,
+    ).toBe("5");
+    fireEvent.click(screen.getByRole("button", { name: "Increase seats" }));
+    expect(onChange).toHaveBeenCalledWith({
+      ...document,
+      cars: [{ ...document.cars[0], seats: 6 }],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Manual" }));
+    expect(onChange).toHaveBeenCalledWith({
+      ...document,
+      cars: [{ ...document.cars[0], transmission: "manual" }],
+    });
+  });
+
   it("opens a large preview when the contained vehicle image is selected", async () => {
     const documentWithImage: RentalCatalogDocument = {
       ...document,

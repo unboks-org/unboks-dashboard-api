@@ -1,16 +1,22 @@
+import type { ComponentType } from "react";
 import {
   ArrowDown,
   ArrowUp,
   Archive,
   BriefcaseBusiness,
   CarFront,
+  ChevronDown,
+  Gauge,
+  Minus,
   MoreHorizontal,
   Plus,
+  Tag,
   Settings2,
   Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 import {
   formatCents,
   type RentalCatalogDocument,
@@ -53,6 +60,92 @@ function move<T>(items: T[], index: number, direction: -1 | 1): T[] {
   const next = [...items];
   [next[index], next[target]] = [next[target], next[index]];
   return next.map((item, displayOrder) => ({ ...item, displayOrder }));
+}
+
+function VehicleNumberField({
+  label,
+  hint,
+  icon: Icon,
+  value,
+  min,
+  max,
+  disabled,
+  error,
+  onValue,
+}: {
+  label: string;
+  hint?: string;
+  icon: ComponentType<{ className?: string }>;
+  value: number;
+  min: number;
+  max: number;
+  disabled?: boolean;
+  error?: string;
+  onValue: (value: number) => void;
+}) {
+  const updateWithinRange = (next: number) =>
+    onValue(Math.min(max, Math.max(min, next)));
+
+  return (
+    <div className="min-w-0">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#667085]">
+          {label}
+        </span>
+        {hint ? (
+          <span className="truncate text-[10px] text-[#98a2b3]">{hint}</span>
+        ) : null}
+      </div>
+      <div
+        className={cn(
+          "flex h-12 min-w-0 items-center overflow-hidden rounded-xl border bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition focus-within:border-[#9b7b27] focus-within:ring-2 focus-within:ring-[#9b7b27]/10",
+          error ? "border-[#d92d20]" : "border-[#dfe3e8]",
+        )}
+      >
+        <span className="grid h-full w-11 flex-none place-items-center border-r border-[#edf0f3] bg-[#fcfcfd] text-[#80651d]">
+          <Icon className="h-4 w-4" />
+        </span>
+        <Input
+          type="number"
+          aria-label={label}
+          min={min}
+          max={max}
+          value={value}
+          disabled={disabled}
+          className="h-11 min-w-0 flex-1 appearance-none rounded-none border-0 bg-transparent px-2 text-center text-[14px] font-semibold text-[#172033] shadow-none focus-visible:ring-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          onChange={(event) => {
+            const next = event.currentTarget.valueAsNumber;
+            if (Number.isFinite(next)) updateWithinRange(next);
+          }}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`Decrease ${label.toLowerCase()}`}
+          className="h-11 w-11 flex-none rounded-none border-l border-[#edf0f3] text-[#667085]"
+          disabled={disabled || value <= min}
+          onClick={() => updateWithinRange(value - 1)}
+        >
+          <Minus className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`Increase ${label.toLowerCase()}`}
+          className="h-11 w-11 flex-none rounded-none border-l border-[#edf0f3] text-[#667085]"
+          disabled={disabled || value >= max}
+          onClick={() => updateWithinRange(value + 1)}
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      {error ? (
+        <p className="mt-1.5 text-[11px] text-[#b42318]">{error}</p>
+      ) : null}
+    </div>
+  );
 }
 
 export function RentalFleetView({
@@ -268,6 +361,11 @@ export function RentalFleetView({
                 (item) => item.id === car.categoryId,
               );
               const isActive = car.active && !car.archivedAt;
+              const nameError = errorAt(`cars.${index}.displayName`);
+              const categoryError = errorAt(`cars.${index}.categoryId`);
+              const luggageError = errorAt(
+                `cars.${index}.luggageCapacity`,
+              );
 
               return (
                 <article
@@ -364,108 +462,164 @@ export function RentalFleetView({
                       }
                     />
 
-                    <div className="min-w-0 space-y-5">
-                      <div className="flex items-center gap-2">
-                        <Settings2 className="h-4 w-4 text-[#80651d]" />
-                        <h5 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#667085]">
-                          Vehicle details
-                        </h5>
+                    <div className="min-w-0 rounded-2xl bg-[#f8fafc] p-4 ring-1 ring-inset ring-[#e9edf2] sm:p-5">
+                      <div className="flex items-center gap-3 border-b border-[#e6eaf0] pb-4">
+                        <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-white text-[#80651d] shadow-sm ring-1 ring-[#e3e7ec]">
+                          <Settings2 className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <h5 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#475467]">
+                            Vehicle details
+                          </h5>
+                          <p className="mt-0.5 text-[11px] text-[#98a2b3]">
+                            Information customers use to compare this car
+                          </p>
+                        </div>
                       </div>
-                      <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-                        <FieldShell
-                          label="Customer-facing name"
-                          error={errorAt(`cars.${index}.displayName`)}
-                        >
-                          <RentalInput
-                            value={car.displayName}
-                            maxLength={120}
-                            disabled={Boolean(car.archivedAt)}
-                            onChange={(event) =>
-                              updateCar(index, {
-                                displayName: event.target.value,
-                              })
-                            }
-                          />
-                        </FieldShell>
-                        <FieldShell
-                          label="Rate category"
-                          error={errorAt(`cars.${index}.categoryId`)}
-                        >
-                          <RentalSelect
-                            value={car.categoryId}
-                            disabled={Boolean(car.archivedAt)}
-                            onChange={(event) =>
-                              updateCar(index, {
-                                categoryId: event.target.value,
-                              })
-                            }
+
+                      <div className="mt-5 grid min-w-0 gap-4 sm:grid-cols-2">
+                        <div className="min-w-0">
+                          <label
+                            htmlFor={`car-name-${car.id}`}
+                            className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#667085]"
                           >
-                            {document.categories
-                              .filter((item) => !item.archivedAt)
-                              .map((item) => (
-                                <option key={item.id} value={item.id}>
-                                  {item.name}
-                                </option>
-                              ))}
-                          </RentalSelect>
-                        </FieldShell>
-                      </div>
-                      <div className="grid min-w-0 gap-4 sm:grid-cols-3">
-                        <FieldShell label="Seats">
+                            Customer-facing name
+                          </label>
                           <div className="relative">
-                            <Users className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#98a2b3]" />
-                            <RentalInput
-                              type="number"
-                              min={1}
-                              max={20}
-                              value={car.seats}
-                              className="pl-9"
+                            <CarFront className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#80651d]" />
+                            <Input
+                              id={`car-name-${car.id}`}
+                              value={car.displayName}
+                              maxLength={120}
                               disabled={Boolean(car.archivedAt)}
+                              aria-invalid={Boolean(nameError)}
+                              className="h-12 rounded-xl border-[#dfe3e8] bg-white pl-10 pr-3 text-[13px] font-medium text-[#172033] shadow-[0_1px_2px_rgba(16,24,40,0.04)] focus-visible:border-[#9b7b27] focus-visible:ring-[#9b7b27]/15"
                               onChange={(event) =>
                                 updateCar(index, {
-                                  seats: Number(event.target.value),
+                                  displayName: event.target.value,
                                 })
                               }
                             />
                           </div>
-                        </FieldShell>
-                        <FieldShell
+                          {nameError ? (
+                            <p className="mt-1.5 text-[11px] text-[#b42318]">
+                              {nameError}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <label
+                              htmlFor={`car-category-${car.id}`}
+                              className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#667085]"
+                            >
+                              Rate category
+                            </label>
+                            {category ? (
+                              <span className="truncate text-[10px] font-semibold text-[#80651d]">
+                                USD {formatCents(category.dailyRateCents)} / day
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="relative">
+                            <Tag className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#80651d]" />
+                            <RentalSelect
+                              id={`car-category-${car.id}`}
+                              value={car.categoryId}
+                              disabled={Boolean(car.archivedAt)}
+                              aria-invalid={Boolean(categoryError)}
+                              className="h-12 appearance-none rounded-xl border-[#dfe3e8] bg-white pl-10 pr-10 text-[13px] font-semibold text-[#172033] shadow-[0_1px_2px_rgba(16,24,40,0.04)] focus:border-[#9b7b27] focus:ring-[#9b7b27]/15"
+                              onChange={(event) =>
+                                updateCar(index, {
+                                  categoryId: event.target.value,
+                                })
+                              }
+                            >
+                              {document.categories
+                                .filter((item) => !item.archivedAt)
+                                .map((item) => (
+                                  <option key={item.id} value={item.id}>
+                                    {item.name}
+                                  </option>
+                                ))}
+                            </RentalSelect>
+                            <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#667085]" />
+                          </div>
+                          {categoryError ? (
+                            <p className="mt-1.5 text-[11px] text-[#b42318]">
+                              {categoryError}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="mt-5 grid min-w-0 gap-4 sm:grid-cols-3">
+                        <VehicleNumberField
+                          label="Seats"
+                          icon={Users}
+                          value={car.seats}
+                          min={1}
+                          max={20}
+                          disabled={Boolean(car.archivedAt)}
+                          onValue={(seats) => updateCar(index, { seats })}
+                        />
+                        <VehicleNumberField
                           label="Suitcases"
-                          hint="Approximate medium bags"
-                          error={errorAt(`cars.${index}.luggageCapacity`)}
-                        >
-                          <div className="relative">
-                            <BriefcaseBusiness className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#98a2b3]" />
-                            <RentalInput
-                              type="number"
-                              min={0}
-                              max={20}
-                              value={car.luggageCapacity ?? 0}
-                              className="pl-9"
-                              disabled={Boolean(car.archivedAt)}
-                              onChange={(event) =>
-                                updateCar(index, {
-                                  luggageCapacity: Number(event.target.value),
-                                })
-                              }
-                            />
-                          </div>
-                        </FieldShell>
-                        <FieldShell label="Transmission">
-                          <RentalSelect
-                            value={car.transmission}
-                            disabled={Boolean(car.archivedAt)}
-                            onChange={(event) =>
-                              updateCar(index, {
-                                transmission: event.target
-                                  .value as RentalCar["transmission"],
-                              })
-                            }
+                          hint="Medium bags"
+                          icon={BriefcaseBusiness}
+                          value={car.luggageCapacity ?? 0}
+                          min={0}
+                          max={20}
+                          disabled={Boolean(car.archivedAt)}
+                          error={luggageError}
+                          onValue={(luggageCapacity) =>
+                            updateCar(index, { luggageCapacity })
+                          }
+                        />
+                        <div className="min-w-0">
+                          <span className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#667085]">
+                            Transmission
+                          </span>
+                          <div
+                            role="group"
+                            aria-label="Transmission"
+                            className="grid h-14 grid-cols-2 gap-1 rounded-xl border border-[#dfe3e8] bg-white p-1 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
                           >
-                            <option value="automatic">Automatic</option>
-                            <option value="manual">Manual</option>
-                          </RentalSelect>
-                        </FieldShell>
+                            {(["automatic", "manual"] as const).map(
+                              (transmission) => {
+                                const selected =
+                                  car.transmission === transmission;
+                                return (
+                                  <button
+                                    key={transmission}
+                                    type="button"
+                                    aria-pressed={selected}
+                                    disabled={Boolean(car.archivedAt)}
+                                    onClick={() =>
+                                      updateCar(index, { transmission })
+                                    }
+                                    className={cn(
+                                      "flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 text-[11px] font-semibold capitalize transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9b7b27]/30 disabled:opacity-50",
+                                      selected
+                                        ? "bg-[#172033] text-white shadow-sm"
+                                        : "text-[#667085] hover:bg-[#f5f7fa]",
+                                    )}
+                                  >
+                                    {selected ? (
+                                      <Gauge className="h-3.5 w-3.5 flex-none" />
+                                    ) : null}
+                                    <span className="truncate">
+                                      {transmission === "automatic"
+                                        ? "Automatic"
+                                        : "Manual"}
+                                    </span>
+                                  </button>
+                                );
+                              },
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
