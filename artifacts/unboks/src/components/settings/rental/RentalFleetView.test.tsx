@@ -1,8 +1,33 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RentalCatalogDocument } from "@/lib/rental-catalog";
 import { RentalFleetView } from "./RentalFleetView";
+
+const mocks = vi.hoisted(() => ({
+  fetchRentalMedia: vi.fn(),
+}));
+
+vi.mock("@/lib/rental-catalog", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/rental-catalog")>();
+  return {
+    ...actual,
+    fetchRentalMedia: mocks.fetchRentalMedia,
+  };
+});
+
+const mediaAsset = {
+  id: "image-1",
+  knowledgeSource: "rental_catalog",
+  knowledgeId: "yaris",
+  filename: "yaris.webp",
+  originalFilename: "yaris.webp",
+  mimeType: "image/webp",
+  sizeBytes: 12_000,
+  caption: "Toyota Yaris",
+  url: "https://example.com/yaris.webp",
+  uploadedAt: "2026-08-30T12:00:00Z",
+};
 
 const document: RentalCatalogDocument = {
   settings: {
@@ -45,14 +70,17 @@ const document: RentalCatalogDocument = {
   supplements: [],
 };
 
-function renderFleet(onChange = vi.fn()) {
+function renderFleet(
+  onChange = vi.fn(),
+  fleetDocument: RentalCatalogDocument = document,
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   render(
     <QueryClientProvider client={client}>
       <RentalFleetView
-        document={document}
+        document={fleetDocument}
         errors={[]}
         onChange={onChange}
       />
@@ -62,6 +90,10 @@ function renderFleet(onChange = vi.fn()) {
 }
 
 describe("RentalFleetView premium vehicle editor", () => {
+  beforeEach(() => {
+    mocks.fetchRentalMedia.mockResolvedValue(mediaAsset);
+  });
+
   it("presents each vehicle with clear identity, price, photo and visibility", () => {
     renderFleet();
 
@@ -91,5 +123,31 @@ describe("RentalFleetView premium vehicle editor", () => {
       ...document,
       cars: [{ ...document.cars[0], active: false }],
     });
+  });
+
+  it("opens a large preview when the contained vehicle image is selected", async () => {
+    const documentWithImage: RentalCatalogDocument = {
+      ...document,
+      cars: [{ ...document.cars[0], primaryImageAssetId: "image-1" }],
+    };
+    renderFleet(vi.fn(), documentWithImage);
+
+    const preview = await screen.findByRole("button", {
+      name: "Open larger preview of Toyota Yaris or similar customer-facing photo",
+    });
+    expect(screen.getByRole("button", { name: "Replace photo" })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Remove vehicle photo" }),
+    ).toBeTruthy();
+    fireEvent.click(preview);
+
+    expect(
+      screen.getByText("Large customer-facing vehicle image preview."),
+    ).toBeTruthy();
+    expect(
+      screen.getAllByAltText(
+        "Toyota Yaris or similar customer-facing photo",
+      ),
+    ).toHaveLength(2);
   });
 });
