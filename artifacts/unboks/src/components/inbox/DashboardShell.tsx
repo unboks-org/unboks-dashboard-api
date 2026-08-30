@@ -25,8 +25,14 @@ import { filterActiveAppointments } from "@/lib/appointment-classifier";
 import { RefreshButton } from "@/components/inbox/RefreshButton";
 import { OnboardingBanner } from "@/components/onboarding/OnboardingBanner";
 import { motion, AnimatePresence } from "framer-motion";
+import { isRentalDashboardV2Enabled } from "@/lib/tenant-ui";
+import { RentalDashboardShell } from "@/components/rental/RentalDashboardShell";
 
 export const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
+  today: "/today",
+  customers: "/customers",
+  conversations: "/conversations",
+  fleet: "/fleet",
   bookings: "/bookings",
   followups: "/follow-ups",
   images: "/images",
@@ -82,7 +88,9 @@ export function navIdFromInboxUrl(
   if (pathname.startsWith("/escalations")) return "escalations";
   if (pathname === "/" || pathname === "") {
     try {
-      const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+      const params = new URLSearchParams(
+        search.startsWith("?") ? search.slice(1) : search,
+      );
       // Legacy query-string deep links from older alert email templates
       // and hand-crafted bookmarks: `?view=escalations` (and the
       // `?escalationId=...` shortcut) must still land on the
@@ -144,7 +152,11 @@ export function DashboardShell({
   const { logout } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const { data: apiConversations, isLoading: convLoading, isError } = useConversations();
+  const {
+    data: apiConversations,
+    isLoading: convLoading,
+    isError,
+  } = useConversations();
   const { data: apiEscalations, isLoading: escLoading } = useEscalations();
   // Sidebar counts must respect locally-hidden rows so the badges never
   // disagree with rows removed through the delete/hide fallback. Archive
@@ -197,17 +209,27 @@ export function DashboardShell({
   const channelCounts = useMemo(() => {
     const counts: Record<Channel, number> = {
       All: hasConvData ? activeConversations.length : 0,
-      WhatsApp: 0, Email: 0, Instagram: 0, Facebook: 0,
-      X: 0, TikTok: 0, Telegram: 0, Messenger: 0, Unknown: 0,
+      WhatsApp: 0,
+      Email: 0,
+      Instagram: 0,
+      Facebook: 0,
+      X: 0,
+      TikTok: 0,
+      Telegram: 0,
+      Messenger: 0,
+      Unknown: 0,
     };
     if (hasConvData) {
-      activeConversations.forEach((c) => { counts[c.channel] = (counts[c.channel] || 0) + 1; });
+      activeConversations.forEach((c) => {
+        counts[c.channel] = (counts[c.channel] || 0) + 1;
+      });
     }
     return counts;
   }, [activeConversations, hasConvData]);
 
   const inboxCount = useMemo(
-    () => (hasConvData ? activeConversations.filter((c) => c.unread).length : 0),
+    () =>
+      hasConvData ? activeConversations.filter((c) => c.unread).length : 0,
     [activeConversations, hasConvData],
   );
   // Use the same normalizer AND the same dedup pass as the Escalations
@@ -232,7 +254,7 @@ export function DashboardShell({
     const convoByPhone = new Map(enrichmentConversations.map((c) => [c.id, c]));
     const query = searchQuery.trim().toLowerCase();
     return dedupeEscalations(active).filter((n) => {
-      const enrich = n.phone ? convoByPhone.get(n.phone) ?? null : null;
+      const enrich = n.phone ? (convoByPhone.get(n.phone) ?? null) : null;
       const row = escalationToConversationRow(n, enrich);
       const keys = collectConversationHideKeys(row);
       if (isRowHidden(keys)) return false;
@@ -246,7 +268,14 @@ export function DashboardShell({
       }
       return true;
     }).length;
-  }, [apiEscalations, hasEscData, enrichmentConversations, isRowHidden, isRowBlocked, searchQuery]);
+  }, [
+    apiEscalations,
+    hasEscData,
+    enrichmentConversations,
+    isRowHidden,
+    isRowBlocked,
+    searchQuery,
+  ]);
 
   // Appointments sidebar count must use the same merged + de-duplicated
   // list the Appointments page renders, so the badge can never disagree
@@ -272,9 +301,14 @@ export function DashboardShell({
         isOrdersWorkspace ? orders : appointments,
         activeConversationKeys,
         convKeysReady,
-      )
-        .length,
-    [appointments, orders, isOrdersWorkspace, activeConversationKeys, convKeysReady],
+      ).length,
+    [
+      appointments,
+      orders,
+      isOrdersWorkspace,
+      activeConversationKeys,
+      convKeysReady,
+    ],
   );
 
   const handleNavSelect = useCallback(
@@ -311,7 +345,18 @@ export function DashboardShell({
     [location, search, navigate, onNavSelect],
   );
 
-  return (
+  return isRentalDashboardV2Enabled() ? (
+    <RentalDashboardShell
+      active={activeNav}
+      title={pageTitle}
+      subtitle={pageSubtitle ?? titleSuffix}
+      searchQuery={searchQuery}
+      onSearchChange={onSearchChange}
+      rightSlot={hideRefresh ? null : <RefreshButton />}
+    >
+      {children}
+    </RentalDashboardShell>
+  ) : (
     <div className="flex h-[100dvh] w-full bg-background overflow-hidden font-sans">
       <Drawer
         open={drawerOpen}

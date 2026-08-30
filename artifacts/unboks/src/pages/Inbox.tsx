@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   DashboardShell,
@@ -50,6 +51,10 @@ import {
   Users,
   Bot,
   Inbox as InboxIcon,
+  CarFront,
+  CalendarDays,
+  Clock3,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { ApiMessage, ConversationDetail } from "@/lib/api";
@@ -75,7 +80,10 @@ import {
   EmailDeleteConfirm,
 } from "@/components/inbox/EmailActionsModal";
 import { EmailMessageDetail } from "@/components/inbox/EmailMessageDetail";
-import { EscalationReasonPanel, type ChipAction } from "@/components/inbox/EscalationReasonPanel";
+import {
+  EscalationReasonPanel,
+  type ChipAction,
+} from "@/components/inbox/EscalationReasonPanel";
 import type {
   EscalationReplyComposerHandle,
   EscalationDoneContext,
@@ -85,8 +93,21 @@ import {
   ConversationTranslationProvider,
   MessageTranslationView,
 } from "@/components/inbox/ConversationTranslation";
-import { getTenantUiConfig, isSpainSpanishTenant, tenantText } from "@/lib/tenant-ui";
+import {
+  getTenantUiConfig,
+  isSpainSpanishTenant,
+  tenantText,
+} from "@/lib/tenant-ui";
 import { canShowDirectWhatsAppReply } from "@/lib/direct-whatsapp-reply";
+import { fetchQuoteLeads } from "@/lib/api";
+import { tenantKey } from "@/lib/query-keys";
+import {
+  customerDisplayName,
+  customerWorkspacePath,
+  projectRentalLead,
+  rentalStageLabel,
+} from "@/lib/rental-operations";
+import { isAliRentalTenant } from "@/lib/tenant-ui";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
@@ -120,16 +141,17 @@ function MessageBubble({ msg }: { msg: ApiMessage }) {
     : isUser
       ? null
       : tenantText("Agent", "Agente");
-  const roleLabelClass = isOperator
-    ? "text-[#5b3fa0]"
-    : "text-primary";
+  const roleLabelClass = isOperator ? "text-[#5b3fa0]" : "text-primary";
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 500, damping: 30 }}
-      className={cn("flex w-full mb-3", isOutbound ? "justify-end" : "justify-start")}
+      className={cn(
+        "flex w-full mb-3",
+        isOutbound ? "justify-end" : "justify-start",
+      )}
     >
       <div
         className={cn(
@@ -160,10 +182,16 @@ function MessageBubble({ msg }: { msg: ApiMessage }) {
         >
           {msg.content}
           {msg.timestamp && (
-            <p className={cn(
-              "text-[10.5px] mt-1.5 font-medium",
-              isUser ? "text-[#5f6368]" : isOperator ? "text-[#5b3fa0]/70" : "text-primary-foreground/70"
-            )}>
+            <p
+              className={cn(
+                "text-[10.5px] mt-1.5 font-medium",
+                isUser
+                  ? "text-[#5f6368]"
+                  : isOperator
+                    ? "text-[#5b3fa0]/70"
+                    : "text-primary-foreground/70",
+              )}
+            >
               {msg.timestamp}
             </p>
           )}
@@ -200,8 +228,13 @@ function MessageBubble({ msg }: { msg: ApiMessage }) {
 const NOT_CONNECTED_MODE_STATUSES = new Set([0, 404, 501, 503]);
 
 function isModeNotConnected(err: unknown): boolean {
-  if (err instanceof ApiError) return NOT_CONNECTED_MODE_STATUSES.has(err.status);
-  return !(err instanceof Error) || err.name === "TypeError" || err.message === "Failed to fetch";
+  if (err instanceof ApiError)
+    return NOT_CONNECTED_MODE_STATUSES.has(err.status);
+  return (
+    !(err instanceof Error) ||
+    err.name === "TypeError" ||
+    err.message === "Failed to fetch"
+  );
 }
 
 interface EscalationModeToggleProps {
@@ -260,17 +293,22 @@ function EscalationModeToggle({
           }
           // Auth errors are surfaced globally by AuthProvider; for everything
           // else, show calmly and keep the local pick (composer stays right).
-          if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+          if (
+            err instanceof ApiError &&
+            (err.status === 401 || err.status === 403)
+          ) {
             return;
           }
           setNotice({
             tone: "error",
-            text: tenantText(
-              "Mode saved locally, but couldn't sync to backend: ",
-              "El modo se ha guardado localmente, pero no se pudo sincronizar con el servidor: ",
-            ) + (err instanceof Error
-              ? err.message
-              : tenantText("Unknown error", "Error desconocido")),
+            text:
+              tenantText(
+                "Mode saved locally, but couldn't sync to backend: ",
+                "El modo se ha guardado localmente, pero no se pudo sincronizar con el servidor: ",
+              ) +
+              (err instanceof Error
+                ? err.message
+                : tenantText("Unknown error", "Error desconocido")),
           });
         },
       },
@@ -300,7 +338,9 @@ function EscalationModeToggle({
               : "text-muted-foreground hover:text-foreground hover:bg-white/50",
           )}
         >
-          <AlertCircle className={cn("w-3.5 h-3.5", isSoft ? "text-[#f59e0b]" : "")} />
+          <AlertCircle
+            className={cn("w-3.5 h-3.5", isSoft ? "text-[#f59e0b]" : "")}
+          />
           {tenantText("Agent needs help", "El agente necesita ayuda")}
         </motion.button>
         <motion.button
@@ -316,7 +356,9 @@ function EscalationModeToggle({
               : "text-muted-foreground hover:text-foreground hover:bg-white/50",
           )}
         >
-          <AlertTriangle className={cn("w-3.5 h-3.5", isHard ? "text-destructive" : "")} />
+          <AlertTriangle
+            className={cn("w-3.5 h-3.5", isHard ? "text-destructive" : "")}
+          />
           {tenantText("Human takeover", "Intervención humana")}
         </motion.button>
       </div>
@@ -396,7 +438,8 @@ function ConversationDetailPane({
   // each resolved escalation row so history mode is enforced even if the
   // parent's filter state doesn't propagate cleanly (e.g. stale closure or
   // re-render timing). Both paths must agree before treating as active.
-  const resolvedContext = resolvedContextProp || Boolean(conversation.resolvedEscalation);
+  const resolvedContext =
+    resolvedContextProp || Boolean(conversation.resolvedEscalation);
   // wouter navigator — used for in-pane links to other dashboard
   // surfaces (e.g. Settings → Agent learnings).
   const [, navigate] = useLocation();
@@ -426,9 +469,10 @@ function ConversationDetailPane({
       ? { status: error.status, message: error.message }
       : {
           status: null,
-          message: error instanceof Error
-            ? error.message
-            : tenantText("Unknown error", "Error desconocido"),
+          message:
+            error instanceof Error
+              ? error.message
+              : tenantText("Unknown error", "Error desconocido"),
         }
     : null;
   // Escalation routes use the conversation DB id. Look it up from the
@@ -473,7 +517,8 @@ function ConversationDetailPane({
   // the backend hasn't set escalationMode yet, per spec.
   const hasHardSignals = Boolean(
     detail?.aiMuted ||
-      (typeof detail?.humanTakeoverAt === "string" && detail.humanTakeoverAt.length > 0),
+    (typeof detail?.humanTakeoverAt === "string" &&
+      detail.humanTakeoverAt.length > 0),
   );
 
   // Locally-controlled mode. Initial value comes from the backend; clicks on
@@ -481,8 +526,8 @@ function ConversationDetailPane({
   // waiting for a backend round trip. We re-seed it whenever the open
   // conversation changes (the pane is reused across selections) or once the
   // backend value first becomes known.
-  const [selectedMode, setSelectedMode] = useState<"soft" | "hard" | "order">(() =>
-    backendMode ?? (hasHardSignals ? "hard" : "soft"),
+  const [selectedMode, setSelectedMode] = useState<"soft" | "hard" | "order">(
+    () => backendMode ?? (hasHardSignals ? "hard" : "soft"),
   );
   const lastSeedKey = useRef<string | null>(null);
   useEffect(() => {
@@ -515,20 +560,31 @@ function ConversationDetailPane({
   const onUnresolve = useCallback(() => {
     const escalationId = conversation.escalationId;
     if (!escalationId || unresolve.isPending) return;
-    if (!window.confirm(tenantText("Reopen this escalation?", "¿Reabrir esta solicitud?"))) return;
+    if (
+      !window.confirm(
+        tenantText("Reopen this escalation?", "¿Reabrir esta solicitud?"),
+      )
+    )
+      return;
     unresolve.mutate(
       { id: escalationId },
       {
         onSuccess: () => {
-          toast.success(tenantText("Escalation reopened", "Solicitud reabierta"));
+          toast.success(
+            tenantText("Escalation reopened", "Solicitud reabierta"),
+          );
           onUnresolveSuccess?.(conversation.escalationMode ?? null);
         },
         onError: (err) => {
-          const msg = err instanceof Error
-            ? err.message
-            : tenantText("Please try again.", "Inténtalo de nuevo.");
+          const msg =
+            err instanceof Error
+              ? err.message
+              : tenantText("Please try again.", "Inténtalo de nuevo.");
           toast.error(
-            tenantText("Couldn't reopen escalation", "No se pudo reabrir la solicitud"),
+            tenantText(
+              "Couldn't reopen escalation",
+              "No se pudo reabrir la solicitud",
+            ),
             { description: msg },
           );
         },
@@ -634,13 +690,16 @@ function ConversationDetailPane({
       { id: dbId, payload: {} },
       {
         onSuccess: () => {
-          toast.success(tenantText("Escalation resolved", "Solicitud resuelta"));
+          toast.success(
+            tenantText("Escalation resolved", "Solicitud resuelta"),
+          );
           onClose();
         },
         onError: (err) => {
-          const detail = err instanceof Error
-            ? err.message
-            : tenantText("Please try again.", "Inténtalo de nuevo.");
+          const detail =
+            err instanceof Error
+              ? err.message
+              : tenantText("Please try again.", "Inténtalo de nuevo.");
           toast.error(
             tenantText(
               "Couldn't resolve escalation",
@@ -652,7 +711,6 @@ function ConversationDetailPane({
       },
     );
   }, [dbId, headerResolve, onClose]);
-
 
   const onChipAction = useCallback((action: ChipAction) => {
     const c = composerRef.current;
@@ -693,7 +751,10 @@ function ConversationDetailPane({
               whileTap={{ scale: 0.97 }}
               type="button"
               onClick={onBackToFollowUps}
-              aria-label={tenantText("Back to follow-ups", "Volver a seguimientos")}
+              aria-label={tenantText(
+                "Back to follow-ups",
+                "Volver a seguimientos",
+              )}
               className="inline-flex h-10 flex-shrink-0 items-center gap-2 rounded-lg bg-primary/10 px-2.5 text-[12px] font-semibold text-primary transition-colors hover:bg-primary/15 md:px-3"
             >
               <ArrowLeft className="h-[18px] w-[18px]" strokeWidth={1.8} />
@@ -706,7 +767,10 @@ function ConversationDetailPane({
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={onClose}
-                aria-label={tenantText("Close conversation", "Cerrar conversación")}
+                aria-label={tenantText(
+                  "Close conversation",
+                  "Cerrar conversación",
+                )}
                 className="w-11 h-11 -ml-1 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground md:hidden flex-shrink-0"
               >
                 <ArrowLeft className="w-[22px] h-[22px]" strokeWidth={1.5} />
@@ -714,7 +778,10 @@ function ConversationDetailPane({
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={onClose}
-                aria-label={tenantText("Close conversation", "Cerrar conversación")}
+                aria-label={tenantText(
+                  "Close conversation",
+                  "Cerrar conversación",
+                )}
                 className="hidden md:flex w-8 h-8 items-center justify-center rounded-full hover:bg-muted text-muted-foreground flex-shrink-0"
               >
                 <X className="w-[18px] h-[18px]" strokeWidth={2} />
@@ -744,7 +811,10 @@ function ConversationDetailPane({
                 </span>
               )}
               {showBanner && !resolvedContext && detail?.escalationSummary && (
-                <p className="text-[12.5px] text-muted-foreground truncate min-w-0 ml-1 border-l border-border pl-3" title={detail.escalationSummary}>
+                <p
+                  className="text-[12.5px] text-muted-foreground truncate min-w-0 ml-1 border-l border-border pl-3"
+                  title={detail.escalationSummary}
+                >
                   {detail.escalationSummary}
                 </p>
               )}
@@ -752,15 +822,18 @@ function ConversationDetailPane({
           </div>
           {/* Mode toggle: stays in row 1 on md+, moves to row 2 on mobile/tablet.
               Hidden in resolvedContext — resolved escalations are read-only. */}
-          {showBanner && dbId && !resolvedContext && selectedMode !== "order" && (
-            <div className="hidden md:block flex-shrink-0 ml-2">
-              <EscalationModeToggle
-                conversationDbId={dbId}
-                selectedMode={selectedMode}
-                onChange={setSelectedMode}
-              />
-            </div>
-          )}
+          {showBanner &&
+            dbId &&
+            !resolvedContext &&
+            selectedMode !== "order" && (
+              <div className="hidden md:block flex-shrink-0 ml-2">
+                <EscalationModeToggle
+                  conversationDbId={dbId}
+                  selectedMode={selectedMode}
+                  onChange={setSelectedMode}
+                />
+              </div>
+            )}
           {showHeaderResolve && (
             <EscalationHeaderResolveButton
               onResolve={onResolveFromHeader}
@@ -774,8 +847,14 @@ function ConversationDetailPane({
               type="button"
               onClick={onUnresolve}
               disabled={unresolve.isPending}
-              aria-label={tenantText("Reopen this escalation", "Reabrir esta escalación")}
-              title={tenantText("Reopen this escalation", "Reabrir esta escalación")}
+              aria-label={tenantText(
+                "Reopen this escalation",
+                "Reabrir esta escalación",
+              )}
+              title={tenantText(
+                "Reopen this escalation",
+                "Reabrir esta escalación",
+              )}
               className="min-h-[44px] md:min-h-0 md:h-9 inline-flex items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-semibold border border-[#d6e4ff] bg-white text-primary hover:bg-primary/10 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
             >
               <ArchiveRestore className="w-[18px] h-[18px]" strokeWidth={1.6} />
@@ -792,24 +871,42 @@ function ConversationDetailPane({
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); onArchive(conversation); }}
-                  aria-label={tenantText("Archive conversation", "Archivar conversación")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onArchive(conversation);
+                  }}
+                  aria-label={tenantText(
+                    "Archive conversation",
+                    "Archivar conversación",
+                  )}
                   title={tenantText("Archive", "Archivar")}
                   className="w-11 h-11 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <Archive className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]" strokeWidth={1.5} />
+                  <Archive
+                    className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]"
+                    strokeWidth={1.5}
+                  />
                 </motion.button>
               )}
               {archived && onRestore && (
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); onRestore(conversation); }}
-                  aria-label={tenantText("Unarchive conversation", "Desarchivar conversación")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRestore(conversation);
+                  }}
+                  aria-label={tenantText(
+                    "Unarchive conversation",
+                    "Desarchivar conversación",
+                  )}
                   title={tenantText("Unarchive", "Desarchivar")}
                   className="min-h-[44px] md:min-h-0 md:h-9 inline-flex items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-semibold hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
                 >
-                  <ArchiveRestore className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]" strokeWidth={1.5} />
+                  <ArchiveRestore
+                    className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]"
+                    strokeWidth={1.5}
+                  />
                   <span className="hidden sm:inline">
                     {tenantText("Unarchive", "Desarchivar")}
                   </span>
@@ -819,56 +916,78 @@ function ConversationDetailPane({
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); onBlock(conversation); }}
-                  aria-label={tenantText("Block in Unboks", "Bloquear en Unboks")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onBlock(conversation);
+                  }}
+                  aria-label={tenantText(
+                    "Block in Unboks",
+                    "Bloquear en Unboks",
+                  )}
                   title={tenantText("Block in Unboks", "Bloquear en Unboks")}
                   className="w-11 h-11 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                 >
-                  <Ban className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]" strokeWidth={1.5} />
+                  <Ban
+                    className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]"
+                    strokeWidth={1.5}
+                  />
                 </motion.button>
               )}
             </div>
           )}
-          {conversation.channel === "Email" && (onEmailReply || onEmailForward || onEmailDelete) && (
-            <div className="flex items-center gap-1 flex-shrink-0 ml-1">
-              {onEmailReply && (
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onEmailReply(conversation); }}
-                  aria-label={tenantText("Reply", "Responder")}
-                  title={tenantText("Reply", "Responder")}
-                  className="w-11 h-11 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors"
-                >
-                  <Reply className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]" strokeWidth={1.5} />
-                </motion.button>
-              )}
-              {onEmailForward && (
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onEmailForward(conversation); }}
-                  aria-label={tenantText("Forward", "Reenviar")}
-                  title={tenantText("Forward", "Reenviar")}
-                  className="hidden md:flex w-9 h-9 items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors"
-                >
-                  <Forward className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                </motion.button>
-              )}
-              {onEmailDelete && (
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onEmailDelete(conversation); }}
-                  aria-label={tenantText("Delete", "Eliminar")}
-                  title={tenantText("Delete", "Eliminar")}
-                  className="hidden md:flex w-9 h-9 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                >
-                  <Trash2 className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                </motion.button>
-              )}
-            </div>
-          )}
+          {conversation.channel === "Email" &&
+            (onEmailReply || onEmailForward || onEmailDelete) && (
+              <div className="flex items-center gap-1 flex-shrink-0 ml-1">
+                {onEmailReply && (
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEmailReply(conversation);
+                    }}
+                    aria-label={tenantText("Reply", "Responder")}
+                    title={tenantText("Reply", "Responder")}
+                    className="w-11 h-11 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors"
+                  >
+                    <Reply
+                      className="w-[20px] h-[20px] md:w-[18px] md:h-[18px]"
+                      strokeWidth={1.5}
+                    />
+                  </motion.button>
+                )}
+                {onEmailForward && (
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEmailForward(conversation);
+                    }}
+                    aria-label={tenantText("Forward", "Reenviar")}
+                    title={tenantText("Forward", "Reenviar")}
+                    className="hidden md:flex w-9 h-9 items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors"
+                  >
+                    <Forward className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                  </motion.button>
+                )}
+                {onEmailDelete && (
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEmailDelete(conversation);
+                    }}
+                    aria-label={tenantText("Delete", "Eliminar")}
+                    title={tenantText("Delete", "Eliminar")}
+                    className="hidden md:flex w-9 h-9 items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <Trash2 className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                  </motion.button>
+                )}
+              </div>
+            )}
         </div>
 
         {/* Row 2 — channel + status (mobile + tablet only, below md). The
@@ -902,13 +1021,16 @@ function ConversationDetailPane({
               </span>
             </motion.button>
           )}
-          {showBanner && dbId && !resolvedContext && selectedMode !== "order" && (
-            <EscalationModeToggle
-              conversationDbId={dbId}
-              selectedMode={selectedMode}
-              onChange={setSelectedMode}
-            />
-          )}
+          {showBanner &&
+            dbId &&
+            !resolvedContext &&
+            selectedMode !== "order" && (
+              <EscalationModeToggle
+                conversationDbId={dbId}
+                selectedMode={selectedMode}
+                onChange={setSelectedMode}
+              />
+            )}
           {showHeaderResolve && (
             <EscalationHeaderResolveButton
               onResolve={onResolveFromHeader}
@@ -925,7 +1047,10 @@ function ConversationDetailPane({
 
         {/* Mobile/tablet: escalation summary on its own line — hidden for resolved context */}
         {showBanner && !resolvedContext && detail?.escalationSummary && (
-          <p className="md:hidden text-[13.5px] text-muted-foreground mt-2.5 leading-snug" title={detail.escalationSummary}>
+          <p
+            className="md:hidden text-[13.5px] text-muted-foreground mt-2.5 leading-snug"
+            title={detail.escalationSummary}
+          >
             {detail.escalationSummary}
           </p>
         )}
@@ -978,7 +1103,9 @@ function ConversationDetailPane({
               conversationId={conversation.id}
               mode={selectedMode}
               channel={conversation.channel}
-              aiMuted={selectedMode === "hard" ? detail?.aiMuted ?? false : false}
+              aiMuted={
+                selectedMode === "hard" ? (detail?.aiMuted ?? false) : false
+              }
               onDone={handleComposerDone}
             />
           )}
@@ -1013,7 +1140,12 @@ function ConversationDetailPane({
                 ) : (
                   <ChevronRight className="h-3.5 w-3.5 flex-shrink-0" />
                 )}
-                <span>{tenantText("Conversation trail", "Historial de la conversación")}</span>
+                <span>
+                  {tenantText(
+                    "Conversation trail",
+                    "Historial de la conversación",
+                  )}
+                </span>
                 {messages.length > 0 && (
                   <span className="text-[11px] font-normal text-[#9aa0a6]">
                     ({messages.length})
@@ -1022,7 +1154,10 @@ function ConversationDetailPane({
                 <span className="ml-auto text-[11px] font-normal text-[#9aa0a6]">
                   {trailOpen
                     ? tenantText("Hide conversation", "Ocultar conversación")
-                    : tenantText("Show full conversation", "Mostrar conversación completa")}
+                    : tenantText(
+                        "Show full conversation",
+                        "Mostrar conversación completa",
+                      )}
                 </span>
               </button>
               {trailOpen && (
@@ -1078,7 +1213,11 @@ function ConversationDetailPane({
 // full conversation trail. `messages` is already sorted newest-first
 // by ConversationDetailPane, so we take the first match.
 // ---------------------------------------------------------------------------
-function LatestCustomerMessagePreview({ messages }: { messages: ApiMessage[] }) {
+function LatestCustomerMessagePreview({
+  messages,
+}: {
+  messages: ApiMessage[];
+}) {
   const latest = useMemo(() => {
     if (!messages || messages.length === 0) return null;
     // Newest inbound first; fall back to the newest message overall if
@@ -1092,14 +1231,20 @@ function LatestCustomerMessagePreview({ messages }: { messages: ApiMessage[] }) 
 
   return (
     <section
-      aria-label={tenantText("Latest customer message", "Último mensaje de la persona")}
+      aria-label={tenantText(
+        "Latest customer message",
+        "Último mensaje de la persona",
+      )}
       className="bg-white px-3 sm:px-4 pb-3 flex-shrink-0"
     >
       <div className="rounded-xl border border-[#e6e8eb] bg-white px-3.5 py-3 sm:px-4 sm:py-3.5">
         <div className="flex items-center justify-between gap-2 mb-1.5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#5f6368]">
             {isInbound
-              ? tenantText("Latest customer message", "Último mensaje de la persona")
+              ? tenantText(
+                  "Latest customer message",
+                  "Último mensaje de la persona",
+                )
               : tenantText("Latest message", "Último mensaje")}
           </p>
           {latest.timestamp && (
@@ -1136,7 +1281,9 @@ function ConversationThreadBody({
     <div
       className={cn(
         "flex-1 overflow-y-auto px-3 sm:px-4 py-4 pb-8",
-        conversation.channel === "Email" ? "space-y-4 bg-muted" : "bg-background",
+        conversation.channel === "Email"
+          ? "space-y-4 bg-muted"
+          : "bg-background",
       )}
     >
       {isLoading && (
@@ -1168,10 +1315,15 @@ function ConversationThreadBody({
         <div className="py-8 space-y-4 flex flex-col items-center justify-center min-h-[50vh]">
           {conversation.subject !== "No preview available" && !errorDetail && (
             <div className="bg-muted rounded-2xl rounded-bl-[4px] px-5 py-3.5 text-[14px] text-foreground text-left max-w-[85%] sm:max-w-[75%] border border-border shadow-sm">
-              <p className="font-semibold text-[14px]">{conversation.subject}</p>
-              {conversation.preview && conversation.preview !== conversation.subject && (
-                <p className="text-muted-foreground mt-1.5 leading-relaxed">{conversation.preview}</p>
-              )}
+              <p className="font-semibold text-[14px]">
+                {conversation.subject}
+              </p>
+              {conversation.preview &&
+                conversation.preview !== conversation.subject && (
+                  <p className="text-muted-foreground mt-1.5 leading-relaxed">
+                    {conversation.preview}
+                  </p>
+                )}
             </div>
           )}
 
@@ -1187,7 +1339,10 @@ function ConversationThreadBody({
                 <AlertTriangle className="w-5 h-5 text-destructive" />
               </div>
               <p className="text-[14px] font-semibold text-destructive mb-1">
-                {tenantText("Couldn't load conversation", "No se pudo cargar la conversación")}
+                {tenantText(
+                  "Couldn't load conversation",
+                  "No se pudo cargar la conversación",
+                )}
               </p>
               <p className="text-[13px] text-destructive/80 font-medium">
                 {errorDetail.status
@@ -1203,7 +1358,10 @@ function ConversationThreadBody({
                 <Bot className="w-5 h-5 text-muted-foreground" />
               </div>
               <p className="text-[14px] font-medium text-foreground">
-                {tenantText("No messages to display", "No hay mensajes que mostrar")}
+                {tenantText(
+                  "No messages to display",
+                  "No hay mensajes que mostrar",
+                )}
               </p>
               <p className="text-[13px] text-muted-foreground mt-1">
                 {tenantText(
@@ -1223,6 +1381,32 @@ function ConversationThreadBody({
 // Inbox page
 // ---------------------------------------------------------------------------
 
+function ContextFact({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof CarFront;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex gap-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f1ede5] text-[#8d681f]">
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[10px] font-bold uppercase tracking-[0.08em] text-[#8a929c]">
+          {label}
+        </span>
+        <span className="mt-1 block break-words text-sm font-medium leading-5 text-[#40526a]">
+          {value}
+        </span>
+      </span>
+    </div>
+  );
+}
+
 export default function Inbox() {
   const [location, navigate] = useLocation();
   const search = useSearch();
@@ -1233,7 +1417,10 @@ export default function Inbox() {
   useEffect(() => {
     if (!isSpainSpanishTenant()) return;
     const params = new URLSearchParams(search);
-    if (location.startsWith("/escalations") || params.get("view") === "escalations") {
+    if (
+      location.startsWith("/escalations") ||
+      params.get("view") === "escalations"
+    ) {
       navigate("/follow-ups", { replace: true });
     }
   }, [location, search, navigate]);
@@ -1244,10 +1431,12 @@ export default function Inbox() {
   // / channel filter) instead of dumping the operator on Inbox.
   const [activeNav, setActiveNavState] = useState<NavId>(() =>
     navIdFromInboxUrl(
-      typeof window !== "undefined" ? window.location.pathname.replace(
-        (import.meta.env.BASE_URL || "/").replace(/\/$/, ""),
-        "",
-      ) || "/" : "/",
+      typeof window !== "undefined"
+        ? window.location.pathname.replace(
+            (import.meta.env.BASE_URL || "/").replace(/\/$/, ""),
+            "",
+          ) || "/"
+        : "/",
       typeof window !== "undefined" ? window.location.search : "",
       isChannelVisible,
     ),
@@ -1264,7 +1453,38 @@ export default function Inbox() {
     });
   }, [location, search, isChannelVisible]);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
-  const [escalationFilter, setEscalationFilter] = useState<"all" | "soft" | "hard" | "resolved">("all");
+  const rentalLeads = useQuery({
+    queryKey: tenantKey("quote-leads"),
+    queryFn: () => fetchQuoteLeads(),
+    enabled: isAliRentalTenant(),
+    staleTime: 10_000,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
+  });
+  const selectedRentalLead = useMemo(() => {
+    if (!selectedConv || !isAliRentalTenant()) return null;
+    const keys = new Set(
+      [selectedConv.id, selectedConv.conversationKey]
+        .filter((item): item is string => Boolean(item))
+        .map((item) => item.replace(/\D/g, "")),
+    );
+    return (
+      (rentalLeads.data || []).find((lead) => {
+        if (
+          lead.conversation_id === selectedConv.id ||
+          lead.conversation_id === selectedConv.conversationKey
+        )
+          return true;
+        const phones = [lead.phone_raw, lead.phone_normalized]
+          .filter(Boolean)
+          .map((item) => (item || "").replace(/\D/g, ""));
+        return phones.some((phone) => phone && keys.has(phone));
+      }) || null
+    );
+  }, [rentalLeads.data, selectedConv]);
+  const [escalationFilter, setEscalationFilter] = useState<
+    "all" | "soft" | "hard" | "resolved"
+  >("all");
 
   // Email-only persistent row actions. All three open dedicated modals
   // that call the real backend endpoints:
@@ -1274,9 +1494,15 @@ export default function Inbox() {
   // The previous placeholders / confirm() / alert() flows are gone.
   // Conversation ids are URL-encoded inside the api client (email ids
   // can contain `:`, `@`, spaces).
-  const [emailReplyConv, setEmailReplyConv] = useState<Conversation | null>(null);
-  const [emailForwardConv, setEmailForwardConv] = useState<Conversation | null>(null);
-  const [emailDeleteConv, setEmailDeleteConv] = useState<Conversation | null>(null);
+  const [emailReplyConv, setEmailReplyConv] = useState<Conversation | null>(
+    null,
+  );
+  const [emailForwardConv, setEmailForwardConv] = useState<Conversation | null>(
+    null,
+  );
+  const [emailDeleteConv, setEmailDeleteConv] = useState<Conversation | null>(
+    null,
+  );
   // "Block in Unboks" target. Modal is mounted at page-level (same pattern
   // as the email modals) so it overlays the list AND the detail pane on
   // every viewport. Cleared on dismiss / on successful block.
@@ -1303,10 +1529,15 @@ export default function Inbox() {
     // next render once the query invalidates.
     setSelectedConv((cur) => (cur?.id === blockedId ? null : cur));
   }, []);
-  const handleUnresolveSuccess = useCallback((mode: "soft" | "hard" | "order" | null) => {
-    setSelectedConv(null);
-    setEscalationFilter(mode === "hard" ? "hard" : mode === "soft" ? "soft" : "all");
-  }, []);
+  const handleUnresolveSuccess = useCallback(
+    (mode: "soft" | "hard" | "order" | null) => {
+      setSelectedConv(null);
+      setEscalationFilter(
+        mode === "hard" ? "hard" : mode === "soft" ? "soft" : "all",
+      );
+    },
+    [],
+  );
 
   // Server-backed blocked senders. The lookup is cheap (Set.has), so
   // every list filter passes through the same predicate the sidebar
@@ -1324,7 +1555,8 @@ export default function Inbox() {
   // Server-backed archive/unarchive. Brief 249 (backend issue #18) ships
   // GET /messages/conversations/archived, POST .../{id}/archive,
   // POST .../{id}/unarchive — archive state now syncs across devices.
-  const { data: archivedApiData, isLoading: archiveIsLoading } = useArchivedConversationsList();
+  const { data: archivedApiData, isLoading: archiveIsLoading } =
+    useArchivedConversationsList();
   const archiveMutation = useArchiveMutation();
   const unarchiveMutation = useUnarchiveMutation();
   const { data: rawResolvedEscalations } = useResolvedEscalations();
@@ -1353,7 +1585,10 @@ export default function Inbox() {
         });
       } catch {
         toast.error(
-          tenantText("Couldn't archive — try again.", "No se pudo archivar. Inténtalo de nuevo."),
+          tenantText(
+            "Couldn't archive — try again.",
+            "No se pudo archivar. Inténtalo de nuevo.",
+          ),
         );
       }
     },
@@ -1451,7 +1686,7 @@ export default function Inbox() {
     const deduped = dedupeEscalations(active);
     return deduped
       .map((n) => {
-        const enrich = n.phone ? convoById.get(n.phone) ?? null : null;
+        const enrich = n.phone ? (convoById.get(n.phone) ?? null) : null;
         return escalationToConversationRow(n, enrich);
       })
       .filter((c) => {
@@ -1462,12 +1697,10 @@ export default function Inbox() {
 
   const archivedConversations: Conversation[] = useMemo(() => {
     if (!archivedApiData) return [];
-    return archivedApiData
-      .map(mapApiConversation)
-      .filter((c) => {
-        const keys = collectConversationHideKeys(c);
-        return !isRowHidden(keys) && !isRowBlocked(keys);
-      });
+    return archivedApiData.map(mapApiConversation).filter((c) => {
+      const keys = collectConversationHideKeys(c);
+      return !isRowHidden(keys) && !isRowBlocked(keys);
+    });
   }, [archivedApiData, isRowHidden, isRowBlocked]);
 
   const resolvedEscalationRows: Conversation[] = useMemo(() => {
@@ -1487,7 +1720,7 @@ export default function Inbox() {
     const deduped = dedupeEscalations(resolved);
     return deduped
       .map((n) => {
-        const enrich = n.phone ? convoById.get(n.phone) ?? null : null;
+        const enrich = n.phone ? (convoById.get(n.phone) ?? null) : null;
         const row = escalationToConversationRow(n, enrich);
         // Embed resolved flag in the data so ConversationDetailPane can enforce
         // read-only/history mode independently of the active UI filter state.
@@ -1497,7 +1730,12 @@ export default function Inbox() {
         const keys = collectConversationHideKeys(c);
         return !isRowHidden(keys) && !isRowBlocked(keys);
       });
-  }, [rawResolvedEscalations, enrichmentConversations, isRowHidden, isRowBlocked]);
+  }, [
+    rawResolvedEscalations,
+    enrichmentConversations,
+    isRowHidden,
+    isRowBlocked,
+  ]);
 
   // Stable handler. Inbox-context navigation now writes to the URL via
   // `inboxContextUrl(id)` so a refresh / crash-recovery / 401 bounce
@@ -1505,19 +1743,22 @@ export default function Inbox() {
   // actual state update; here we only clear transient UI state
   // (selected conversation + search box) so a channel switch feels
   // like a fresh view.
-  const handleNavSelect = useCallback((id: NavId) => {
-    const externalRoute = EXTERNAL_ROUTES[id];
-    if (externalRoute) {
-      navigate(externalRoute);
-      return;
-    }
-    // Inbox / Escalations / channel:*: navigate to the canonical URL.
-    const target = inboxContextUrl(id);
-    const here = location + (search ? `?${search}` : "");
-    if (here !== target) navigate(target);
-    setSearchQueryState(() => "");
-    setSelectedConv(() => null);
-  }, [navigate, location, search]);
+  const handleNavSelect = useCallback(
+    (id: NavId) => {
+      const externalRoute = EXTERNAL_ROUTES[id];
+      if (externalRoute) {
+        navigate(externalRoute);
+        return;
+      }
+      // Inbox / Escalations / channel:*: navigate to the canonical URL.
+      const target = inboxContextUrl(id);
+      const here = location + (search ? `?${search}` : "");
+      if (here !== target) navigate(target);
+      setSearchQueryState(() => "");
+      setSelectedConv(() => null);
+    },
+    [navigate, location, search],
+  );
 
   // Deep-link support for the Appointments page (and any future surface
   // that wants to open a specific conversation). Reading `?c=<key>` once
@@ -1633,14 +1874,16 @@ export default function Inbox() {
   ]);
 
   const activeChannel: Channel | null = useMemo(() => {
-    if (activeNav.startsWith("channel:")) return activeNav.split(":")[1] as Channel;
+    if (activeNav.startsWith("channel:"))
+      return activeNav.split(":")[1] as Channel;
     return null;
   }, [activeNav]);
 
   const sectionTitle = useMemo(() => {
     if (activeChannel) return activeChannel;
     if (activeNav === "inbox") return getTenantUiConfig().conversationsLabel;
-    if (activeNav === "escalations") return getTenantUiConfig().escalationsLabel;
+    if (activeNav === "escalations")
+      return getTenantUiConfig().escalationsLabel;
     return NAV_LABELS[activeNav] || tenantText("Inbox", "Conversaciones");
   }, [activeNav, activeChannel]);
 
@@ -1653,13 +1896,16 @@ export default function Inbox() {
         list = resolvedEscalationRows;
       } else {
         list = escalationRows.filter((c) => c.escalationMode !== "order");
-        if (escalationFilter === "soft") list = list.filter((c) => c.escalationMode === "soft");
-        else if (escalationFilter === "hard") list = list.filter((c) => c.escalationMode === "hard");
+        if (escalationFilter === "soft")
+          list = list.filter((c) => c.escalationMode === "soft");
+        else if (escalationFilter === "hard")
+          list = list.filter((c) => c.escalationMode === "hard");
       }
     } else {
       // Archive is now server-backed: active list comes from /messages/conversations,
       // archived list from /messages/conversations/archived. No client-side split needed.
-      const source = inboxView === "archived" ? archivedConversations : allConversations;
+      const source =
+        inboxView === "archived" ? archivedConversations : allConversations;
       list = source.filter((c) => isChannelVisible(c.channel));
       if (activeNav.startsWith("channel:")) {
         const ch = activeNav.split(":")[1] as Channel;
@@ -1678,7 +1924,9 @@ export default function Inbox() {
     // Newest first by raw last_message_at (ms). Spread into a fresh array so
     // we never mutate the React Query cached array. Invalid/missing
     // timestamps (timestampMs === 0) naturally land at the bottom.
-    return [...list].sort((a, b) => (b.timestampMs ?? 0) - (a.timestampMs ?? 0));
+    return [...list].sort(
+      (a, b) => (b.timestampMs ?? 0) - (a.timestampMs ?? 0),
+    );
   }, [
     allConversations,
     archivedConversations,
@@ -1695,7 +1943,10 @@ export default function Inbox() {
     if (activeNav === "escalations") {
       if (escIsLoading) return tenantText("Loading…", "Cargando…");
       if (escIsError) {
-        return tenantText("Couldn't load escalations", "No se pudieron cargar las escalaciones");
+        return tenantText(
+          "Couldn't load escalations",
+          "No se pudieron cargar las escalaciones",
+        );
       }
       if (escalationFilter === "resolved") {
         return tenantText("Resolved escalations", "Escalaciones resueltas");
@@ -1722,7 +1973,9 @@ export default function Inbox() {
       <span
         aria-hidden="true"
         className="h-2 w-2 rounded-full"
-        style={{ backgroundColor: CHANNEL_BADGE_COLORS[activeChannel] ?? "#9aa0a6" }}
+        style={{
+          backgroundColor: CHANNEL_BADGE_COLORS[activeChannel] ?? "#9aa0a6",
+        }}
       />
       {sectionTitle}
     </span>
@@ -1735,7 +1988,10 @@ export default function Inbox() {
       activeNav={activeNav}
       onNavSelect={handleNavSelect}
       searchQuery={searchQuery}
-      onSearchChange={(q) => { setSearchQueryState(q); setSelectedConv(null); }}
+      onSearchChange={(q) => {
+        setSearchQueryState(q);
+        setSelectedConv(null);
+      }}
       pageTitle={titleNode}
       pageSubtitle={subtitle}
     >
@@ -1753,7 +2009,10 @@ export default function Inbox() {
             <div
               className="flex items-center gap-1.5 px-3 py-2.5 border-b border-border bg-card/95 backdrop-blur-sm sticky top-0 z-10 overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               role="tablist"
-              aria-label={tenantText("Escalation filter", "Filtro de escalaciones")}
+              aria-label={tenantText(
+                "Escalation filter",
+                "Filtro de escalaciones",
+              )}
             >
               {(["all", "soft", "hard", "resolved"] as const).map((m) => (
                 <motion.button
@@ -1762,7 +2021,10 @@ export default function Inbox() {
                   type="button"
                   role="tab"
                   aria-selected={escalationFilter === m}
-                  onClick={() => { setEscalationFilter(m); setSelectedConv(null); }}
+                  onClick={() => {
+                    setEscalationFilter(m);
+                    setSelectedConv(null);
+                  }}
                   className={cn(
                     "px-3.5 py-1.5 text-[12px] md:text-[13px] rounded-full flex-shrink-0 transition-all font-medium",
                     escalationFilter === m
@@ -1773,7 +2035,10 @@ export default function Inbox() {
                   {m === "all"
                     ? tenantText("All", "Todas")
                     : m === "soft"
-                      ? tenantText("Agent needs help", "El agente necesita ayuda")
+                      ? tenantText(
+                          "Agent needs help",
+                          "El agente necesita ayuda",
+                        )
                       : m === "hard"
                         ? tenantText("Human takeover", "Intervención humana")
                         : tenantText("Resolved", "Resueltas")}
@@ -1791,7 +2056,10 @@ export default function Inbox() {
                       key={v}
                       whileTap={{ scale: 0.96 }}
                       type="button"
-                      onClick={() => { setInboxView(v); setSelectedConv(null); }}
+                      onClick={() => {
+                        setInboxView(v);
+                        setSelectedConv(null);
+                      }}
                       className={cn(
                         "px-3.5 py-1 text-[12px] md:text-[13px] rounded-full inline-flex items-center gap-1.5 transition-all font-medium",
                         inboxView === v
@@ -1815,18 +2083,25 @@ export default function Inbox() {
               )}
             </div>
           )}
-          {(activeNav === "escalations" ? escIsLoading : inboxView === "archived" ? archiveIsLoading : isLoading) && filtered.length === 0 ? (
+          {(activeNav === "escalations"
+            ? escIsLoading
+            : inboxView === "archived"
+              ? archiveIsLoading
+              : isLoading) && filtered.length === 0 ? (
             <div
               className="divide-y divide-border"
               aria-busy="true"
-              aria-label={tenantText("Loading conversations", "Cargando conversaciones")}
+              aria-label={tenantText(
+                "Loading conversations",
+                "Cargando conversaciones",
+              )}
             >
               {[0, 1, 2, 3, 4].map((i) => (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05, duration: 0.3 }}
-                  key={i} 
+                  key={i}
                   className="flex items-center gap-3 px-4 py-4"
                 >
                   <div className="h-10 w-10 flex-shrink-0 animate-pulse rounded-full bg-muted shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.18)]" />
@@ -1849,25 +2124,46 @@ export default function Inbox() {
                 key={conv.id}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ type: "spring", stiffness: 400, damping: 30, delay: i * 0.03 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 30,
+                  delay: i * 0.03,
+                }}
               >
                 <MessageRow
                   conversation={conv}
                   isSelected={selectedConv?.id === conv.id}
                   hideChannel={Boolean(activeChannel)}
                   onSelect={setSelectedConv}
-                  onReply={canDeleteChannel(conv.channel) ? handleEmailReply : undefined}
-                  onForward={canDeleteChannel(conv.channel) ? handleEmailForward : undefined}
-                  onDelete={canDeleteChannel(conv.channel) ? handleEmailDelete : undefined}
-                  onArchive={escalationFilter === "resolved" ? undefined : handleArchive}
-                  onRestore={escalationFilter === "resolved" ? undefined : handleRestore}
+                  onReply={
+                    canDeleteChannel(conv.channel)
+                      ? handleEmailReply
+                      : undefined
+                  }
+                  onForward={
+                    canDeleteChannel(conv.channel)
+                      ? handleEmailForward
+                      : undefined
+                  }
+                  onDelete={
+                    canDeleteChannel(conv.channel)
+                      ? handleEmailDelete
+                      : undefined
+                  }
+                  onArchive={
+                    escalationFilter === "resolved" ? undefined : handleArchive
+                  }
+                  onRestore={
+                    escalationFilter === "resolved" ? undefined : handleRestore
+                  }
                   archived={inboxView === "archived"}
                   dimmed={escalationFilter === "resolved"}
                 />
               </motion.div>
             ))
           ) : (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
@@ -1883,10 +2179,16 @@ export default function Inbox() {
               <h3 className="text-[16px] font-semibold text-foreground mb-1">
                 {activeNav === "escalations"
                   ? escIsError
-                    ? tenantText("Couldn't load escalations", "No se pudieron cargar las escalaciones")
+                    ? tenantText(
+                        "Couldn't load escalations",
+                        "No se pudieron cargar las escalaciones",
+                      )
                     : tenantText("All caught up", "Todo al día")
                   : isError
-                    ? tenantText("Couldn't load conversations", "No se pudieron cargar las conversaciones")
+                    ? tenantText(
+                        "Couldn't load conversations",
+                        "No se pudieron cargar las conversaciones",
+                      )
                     : tenantText("Inbox zero", "Bandeja vacía")}
               </h3>
               <p className="text-[14px] text-muted-foreground max-w-[260px] leading-relaxed">
@@ -1894,15 +2196,24 @@ export default function Inbox() {
                   ? escIsError
                     ? escError instanceof Error
                       ? escError.message
-                      : tenantText("Please try again later.", "Inténtalo de nuevo más tarde.")
+                      : tenantText(
+                          "Please try again later.",
+                          "Inténtalo de nuevo más tarde.",
+                        )
                     : escalationFilter === "resolved"
                       ? tenantText(
                           "No resolved escalations yet.",
                           "Todavía no hay escalaciones resueltas.",
                         )
-                      : tenantText("No escalations to show.", "No hay escalaciones que mostrar.")
+                      : tenantText(
+                          "No escalations to show.",
+                          "No hay escalaciones que mostrar.",
+                        )
                   : isError
-                    ? tenantText("Please try again later.", "Inténtalo de nuevo más tarde.")
+                    ? tenantText(
+                        "Please try again later.",
+                        "Inténtalo de nuevo más tarde.",
+                      )
                     : tenantText(
                         "No conversations to show right now.",
                         "Ahora mismo no hay conversaciones que mostrar.",
@@ -1917,12 +2228,30 @@ export default function Inbox() {
           <ConversationDetailPane
             conversation={selectedConv}
             onClose={() => setSelectedConv(null)}
-            onBackToFollowUps={returnToFollowUps ? () => navigate("/follow-ups") : undefined}
-            onEmailReply={canDeleteChannel(selectedConv.channel) ? handleEmailReply : undefined}
-            onEmailForward={canDeleteChannel(selectedConv.channel) ? handleEmailForward : undefined}
-            onEmailDelete={canDeleteChannel(selectedConv.channel) ? handleEmailDelete : undefined}
-            onArchive={escalationFilter === "resolved" ? undefined : handleArchive}
-            onRestore={escalationFilter === "resolved" ? undefined : handleRestore}
+            onBackToFollowUps={
+              returnToFollowUps ? () => navigate("/follow-ups") : undefined
+            }
+            onEmailReply={
+              canDeleteChannel(selectedConv.channel)
+                ? handleEmailReply
+                : undefined
+            }
+            onEmailForward={
+              canDeleteChannel(selectedConv.channel)
+                ? handleEmailForward
+                : undefined
+            }
+            onEmailDelete={
+              canDeleteChannel(selectedConv.channel)
+                ? handleEmailDelete
+                : undefined
+            }
+            onArchive={
+              escalationFilter === "resolved" ? undefined : handleArchive
+            }
+            onRestore={
+              escalationFilter === "resolved" ? undefined : handleRestore
+            }
             archived={inboxView === "archived"}
             onBlock={
               escalationFilter === "resolved" || inboxView === "archived"
@@ -1933,6 +2262,80 @@ export default function Inbox() {
             resolvedContext={escalationFilter === "resolved"}
           />
         )}
+        {selectedConv && selectedRentalLead ? (
+          <aside
+            className="hidden w-[300px] shrink-0 flex-col border-l border-[#e5dfd5] bg-[#fbfaf7] xl:flex"
+            aria-label="Customer rental context"
+          >
+            <div className="border-b border-[#e5dfd5] px-5 py-4">
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#9b6f1a]">
+                Customer context
+              </p>
+              <h2 className="mt-2 truncate text-base font-semibold text-[#0b213a]">
+                {customerDisplayName(selectedRentalLead)}
+              </h2>
+              <p className="mt-1 truncate text-xs text-[#7b8490]">
+                {selectedRentalLead.reservation_reference ||
+                  selectedRentalLead.quote_reference ||
+                  "No reference yet"}
+              </p>
+            </div>
+            <div className="flex-1 space-y-4 overflow-y-auto p-5">
+              {(() => {
+                const operation = projectRentalLead(selectedRentalLead);
+                return (
+                  <>
+                    <div className="rounded-xl border border-[#ead8af] bg-[#fff8e8] p-3">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#946a1b]">
+                        Current stage
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-[#5e4515]">
+                        {rentalStageLabel(operation.stage)}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-[#806b3f]">
+                        Responsible: {operation.responsibleParty}
+                      </p>
+                    </div>
+                    <ContextFact
+                      icon={CarFront}
+                      label="Vehicle"
+                      value={
+                        selectedRentalLead.vehicle_preference || "Not selected"
+                      }
+                    />
+                    <ContextFact
+                      icon={CalendarDays}
+                      label="Rental period"
+                      value={
+                        selectedRentalLead.rental_period ||
+                        `${selectedRentalLead.pickup_datetime || "—"} → ${selectedRentalLead.return_datetime || "—"}`
+                      }
+                    />
+                    <ContextFact
+                      icon={Clock3}
+                      label="Next action"
+                      value={
+                        selectedRentalLead.next_action ||
+                        "Continue the conversation"
+                      }
+                    />
+                  </>
+                );
+              })()}
+            </div>
+            <div className="border-t border-[#e5dfd5] p-4">
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(customerWorkspacePath(selectedRentalLead))
+                }
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0b213a] px-4 text-sm font-semibold text-white hover:bg-[#163754]"
+              >
+                Open customer file <ExternalLink className="h-4 w-4" />
+              </button>
+            </div>
+          </aside>
+        ) : null}
       </div>
 
       {/* Email action modals — mounted at the page level so they overlay

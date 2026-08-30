@@ -49,20 +49,20 @@ const VIEWS: Array<{
   },
   {
     id: "charges",
-    label: "Charges",
-    description: "Deposit and supplements",
+    label: "Rates & extras",
+    description: "Prices, deposit and supplements",
     icon: CircleDollarSign,
   },
   {
     id: "quote",
-    label: "Quote settings",
-    description: "Timing, email and copy",
+    label: "Quote & PDF",
+    description: "Timing, delivery and quote copy",
     icon: Settings2,
   },
   {
     id: "preview",
-    label: "Preview & publish",
-    description: "Validate, preview and release",
+    label: "Reservation setup",
+    description: "Preview, validate and publish",
     icon: FileCheck2,
   },
 ];
@@ -450,9 +450,9 @@ export function RentalControlCenter() {
           </button>
         </div>
       ) : null}
-      <div className="flex flex-col gap-3 rounded-2xl border border-[#dce4ef] bg-gradient-to-r from-[#f7faff] to-white p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-2xl border border-[#e2ddd3] bg-white p-4 shadow-[0_8px_24px_rgba(24,37,52,.04)] sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#1a73e8]">
+          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-[#9b6f1a]">
             Rental control center
           </p>
           <p className="mt-1 text-[13px] text-[#3c4043]">
@@ -486,18 +486,23 @@ export function RentalControlCenter() {
               key={view.id}
               type="button"
               aria-pressed={selected}
+              aria-label={
+                view.id === "preview"
+                  ? "Preview & publish — Reservation setup"
+                  : undefined
+              }
               onClick={() => setActiveView(view.id)}
               className={cn(
                 "flex items-start gap-3 rounded-xl border p-3 text-left transition",
                 selected
-                  ? "border-[#1a73e8] bg-[#eef5ff] shadow-sm"
-                  : "border-[#e4e7ec] bg-white hover:border-[#b7c9e2] hover:bg-[#fbfcff]",
+                  ? "border-[#caa14f] bg-[#fff8e8] shadow-sm"
+                  : "border-[#e2ddd3] bg-white hover:border-[#cdbf9f] hover:bg-[#fbf9f4]",
               )}
             >
               <Icon
                 className={cn(
                   "mt-0.5 h-4 w-4 flex-none",
-                  selected ? "text-[#1a73e8]" : "text-[#7a7f87]",
+                  selected ? "text-[#9b6f1a]" : "text-[#7a7f87]",
                 )}
               />
               <span>
@@ -564,6 +569,36 @@ export function RentalControlCenter() {
           }}
         />
       ) : null}
+
+      <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-end gap-2 rounded-2xl border border-[#d8d1c5] bg-white/95 p-3 shadow-[0_14px_38px_rgba(16,36,62,.14)] backdrop-blur">
+        <button
+          type="button"
+          aria-label="Store current changes"
+          disabled={!dirty || pendingAction !== null}
+          onClick={() => void save()}
+          className="min-h-11 rounded-xl border border-[#d8d1c5] bg-white px-4 text-sm font-semibold text-[#31445d] hover:bg-[#faf8f3] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Save draft
+        </button>
+        <button
+          type="button"
+          aria-label="Preview changes"
+          disabled={pendingAction !== null}
+          onClick={() => void createPreview()}
+          className="min-h-11 rounded-xl border border-[#c7a459] bg-[#fff8e8] px-4 text-sm font-semibold text-[#805b17] hover:bg-[#fff2cf] disabled:opacity-50"
+        >
+          Preview
+        </button>
+        <button
+          type="button"
+          aria-label="Publish changes"
+          disabled={pendingAction !== null}
+          onClick={() => void publish()}
+          className="min-h-11 rounded-xl bg-[#0b213a] px-5 text-sm font-semibold text-white hover:bg-[#163754] disabled:opacity-50"
+        >
+          Publish
+        </button>
+      </div>
     </div>
   );
 }

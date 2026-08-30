@@ -9,12 +9,13 @@ export default function Rental() {
   return (
     <DashboardShell
       activeNav="rental"
-      pageTitle="Rental"
-      pageSubtitle="Manage the fleet, fixed pricing, contract template, payment setup, and quote readiness."
+      pageTitle="Fleet & pricing"
+      pageSubtitle="Fleet, rates, quote documents and reservation setup"
       hideRefresh
     >
-      <div className="min-h-full bg-[#f8f9fb]">
-        <div className="mx-auto w-full max-w-[1180px] space-y-5 px-4 py-6 sm:px-6 sm:py-8">
+      <div className="min-h-full bg-[#f5f2ec]">
+        <h2 className="sr-only">Rental</h2>
+        <div className="mx-auto w-full max-w-[1320px] space-y-5 px-4 py-6 sm:px-6 sm:py-8">
           {capability.isLoading ? (
             <section className="rounded-2xl border border-[#e6e8eb] bg-white p-6 text-sm text-[#5f6368] shadow-sm">
               Loading rental controls…

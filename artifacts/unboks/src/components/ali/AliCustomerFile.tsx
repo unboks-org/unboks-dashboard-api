@@ -151,6 +151,42 @@ function openPrivateBlob(blob: Blob, filename: string): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+function printPrivateBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const frame = document.createElement("iframe");
+  frame.title = filename;
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.position = "fixed";
+  frame.style.right = "0";
+  frame.style.bottom = "0";
+  frame.style.width = "1px";
+  frame.style.height = "1px";
+  frame.style.border = "0";
+  frame.style.opacity = "0";
+  frame.src = url;
+  let cleaned = false;
+  const cleanUp = () => {
+    if (cleaned) return;
+    cleaned = true;
+    window.setTimeout(() => {
+      frame.remove();
+      URL.revokeObjectURL(url);
+    }, 1_000);
+  };
+  frame.onload = () => {
+    try {
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
+      if (frame.contentWindow) frame.contentWindow.onafterprint = cleanUp;
+      window.setTimeout(cleanUp, 60_000);
+    } catch {
+      cleanUp();
+      openPrivateBlob(blob, filename);
+    }
+  };
+  document.body.appendChild(frame);
+}
+
 function safeAmount(value: unknown): string {
   if (!value || typeof value !== "object") return "Not available";
   const price = value as { amount?: unknown; currency?: unknown };
@@ -362,9 +398,11 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
       return fetchAliDossierBlob(publicId, query.data.revision, incomplete);
     },
     onSuccess: async (blob) => {
-      openPrivateBlob(blob, `Ali-customer-dossier-${publicId}.pdf`);
+      printPrivateBlob(blob, `Ali-customer-dossier-${publicId}.pdf`);
       await refresh();
-      toast.success("Print-ready dossier generated.");
+      toast.success(
+        "Print-ready dossier generated. Your print dialog is opening.",
+      );
     },
     onError: () =>
       toast.error("The print-ready dossier could not be generated."),
@@ -541,6 +579,7 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
                 Approve availability
               </PrimaryButton>
               <SecondaryButton
+                id="dossier-print-action"
                 disabled={busy}
                 onClick={() =>
                   runAction({ kind: "availability", decision: "decline" })
@@ -953,23 +992,25 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
           </>
         )}
 
-        <ControlBlock
-          title="Missing requirements"
-          icon={<ClipboardCheck />}
-          status={file.can_confirm ? "ready_for_review" : "incomplete"}
-        >
-          {file.missing_requirements.length ? (
-            <ul className="space-y-1 text-sm text-amber-800">
-              {file.missing_requirements.map((requirement) => (
-                <li key={requirement}>• {readableStatus(requirement)}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-emerald-700">
-              Every required customer step is complete.
-            </p>
-          )}
-        </ControlBlock>
+        <div id="print-dossier" className="scroll-mt-24">
+          <ControlBlock
+            title="Missing requirements"
+            icon={<ClipboardCheck />}
+            status={file.can_confirm ? "ready_for_review" : "incomplete"}
+          >
+            {file.missing_requirements.length ? (
+              <ul className="space-y-1 text-sm text-amber-800">
+                {file.missing_requirements.map((requirement) => (
+                  <li key={requirement}>• {readableStatus(requirement)}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-emerald-700">
+                Every required customer step is complete.
+              </p>
+            )}
+          </ControlBlock>
+        </div>
 
         <ControlBlock title="Final notes" icon={<FileText />}>
           <textarea
@@ -1024,6 +1065,7 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
               </SecondaryButton>
             ) : (
               <PrimaryButton
+                id="dossier-print-action"
                 disabled={busy}
                 onClick={() => printDossier.mutate({ incomplete: false })}
               >

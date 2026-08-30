@@ -1,5 +1,20 @@
-import { Component, lazy, Suspense, useEffect, useMemo, type ReactNode } from "react";
-import { Switch, Route, Router as WouterRouter, Redirect, useLocation, useParams, useSearch } from "wouter";
+import {
+  Component,
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  type ReactNode,
+} from "react";
+import {
+  Switch,
+  Route,
+  Router as WouterRouter,
+  Redirect,
+  useLocation,
+  useParams,
+  useSearch,
+} from "wouter";
 import { getToken } from "@/lib/tenant";
 import { isValidTenantSlug } from "@/lib/api";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -11,7 +26,11 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SettingsErrorBoundary } from "@/components/SettingsErrorBoundary";
 import { FeatureTogglesProvider } from "@/lib/feature-toggles";
 import { DEBUG_LOGS_ENABLED, debugLog } from "@/lib/debug-log";
-import { isSpainSpanishTenant, tenantText } from "@/lib/tenant-ui";
+import {
+  isRentalDashboardV2Enabled,
+  isSpainSpanishTenant,
+  tenantText,
+} from "@/lib/tenant-ui";
 import { loginRedirectStorageKey } from "@/lib/deep-link";
 import { isLegacyRentalSettingsSearch } from "@/lib/rental-navigation";
 
@@ -22,6 +41,11 @@ const Bookings = lazy(() => import("@/pages/Bookings"));
 const FollowUps = lazy(() => import("@/pages/FollowUps"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Rental = lazy(() => import("@/pages/Rental"));
+const RentalToday = lazy(() => import("@/pages/RentalToday"));
+const RentalCustomers = lazy(() => import("@/pages/RentalCustomers"));
+const RentalCustomerWorkspace = lazy(
+  () => import("@/pages/RentalCustomerWorkspace"),
+);
 const Analytics = lazy(() => import("@/pages/Analytics"));
 const Help = lazy(() => import("@/pages/Help"));
 const Images = lazy(() => import("@/pages/Images"));
@@ -60,7 +84,16 @@ class AppErrorBoundary extends Component<
           <h2 style={{ color: "#d93025", marginBottom: 8 }}>
             {tenantText("Something went wrong", "Se ha producido un error")}
           </h2>
-          <pre style={{ background: "#f6f8fc", padding: 16, borderRadius: 8, fontSize: 13, overflowX: "auto", whiteSpace: "pre-wrap" }}>
+          <pre
+            style={{
+              background: "#f6f8fc",
+              padding: 16,
+              borderRadius: 8,
+              fontSize: 13,
+              overflowX: "auto",
+              whiteSpace: "pre-wrap",
+            }}
+          >
             {(error as Error).message}
             {"\n\n"}
             {(error as Error).stack}
@@ -75,7 +108,16 @@ class AppErrorBoundary extends Component<
               this.setState({ error: null });
               window.location.reload();
             }}
-            style={{ marginTop: 16, padding: "8px 16px", background: "#1a73e8", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 14 }}
+            style={{
+              marginTop: 16,
+              padding: "8px 16px",
+              background: "#1a73e8",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              cursor: "pointer",
+              fontSize: 14,
+            }}
           >
             {tenantText("Reload app", "Volver a cargar")}
           </button>
@@ -224,7 +266,7 @@ function TenantRootRedirect() {
  * /unboks/garbage still 404 rather than silently redirecting.
  */
 const KNOWN_TENANT_SECTIONS = new Set([
-  "inbox",          // canonical home -> "/"
+  "inbox", // canonical home -> "/"
   "settings",
   "rental",
   "analytics",
@@ -234,7 +276,44 @@ const KNOWN_TENANT_SECTIONS = new Set([
   "bookings",
   "escalations",
   "follow-ups",
+  "today",
+  "customers",
+  "conversations",
+  "fleet",
 ]);
+
+function RentalOnlyRoute({ children }: { children: ReactNode }) {
+  return isRentalDashboardV2Enabled() ? children : <NotFound />;
+}
+
+function FollowUpsRoute() {
+  if (isRentalDashboardV2Enabled()) return <Redirect to="/customers" replace />;
+  return (
+    <ProtectedRoute>
+      <FollowUps />
+    </ProtectedRoute>
+  );
+}
+
+function LegacyRentalRoute() {
+  if (isRentalDashboardV2Enabled()) return <Redirect to="/fleet" replace />;
+  return (
+    <ProtectedRoute>
+      <SettingsErrorBoundary>
+        <Rental />
+      </SettingsErrorBoundary>
+    </ProtectedRoute>
+  );
+}
+
+function HomeRoute() {
+  if (isRentalDashboardV2Enabled()) return <Redirect to="/today" replace />;
+  return (
+    <ProtectedRoute>
+      <Inbox />
+    </ProtectedRoute>
+  );
+}
 
 function SettingsRoute() {
   const search = useSearch();
@@ -254,7 +333,9 @@ function TenantSectionRedirect() {
   const { tenant, section } = useParams<{ tenant: string; section: string }>();
   if (!isValidTenantSlug(tenant) || !KNOWN_TENANT_SECTIONS.has(section)) {
     logTenantNav("tenant_section.invalid", {
-      raw_tenant: tenant, raw_section: section, next: "NotFound",
+      raw_tenant: tenant,
+      raw_section: section,
+      next: "NotFound",
     });
     return <NotFound />;
   }
@@ -270,7 +351,9 @@ function TenantSectionRedirect() {
   })();
   if (hasTokenForSlug) {
     logTenantNav("tenant_section.has_token", {
-      slug, section, next: target,
+      slug,
+      section,
+      next: target,
     });
     return <AuthenticatedTenantRedirect slug={slug} target={target} />;
   }
@@ -283,12 +366,19 @@ function TenantSectionRedirect() {
     // sessionStorage unavailable; login renders with empty workspace.
   }
   logTenantNav("tenant_section.no_token_to_login", {
-    slug, section, workspace_hint_set: hintWritten, next: "/login",
+    slug,
+    section,
+    workspace_hint_set: hintWritten,
+    next: "/login",
   });
   return <Redirect to="/login" />;
 }
 
-function TenantDeepLinkRedirect({ section }: { section: "escalations" | "appointments" }) {
+function TenantDeepLinkRedirect({
+  section,
+}: {
+  section: "escalations" | "appointments";
+}) {
   const { tenant, id } = useParams<{ tenant: string; id: string }>();
   if (!tenant || !id) {
     logTenantNav("tenant_deeplink.no_id", { section, tenant, id, next: "/" });
@@ -303,7 +393,9 @@ function TenantDeepLinkRedirect({ section }: { section: "escalations" | "appoint
   // genuinely signed in to this tenant before).
   if (!isValidTenantSlug(tenant)) {
     logTenantNav("tenant_deeplink.invalid_slug", {
-      raw_tenant: tenant, section, next: "NotFound",
+      raw_tenant: tenant,
+      section,
+      next: "NotFound",
     });
     return <NotFound />;
   }
@@ -326,7 +418,8 @@ function TenantDeepLinkRedirect({ section }: { section: "escalations" | "appoint
       has_token_for_slug: hasTokenForSlug,
       switched,
       next: `/${section}/${id}`,
-    });
+    },
+  );
   const target = `/${section}/${encodeURIComponent(id)}`;
   if (hasTokenForSlug) {
     return <AuthenticatedTenantRedirect slug={tenant} target={target} />;
@@ -345,21 +438,64 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/bookings">
-        <ProtectedRoute><Bookings /></ProtectedRoute>
+        <ProtectedRoute>
+          <Bookings />
+        </ProtectedRoute>
       </Route>
       {/* Renamed surface: /appointments is the new canonical path; the
           /bookings route stays so existing bookmarks keep working. */}
       <Route path="/appointments">
-        <ProtectedRoute><Bookings /></ProtectedRoute>
+        <ProtectedRoute>
+          <Bookings />
+        </ProtectedRoute>
       </Route>
       {/* Deep link from alert emails / WhatsApp: opens the
           Appointments page and auto-highlights the matching row.
           The id is decoded inside Bookings via `useDeepLink`. */}
       <Route path="/appointments/:id">
-        <ProtectedRoute><Bookings /></ProtectedRoute>
+        <ProtectedRoute>
+          <Bookings />
+        </ProtectedRoute>
       </Route>
       <Route path="/follow-ups">
-        <ProtectedRoute><FollowUps /></ProtectedRoute>
+        <FollowUpsRoute />
+      </Route>
+      <Route path="/today">
+        <ProtectedRoute>
+          <RentalOnlyRoute>
+            <RentalToday />
+          </RentalOnlyRoute>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/customers/:reservationId">
+        <ProtectedRoute>
+          <RentalOnlyRoute>
+            <RentalCustomerWorkspace />
+          </RentalOnlyRoute>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/customers">
+        <ProtectedRoute>
+          <RentalOnlyRoute>
+            <RentalCustomers />
+          </RentalOnlyRoute>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/conversations">
+        <ProtectedRoute>
+          <RentalOnlyRoute>
+            <Inbox />
+          </RentalOnlyRoute>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/fleet">
+        <ProtectedRoute>
+          <RentalOnlyRoute>
+            <SettingsErrorBoundary>
+              <Rental />
+            </SettingsErrorBoundary>
+          </RentalOnlyRoute>
+        </ProtectedRoute>
       </Route>
       {/* Deep links into Escalations. Both the bare /escalations
           surface (used for `?view=escalations` style links) and the
@@ -375,20 +511,22 @@ function Router() {
         <SettingsRoute />
       </Route>
       <Route path="/rental">
-        <ProtectedRoute>
-          <SettingsErrorBoundary>
-            <Rental />
-          </SettingsErrorBoundary>
-        </ProtectedRoute>
+        <LegacyRentalRoute />
       </Route>
       <Route path="/analytics">
-        <ProtectedRoute><Analytics /></ProtectedRoute>
+        <ProtectedRoute>
+          <Analytics />
+        </ProtectedRoute>
       </Route>
       <Route path="/help">
-        <ProtectedRoute><Help /></ProtectedRoute>
+        <ProtectedRoute>
+          <Help />
+        </ProtectedRoute>
       </Route>
       <Route path="/images">
-        <ProtectedRoute><Images /></ProtectedRoute>
+        <ProtectedRoute>
+          <Images />
+        </ProtectedRoute>
       </Route>
       {/* Tenant-prefixed deep links from backend alert emails.
           These MUST come after all the specific short routes above so that
@@ -422,7 +560,7 @@ function Router() {
         <TenantRootRedirect />
       </Route>
       <Route path="/">
-        <ProtectedRoute><Inbox /></ProtectedRoute>
+        <HomeRoute />
       </Route>
       <Route component={NotFound} />
     </Switch>
@@ -431,7 +569,10 @@ function Router() {
 
 function TenantRuntime() {
   const { clientSlug, isAuthenticated } = useAuth();
-  const queryClient = useMemo(createTenantQueryClient, [clientSlug, isAuthenticated]);
+  const queryClient = useMemo(createTenantQueryClient, [
+    clientSlug,
+    isAuthenticated,
+  ]);
 
   useEffect(() => {
     return () => {
