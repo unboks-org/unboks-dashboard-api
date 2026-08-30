@@ -159,9 +159,12 @@ describe("RentalFleetView premium vehicle editor", () => {
       "Toyota Yaris or similar customer-facing photo",
     );
     const frame = preview.closest("[data-vehicle-media-frame]");
+    const canvas = preview.querySelector("[data-vehicle-image-canvas]");
     expect(frame?.className.includes("bg-white")).toBe(true);
-    expect(thumbnail.className.includes("h-full")).toBe(true);
-    expect(thumbnail.className.includes("w-full")).toBe(true);
+    expect(canvas?.className.includes("overflow-hidden")).toBe(true);
+    expect(canvas?.className.includes("bottom-2")).toBe(true);
+    expect(thumbnail.className.includes("max-h-full")).toBe(true);
+    expect(thumbnail.className.includes("max-w-full")).toBe(true);
     expect(thumbnail.className.includes("object-contain")).toBe(true);
     expect(screen.getByRole("button", { name: "Replace photo" })).toBeTruthy();
     expect(
