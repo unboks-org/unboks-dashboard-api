@@ -1,8 +1,21 @@
 import { useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ImageIcon, Loader2, Trash2, UploadCloud } from "lucide-react";
+import {
+  ImageIcon,
+  Loader2,
+  Maximize2,
+  Trash2,
+  UploadCloud,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { fetchRentalMedia, uploadRentalMedia } from "@/lib/rental-catalog";
 import { tenantKey } from "@/lib/query-keys";
@@ -82,11 +95,37 @@ export function RentalMediaField({
           )}
         >
           {media.data?.url ? (
-            <img
-              src={media.data.url}
-              alt={alt}
-              className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
-            />
+            <Dialog>
+              <DialogTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Open larger preview of ${alt}`}
+                  className="absolute inset-0 grid cursor-zoom-in place-items-center p-5 pb-[4.75rem] outline-none transition focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1a73e8] sm:p-6 sm:pb-[5rem]"
+                >
+                  <img
+                    src={media.data.url}
+                    alt={alt}
+                    className="max-h-full max-w-full object-contain transition duration-300 group-hover:scale-[1.025]"
+                  />
+                  <span className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full border border-white/80 bg-white/90 text-[#344054] opacity-0 shadow-sm backdrop-blur transition group-hover:opacity-100 group-focus-within:opacity-100">
+                    <Maximize2 className="h-4 w-4" />
+                  </span>
+                </button>
+              </DialogTrigger>
+              <DialogContent className="w-[calc(100vw-2rem)] max-w-5xl overflow-hidden rounded-2xl border-[#dfe3e8] bg-white p-3 shadow-2xl [&>button]:right-3 [&>button]:top-3 [&>button]:z-10 [&>button]:grid [&>button]:h-11 [&>button]:w-11 [&>button]:place-items-center [&>button]:rounded-full [&>button]:bg-white [&>button]:opacity-100 [&>button]:shadow-sm sm:p-5">
+                <DialogTitle className="sr-only">{alt}</DialogTitle>
+                <DialogDescription className="sr-only">
+                  Large customer-facing vehicle image preview.
+                </DialogDescription>
+                <div className="grid max-h-[82vh] min-h-[240px] place-items-center overflow-hidden rounded-xl bg-[#f5f7fa] p-4 sm:min-h-[420px] sm:p-8">
+                  <img
+                    src={media.data.url}
+                    alt={alt}
+                    className="max-h-[72vh] max-w-full object-contain"
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
           ) : media.isLoading ? (
             <Loader2 className="h-5 w-5 animate-spin text-[#5f6368]" />
           ) : (
@@ -99,7 +138,7 @@ export function RentalMediaField({
               </span>
             </div>
           )}
-          <div className="absolute inset-x-3 bottom-3 flex items-center gap-2">
+          <div className="absolute inset-x-3 bottom-3 z-10 flex items-center gap-2">
             <Button
               type="button"
               variant="secondary"
@@ -132,6 +171,7 @@ export function RentalMediaField({
         </div>
         <p className="mt-2 text-[11px] leading-4 text-[#7a7f87]">
           JPG, PNG or WebP · shown in WhatsApp and quotes
+          {media.data?.url ? " · select image to enlarge" : ""}
         </p>
       </div>
     );
