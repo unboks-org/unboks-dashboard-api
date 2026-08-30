@@ -155,6 +155,14 @@ describe("RentalFleetView premium vehicle editor", () => {
     const preview = await screen.findByRole("button", {
       name: "Open larger preview of Toyota Yaris or similar customer-facing photo",
     });
+    const thumbnail = screen.getByAltText(
+      "Toyota Yaris or similar customer-facing photo",
+    );
+    const frame = preview.closest("[data-vehicle-media-frame]");
+    expect(frame?.className.includes("bg-white")).toBe(true);
+    expect(thumbnail.className.includes("h-full")).toBe(true);
+    expect(thumbnail.className.includes("w-full")).toBe(true);
+    expect(thumbnail.className.includes("object-contain")).toBe(true);
     expect(screen.getByRole("button", { name: "Replace photo" })).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Remove vehicle photo" }),

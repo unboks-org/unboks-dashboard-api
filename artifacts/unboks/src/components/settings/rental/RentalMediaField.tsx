@@ -89,61 +89,64 @@ export function RentalMediaField({
       <div className="min-w-0">
         {fileInput}
         <div
+          data-vehicle-media-frame
           className={cn(
-            "group relative grid aspect-[16/10] w-full place-items-center overflow-hidden rounded-xl border border-[#dfe3e8] bg-[#f5f7fa]",
+            "group flex aspect-[16/10] w-full flex-col overflow-hidden rounded-xl border border-[#dfe3e8] bg-white",
             !media.data?.url && "border-dashed",
           )}
         >
-          {media.data?.url ? (
-            <Dialog>
-              <DialogTrigger asChild>
-                <button
-                  type="button"
-                  aria-label={`Open larger preview of ${alt}`}
-                  className="absolute inset-0 grid cursor-zoom-in place-items-center p-5 pb-[4.75rem] outline-none transition focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1a73e8] sm:p-6 sm:pb-[5rem]"
-                >
-                  <img
-                    src={media.data.url}
-                    alt={alt}
-                    className="max-h-full max-w-full object-contain transition duration-300 group-hover:scale-[1.025]"
-                  />
-                  <span className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full border border-white/80 bg-white/90 text-[#344054] opacity-0 shadow-sm backdrop-blur transition group-hover:opacity-100 group-focus-within:opacity-100">
-                    <Maximize2 className="h-4 w-4" />
-                  </span>
-                </button>
-              </DialogTrigger>
-              <DialogContent className="w-[calc(100vw-2rem)] max-w-5xl overflow-hidden rounded-2xl border-[#dfe3e8] bg-white p-3 shadow-2xl [&>button]:right-3 [&>button]:top-3 [&>button]:z-10 [&>button]:grid [&>button]:h-11 [&>button]:w-11 [&>button]:place-items-center [&>button]:rounded-full [&>button]:bg-white [&>button]:opacity-100 [&>button]:shadow-sm sm:p-5">
-                <DialogTitle className="sr-only">{alt}</DialogTitle>
-                <DialogDescription className="sr-only">
-                  Large customer-facing vehicle image preview.
-                </DialogDescription>
-                <div className="grid max-h-[82vh] min-h-[240px] place-items-center overflow-hidden rounded-xl bg-[#f5f7fa] p-4 sm:min-h-[420px] sm:p-8">
-                  <img
-                    src={media.data.url}
-                    alt={alt}
-                    className="max-h-[72vh] max-w-full object-contain"
-                  />
-                </div>
-              </DialogContent>
-            </Dialog>
-          ) : media.isLoading ? (
-            <Loader2 className="h-5 w-5 animate-spin text-[#5f6368]" />
-          ) : (
-            <div className="flex flex-col items-center gap-2 px-4 text-center">
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#7a7f87] shadow-sm ring-1 ring-[#e1e4e8]">
-                <ImageIcon className="h-5 w-5" />
-              </span>
-              <span className="text-[12px] font-medium text-[#5f6368]">
-                Add a customer-facing photo
-              </span>
-            </div>
-          )}
-          <div className="absolute inset-x-3 bottom-3 z-10 flex items-center gap-2">
+          <div className="relative grid min-h-0 flex-1 place-items-center overflow-hidden bg-white">
+            {media.data?.url ? (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`Open larger preview of ${alt}`}
+                    className="absolute inset-0 grid cursor-zoom-in place-items-center bg-white p-2 outline-none transition focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1a73e8] sm:p-3"
+                  >
+                    <img
+                      src={media.data.url}
+                      alt={alt}
+                      className="h-full w-full object-contain transition duration-300 group-hover:scale-[1.025]"
+                    />
+                    <span className="absolute right-2 top-2 grid h-9 w-9 place-items-center rounded-full border border-[#e1e4e8] bg-white/95 text-[#344054] opacity-0 shadow-sm backdrop-blur transition group-hover:opacity-100 group-focus-within:opacity-100">
+                      <Maximize2 className="h-4 w-4" />
+                    </span>
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="w-[calc(100vw-2rem)] max-w-5xl overflow-hidden rounded-2xl border-[#dfe3e8] bg-white p-3 shadow-2xl [&>button]:right-3 [&>button]:top-3 [&>button]:z-10 [&>button]:grid [&>button]:h-11 [&>button]:w-11 [&>button]:place-items-center [&>button]:rounded-full [&>button]:bg-white [&>button]:opacity-100 [&>button]:shadow-sm sm:p-5">
+                  <DialogTitle className="sr-only">{alt}</DialogTitle>
+                  <DialogDescription className="sr-only">
+                    Large customer-facing vehicle image preview.
+                  </DialogDescription>
+                  <div className="grid max-h-[82vh] min-h-[240px] place-items-center overflow-hidden rounded-xl bg-white p-4 sm:min-h-[420px] sm:p-8">
+                    <img
+                      src={media.data.url}
+                      alt={alt}
+                      className="max-h-[72vh] max-w-full object-contain"
+                    />
+                  </div>
+                </DialogContent>
+              </Dialog>
+            ) : media.isLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin text-[#5f6368]" />
+            ) : (
+              <div className="flex flex-col items-center gap-2 px-4 text-center">
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-[#f8fafc] text-[#7a7f87] shadow-sm ring-1 ring-[#e1e4e8]">
+                  <ImageIcon className="h-5 w-5" />
+                </span>
+                <span className="text-[12px] font-medium text-[#5f6368]">
+                  Add a customer-facing photo
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="relative z-10 flex flex-none items-center gap-2 border-t border-[#edf0f3] bg-white p-3">
             <Button
               type="button"
               variant="secondary"
               size="sm"
-              className="min-h-11 flex-1 border-white/70 bg-white/95 text-[#172033] shadow-sm backdrop-blur hover:bg-white"
+              className="min-h-11 flex-1 border-[#dfe3e8] bg-white text-[#172033] shadow-sm hover:bg-[#f8fafc]"
               onClick={chooseImage}
               disabled={upload.isPending}
             >
@@ -161,7 +164,7 @@ export function RentalMediaField({
                 size="icon"
                 aria-label="Remove vehicle photo"
                 title="Remove vehicle photo"
-                className="min-h-11 min-w-11 border-white/70 bg-white/95 text-[#7a2530] shadow-sm backdrop-blur hover:bg-white"
+                className="min-h-11 min-w-11 border-[#dfe3e8] bg-white text-[#7a2530] shadow-sm hover:bg-[#fff7f7]"
                 onClick={() => onAssetId(null)}
               >
                 <Trash2 className="h-3.5 w-3.5" />
