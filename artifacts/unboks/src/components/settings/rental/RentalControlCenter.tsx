@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   AlertTriangle,
   CarFront,
@@ -32,7 +38,7 @@ import { RentalFleetView } from "./RentalFleetView";
 import { RentalPreviewPublishView } from "./RentalPreviewPublishView";
 import { RentalQuoteSettingsView } from "./RentalQuoteSettingsView";
 
-type RentalView = "fleet" | "charges" | "quote" | "preview";
+type RentalView = "fleet" | "charges" | "quote" | "reservation";
 type RentalAction = "save" | "validate" | "preview" | "publish" | "rollback";
 
 const VIEWS: Array<{
@@ -60,9 +66,9 @@ const VIEWS: Array<{
     icon: Settings2,
   },
   {
-    id: "preview",
+    id: "reservation",
     label: "Reservation setup",
-    description: "Preview, validate and publish",
+    description: "Hold, documents, contract and payment",
     icon: FileCheck2,
   },
 ];
@@ -100,7 +106,11 @@ function errorMessage(error: unknown, fallback: string): string {
     : fallback;
 }
 
-export function RentalControlCenter() {
+export function RentalControlCenter({
+  reservationSetup,
+}: {
+  reservationSetup?: ReactNode;
+}) {
   const activeTenant = getClientSlug();
   const draftQuery = useRentalCatalogDraft();
   const [activeView, setActiveView] = useState<RentalView>("fleet");
@@ -486,11 +496,6 @@ export function RentalControlCenter() {
               key={view.id}
               type="button"
               aria-pressed={selected}
-              aria-label={
-                view.id === "preview"
-                  ? "Preview & publish — Reservation setup"
-                  : undefined
-              }
               onClick={() => setActiveView(view.id)}
               className={cn(
                 "flex items-start gap-3 rounded-xl border p-3 text-left transition",
@@ -533,41 +538,48 @@ export function RentalControlCenter() {
         />
       ) : null}
       {activeView === "quote" ? (
-        <RentalQuoteSettingsView
-          document={document}
-          onChange={setDocument}
-          errors={validationErrors}
-        />
+        <div className="space-y-5">
+          <RentalQuoteSettingsView
+            document={document}
+            onChange={setDocument}
+            errors={validationErrors}
+          />
+          <RentalPreviewPublishView
+            document={document}
+            revision={revision}
+            currentVersion={currentVersion}
+            dirty={dirty}
+            scenario={scenario}
+            onScenario={setScenario}
+            preview={preview}
+            pdfUrl={pdfUrl}
+            errors={validationErrors}
+            warnings={validationWarnings}
+            pendingAction={pendingAction}
+            onSave={() => {
+              void save();
+            }}
+            onValidate={() => {
+              void validate();
+            }}
+            onPreview={() => {
+              void createPreview();
+            }}
+            onPublish={() => {
+              void publish();
+            }}
+            onRollback={() => {
+              void rollback();
+            }}
+          />
+        </div>
       ) : null}
-      {activeView === "preview" ? (
-        <RentalPreviewPublishView
-          document={document}
-          revision={revision}
-          currentVersion={currentVersion}
-          dirty={dirty}
-          scenario={scenario}
-          onScenario={setScenario}
-          preview={preview}
-          pdfUrl={pdfUrl}
-          errors={validationErrors}
-          warnings={validationWarnings}
-          pendingAction={pendingAction}
-          onSave={() => {
-            void save();
-          }}
-          onValidate={() => {
-            void validate();
-          }}
-          onPreview={() => {
-            void createPreview();
-          }}
-          onPublish={() => {
-            void publish();
-          }}
-          onRollback={() => {
-            void rollback();
-          }}
-        />
+      {activeView === "reservation" ? (
+        reservationSetup || (
+          <section className="rounded-2xl border border-[#e2ddd3] bg-white p-6 text-sm text-[#5f6368]">
+            Reservation workflow settings are not enabled for this tenant yet.
+          </section>
+        )
       ) : null}
 
       <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-end gap-2 rounded-2xl border border-[#d8d1c5] bg-white/95 p-3 shadow-[0_14px_38px_rgba(16,36,62,.14)] backdrop-blur">

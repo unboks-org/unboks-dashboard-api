@@ -33,11 +33,25 @@ vi.mock("@/components/inbox/DashboardShell", () => ({
 }));
 
 vi.mock("@/components/settings/rental/RentalControlCenter", () => ({
-  RentalControlCenter: () => <section>Fleet editor</section>,
+  RentalControlCenter: ({
+    reservationSetup,
+  }: {
+    reservationSetup: React.ReactNode;
+  }) => (
+    <section>
+      Fleet editor
+      {reservationSetup}
+    </section>
+  ),
 }));
 
 vi.mock("@/components/settings/rental/AliDossierSettings", () => ({
-  AliDossierSettings: () => <section>Contract and payment settings</section>,
+  RentalReservationSettings: () => (
+    <section>Contract and payment settings</section>
+  ),
+  RentalDocumentRetentionSettings: () => (
+    <section>Document retention settings</section>
+  ),
 }));
 
 describe("Rental page capability boundary", () => {

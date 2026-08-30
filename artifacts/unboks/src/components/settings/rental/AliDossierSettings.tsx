@@ -76,7 +76,7 @@ function LoadingCard() {
   );
 }
 
-export function AliDossierSettings() {
+export function RentalReservationSettings() {
   const queryClient = useQueryClient();
   const query = useAliDossierSettings();
   const v2Query = useQuery({
@@ -569,7 +569,9 @@ export function AliDossierSettings() {
   );
 }
 
-export function AliDossierRetentionSettings() {
+export const AliDossierSettings = RentalReservationSettings;
+
+export function RentalDocumentRetentionSettings() {
   const queryClient = useQueryClient();
   const query = useAliDossierSettings();
   const [days, setDays] = useState(90);
@@ -669,3 +671,5 @@ export function AliDossierRetentionSettings() {
     </SettingsCard>
   );
 }
+
+export const AliDossierRetentionSettings = RentalDocumentRetentionSettings;

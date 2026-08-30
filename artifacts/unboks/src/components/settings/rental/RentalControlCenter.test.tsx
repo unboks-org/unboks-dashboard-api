@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/error";
 import type { RentalDraftEnvelope } from "@/lib/rental-catalog";
@@ -34,6 +35,17 @@ vi.mock("sonner", () => ({
 }));
 
 import { RentalControlCenter } from "./RentalControlCenter";
+
+function renderControlCenter() {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <RentalControlCenter />
+    </QueryClientProvider>,
+  );
+}
 
 function envelope(
   tenantSlug: string,
@@ -99,12 +111,23 @@ describe("RentalControlCenter", () => {
   });
 
   it("fails closed while switching tenants and never renders the prior draft", async () => {
-    const { rerender } = render(<RentalControlCenter />);
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const { rerender } = render(
+      <QueryClientProvider client={client}>
+        <RentalControlCenter />
+      </QueryClientProvider>,
+    );
     expect(await screen.findByDisplayValue("Ali Economy")).toBeTruthy();
 
     sessionStorage.setItem("unboks_active_tenant", "second-rental");
     setQuery(envelope("second-rental", "Second Economy"));
-    rerender(<RentalControlCenter />);
+    rerender(
+      <QueryClientProvider client={client}>
+        <RentalControlCenter />
+      </QueryClientProvider>,
+    );
 
     expect(screen.queryByDisplayValue("Ali Economy")).toBeNull();
     expect(await screen.findByDisplayValue("Second Economy")).toBeTruthy();
@@ -112,11 +135,11 @@ describe("RentalControlCenter", () => {
 
   it("preserves local edits when optimistic concurrency reports a conflict", async () => {
     mocks.save.mockRejectedValue(new ApiError(409, "stale_revision"));
-    render(<RentalControlCenter />);
+    renderControlCenter();
 
     const category = await screen.findByDisplayValue("Ali Economy");
     fireEvent.change(category, { target: { value: "Locally edited economy" } });
-    fireEvent.click(screen.getByRole("button", { name: /preview & publish/i }));
+    fireEvent.click(screen.getByRole("button", { name: /quote & pdf/i }));
     fireEvent.click(screen.getByRole("button", { name: /save draft/i }));
 
     expect(
@@ -142,10 +165,10 @@ describe("RentalControlCenter", () => {
           finishPublish = resolve;
         }),
     );
-    render(<RentalControlCenter />);
+    renderControlCenter();
 
     fireEvent.click(
-      await screen.findByRole("button", { name: /preview & publish/i }),
+      await screen.findByRole("button", { name: /quote & pdf/i }),
     );
     const publish = screen.getByRole("button", { name: /^publish$/i });
     fireEvent.click(publish);

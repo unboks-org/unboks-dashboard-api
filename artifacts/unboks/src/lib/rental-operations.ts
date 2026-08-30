@@ -15,6 +15,8 @@ export type RentalResponsibleParty = "Staff" | "Customer" | "System" | "Nick";
 export type RentalOperatorAction =
   | "answer_customer"
   | "open_customer"
+  | "approve_availability"
+  | "review_documents"
   | "review_file"
   | "verify_payment"
   | "review_dossier"
@@ -23,125 +25,146 @@ export type RentalOperatorAction =
   | "resolve_technical"
   | "none";
 
+export interface RentalOperationsContract {
+  contractVersion: 1;
+  lifecycle: "pre_quote" | "post_quote" | "confirmed" | "closed";
+  stage: RentalStage;
+  responsibleParty: "staff" | "client" | "system" | "agent";
+  operatorAction: RentalOperatorAction;
+  actionLabel: string;
+  actionTarget:
+    | "conversation"
+    | "customer"
+    | "documents"
+    | "agreement_payment"
+    | "dossier"
+    | "none";
+  actionPriority: "critical" | "high" | "normal" | "none";
+  clientTimeRemainingSeconds: number | null;
+  exception: { kind: string; code: string } | null;
+  progress: {
+    currentIndex: number;
+    total: number;
+    completed: string[];
+    stages: string[];
+    percent: number;
+  };
+  capabilities: {
+    printDossier: boolean;
+  };
+  workflowState: string | null;
+  workflowRevision: number | null;
+}
+
+type RentalLeadWithOperations = FollowUp & {
+  operations?: RentalOperationsContract;
+};
+
 export interface RentalLeadProjection {
   stage: RentalStage;
   responsibleParty: RentalResponsibleParty;
   operatorAction: RentalOperatorAction;
   actionLabel: string;
+  actionTarget: RentalOperationsContract["actionTarget"];
   priority: 0 | 1 | 2 | 3;
   exception: boolean;
+  exceptionCode: string | null;
   progress: number;
+  clientTimeRemainingSeconds: number | null;
+  canPrintDossier: boolean;
+  workflowState: string | null;
   isClosed: boolean;
+  contractAvailable: boolean;
 }
 
+const PRIORITY: Record<RentalOperationsContract["actionPriority"], 0 | 1 | 2 | 3> = {
+  none: 0,
+  normal: 1,
+  high: 2,
+  critical: 3,
+};
+
+const RESPONSIBLE: Record<
+  RentalOperationsContract["responsibleParty"],
+  RentalResponsibleParty
+> = {
+  staff: "Staff",
+  client: "Customer",
+  system: "System",
+  agent: "Nick",
+};
+
 const STAGE_PROGRESS: Record<RentalStage, number> = {
-  quote: 10,
-  reserved: 24,
-  documents: 40,
-  agreement: 56,
-  payment: 72,
-  dossier: 88,
+  quote: 0,
+  reserved: 17,
+  documents: 33,
+  agreement: 50,
+  payment: 67,
+  dossier: 83,
   confirmed: 100,
   closed: 100,
 };
 
-function contains(value: string | null | undefined, pattern: RegExp): boolean {
-  return pattern.test(value || "");
+function serverOperations(lead: FollowUp): RentalOperationsContract | null {
+  const value = (lead as RentalLeadWithOperations).operations;
+  if (
+    !value ||
+    value.contractVersion !== 1 ||
+    !(value.stage in STAGE_PROGRESS) ||
+    !(value.responsibleParty in RESPONSIBLE) ||
+    !(value.actionPriority in PRIORITY)
+  ) {
+    return null;
+  }
+  return value;
 }
 
 export function rentalStage(lead: FollowUp): RentalStage {
-  if (
-    lead.status === "closed" ||
-    contains(lead.post_quote_status, /cancelled|declined|superseded/)
-  ) {
-    return "closed";
-  }
-  if (lead.post_quote_status === "confirmed") return "confirmed";
-  if (lead.payment_status === "verified") return "dossier";
-  if (lead.agreement_status === "verified") return "payment";
-  if (contains(lead.agreement_status, /sent|awaiting/)) return "agreement";
-  if (lead.identity_status === "verified") return "agreement";
-  if (lead.reservation_public_id) {
-    return lead.availability_status === "approved" ? "documents" : "reserved";
-  }
-  return "quote";
+  return serverOperations(lead)?.stage || "quote";
 }
 
 export function projectRentalLead(lead: FollowUp): RentalLeadProjection {
-  const stage = rentalStage(lead);
-  const next = (lead.next_action || "").toLowerCase();
-  const unread = (lead.unread_count || 0) > 0;
-  const needsAnswer = unread || contains(lead.status, /needs.*answer/);
-  const technical =
-    lead.quote_delivery_state === "failed" ||
-    contains(next, /technical|failed|failure|retry|delivery/);
+  const operations = serverOperations(lead);
 
-  let responsibleParty: RentalResponsibleParty = "Customer";
-  let operatorAction: RentalOperatorAction = "none";
-  let actionLabel = "Open customer";
-  let priority: 0 | 1 | 2 | 3 = 0;
-
-  if (technical) {
-    responsibleParty = "Staff";
-    operatorAction = "resolve_technical";
-    actionLabel = "Resolve issue";
-    priority = 3;
-  } else if (needsAnswer) {
-    responsibleParty = "Staff";
-    operatorAction = "answer_customer";
-    actionLabel = "Answer customer";
-    priority = 3;
-  } else if (
-    stage === "payment" &&
-    contains(next, /verify|paid|payment review/)
-  ) {
-    responsibleParty = "Staff";
-    operatorAction = "verify_payment";
-    actionLabel = "Verify payment";
-    priority = 2;
-  } else if (
-    stage === "dossier" &&
-    contains(next, /final|approve|dossier|review/)
-  ) {
-    responsibleParty = "Staff";
-    operatorAction = contains(next, /final|approve/)
-      ? "final_approval"
-      : "review_dossier";
-    actionLabel =
-      operatorAction === "final_approval"
-        ? "Give final approval"
-        : "Review dossier";
-    priority = 2;
-  } else if (stage === "agreement" && contains(next, /review|approve|file/)) {
-    responsibleParty = "Staff";
-    operatorAction = "review_file";
-    actionLabel = "Review signed file";
-    priority = 2;
-  } else if (stage === "confirmed" && contains(next, /pickup|original/)) {
-    responsibleParty = "Staff";
-    operatorAction = "inspect_pickup";
-    actionLabel = "Inspect pickup documents";
-    priority = 1;
-  } else if (contains(next, /nick|agent|prepare|send quote|generate/)) {
-    responsibleParty = "Nick";
-  } else if (lead.quote_delivery_state === "pending") {
-    responsibleParty = "System";
-  }
-
-  if (operatorAction === "none" && responsibleParty === "Staff") {
-    operatorAction = "open_customer";
-    priority = Math.max(priority, 1) as 1 | 2 | 3;
+  // Fail closed during a staggered deployment. Missing workflow authority is
+  // technical attention, never permission for the browser to invent an action.
+  if (!operations) {
+    return {
+      stage: "quote",
+      responsibleParty: "Staff",
+      operatorAction: "resolve_technical",
+      actionLabel: "Refresh workflow state",
+      actionTarget: "customer",
+      priority: 3,
+      exception: true,
+      exceptionCode: "operations_contract_missing",
+      progress: 0,
+      clientTimeRemainingSeconds: null,
+      canPrintDossier: false,
+      workflowState: null,
+      isClosed: false,
+      contractAvailable: false,
+    };
   }
 
   return {
-    stage,
-    responsibleParty,
-    operatorAction,
-    actionLabel,
-    priority,
-    exception: technical,
-    progress: STAGE_PROGRESS[stage],
-    isClosed: stage === "closed",
+    stage: operations.stage,
+    responsibleParty: RESPONSIBLE[operations.responsibleParty],
+    operatorAction: operations.operatorAction,
+    actionLabel: operations.actionLabel || "Open customer",
+    actionTarget: operations.actionTarget,
+    priority: PRIORITY[operations.actionPriority],
+    exception: Boolean(operations.exception),
+    exceptionCode: operations.exception?.code || null,
+    progress:
+      Number.isFinite(operations.progress?.percent)
+        ? operations.progress.percent
+        : STAGE_PROGRESS[operations.stage],
+    clientTimeRemainingSeconds: operations.clientTimeRemainingSeconds,
+    canPrintDossier: Boolean(operations.capabilities?.printDossier),
+    workflowState: operations.workflowState,
+    isClosed: operations.lifecycle === "closed" || operations.stage === "closed",
+    contractAvailable: true,
   };
 }
 

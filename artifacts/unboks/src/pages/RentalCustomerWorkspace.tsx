@@ -3,6 +3,7 @@ import { useLocation, useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
+  AlertTriangle,
   CalendarDays,
   CarFront,
   CircleDollarSign,
@@ -70,6 +71,34 @@ export default function RentalCustomerWorkspace() {
     );
   }
 
+  if (query.isError) {
+    return (
+      <DashboardShell
+        activeNav="customers"
+        pageTitle="Customer file unavailable"
+        pageSubtitle="No workflow action is available until the secure file loads"
+        hideRefresh
+      >
+        <div className="mx-auto max-w-[1000px] space-y-5 p-6">
+          <RentalBackButton />
+          <div className="rounded-2xl border border-rose-200 bg-white px-6 py-12 text-center" role="alert">
+            <AlertTriangle className="mx-auto h-8 w-8 text-rose-600" />
+            <p className="mt-3 font-semibold text-[#10243e]">
+              This customer file could not be loaded
+            </p>
+            <button
+              type="button"
+              onClick={() => void query.refetch()}
+              className="mt-4 min-h-11 rounded-xl bg-[#0b213a] px-4 text-sm font-semibold text-white"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      </DashboardShell>
+    );
+  }
+
   if (!lead) {
     return (
       <DashboardShell
@@ -90,6 +119,12 @@ export default function RentalCustomerWorkspace() {
     (item) => item.key === operation.stage,
   );
   const conversationUrl = `/conversations?c=${encodeURIComponent(lead.conversation_id)}&from=customers`;
+  const currentActionHref =
+    operation.actionTarget === "conversation"
+      ? conversationUrl
+      : operation.actionTarget === "dossier"
+        ? "#print-dossier"
+        : "#secure-file";
 
   return (
     <DashboardShell
@@ -113,23 +148,13 @@ export default function RentalCustomerWorkspace() {
             >
               <MessageCircleMore className="h-4 w-4" /> Open conversation
             </button>
-            {lead.reservation_public_id ? (
-              <button
-                type="button"
-                onClick={() => {
-                  const action = document.getElementById(
-                    "dossier-print-action",
-                  );
-                  action?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center",
-                  });
-                  if (action instanceof HTMLButtonElement) action.click();
-                }}
+            {operation.canPrintDossier ? (
+              <a
+                href="#print-dossier"
                 className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#0b213a] px-4 text-sm font-semibold text-white hover:bg-[#163754]"
               >
-                <Printer className="h-4 w-4" /> Print complete dossier
-              </button>
+                <Printer className="h-4 w-4" /> Go to printable dossier
+              </a>
             ) : null}
           </div>
         </div>
@@ -170,7 +195,7 @@ export default function RentalCustomerWorkspace() {
           </div>
           <div className="overflow-x-auto border-t border-[#e9e4db] bg-[#faf8f3] px-4 py-4 sm:px-6">
             <ol
-              className="flex min-w-[760px] items-center"
+              className="flex min-w-[650px] items-center sm:min-w-[760px]"
               aria-label="Rental progress"
             >
               {RENTAL_PROGRESS_STAGES.map((item, index) => {
@@ -185,7 +210,7 @@ export default function RentalCustomerWorkspace() {
                     <span className="flex items-center gap-2">
                       <span
                         className={cn(
-                          "flex h-7 w-7 items-center justify-center rounded-full border text-[11px] font-bold",
+                          "flex h-6 w-6 items-center justify-center rounded-full border text-[10px] font-bold sm:h-7 sm:w-7 sm:text-[11px]",
                           complete
                             ? "border-emerald-600 bg-emerald-600 text-white"
                             : current
@@ -197,7 +222,7 @@ export default function RentalCustomerWorkspace() {
                       </span>
                       <span
                         className={cn(
-                          "whitespace-nowrap text-xs font-semibold",
+                          "whitespace-nowrap text-[11px] font-semibold sm:text-xs",
                           current
                             ? "text-[#805b17]"
                             : complete
@@ -253,7 +278,7 @@ export default function RentalCustomerWorkspace() {
             </div>
             {operation.responsibleParty === "Staff" ? (
               <a
-                href="#secure-file"
+                href={currentActionHref}
                 className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#d4aa58] px-4 text-sm font-bold text-[#10243e] hover:bg-[#c99b43]"
               >
                 {operation.actionLabel} <ArrowRight className="h-4 w-4" />

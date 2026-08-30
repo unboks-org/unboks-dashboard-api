@@ -4,7 +4,6 @@ import {
   CalendarCheck2,
   CarFront,
   ChevronLeft,
-  CircleUserRound,
   LogOut,
   Menu,
   MessageCircleMore,
@@ -250,13 +249,6 @@ export function RentalDashboardShell({
             </label>
           ) : null}
           {rightSlot}
-          <button
-            type="button"
-            className="hidden h-10 w-10 items-center justify-center rounded-xl border border-[#ded8cd] bg-white text-[#42536a] lg:flex"
-            aria-label="Operator profile"
-          >
-            <CircleUserRound className="h-5 w-5" />
-          </button>
         </header>
 
         {typeof onSearchChange === "function" ? (

@@ -579,7 +579,6 @@ export function AliCustomerFile({ publicId, enabled }: AliCustomerFileProps) {
                 Approve availability
               </PrimaryButton>
               <SecondaryButton
-                id="dossier-print-action"
                 disabled={busy}
                 onClick={() =>
                   runAction({ kind: "availability", decision: "decline" })

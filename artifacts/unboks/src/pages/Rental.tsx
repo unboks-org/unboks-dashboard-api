@@ -1,5 +1,8 @@
 import { DashboardShell } from "@/components/inbox/DashboardShell";
-import { AliDossierSettings } from "@/components/settings/rental/AliDossierSettings";
+import {
+  RentalDocumentRetentionSettings,
+  RentalReservationSettings,
+} from "@/components/settings/rental/AliDossierSettings";
 import { RentalControlCenter } from "@/components/settings/rental/RentalControlCenter";
 import { useRentalControlCapability } from "@/hooks/use-rental-control-capability";
 
@@ -38,8 +41,14 @@ export default function Rental() {
             </section>
           ) : capability.enabled ? (
             <>
-              <RentalControlCenter />
-              <AliDossierSettings />
+              <RentalControlCenter
+                reservationSetup={
+                  <div className="space-y-5">
+                    <RentalReservationSettings />
+                    <RentalDocumentRetentionSettings />
+                  </div>
+                }
+              />
             </>
           ) : (
             <section className="rounded-2xl border border-[#f2c7c7] bg-white p-6 shadow-sm">

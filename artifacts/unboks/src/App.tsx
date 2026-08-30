@@ -31,6 +31,7 @@ import {
   isSpainSpanishTenant,
   tenantText,
 } from "@/lib/tenant-ui";
+import { useRentalControlCapability } from "@/hooks/use-rental-control-capability";
 import { loginRedirectStorageKey } from "@/lib/deep-link";
 import { isLegacyRentalSettingsSearch } from "@/lib/rental-navigation";
 
@@ -283,36 +284,76 @@ const KNOWN_TENANT_SECTIONS = new Set([
 ]);
 
 function RentalOnlyRoute({ children }: { children: ReactNode }) {
-  return isRentalDashboardV2Enabled() ? children : <NotFound />;
+  const capability = useRentalControlCapability();
+  if (capability.isLoading) return <RouteLoading />;
+  const enabled =
+    capability.enabled ||
+    (capability.isUnavailable && isRentalDashboardV2Enabled());
+  return enabled ? children : <NotFound />;
 }
 
 function FollowUpsRoute() {
-  if (isRentalDashboardV2Enabled()) return <Redirect to="/customers" replace />;
   return (
     <ProtectedRoute>
-      <FollowUps />
+      <FollowUpsCapabilityRoute />
     </ProtectedRoute>
   );
 }
 
+function FollowUpsCapabilityRoute() {
+  const capability = useRentalControlCapability();
+  if (capability.isLoading) return <RouteLoading />;
+  if (
+    capability.enabled ||
+    (capability.isUnavailable && isRentalDashboardV2Enabled())
+  ) {
+    return <Redirect to="/customers" replace />;
+  }
+  return <FollowUps />;
+}
+
 function LegacyRentalRoute() {
-  if (isRentalDashboardV2Enabled()) return <Redirect to="/fleet" replace />;
   return (
     <ProtectedRoute>
-      <SettingsErrorBoundary>
-        <Rental />
-      </SettingsErrorBoundary>
+      <LegacyRentalCapabilityRoute />
     </ProtectedRoute>
+  );
+}
+
+function LegacyRentalCapabilityRoute() {
+  const capability = useRentalControlCapability();
+  if (capability.isLoading) return <RouteLoading />;
+  if (
+    capability.enabled ||
+    (capability.isUnavailable && isRentalDashboardV2Enabled())
+  ) {
+    return <Redirect to="/fleet" replace />;
+  }
+  return (
+    <SettingsErrorBoundary>
+      <Rental />
+    </SettingsErrorBoundary>
   );
 }
 
 function HomeRoute() {
-  if (isRentalDashboardV2Enabled()) return <Redirect to="/today" replace />;
   return (
     <ProtectedRoute>
-      <Inbox />
+      <HomeCapabilityRoute />
     </ProtectedRoute>
   );
+}
+
+function HomeCapabilityRoute() {
+  const capability = useRentalControlCapability();
+  if (capability.isLoading) return <RouteLoading />;
+  if (
+    capability.enabled ||
+    (capability.isUnavailable && isRentalDashboardV2Enabled())
+  ) {
+    return <Redirect to="/today" replace />;
+  }
+  return <Inbox />;
 }
 
 function SettingsRoute() {
