@@ -54,7 +54,14 @@ export default function RentalToday() {
       ({ operation }) =>
         operation.responsibleParty === "Staff" && !operation.isClosed,
     )
-    .sort((a, b) => b.operation.priority - a.operation.priority);
+    .sort((a, b) => {
+      const priority = b.operation.priority - a.operation.priority;
+      if (priority) return priority;
+      return (
+        new Date(a.lead.updated_at).getTime() -
+        new Date(b.lead.updated_at).getTime()
+      );
+    });
   const waitingCustomer = projected.filter(
     ({ operation }) =>
       operation.responsibleParty === "Customer" && !operation.isClosed,
@@ -75,7 +82,7 @@ export default function RentalToday() {
     >
       <div className="mx-auto w-full max-w-[1420px] space-y-6 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
         <section
-          className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+          className="grid grid-cols-2 gap-2.5 xl:grid-cols-4"
           aria-label="Operational summary"
         >
           <Metric
@@ -83,24 +90,28 @@ export default function RentalToday() {
             label="Needs your action"
             value={needsAction.length}
             tone="gold"
+            onClick={() => navigate("/customers?view=needs-action")}
           />
           <Metric
             icon={Clock3}
             label="Waiting on customer"
             value={waitingCustomer}
             tone="navy"
+            onClick={() => navigate("/customers?view=waiting-customer")}
           />
           <Metric
             icon={AlertTriangle}
             label="Technical attention"
             value={technical}
             tone="red"
+            onClick={() => navigate("/customers?view=technical")}
           />
           <Metric
             icon={CheckCircle2}
             label="Ready for pickup"
             value={readyPickup}
             tone="green"
+            onClick={() => navigate("/customers?view=ready-pickup")}
           />
         </section>
 
@@ -130,7 +141,25 @@ export default function RentalToday() {
             </button>
           </div>
 
-          {query.isLoading ? (
+          {query.isError ? (
+            <div className="px-6 py-14 text-center" role="alert">
+              <AlertTriangle className="mx-auto h-8 w-8 text-rose-600" />
+              <p className="mt-3 font-semibold text-[#10243e]">
+                Today’s work could not be loaded
+              </p>
+              <p className="mt-1 text-sm text-[#6d7784]">
+                No workflow decisions are shown until the server state is
+                available.
+              </p>
+              <button
+                type="button"
+                onClick={() => void query.refetch()}
+                className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#0b213a] px-4 text-sm font-semibold text-white"
+              >
+                <RefreshCw className="h-4 w-4" /> Try again
+              </button>
+            </div>
+          ) : query.isLoading ? (
             <div className="p-10 text-center text-sm text-[#6d7784]">
               Loading today’s work…
             </div>
@@ -202,11 +231,13 @@ function Metric({
   label,
   value,
   tone,
+  onClick,
 }: {
   icon: typeof Clock3;
   label: string;
   value: number;
   tone: "gold" | "navy" | "red" | "green";
+  onClick: () => void;
 }) {
   const tones = {
     gold: "bg-[#fff7e5] text-[#956a18] border-[#ecd9ac]",
@@ -215,23 +246,30 @@ function Metric({
     green: "bg-emerald-50 text-emerald-700 border-emerald-200",
   };
   return (
-    <div className="rounded-2xl border border-[#e2ddd3] bg-white p-4 shadow-[0_8px_26px_rgba(24,37,52,.045)]">
+    <button
+      type="button"
+      onClick={onClick}
+      className="group min-h-28 rounded-2xl border border-[#e2ddd3] bg-white p-3 text-left shadow-[0_8px_26px_rgba(24,37,52,.045)] transition hover:-translate-y-0.5 hover:border-[#ccb77f] hover:shadow-[0_12px_30px_rgba(24,37,52,.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8862f] sm:min-h-0 sm:p-4"
+      aria-label={`${label}: ${value}. Open matching customers`}
+    >
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-medium text-[#6d7784]">{label}</p>
-          <p className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[#0b213a]">
+          <p className="text-[11px] font-medium leading-4 text-[#6d7784] sm:text-xs">
+            {label}
+          </p>
+          <p className="mt-1.5 text-2xl font-semibold tracking-[-0.04em] text-[#0b213a] sm:mt-2 sm:text-3xl">
             {value}
           </p>
         </div>
         <span
           className={cn(
-            "flex h-11 w-11 items-center justify-center rounded-xl border",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition group-hover:scale-105 sm:h-11 sm:w-11",
             tones[tone],
           )}
         >
-          <Icon className="h-5 w-5" />
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
         </span>
       </div>
-    </div>
+    </button>
   );
 }

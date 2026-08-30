@@ -40,7 +40,6 @@ import { KnowledgeFileUploader } from "@/components/settings/KnowledgeFileUpload
 import { KnowledgeMediaAttachments } from "@/components/settings/KnowledgeMediaAttachments";
 import { CloudKnowledgeConnections } from "@/components/settings/CloudKnowledgeConnections";
 import { DataRetentionSettings } from "@/components/settings/DataRetentionSettings";
-import { AliDossierRetentionSettings } from "@/components/settings/rental/AliDossierSettings";
 import { BlockedSendersList } from "@/components/settings/BlockedSendersList";
 import { AutoBlockRulesSettings } from "@/components/settings/AutoBlockRulesSettings";
 import { ExcludedContactsSettings } from "@/components/settings/ExcludedContactsSettings";
@@ -51,10 +50,11 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   getTenantUiConfig,
-  isAliRentalTenant,
+  isRentalDashboardV2Enabled,
   isSpainSpanishTenant,
   tenantText,
 } from "@/lib/tenant-ui";
+import { useRentalControlCapability } from "@/hooks/use-rental-control-capability";
 
 const ALLOWED_LOGO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
 const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2 MB
@@ -190,6 +190,48 @@ const CATEGORIES: {
     label: "Labels & Preferences",
     description: "Customize how your dashboard looks and opens replies.",
     icon: SlidersHorizontal,
+  },
+];
+
+const RENTAL_SETTINGS_GROUPS: Array<{
+  id: string;
+  label: string;
+  description: string;
+  icon: typeof Building2;
+  categories: CategoryId[];
+}> = [
+  {
+    id: "company",
+    label: "Company & branding",
+    description: "Business identity, workspace labels and company knowledge",
+    icon: Building2,
+    categories: ["workspace", "your-info"],
+  },
+  {
+    id: "nick",
+    label: "Nick & messaging",
+    description: "Assistant identity, behavior and approved learnings",
+    icon: Sparkles,
+    categories: ["agent-personality", "agent-learnings"],
+  },
+  {
+    id: "channels",
+    label: "Channels & notifications",
+    description: "Connected alerts, delivery and dashboard preferences",
+    icon: Bell,
+    categories: ["escalation", "preferences"],
+  },
+  {
+    id: "security",
+    label: "Security & retention",
+    description: "Retention, exclusions and sender protection",
+    icon: Archive,
+    categories: [
+      "data-retention",
+      "excluded-contacts",
+      "auto-block",
+      "blocked-senders",
+    ],
   },
 ];
 
@@ -1190,6 +1232,11 @@ export default function Settings() {
   const search = useSearch();
   const urlCategory = categoryFromSearch(search);
   const [active, setActive] = useState<CategoryId>(urlCategory ?? "workspace");
+  const rentalCapability = useRentalControlCapability();
+  const rentalSettings =
+    rentalCapability.enabled ||
+    (rentalCapability.isLoading && isRentalDashboardV2Enabled()) ||
+    (rentalCapability.isUnavailable && isRentalDashboardV2Enabled());
   // Keep local state in sync if the URL changes from outside (deep link
   // arrives, browser back/forward, etc.).
   useEffect(() => {
@@ -1406,13 +1453,18 @@ export default function Settings() {
     : currentCategoryBase;
   const categoryLabel = (category: (typeof CATEGORIES)[number]) =>
     isSpainSpanishTenant() ? SPANISH_CATEGORIES[category.id].label : category.label;
+  const activeRentalGroup =
+    RENTAL_SETTINGS_GROUPS.find((group) => group.categories.includes(active)) ||
+    RENTAL_SETTINGS_GROUPS[0];
 
   return (
     <DashboardShell
       activeNav="settings"
       pageTitle={tenantText("Settings", "Configuración")}
       pageSubtitle={tenantText(
-        "Manage your workspace, Agent information, alerts, and preferences.",
+        rentalSettings
+          ? "Company, Nick, channels and security controls."
+          : "Manage your workspace, Agent information, alerts, and preferences.",
         "Gestiona tu espacio de trabajo, la información del agente, las alertas y las preferencias.",
       )}
       hideRefresh
@@ -1430,15 +1482,28 @@ export default function Settings() {
                 {tenantText("Settings section", "Sección de configuración")}
               </span>
               <select
-                value={active}
-                onChange={(event) => selectCategory(event.target.value as CategoryId)}
+                value={rentalSettings ? activeRentalGroup.id : active}
+                onChange={(event) => {
+                  if (rentalSettings) {
+                    const group = RENTAL_SETTINGS_GROUPS.find(
+                      (item) => item.id === event.target.value,
+                    );
+                    if (group) selectCategory(group.categories[0]);
+                  } else {
+                    selectCategory(event.target.value as CategoryId);
+                  }
+                }}
                 className="w-full rounded-xl border border-[#dadce0] bg-white px-3 py-2.5 text-[14px] font-medium text-[#202124] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
               >
-                {CATEGORIES.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {categoryLabel(cat)}
-                  </option>
-                ))}
+                {(rentalSettings ? RENTAL_SETTINGS_GROUPS : CATEGORIES).map(
+                  (item) => (
+                    <option key={item.id} value={item.id}>
+                      {rentalSettings
+                        ? item.label
+                        : categoryLabel(item as (typeof CATEGORIES)[number])}
+                    </option>
+                  ),
+                )}
               </select>
             </label>
             <div
@@ -1446,16 +1511,25 @@ export default function Settings() {
               className="-mb-px hidden gap-1 overflow-x-auto md:flex sm:gap-2"
               style={{ scrollbarWidth: "none" }}
             >
-              {CATEGORIES.map((cat) => {
+              {(rentalSettings ? RENTAL_SETTINGS_GROUPS : CATEGORIES).map((cat) => {
                 const Icon = cat.icon;
-                const isActive = cat.id === active;
+                const isActive = rentalSettings
+                  ? cat.id === activeRentalGroup.id
+                  : cat.id === active;
                 return (
                   <button
                     key={cat.id}
                     role="tab"
                     type="button"
                     aria-selected={isActive}
-                    onClick={() => selectCategory(cat.id)}
+                    onClick={() =>
+                      selectCategory(
+                        rentalSettings
+                          ? (cat as (typeof RENTAL_SETTINGS_GROUPS)[number])
+                              .categories[0]
+                          : (cat.id as CategoryId),
+                      )
+                    }
                     className={cn(
                       "inline-flex flex-shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] transition-colors sm:px-4",
                       isActive
@@ -1469,12 +1543,44 @@ export default function Settings() {
                         isActive ? "text-[#1a73e8]" : "text-[#9aa0a6]",
                       )}
                     />
-                    {categoryLabel(cat)}
+                    {rentalSettings
+                      ? cat.label
+                      : categoryLabel(cat as (typeof CATEGORIES)[number])}
                   </button>
                 );
               })}
             </div>
           </nav>
+
+          {rentalSettings ? (
+            <nav
+              aria-label={`${activeRentalGroup.label} sections`}
+              className="mb-5 flex gap-2 overflow-x-auto"
+            >
+              {activeRentalGroup.categories.map((categoryId) => {
+                const category = CATEGORIES.find(
+                  (item) => item.id === categoryId,
+                );
+                if (!category) return null;
+                return (
+                  <button
+                    key={category.id}
+                    type="button"
+                    aria-pressed={active === category.id}
+                    onClick={() => selectCategory(category.id)}
+                    className={cn(
+                      "min-h-10 shrink-0 rounded-xl border px-3 text-sm font-semibold",
+                      active === category.id
+                        ? "border-[#caa14f] bg-[#fff8e8] text-[#805b17]"
+                        : "border-[#e2ddd3] bg-white text-[#5f6368] hover:border-[#cdbf9f]",
+                    )}
+                  >
+                    {category.label}
+                  </button>
+                );
+              })}
+            </nav>
+          ) : null}
 
           <div>
             <main className="min-w-0">
@@ -2247,7 +2353,6 @@ export default function Settings() {
 
               {active === "data-retention" && (
                 <div className="space-y-5">
-                  {isAliRentalTenant() && <AliDossierRetentionSettings />}
                   <DataRetentionSettings />
                 </div>
               )}

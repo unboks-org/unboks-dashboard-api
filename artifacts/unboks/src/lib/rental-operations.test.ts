@@ -1,8 +1,46 @@
 import { describe, expect, it } from "vitest";
 import type { FollowUp } from "@/lib/api";
-import { projectRentalLead, rentalStage } from "@/lib/rental-operations";
+import {
+  projectRentalLead,
+  rentalStage,
+  type RentalOperationsContract,
+} from "@/lib/rental-operations";
 
-function lead(overrides: Partial<FollowUp> = {}): FollowUp {
+function lead(
+  operations?: Partial<RentalOperationsContract>,
+  overrides: Partial<FollowUp> = {},
+): FollowUp {
+  const contract: RentalOperationsContract = {
+    contractVersion: 1,
+    lifecycle: "pre_quote",
+    stage: "quote",
+    responsibleParty: "agent",
+    operatorAction: "none",
+    actionLabel: "",
+    actionTarget: "none",
+    actionPriority: "none",
+    clientTimeRemainingSeconds: null,
+    exception: null,
+    progress: {
+      currentIndex: 0,
+      total: 7,
+      completed: [],
+      stages: [
+        "quote",
+        "reserved",
+        "documents",
+        "agreement",
+        "payment",
+        "dossier",
+        "confirmed",
+      ],
+      percent: 0,
+    },
+    capabilities: { printDossier: false },
+    workflowState: "missing_information",
+    workflowRevision: null,
+    ...operations,
+  };
   return {
     id: 1,
     conversation_id: "conversation-1",
@@ -16,47 +54,90 @@ function lead(overrides: Partial<FollowUp> = {}): FollowUp {
     handoff_reason: "",
     created_at: "2026-08-30T10:00:00Z",
     updated_at: "2026-08-30T10:00:00Z",
+    operations: contract,
     ...overrides,
-  };
+  } as FollowUp;
 }
 
 describe("rental operations projection", () => {
-  it("keeps pre-quote customers in the quote stage", () => {
-    expect(rentalStage(lead())).toBe("quote");
-  });
-
-  it("maps an approved reservation to document collection", () => {
+  it("uses the server stage without reading legacy status copy", () => {
     expect(
       rentalStage(
-        lead({
-          reservation_public_id: "res-1",
-          availability_status: "approved",
-        }),
+        lead(
+          { stage: "documents", lifecycle: "post_quote" },
+          { next_action: "This English copy can change freely" },
+        ),
       ),
     ).toBe("documents");
   });
 
-  it("surfaces unanswered messages as staff-owned work", () => {
-    expect(projectRentalLead(lead({ unread_count: 1 })).operatorAction).toBe(
-      "answer_customer",
-    );
-    expect(projectRentalLead(lead({ unread_count: 1 })).responsibleParty).toBe(
-      "Staff",
-    );
-  });
-
-  it("surfaces delivery failures as technical attention", () => {
+  it("renders a server-authorized staff action", () => {
     const projection = projectRentalLead(
-      lead({ quote_delivery_state: "failed" }),
+      lead({
+        lifecycle: "post_quote",
+        stage: "payment",
+        responsibleParty: "staff",
+        operatorAction: "verify_payment",
+        actionLabel: "Verify payment",
+        actionTarget: "agreement_payment",
+        actionPriority: "high",
+      }),
     );
-    expect(projection.operatorAction).toBe("resolve_technical");
-    expect(projection.exception).toBe(true);
+
+    expect(projection.responsibleParty).toBe("Staff");
+    expect(projection.operatorAction).toBe("verify_payment");
+    expect(projection.priority).toBe(2);
   });
 
-  it("does not make customer waiting states staff-owned", () => {
+  it("keeps client and system waits out of staff work", () => {
     expect(
-      projectRentalLead(lead({ next_action: "Waiting for customer documents" }))
-        .responsibleParty,
+      projectRentalLead(
+        lead({
+          lifecycle: "post_quote",
+          stage: "documents",
+          responsibleParty: "client",
+        }),
+      ).responsibleParty,
     ).toBe("Customer");
+    expect(
+      projectRentalLead(
+        lead({
+          lifecycle: "post_quote",
+          stage: "agreement",
+          responsibleParty: "system",
+        }),
+      ).operatorAction,
+    ).toBe("none");
+  });
+
+  it("carries technical exception and dossier capability explicitly", () => {
+    const projection = projectRentalLead(
+      lead({
+        lifecycle: "post_quote",
+        stage: "dossier",
+        responsibleParty: "staff",
+        operatorAction: "resolve_technical",
+        actionLabel: "Resolve technical issue",
+        actionTarget: "customer",
+        actionPriority: "critical",
+        exception: { kind: "technical_attention", code: "provider_failure" },
+        capabilities: { printDossier: true },
+      }),
+    );
+
+    expect(projection.exception).toBe(true);
+    expect(projection.exceptionCode).toBe("provider_failure");
+    expect(projection.canPrintDossier).toBe(true);
+  });
+
+  it("fails closed when an older backend omits the contract", () => {
+    const withoutContract = lead(undefined);
+    delete (withoutContract as FollowUp & { operations?: unknown }).operations;
+
+    const projection = projectRentalLead(withoutContract);
+
+    expect(projection.contractAvailable).toBe(false);
+    expect(projection.operatorAction).toBe("resolve_technical");
+    expect(projection.exceptionCode).toBe("operations_contract_missing");
   });
 });

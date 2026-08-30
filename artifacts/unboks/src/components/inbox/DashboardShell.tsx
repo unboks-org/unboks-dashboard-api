@@ -27,6 +27,7 @@ import { OnboardingBanner } from "@/components/onboarding/OnboardingBanner";
 import { motion, AnimatePresence } from "framer-motion";
 import { isRentalDashboardV2Enabled } from "@/lib/tenant-ui";
 import { RentalDashboardShell } from "@/components/rental/RentalDashboardShell";
+import { useRentalControlCapability } from "@/hooks/use-rental-control-capability";
 
 export const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   today: "/today",
@@ -150,6 +151,7 @@ export function DashboardShell({
   const [location, navigate] = useLocation();
   const search = useSearch();
   const { logout } = useAuth();
+  const rentalCapability = useRentalControlCapability();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const {
@@ -345,7 +347,12 @@ export function DashboardShell({
     [location, search, navigate, onNavSelect],
   );
 
-  return isRentalDashboardV2Enabled() ? (
+  const useRentalShell =
+    rentalCapability.enabled ||
+    (rentalCapability.isLoading && isRentalDashboardV2Enabled()) ||
+    (rentalCapability.isUnavailable && isRentalDashboardV2Enabled());
+
+  return useRentalShell ? (
     <RentalDashboardShell
       active={activeNav}
       title={pageTitle}

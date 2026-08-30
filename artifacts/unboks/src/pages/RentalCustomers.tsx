@@ -1,7 +1,14 @@
 import { useMemo, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CarFront, Filter, RefreshCw } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CarFront,
+  Filter,
+  RefreshCw,
+  X,
+} from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { fetchQuoteLeads } from "@/lib/api";
 import { tenantKey } from "@/lib/query-keys";
@@ -15,6 +22,18 @@ import {
 import { cn } from "@/lib/utils";
 
 type FilterId = "all" | "prequote" | "postquote" | "confirmed" | "closed";
+type OperationalView =
+  | "needs-action"
+  | "waiting-customer"
+  | "technical"
+  | "ready-pickup";
+
+const operationalViewLabels: Record<OperationalView, string> = {
+  "needs-action": "Needs your action",
+  "waiting-customer": "Waiting on customer",
+  technical: "Technical attention",
+  "ready-pickup": "Ready for pickup",
+};
 
 const filters: Array<{ id: FilterId; label: string }> = [
   { id: "all", label: "All" },
@@ -46,6 +65,12 @@ function formatDate(value: string | undefined): string {
 
 export default function RentalCustomers() {
   const [, navigate] = useLocation();
+  const searchParams = new URLSearchParams(useSearch());
+  const requestedView = searchParams.get("view");
+  const operationalView =
+    requestedView && requestedView in operationalViewLabels
+      ? (requestedView as OperationalView)
+      : null;
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterId>("all");
   const query = useQuery({
@@ -60,6 +85,26 @@ export default function RentalCustomers() {
     return (query.data || [])
       .map((lead) => ({ lead, operation: projectRentalLead(lead) }))
       .filter(({ lead, operation }) => {
+        if (
+          operationalView === "needs-action" &&
+          (operation.responsibleParty !== "Staff" || operation.isClosed)
+        )
+          return false;
+        if (
+          operationalView === "waiting-customer" &&
+          (operation.responsibleParty !== "Customer" || operation.isClosed)
+        )
+          return false;
+        if (
+          operationalView === "technical" &&
+          (!operation.exception || operation.isClosed)
+        )
+          return false;
+        if (
+          operationalView === "ready-pickup" &&
+          operation.stage !== "confirmed"
+        )
+          return false;
         if (!stageMatches(operation.stage, filter)) return false;
         if (!needle) return true;
         return [
@@ -71,7 +116,7 @@ export default function RentalCustomers() {
           lead.vehicle_preference,
         ].some((value) => (value || "").toLowerCase().includes(needle));
       });
-  }, [filter, query.data, search]);
+  }, [filter, operationalView, query.data, search]);
 
   return (
     <DashboardShell
@@ -92,7 +137,10 @@ export default function RentalCustomers() {
             <button
               key={item.id}
               type="button"
-              onClick={() => setFilter(item.id)}
+              onClick={() => {
+                setFilter(item.id);
+                if (operationalView) navigate("/customers");
+              }}
               aria-pressed={filter === item.id}
               className={cn(
                 "min-h-10 whitespace-nowrap rounded-xl px-4 text-sm font-semibold transition",
@@ -116,6 +164,21 @@ export default function RentalCustomers() {
           </button>
         </section>
 
+        {operationalView ? (
+          <div className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-[#dec994] bg-[#fff8e8] px-4 text-sm text-[#6f511c]">
+            <span>
+              Showing: <strong>{operationalViewLabels[operationalView]}</strong>
+            </span>
+            <button
+              type="button"
+              onClick={() => navigate("/customers")}
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 font-semibold hover:bg-white/70"
+            >
+              <X className="h-4 w-4" /> Clear
+            </button>
+          </div>
+        ) : null}
+
         <section className="overflow-hidden rounded-2xl border border-[#e2ddd3] bg-white shadow-[0_12px_34px_rgba(24,37,52,.06)]">
           <div className="hidden grid-cols-[minmax(190px,1.15fr)_minmax(170px,.95fr)_minmax(170px,.9fr)_130px_150px_44px] gap-4 border-b border-[#e9e4db] bg-[#faf8f3] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7d8793] lg:grid">
             <span>Customer</span>
@@ -126,7 +189,24 @@ export default function RentalCustomers() {
             <span />
           </div>
 
-          {query.isLoading ? (
+          {query.isError ? (
+            <div className="px-6 py-14 text-center" role="alert">
+              <AlertTriangle className="mx-auto h-8 w-8 text-rose-600" />
+              <p className="mt-3 font-semibold text-[#10243e]">
+                Customers could not be loaded
+              </p>
+              <p className="mt-1 text-sm text-[#6d7784]">
+                Try again before making a rental decision.
+              </p>
+              <button
+                type="button"
+                onClick={() => void query.refetch()}
+                className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#0b213a] px-4 text-sm font-semibold text-white"
+              >
+                <RefreshCw className="h-4 w-4" /> Try again
+              </button>
+            </div>
+          ) : query.isLoading ? (
             <div className="p-12 text-center text-sm text-[#6d7784]">
               Loading customers…
             </div>

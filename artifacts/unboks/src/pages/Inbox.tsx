@@ -57,7 +57,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { ApiMessage, ConversationDetail } from "@/lib/api";
+import type { ApiMessage, ConversationDetail, FollowUp } from "@/lib/api";
 import { ApiError } from "@/lib/error";
 import { EscalationReplyComposer } from "@/components/inbox/EscalationReplyComposer";
 import {
@@ -95,6 +95,7 @@ import {
 } from "@/components/inbox/ConversationTranslation";
 import {
   getTenantUiConfig,
+  isRentalDashboardV2Enabled,
   isSpainSpanishTenant,
   tenantText,
 } from "@/lib/tenant-ui";
@@ -107,7 +108,7 @@ import {
   projectRentalLead,
   rentalStageLabel,
 } from "@/lib/rental-operations";
-import { isAliRentalTenant } from "@/lib/tenant-ui";
+import { useRentalControlCapability } from "@/hooks/use-rental-control-capability";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
@@ -120,6 +121,46 @@ const NAV_LABELS: Record<string, string> = {
   inbox: "Inbox",
   escalations: "Escalations",
 };
+
+type RentalConversationFilter =
+  | "all"
+  | "needs-reply"
+  | "technical"
+  | "human-takeover";
+
+const RENTAL_CONVERSATION_FILTERS: Array<{
+  id: RentalConversationFilter;
+  label: string;
+}> = [
+  { id: "all", label: "All" },
+  { id: "needs-reply", label: "Needs reply" },
+  { id: "technical", label: "Technical issue" },
+  { id: "human-takeover", label: "Human takeover" },
+];
+
+function rentalLeadForConversation(
+  conversation: Conversation,
+  leads: FollowUp[],
+): FollowUp | null {
+  const keys = new Set(
+    [conversation.id, conversation.conversationKey]
+      .filter((item): item is string => Boolean(item))
+      .map((item) => item.replace(/\D/g, "")),
+  );
+  return (
+    leads.find((lead) => {
+      if (
+        lead.conversation_id === conversation.id ||
+        lead.conversation_id === conversation.conversationKey
+      )
+        return true;
+      return [lead.phone_raw, lead.phone_normalized]
+        .filter(Boolean)
+        .map((item) => (item || "").replace(/\D/g, ""))
+        .some((phone) => phone && keys.has(phone));
+    }) || null
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1453,35 +1494,43 @@ export default function Inbox() {
     });
   }, [location, search, isChannelVisible]);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
+  const [rentalConversationFilter, setRentalConversationFilter] =
+    useState<RentalConversationFilter>(() => {
+      const requested = new URLSearchParams(search).get("filter");
+      return RENTAL_CONVERSATION_FILTERS.some(
+        (item) => item.id === requested,
+      )
+        ? (requested as RentalConversationFilter)
+        : "all";
+    });
+  useEffect(() => {
+    const requested = new URLSearchParams(search).get("filter");
+    const next = RENTAL_CONVERSATION_FILTERS.some(
+      (item) => item.id === requested,
+    )
+      ? (requested as RentalConversationFilter)
+      : "all";
+    setRentalConversationFilter((current) =>
+      current === next ? current : next,
+    );
+  }, [search]);
+  const rentalCapability = useRentalControlCapability();
+  const isRentalWorkspace =
+    rentalCapability.enabled ||
+    (rentalCapability.isUnavailable && isRentalDashboardV2Enabled()) ||
+    (rentalCapability.isLoading && isRentalDashboardV2Enabled());
   const rentalLeads = useQuery({
     queryKey: tenantKey("quote-leads"),
     queryFn: () => fetchQuoteLeads(),
-    enabled: isAliRentalTenant(),
+    enabled: isRentalWorkspace,
     staleTime: 10_000,
     refetchInterval: 10_000,
     refetchIntervalInBackground: false,
   });
   const selectedRentalLead = useMemo(() => {
-    if (!selectedConv || !isAliRentalTenant()) return null;
-    const keys = new Set(
-      [selectedConv.id, selectedConv.conversationKey]
-        .filter((item): item is string => Boolean(item))
-        .map((item) => item.replace(/\D/g, "")),
-    );
-    return (
-      (rentalLeads.data || []).find((lead) => {
-        if (
-          lead.conversation_id === selectedConv.id ||
-          lead.conversation_id === selectedConv.conversationKey
-        )
-          return true;
-        const phones = [lead.phone_raw, lead.phone_normalized]
-          .filter(Boolean)
-          .map((item) => (item || "").replace(/\D/g, ""));
-        return phones.some((phone) => phone && keys.has(phone));
-      }) || null
-    );
-  }, [rentalLeads.data, selectedConv]);
+    if (!selectedConv || !isRentalWorkspace) return null;
+    return rentalLeadForConversation(selectedConv, rentalLeads.data || []);
+  }, [isRentalWorkspace, rentalLeads.data, selectedConv]);
   const [escalationFilter, setEscalationFilter] = useState<
     "all" | "soft" | "hard" | "resolved"
   >("all");
@@ -1911,6 +1960,23 @@ export default function Inbox() {
         const ch = activeNav.split(":")[1] as Channel;
         list = list.filter((c) => c.channel === ch);
       }
+      if (isRentalWorkspace && rentalConversationFilter !== "all") {
+        list = list.filter((conversation) => {
+          const lead = rentalLeadForConversation(
+            conversation,
+            rentalLeads.data || [],
+          );
+          if (rentalConversationFilter === "human-takeover") {
+            return conversation.escalationMode === "hard";
+          }
+          if (!lead) return false;
+          const operation = projectRentalLead(lead);
+          if (rentalConversationFilter === "technical") {
+            return operation.exception;
+          }
+          return operation.operatorAction === "answer_customer";
+        });
+      }
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -1937,6 +2003,9 @@ export default function Inbox() {
     isChannelVisible,
     escalationFilter,
     inboxView,
+    isRentalWorkspace,
+    rentalConversationFilter,
+    rentalLeads.data,
   ]);
 
   const subtitle: React.ReactNode = (() => {
@@ -1995,7 +2064,7 @@ export default function Inbox() {
       pageTitle={titleNode}
       pageSubtitle={subtitle}
     >
-      <div className="flex h-full overflow-hidden">
+      <div className="relative flex h-full overflow-hidden">
         {/* Conversation list — hidden on mobile when detail is open */}
         <div
           className={cn(
@@ -2048,8 +2117,8 @@ export default function Inbox() {
           ) : (
             // Active vs Archived view toggle. Archive is now server-backed
             // (Brief 249 / backend issue #18) — syncs across devices.
-            <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-border bg-card/95 backdrop-blur-sm sticky top-0 z-10">
-              <div className="flex items-center gap-1">
+            <div className="sticky top-0 z-10 space-y-2 border-b border-border bg-card/95 px-3 py-2.5 backdrop-blur-sm">
+              <div className="flex items-center justify-between gap-2">
                 <div className="inline-flex items-center rounded-full p-0.5 bg-muted border border-border shadow-sm">
                   {(["active", "archived"] as const).map((v) => (
                     <motion.button
@@ -2075,12 +2144,44 @@ export default function Inbox() {
                     </motion.button>
                   ))}
                 </div>
+                {inboxView === "archived" && archiveIsLoading && (
+                  <span className="truncate px-2 text-[11px] font-medium text-muted-foreground">
+                    {tenantText("Loading…", "Cargando…")}
+                  </span>
+                )}
               </div>
-              {inboxView === "archived" && archiveIsLoading && (
-                <span className="text-[11px] font-medium text-muted-foreground truncate px-2">
-                  {tenantText("Loading…", "Cargando…")}
-                </span>
-              )}
+              {isRentalWorkspace && inboxView === "active" ? (
+                <div
+                  className="flex gap-1.5 overflow-x-auto"
+                  aria-label="Rental conversation filters"
+                >
+                  {RENTAL_CONVERSATION_FILTERS.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      aria-pressed={rentalConversationFilter === item.id}
+                      onClick={() => {
+                        setRentalConversationFilter(item.id);
+                        setSelectedConv(null);
+                        navigate(
+                          item.id === "all"
+                            ? "/conversations"
+                            : `/conversations?filter=${encodeURIComponent(item.id)}`,
+                          { replace: true },
+                        );
+                      }}
+                      className={cn(
+                        "min-h-9 shrink-0 rounded-full border px-3 text-xs font-semibold",
+                        rentalConversationFilter === item.id
+                          ? "border-[#caa14f] bg-[#fff8e8] text-[#805b17]"
+                          : "border-border bg-background text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
           )}
           {(activeNav === "escalations"
@@ -2315,8 +2416,7 @@ export default function Inbox() {
                       icon={Clock3}
                       label="Next action"
                       value={
-                        selectedRentalLead.next_action ||
-                        "Continue the conversation"
+                        operation.actionLabel || "Continue the conversation"
                       }
                     />
                   </>
@@ -2335,6 +2435,15 @@ export default function Inbox() {
               </button>
             </div>
           </aside>
+        ) : null}
+        {selectedConv && selectedRentalLead ? (
+          <button
+            type="button"
+            onClick={() => navigate(customerWorkspacePath(selectedRentalLead))}
+            className="fixed bottom-[calc(78px+env(safe-area-inset-bottom))] right-4 z-20 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#0b213a] px-4 text-sm font-semibold text-white shadow-xl md:hidden"
+          >
+            Customer file <ExternalLink className="h-4 w-4" />
+          </button>
         ) : null}
       </div>
 
