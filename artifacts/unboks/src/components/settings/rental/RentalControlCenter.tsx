@@ -5,6 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useLocation, useSearch } from "wouter";
 import {
   AlertTriangle,
   CarFront,
@@ -112,8 +113,13 @@ export function RentalControlCenter({
   reservationSetup?: ReactNode;
 }) {
   const activeTenant = getClientSlug();
+  const [location, navigate] = useLocation();
+  const search = useSearch();
   const draftQuery = useRentalCatalogDraft();
-  const [activeView, setActiveView] = useState<RentalView>("fleet");
+  const requestedView = new URLSearchParams(search).get("view");
+  const activeView = VIEWS.some((view) => view.id === requestedView)
+    ? (requestedView as RentalView)
+    : "fleet";
   const [document, setDocument] = useState<RentalCatalogDocument | null>(null);
   const [savedDocument, setSavedDocument] =
     useState<RentalCatalogDocument | null>(null);
@@ -163,6 +169,17 @@ export function RentalControlCenter({
   const clearPreview = () => {
     setPreview(null);
     setPdfUrl(null);
+  };
+
+  const selectView = (view: RentalView) => {
+    const params = new URLSearchParams(search);
+    if (view === "fleet") params.delete("view");
+    else params.set("view", view);
+    const query = params.toString();
+    navigate(`${location}${query ? `?${query}` : ""}`, {
+      replace: true,
+      state: window.history.state,
+    });
   };
 
   useEffect(() => {
@@ -496,7 +513,7 @@ export function RentalControlCenter({
               key={view.id}
               type="button"
               aria-pressed={selected}
-              onClick={() => setActiveView(view.id)}
+              onClick={() => selectView(view.id)}
               className={cn(
                 "flex items-start gap-3 rounded-xl border p-3 text-left transition",
                 selected

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -64,15 +64,33 @@ function formatDate(value: string | undefined): string {
 }
 
 export default function RentalCustomers() {
-  const [, navigate] = useLocation();
-  const searchParams = new URLSearchParams(useSearch());
+  const [location, navigate] = useLocation();
+  const searchString = useSearch();
+  const searchParams = new URLSearchParams(searchString);
   const requestedView = searchParams.get("view");
   const operationalView =
     requestedView && requestedView in operationalViewLabels
       ? (requestedView as OperationalView)
       : null;
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<FilterId>("all");
+  const search = searchParams.get("q") ?? "";
+  const requestedFilter = searchParams.get("stage");
+  const filter = filters.some((item) => item.id === requestedFilter)
+    ? (requestedFilter as FilterId)
+    : "all";
+  const updateRoute = (
+    changes: Partial<Record<"q" | "stage" | "view", string | null>>,
+  ) => {
+    const params = new URLSearchParams(searchString);
+    Object.entries(changes).forEach(([key, value]) => {
+      if (!value || (key === "stage" && value === "all")) params.delete(key);
+      else params.set(key, value);
+    });
+    const next = params.toString();
+    navigate(`${location}${next ? `?${next}` : ""}`, {
+      replace: true,
+      state: window.history.state,
+    });
+  };
   const query = useQuery({
     queryKey: tenantKey("quote-leads"),
     queryFn: () => fetchQuoteLeads(),
@@ -124,7 +142,7 @@ export default function RentalCustomers() {
       pageTitle="Customers"
       pageSubtitle="One file from first inquiry through pickup"
       searchQuery={search}
-      onSearchChange={setSearch}
+      onSearchChange={(value) => updateRoute({ q: value || null })}
       hideRefresh
     >
       <div className="mx-auto w-full max-w-[1460px] space-y-5 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
@@ -138,8 +156,10 @@ export default function RentalCustomers() {
               key={item.id}
               type="button"
               onClick={() => {
-                setFilter(item.id);
-                if (operationalView) navigate("/customers");
+                updateRoute({
+                  stage: item.id === "all" ? null : item.id,
+                  view: operationalView ? null : requestedView,
+                });
               }}
               aria-pressed={filter === item.id}
               className={cn(
@@ -171,7 +191,7 @@ export default function RentalCustomers() {
             </span>
             <button
               type="button"
-              onClick={() => navigate("/customers")}
+              onClick={() => updateRoute({ view: null })}
               className="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 font-semibold hover:bg-white/70"
             >
               <X className="h-4 w-4" /> Clear

@@ -98,6 +98,7 @@ function setQuery(data: RentalDraftEnvelope) {
 
 describe("RentalControlCenter", () => {
   beforeEach(() => {
+    window.history.replaceState({}, "", "/fleet");
     localStorage.clear();
     sessionStorage.clear();
     sessionStorage.setItem("unboks_active_tenant", "ali-car-rental");
@@ -186,5 +187,17 @@ describe("RentalControlCenter", () => {
       current: true,
     });
     await waitFor(() => expect(mocks.refetch).toHaveBeenCalledTimes(1));
+  });
+
+  it("keeps the selected rental section in the URL for exact Back restoration", async () => {
+    renderControlCenter();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /rates & extras/i }),
+    );
+
+    expect(window.location.pathname).toBe("/fleet");
+    expect(window.location.search).toBe("?view=charges");
+    expect(screen.getByText("Supplements")).toBeTruthy();
   });
 });
