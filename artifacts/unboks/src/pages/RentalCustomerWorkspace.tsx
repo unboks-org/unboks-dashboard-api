@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { AliCustomerFile } from "@/components/ali/AliCustomerFile";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
-import { RentalBackButton } from "@/components/rental/RentalDashboardShell";
 import { fetchQuoteLeads } from "@/lib/api";
 import { tenantKey } from "@/lib/query-keys";
 import {
@@ -80,7 +79,6 @@ export default function RentalCustomerWorkspace() {
         hideRefresh
       >
         <div className="mx-auto max-w-[1000px] space-y-5 p-6">
-          <RentalBackButton />
           <div className="rounded-2xl border border-rose-200 bg-white px-6 py-12 text-center" role="alert">
             <AlertTriangle className="mx-auto h-8 w-8 text-rose-600" />
             <p className="mt-3 font-semibold text-[#10243e]">
@@ -107,9 +105,7 @@ export default function RentalCustomerWorkspace() {
         pageSubtitle="The requested record is no longer in this workspace"
         hideRefresh
       >
-        <div className="mx-auto max-w-[1000px] p-6">
-          <RentalBackButton />
-        </div>
+        <div className="mx-auto max-w-[1000px] p-6" />
       </DashboardShell>
     );
   }
@@ -138,8 +134,7 @@ export default function RentalCustomerWorkspace() {
       hideRefresh
     >
       <div className="mx-auto w-full max-w-[1480px] space-y-5 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <RentalBackButton />
+        <div className="flex flex-wrap items-center justify-end gap-3">
           <div className="flex flex-wrap gap-2">
             <button
               type="button"

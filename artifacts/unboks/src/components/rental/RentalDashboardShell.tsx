@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from "react";
-import { useLocation } from "wouter";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useLocation, useSearch } from "wouter";
 import {
   CalendarCheck2,
   CarFront,
@@ -15,6 +15,14 @@ import {
 import { useAuth } from "@/components/auth/useAuth";
 import { useAgentStatus, useSetAgentStatus } from "@/hooks/use-agent-status";
 import { useClientProfile } from "@/hooks/use-client-profile";
+import {
+  hasRentalBackHistory,
+  rememberRentalScroll,
+  rentalHistoryEntryId,
+  rentalNavigationState,
+  rentalScrollPosition,
+} from "@/lib/rental-navigation-history";
+import { getClientSlug } from "@/lib/tenant";
 import { cn } from "@/lib/utils";
 
 export type RentalNavId =
@@ -91,13 +99,22 @@ export function RentalDashboardShell({
   rightSlot,
   children,
 }: RentalDashboardShellProps) {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  const search = useSearch();
   const { logout } = useAuth();
   const profile = useClientProfile();
   const agent = useAgentStatus();
   const setAgent = useSetAgentStatus();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+  const restoredEntryRef = useRef<string | null>(null);
   const activeNav = normalizeRentalNav(active);
+  const tenant = getClientSlug();
+  const fallbackBackHref = location.startsWith("/customers/")
+    ? "/customers"
+    : null;
+  const hasHistoryBack = hasRentalBackHistory(tenant);
+  const showBack = hasHistoryBack || Boolean(fallbackBackHref);
   const businessName = profile.data?.name?.trim() || "Ali Car Rental";
   const initials =
     businessName
@@ -108,8 +125,39 @@ export function RentalDashboardShell({
 
   const navigateTo = (href: string) => {
     setMobileOpen(false);
-    navigate(href);
+    rememberRentalScroll(tenant, mainRef.current?.scrollTop ?? 0);
+    navigate(href, { state: rentalNavigationState(tenant) });
   };
+
+  const navigateBack = () => {
+    rememberRentalScroll(tenant, mainRef.current?.scrollTop ?? 0);
+    if (hasHistoryBack) {
+      window.history.back();
+      return;
+    }
+    if (fallbackBackHref) navigate(fallbackBackHref);
+  };
+
+  useEffect(() => {
+    const scrollTop = rentalScrollPosition(tenant);
+    const entryId = rentalHistoryEntryId(tenant);
+    if (
+      scrollTop === null ||
+      entryId === null ||
+      restoredEntryRef.current === entryId
+    ) {
+      return undefined;
+    }
+    restoredEntryRef.current = entryId;
+    const restore = () => {
+      if (mainRef.current) mainRef.current.scrollTop = scrollTop;
+    };
+    restore();
+    const timers = [100, 350, 800].map((delay) =>
+      window.setTimeout(restore, delay),
+    );
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [location, search, tenant]);
 
   const sidebar = (
     <div className="flex h-full flex-col bg-[#081c33] text-white">
@@ -166,7 +214,9 @@ export function RentalDashboardShell({
             <button
               key={item.id}
               type="button"
-              onClick={() => navigateTo(item.href)}
+              onClick={() =>
+                selected ? setMobileOpen(false) : navigateTo(item.href)
+              }
               aria-current={selected ? "page" : undefined}
               className={cn(
                 "flex min-h-12 w-full items-center gap-3 rounded-[13px] px-3 text-left text-[14px] font-medium transition",
@@ -225,6 +275,17 @@ export function RentalDashboardShell({
           >
             <Menu className="h-5 w-5" />
           </button>
+          {showBack ? (
+            <button
+              type="button"
+              onClick={navigateBack}
+              className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl border border-[#ded8cd] bg-white px-3 text-sm font-semibold text-[#31445d] shadow-[0_1px_2px_rgba(17,33,52,.04)] transition hover:border-[#c9b98f] hover:bg-[#fffdf8]"
+              aria-label="Back to previous dashboard page"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span>Back</span>
+            </button>
+          ) : null}
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-xl font-semibold tracking-[-0.025em] text-[#0b213a] lg:text-[22px]">
               {title}
@@ -267,7 +328,10 @@ export function RentalDashboardShell({
           </div>
         ) : null}
 
-        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-[calc(72px+env(safe-area-inset-bottom))] md:pb-0">
+        <main
+          ref={mainRef}
+          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-[calc(72px+env(safe-area-inset-bottom))] md:pb-0"
+        >
           {children}
         </main>
 
@@ -282,7 +346,9 @@ export function RentalDashboardShell({
               <button
                 key={item.id}
                 type="button"
-                onClick={() => navigateTo(item.href)}
+                onClick={() => {
+                  if (!selected) navigateTo(item.href);
+                }}
                 aria-current={selected ? "page" : undefined}
                 className={cn(
                   "flex min-h-11 flex-col items-center justify-center gap-1 text-[9px] font-semibold",
@@ -299,18 +365,5 @@ export function RentalDashboardShell({
         </nav>
       </div>
     </div>
-  );
-}
-
-export function RentalBackButton({ href = "/customers" }: { href?: string }) {
-  const [, navigate] = useLocation();
-  return (
-    <button
-      type="button"
-      onClick={() => navigate(href)}
-      className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#ded8cd] bg-white px-3 text-sm font-semibold text-[#31445d] hover:border-[#c9b98f]"
-    >
-      <ChevronLeft className="h-4 w-4" /> Back
-    </button>
   );
 }
