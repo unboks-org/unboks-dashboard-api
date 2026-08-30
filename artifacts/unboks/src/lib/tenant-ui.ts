@@ -48,6 +48,15 @@ export function isAliRentalTenant(slug = getClientSlug()): boolean {
   return slug === "ali-car-rental";
 }
 
+/**
+ * Rental Dashboard V2 rollout gate. Keep this tenant-scoped so the premium
+ * rental shell cannot leak into medical or general-purpose workspaces. New
+ * rental tenants are added only after their workflow configuration is ready.
+ */
+export function isRentalDashboardV2Enabled(slug = getClientSlug()): boolean {
+  return slug === "ali-car-rental";
+}
+
 export function isSpainSpanishTenant(slug = getClientSlug()): boolean {
   return getTenantUiConfig(slug).locale === "es-ES";
 }

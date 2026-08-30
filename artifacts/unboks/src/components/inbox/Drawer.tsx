@@ -30,15 +30,44 @@ import { cn } from "@/lib/utils";
 import { Channel } from "@/data/conversations";
 import { motion, AnimatePresence } from "framer-motion";
 import { getClientSlug } from "@/lib/tenant";
-import { getTenantUiConfig, isAliRentalTenant, tenantText } from "@/lib/tenant-ui";
+import {
+  getTenantUiConfig,
+  isAliRentalTenant,
+  tenantText,
+} from "@/lib/tenant-ui";
 
-const XIcon = ({ className, strokeWidth: _sw }: { className?: string; strokeWidth?: number }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+const XIcon = ({
+  className,
+  strokeWidth: _sw,
+}: {
+  className?: string;
+  strokeWidth?: number;
+}) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    className={className}
+    aria-hidden="true"
+  >
     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
   </svg>
 );
 
-export type NavId = "inbox" | "escalations" | "bookings" | "followups" | "rental" | "images" | "settings" | "analytics" | "help" | `channel:${Channel}`;
+export type NavId =
+  | "inbox"
+  | "escalations"
+  | "bookings"
+  | "followups"
+  | "rental"
+  | "today"
+  | "customers"
+  | "conversations"
+  | "fleet"
+  | "images"
+  | "settings"
+  | "analytics"
+  | "help"
+  | `channel:${Channel}`;
 
 interface DrawerProps {
   open: boolean;
@@ -82,25 +111,74 @@ export function Drawer({
   const ui = getTenantUiConfig();
   const PRIMARY: NavItem[] = isDespertares
     ? [
-        { id: "inbox", icon: InboxIcon, label: ui.conversationsLabel, count: inboxCount },
+        {
+          id: "inbox",
+          icon: InboxIcon,
+          label: ui.conversationsLabel,
+          count: inboxCount,
+        },
       ]
     : [
-        { id: "escalations", icon: AlertCircle, label: "Escalations", count: escalationsCount },
+        {
+          id: "escalations",
+          icon: AlertCircle,
+          label: "Escalations",
+          count: escalationsCount,
+        },
         { id: "inbox", icon: InboxIcon, label: "Inbox", count: inboxCount },
       ];
 
-  const { isChannelVisible, bridgeUnavailable, bridgeUnavailableReason, retry } =
-    useIcpChannelVisibility();
+  const {
+    isChannelVisible,
+    bridgeUnavailable,
+    bridgeUnavailableReason,
+    retry,
+  } = useIcpChannelVisibility();
   const { label: bookingsLabel } = useBookingsLabel();
 
   const ALL_CHANNELS: NavItem[] = [
-    { id: "channel:WhatsApp", icon: MessageCircle, label: "WhatsApp", count: channelCounts.WhatsApp },
-    { id: "channel:Email", icon: Mail, label: "Email", count: channelCounts.Email },
-    { id: "channel:Instagram", icon: Instagram, label: "Instagram", count: channelCounts.Instagram },
-    { id: "channel:Facebook", icon: Facebook, label: "Facebook", count: channelCounts.Facebook },
-    { id: "channel:Messenger", icon: MessageSquare, label: "Messenger", count: channelCounts.Messenger },
-    { id: "channel:Telegram", icon: Send, label: "Telegram", count: channelCounts.Telegram },
-    { id: "channel:TikTok", icon: Video, label: "TikTok", count: channelCounts.TikTok },
+    {
+      id: "channel:WhatsApp",
+      icon: MessageCircle,
+      label: "WhatsApp",
+      count: channelCounts.WhatsApp,
+    },
+    {
+      id: "channel:Email",
+      icon: Mail,
+      label: "Email",
+      count: channelCounts.Email,
+    },
+    {
+      id: "channel:Instagram",
+      icon: Instagram,
+      label: "Instagram",
+      count: channelCounts.Instagram,
+    },
+    {
+      id: "channel:Facebook",
+      icon: Facebook,
+      label: "Facebook",
+      count: channelCounts.Facebook,
+    },
+    {
+      id: "channel:Messenger",
+      icon: MessageSquare,
+      label: "Messenger",
+      count: channelCounts.Messenger,
+    },
+    {
+      id: "channel:Telegram",
+      icon: Send,
+      label: "Telegram",
+      count: channelCounts.Telegram,
+    },
+    {
+      id: "channel:TikTok",
+      icon: Video,
+      label: "TikTok",
+      count: channelCounts.TikTok,
+    },
     { id: "channel:X", icon: XIcon, label: "X", count: channelCounts.X },
   ];
 
@@ -120,13 +198,18 @@ export function Drawer({
           { id: "rental", icon: CarFront, label: "Rental" },
           { id: "settings", icon: SettingsIcon, label: ui.settingsLabel },
         ]
-    : [
-        { id: "bookings", icon: Calendar, label: bookingsLabel, count: appointmentsCount },
-        { id: "images", icon: ImageIcon, label: "Images" },
-        { id: "analytics", icon: BarChart2, label: "Analytics" },
-        { id: "help", icon: BookOpen, label: "Help" },
-        { id: "settings", icon: SettingsIcon, label: "Settings" },
-      ];
+      : [
+          {
+            id: "bookings",
+            icon: Calendar,
+            label: bookingsLabel,
+            count: appointmentsCount,
+          },
+          { id: "images", icon: ImageIcon, label: "Images" },
+          { id: "analytics", icon: BarChart2, label: "Analytics" },
+          { id: "help", icon: BookOpen, label: "Help" },
+          { id: "settings", icon: SettingsIcon, label: "Settings" },
+        ];
 
   const { data: profile } = useClientProfile();
   const agentStatus = useAgentStatus();
@@ -146,20 +229,30 @@ export function Drawer({
         }}
       />
 
-      <nav className="flex-1 overflow-y-auto px-3 pb-[calc(1rem+env(safe-area-inset-bottom))]
-        [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <nav
+        className="flex-1 overflow-y-auto px-3 pb-[calc(1rem+env(safe-area-inset-bottom))]
+        [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         <NavGroup>
           {PRIMARY.map((item) => (
-            <NavRow key={item.id} item={item} active={active === item.id} onSelect={onSelect} />
+            <NavRow
+              key={item.id}
+              item={item}
+              active={active === item.id}
+              onSelect={onSelect}
+            />
           ))}
         </NavGroup>
 
         {!isDespertares && <SectionHeader label="Channels" />}
         {!isDespertares && bridgeUnavailable && (
           <div className="mx-1 mb-2 rounded-xl border border-[#f6d48f] bg-[#fff8e1] px-3 py-2 text-[12px] leading-5 text-[#7a5a00]">
-            Channel settings temporarily unavailable. Showing the last confirmed channels only.
+            Channel settings temporarily unavailable. Showing the last confirmed
+            channels only.
             {bridgeUnavailableReason ? (
-              <span className="block text-[#8a6d1d]">{bridgeUnavailableReason}</span>
+              <span className="block text-[#8a6d1d]">
+                {bridgeUnavailableReason}
+              </span>
             ) : null}
             <button
               type="button"
@@ -170,16 +263,28 @@ export function Drawer({
             </button>
           </div>
         )}
-        {!isDespertares && <NavGroup>
-          {CHANNELS.map((item) => (
-            <NavRow key={item.id} item={item} active={active === item.id} onSelect={onSelect} />
-          ))}
-        </NavGroup>}
+        {!isDespertares && (
+          <NavGroup>
+            {CHANNELS.map((item) => (
+              <NavRow
+                key={item.id}
+                item={item}
+                active={active === item.id}
+                onSelect={onSelect}
+              />
+            ))}
+          </NavGroup>
+        )}
 
         <SectionHeader label={tenantText("Workspace", "Gestión")} />
         <NavGroup>
           {WORKSPACE.map((item) => (
-            <NavRow key={item.id} item={item} active={active === item.id} onSelect={onSelect} />
+            <NavRow
+              key={item.id}
+              item={item}
+              active={active === item.id}
+              onSelect={onSelect}
+            />
           ))}
         </NavGroup>
       </nav>
@@ -192,8 +297,13 @@ export function Drawer({
             transition={{ type: "spring", stiffness: 500, damping: 30 }}
             className="w-full flex items-center gap-3 px-3 h-10 rounded-xl text-[14px] text-foreground hover:bg-muted transition-colors"
           >
-            <LogOut className="w-[18px] h-[18px] text-muted-foreground" strokeWidth={1.75} />
-            <span className="font-medium">{tenantText("Sign out", "Cerrar sesión")}</span>
+            <LogOut
+              className="w-[18px] h-[18px] text-muted-foreground"
+              strokeWidth={1.75}
+            />
+            <span className="font-medium">
+              {tenantText("Sign out", "Cerrar sesión")}
+            </span>
           </motion.button>
         </div>
       )}
@@ -220,7 +330,12 @@ export function Drawer({
                 initial={{ x: "-100%" }}
                 animate={{ x: 0 }}
                 exit={{ x: "-100%" }}
-                transition={{ type: "spring", stiffness: 400, damping: 30, mass: 1 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 30,
+                  mass: 1,
+                }}
                 aria-label={tenantText("Navigation", "Navegación")}
                 className="fixed top-0 left-0 h-full w-[300px] max-w-[85vw] z-50 shadow-2xl border-r border-border bg-background"
               >
@@ -298,10 +413,7 @@ function WorkspaceBlock({
         </div>
       </div>
       <div className="mt-3 flex items-center justify-between gap-2">
-        <AgentStatusBadge
-          status={agentStatus}
-          loading={isAgentStatusLoading}
-        />
+        <AgentStatusBadge status={agentStatus} loading={isAgentStatusLoading} />
         <button
           type="button"
           onClick={onToggleAgent}
@@ -347,12 +459,32 @@ function AgentStatusBadge({
   loading: boolean;
 }) {
   const s = loading
-    ? { label: tenantText("Checking agent", "Comprobando agente"), dot: "#9aa0a6", text: "#5f6368", pulse: false }
+    ? {
+        label: tenantText("Checking agent", "Comprobando agente"),
+        dot: "#9aa0a6",
+        text: "#5f6368",
+        pulse: false,
+      }
     : !status?.available
-      ? { label: tenantText("Agent unavailable", "Agente no disponible"), dot: "#9aa0a6", text: "#5f6368", pulse: false }
+      ? {
+          label: tenantText("Agent unavailable", "Agente no disponible"),
+          dot: "#9aa0a6",
+          text: "#5f6368",
+          pulse: false,
+        }
       : status.active
-        ? { label: tenantText("Agent active", "Agente activo"), dot: "#10b981", text: "#1f2937", pulse: true }
-        : { label: tenantText("Agent paused", "Agente pausado"), dot: "#f59e0b", text: "#1f2937", pulse: false };
+        ? {
+            label: tenantText("Agent active", "Agente activo"),
+            dot: "#10b981",
+            text: "#1f2937",
+            pulse: true,
+          }
+        : {
+            label: tenantText("Agent paused", "Agente pausado"),
+            dot: "#f59e0b",
+            text: "#1f2937",
+            pulse: false,
+          };
   return (
     <div
       className="inline-flex items-center gap-2 rounded-full border border-[#e6e8eb] bg-card px-2.5 py-1 text-[11.5px] font-medium shadow-sm"
@@ -415,7 +547,12 @@ function NavRow({
       )}
     >
       <Icon
-        className={cn("w-[18px] h-[18px] flex-shrink-0 transition-colors", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")}
+        className={cn(
+          "w-[18px] h-[18px] flex-shrink-0 transition-colors",
+          active
+            ? "text-primary"
+            : "text-muted-foreground group-hover:text-foreground",
+        )}
         strokeWidth={active ? 2 : 1.75}
       />
       <span className="flex-1 text-left truncate">{item.label}</span>
