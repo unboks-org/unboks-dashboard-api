@@ -1,10 +1,30 @@
-import { ArrowDown, ArrowUp, Archive, Plus } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Archive,
+  BriefcaseBusiness,
+  CarFront,
+  MoreHorizontal,
+  Plus,
+  Settings2,
+  Users,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
-import type {
-  RentalCatalogDocument,
-  RentalCar,
-  RentalFieldError,
-  VehicleCategory,
+import {
+  formatCents,
+  type RentalCatalogDocument,
+  type RentalCar,
+  type RentalFieldError,
+  type VehicleCategory,
 } from "@/lib/rental-catalog";
 import {
   FieldShell,
@@ -16,6 +36,12 @@ import {
   secondaryButton,
 } from "./RentalFields";
 import { RentalMediaField } from "./RentalMediaField";
+
+/*
+ * Keep vehicle merchandising and catalog mutations together: this editor is
+ * reused by every rental tenant while the server remains the source of truth
+ * for pricing, publishing and customer eligibility.
+ */
 
 function newId(prefix: string): string {
   return `${prefix}-${crypto.randomUUID()}`;
@@ -237,150 +263,240 @@ export function RentalFleetView({
           </p>
         ) : (
           <div className="space-y-4">
-            {document.cars.map((car, index) => (
-              <article
-                key={car.id}
-                className="rounded-xl border border-[#e3e6eb] p-4"
-              >
-                <div className="grid gap-4 lg:grid-cols-[160px_minmax(180px,1fr)_160px_80px_120px_140px] lg:items-end">
-                  <RentalMediaField
-                    ownerId={car.id}
-                    assetId={car.primaryImageAssetId}
-                    onAssetId={(primaryImageAssetId) =>
-                      updateCar(index, { primaryImageAssetId })
-                    }
-                  />
-                  <FieldShell
-                    label="Car"
-                    error={errorAt(`cars.${index}.displayName`)}
-                  >
-                    <RentalInput
-                      value={car.displayName}
-                      maxLength={120}
-                      disabled={Boolean(car.archivedAt)}
-                      onChange={(event) =>
-                        updateCar(index, { displayName: event.target.value })
+            {document.cars.map((car, index) => {
+              const category = document.categories.find(
+                (item) => item.id === car.categoryId,
+              );
+              const isActive = car.active && !car.archivedAt;
+
+              return (
+                <article
+                  key={car.id}
+                  className="overflow-hidden rounded-2xl border border-[#dfe3e8] bg-white shadow-[0_8px_24px_rgba(23,32,51,0.06)] transition-shadow hover:shadow-[0_12px_30px_rgba(23,32,51,0.09)]"
+                >
+                  <header className="flex min-w-0 items-start gap-3 border-b border-[#edf0f3] bg-[#fcfcfd] px-4 py-4 sm:items-center sm:px-5">
+                    <span className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-[#f2ead4] text-[#80651d]">
+                      <CarFront className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="truncate text-[15px] font-semibold text-[#172033] sm:text-[16px]">
+                          {car.displayName || "Untitled vehicle"}
+                        </h4>
+                        <Badge
+                          variant="outline"
+                          className={
+                            isActive
+                              ? "border-[#bce5d1] bg-[#effaf4] text-[#176b45]"
+                              : "border-[#dfe3e8] bg-[#f6f7f9] text-[#667085]"
+                          }
+                        >
+                          {isActive ? "Live" : "Hidden"}
+                        </Badge>
+                      </div>
+                      <p className="mt-1 truncate text-[12px] text-[#667085]">
+                        {category?.name ?? "Category not selected"}
+                        {category
+                          ? ` · USD ${formatCents(category.dailyRateCents)} / day`
+                          : ""}
+                      </p>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`More actions for ${car.displayName}`}
+                          className="h-11 w-11 flex-none rounded-lg text-[#667085]"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem
+                          disabled={index === 0}
+                          onSelect={() =>
+                            onChange({
+                              ...document,
+                              cars: move(document.cars, index, -1),
+                            })
+                          }
+                        >
+                          <ArrowUp /> Move earlier
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          disabled={index === document.cars.length - 1}
+                          onSelect={() =>
+                            onChange({
+                              ...document,
+                              cars: move(document.cars, index, 1),
+                            })
+                          }
+                        >
+                          <ArrowDown /> Move later
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          disabled={Boolean(car.archivedAt)}
+                          className="text-[#b42318] focus:text-[#b42318]"
+                          onSelect={() =>
+                            updateCar(index, {
+                              active: false,
+                              archivedAt: new Date().toISOString(),
+                            })
+                          }
+                        >
+                          <Archive /> Archive vehicle
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </header>
+
+                  <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)] lg:gap-6">
+                    <RentalMediaField
+                      ownerId={car.id}
+                      assetId={car.primaryImageAssetId}
+                      presentation="vehicle"
+                      alt={`${car.displayName} customer-facing photo`}
+                      onAssetId={(primaryImageAssetId) =>
+                        updateCar(index, { primaryImageAssetId })
                       }
                     />
-                  </FieldShell>
-                  <FieldShell
-                    label="Category"
-                    error={errorAt(`cars.${index}.categoryId`)}
-                  >
-                    <RentalSelect
-                      value={car.categoryId}
-                      disabled={Boolean(car.archivedAt)}
-                      onChange={(event) =>
-                        updateCar(index, { categoryId: event.target.value })
-                      }
-                    >
-                      {document.categories
-                        .filter((item) => !item.archivedAt)
-                        .map((category) => (
-                          <option key={category.id} value={category.id}>
-                            {category.name}
-                          </option>
-                        ))}
-                    </RentalSelect>
-                  </FieldShell>
-                  <FieldShell label="Seats">
-                    <RentalInput
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={car.seats}
-                      disabled={Boolean(car.archivedAt)}
-                      onChange={(event) =>
-                        updateCar(index, { seats: Number(event.target.value) })
-                      }
-                    />
-                  </FieldShell>
-                  <FieldShell
-                    label="Medium suitcases (approx.)"
-                    error={errorAt(`cars.${index}.luggageCapacity`)}
-                  >
-                    <RentalInput
-                      type="number"
-                      min={0}
-                      max={20}
-                      value={car.luggageCapacity ?? 0}
-                      disabled={Boolean(car.archivedAt)}
-                      onChange={(event) =>
-                        updateCar(index, {
-                          luggageCapacity: Number(event.target.value),
-                        })
-                      }
-                    />
-                  </FieldShell>
-                  <FieldShell label="Transmission">
-                    <RentalSelect
-                      value={car.transmission}
-                      disabled={Boolean(car.archivedAt)}
-                      onChange={(event) =>
-                        updateCar(index, {
-                          transmission: event.target
-                            .value as RentalCar["transmission"],
-                        })
-                      }
-                    >
-                      <option value="automatic">Automatic</option>
-                      <option value="manual">Manual</option>
-                    </RentalSelect>
-                  </FieldShell>
-                </div>
-                <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[#eef0f3] pt-3">
-                  <label className="mr-auto flex items-center gap-2 text-[12px] font-medium text-[#3c4043]">
-                    <Switch
-                      checked={car.active && !car.archivedAt}
-                      disabled={Boolean(car.archivedAt)}
-                      onCheckedChange={(active) => updateCar(index, { active })}
-                    />
-                    {car.active && !car.archivedAt
-                      ? "Active for customers"
-                      : "Inactive"}
-                  </label>
-                  <button
-                    type="button"
-                    className={secondaryButton}
-                    onClick={() =>
-                      onChange({
-                        ...document,
-                        cars: move(document.cars, index, -1),
-                      })
-                    }
-                    disabled={index === 0}
-                  >
-                    <ArrowUp className="h-3.5 w-3.5" /> Up
-                  </button>
-                  <button
-                    type="button"
-                    className={secondaryButton}
-                    onClick={() =>
-                      onChange({
-                        ...document,
-                        cars: move(document.cars, index, 1),
-                      })
-                    }
-                    disabled={index === document.cars.length - 1}
-                  >
-                    <ArrowDown className="h-3.5 w-3.5" /> Down
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-2 rounded-lg border border-[#ead4d1] px-3 py-2 text-[12px] font-semibold text-[#b3261e] disabled:opacity-40"
-                    disabled={Boolean(car.archivedAt)}
-                    onClick={() =>
-                      updateCar(index, {
-                        active: false,
-                        archivedAt: new Date().toISOString(),
-                      })
-                    }
-                  >
-                    <Archive className="h-3.5 w-3.5" /> Archive
-                  </button>
-                </div>
-              </article>
-            ))}
+
+                    <div className="min-w-0 space-y-5">
+                      <div className="flex items-center gap-2">
+                        <Settings2 className="h-4 w-4 text-[#80651d]" />
+                        <h5 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#667085]">
+                          Vehicle details
+                        </h5>
+                      </div>
+                      <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+                        <FieldShell
+                          label="Customer-facing name"
+                          error={errorAt(`cars.${index}.displayName`)}
+                        >
+                          <RentalInput
+                            value={car.displayName}
+                            maxLength={120}
+                            disabled={Boolean(car.archivedAt)}
+                            onChange={(event) =>
+                              updateCar(index, {
+                                displayName: event.target.value,
+                              })
+                            }
+                          />
+                        </FieldShell>
+                        <FieldShell
+                          label="Rate category"
+                          error={errorAt(`cars.${index}.categoryId`)}
+                        >
+                          <RentalSelect
+                            value={car.categoryId}
+                            disabled={Boolean(car.archivedAt)}
+                            onChange={(event) =>
+                              updateCar(index, {
+                                categoryId: event.target.value,
+                              })
+                            }
+                          >
+                            {document.categories
+                              .filter((item) => !item.archivedAt)
+                              .map((item) => (
+                                <option key={item.id} value={item.id}>
+                                  {item.name}
+                                </option>
+                              ))}
+                          </RentalSelect>
+                        </FieldShell>
+                      </div>
+                      <div className="grid min-w-0 gap-4 sm:grid-cols-3">
+                        <FieldShell label="Seats">
+                          <div className="relative">
+                            <Users className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#98a2b3]" />
+                            <RentalInput
+                              type="number"
+                              min={1}
+                              max={20}
+                              value={car.seats}
+                              className="pl-9"
+                              disabled={Boolean(car.archivedAt)}
+                              onChange={(event) =>
+                                updateCar(index, {
+                                  seats: Number(event.target.value),
+                                })
+                              }
+                            />
+                          </div>
+                        </FieldShell>
+                        <FieldShell
+                          label="Suitcases"
+                          hint="Approximate medium bags"
+                          error={errorAt(`cars.${index}.luggageCapacity`)}
+                        >
+                          <div className="relative">
+                            <BriefcaseBusiness className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#98a2b3]" />
+                            <RentalInput
+                              type="number"
+                              min={0}
+                              max={20}
+                              value={car.luggageCapacity ?? 0}
+                              className="pl-9"
+                              disabled={Boolean(car.archivedAt)}
+                              onChange={(event) =>
+                                updateCar(index, {
+                                  luggageCapacity: Number(event.target.value),
+                                })
+                              }
+                            />
+                          </div>
+                        </FieldShell>
+                        <FieldShell label="Transmission">
+                          <RentalSelect
+                            value={car.transmission}
+                            disabled={Boolean(car.archivedAt)}
+                            onChange={(event) =>
+                              updateCar(index, {
+                                transmission: event.target
+                                  .value as RentalCar["transmission"],
+                              })
+                            }
+                          >
+                            <option value="automatic">Automatic</option>
+                            <option value="manual">Manual</option>
+                          </RentalSelect>
+                        </FieldShell>
+                      </div>
+                    </div>
+                  </div>
+
+                  <footer className="flex flex-col gap-3 border-t border-[#edf0f3] bg-[#fcfcfd] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-semibold text-[#344054]">
+                        Customer visibility
+                      </p>
+                      <p className="mt-0.5 text-[11px] leading-4 text-[#667085]">
+                        {isActive
+                          ? "Customers can see and choose this vehicle after publishing."
+                          : "This vehicle is excluded from customer recommendations."
+                        }
+                      </p>
+                    </div>
+                    <label className="flex min-h-11 flex-none cursor-pointer items-center justify-between gap-3 rounded-xl border border-[#e1e5ea] bg-white px-3.5 py-2 sm:justify-start">
+                      <span className="text-[12px] font-semibold text-[#344054]">
+                        {isActive ? "Visible" : "Hidden"}
+                      </span>
+                      <Switch
+                        aria-label={`Show ${car.displayName} to customers`}
+                        checked={isActive}
+                        disabled={Boolean(car.archivedAt)}
+                        onCheckedChange={(active) => updateCar(index, { active })}
+                      />
+                    </label>
+                  </footer>
+                </article>
+              );
+            })}
           </div>
         )}
       </SectionCard>
