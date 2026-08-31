@@ -96,28 +96,36 @@ export default function RentalToday() {
       pageSubtitle="See who needs help and act without hunting through the dashboard"
       hideRefresh
     >
-      <div className="mx-auto w-full max-w-[1420px] space-y-5 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
-        <section className="overflow-hidden rounded-2xl border border-[#ded7ca] bg-white shadow-[0_14px_38px_rgba(24,37,52,.07)]">
-          <div className="flex items-start justify-between gap-4 border-b border-[#ebe6dd] bg-[#fffdf8] px-5 py-5 sm:px-6">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#9b6f1a]">
+      <div className="mx-auto w-full max-w-[1420px] space-y-6 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+        <section className="overflow-hidden rounded-[26px] border border-[#ded7ca] bg-white shadow-[0_22px_55px_rgba(24,37,52,.075)]">
+          <div className="relative flex items-start justify-between gap-5 overflow-hidden border-b border-[#e9e3d8] bg-[linear-gradient(115deg,#fffdf8_0%,#ffffff_56%,#faf5e9_100%)] px-5 py-6 sm:px-7 sm:py-7">
+            <div
+              className="absolute inset-y-0 left-0 w-1 bg-[#d4aa58]"
+              aria-hidden="true"
+            />
+            <div className="min-w-0 pl-1">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9b6f1a] sm:text-xs">
                   Priority inbox
                 </p>
                 {needsAction.length > 0 ? (
-                  <span className="inline-flex rounded-full bg-rose-100 px-2.5 py-1 text-xs font-bold text-rose-700">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200/80 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700">
+                    <span
+                      className="h-1.5 w-1.5 rounded-full bg-rose-500"
+                      aria-hidden="true"
+                    />
                     {needsAction.length} waiting
                   </span>
                 ) : null}
               </div>
-              <h2 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-[#0b213a] sm:text-2xl">
+              <h2 className="mt-2 text-[1.35rem] font-semibold leading-tight tracking-[-0.035em] text-[#0b213a] sm:text-[1.7rem]">
                 {needsAction.length === 0
                   ? "No customer actions waiting"
                   : needsAction.length === 1
                     ? "1 customer needs you"
                     : `${needsAction.length} customers need you`}
               </h2>
-              <p className="mt-1 text-sm text-[#6d7784]">
+              <p className="mt-1.5 max-w-2xl text-[13px] leading-5 text-[#657181] sm:text-sm">
                 Agent questions, human takeovers and workflow exceptions appear
                 here.
               </p>
@@ -126,7 +134,7 @@ export default function RentalToday() {
               type="button"
               onClick={() => void query.refetch()}
               disabled={query.isFetching}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#ded8cd] bg-white text-[#536276] transition hover:bg-[#f8f5ef] disabled:opacity-60"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border border-[#ddd5c8] bg-white/90 text-[#536276] shadow-[0_4px_14px_rgba(24,37,52,.06)] transition hover:-translate-y-0.5 hover:border-[#c9b57d] hover:text-[#0b213a] hover:shadow-[0_8px_20px_rgba(24,37,52,.09)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8862f] disabled:opacity-60"
               aria-label="Refresh priority inbox"
             >
               <RefreshCw
@@ -158,22 +166,29 @@ export default function RentalToday() {
               Loading priority work…
             </div>
           ) : needsAction.length ? (
-            <div className="space-y-3 bg-[#f8f5ef]/65 p-3 sm:p-4">
+            <div className="space-y-3 bg-[#f7f4ee] p-3 sm:p-4">
               {needsAction.map(({ lead, operation }) => {
                 const needsReply =
                   operation.operatorAction === "answer_customer";
                 return (
                   <article
                     key={lead.id}
-                    className="grid gap-4 rounded-2xl border border-[#e2ddd3] bg-white p-4 shadow-[0_5px_18px_rgba(24,37,52,.045)] lg:grid-cols-[minmax(220px,.9fr)_minmax(280px,1.25fr)_minmax(190px,.7fr)_auto] lg:items-center lg:p-5"
+                    className="group relative grid gap-5 overflow-hidden rounded-[20px] border border-[#e0d9cd] bg-white p-4 shadow-[0_7px_22px_rgba(24,37,52,.045)] transition duration-200 hover:-translate-y-px hover:border-[#cdbb91] hover:shadow-[0_14px_30px_rgba(24,37,52,.08)] sm:p-5 lg:grid-cols-[minmax(210px,.9fr)_minmax(240px,1.15fr)_minmax(175px,.7fr)_150px] lg:items-center lg:gap-0 lg:px-6 lg:py-5"
                   >
-                    <div className="flex min-w-0 items-start gap-3">
+                    <div
+                      className={cn(
+                        "absolute inset-y-0 left-0 w-[3px]",
+                        needsReply ? "bg-[#d7aa50]" : "bg-rose-500",
+                      )}
+                      aria-hidden="true"
+                    />
+                    <div className="flex min-w-0 items-center gap-3 lg:pr-5">
                       <span
                         className={cn(
-                          "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                          "flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border",
                           needsReply
-                            ? "bg-amber-100 text-amber-800"
-                            : "bg-rose-100 text-rose-700",
+                            ? "border-amber-200/80 bg-amber-50 text-amber-800"
+                            : "border-rose-200/80 bg-rose-50 text-rose-700",
                         )}
                       >
                         {needsReply ? (
@@ -185,41 +200,52 @@ export default function RentalToday() {
                       <div className="min-w-0">
                         <span
                           className={cn(
-                            "inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold",
-                            needsReply
-                              ? "bg-amber-50 text-amber-800"
-                              : "bg-rose-50 text-rose-700",
+                            "inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.075em]",
+                            needsReply ? "text-amber-800" : "text-rose-700",
                           )}
                         >
+                          <span
+                            className={cn(
+                              "h-1.5 w-1.5 rounded-full",
+                              needsReply ? "bg-amber-500" : "bg-rose-500",
+                            )}
+                            aria-hidden="true"
+                          />
                           {needsReply ? "Agent needs help" : "Action required"}
                         </span>
-                        <h3 className="mt-1 truncate text-base font-semibold text-[#10243e]">
+                        <h3 className="mt-1.5 truncate text-[15px] font-semibold tracking-[-0.015em] text-[#10243e] sm:text-base">
                           {customerDisplayName(lead)}
                         </h3>
-                        <p className="mt-0.5 truncate text-xs text-[#7a8490]">
-                          {lead.channel || "WhatsApp"} ·{" "}
+                        <p className="mt-0.5 truncate text-xs font-medium text-[#7a8490]">
+                          <span className="capitalize">
+                            {lead.channel || "WhatsApp"}
+                          </span>{" "}
+                          <span className="px-1 text-[#c0b8aa]">·</span>{" "}
                           {activityAge(lead.updated_at)}
                         </p>
                       </div>
                     </div>
 
-                    <div className="min-w-0 rounded-xl border border-[#eee7da] bg-[#fcfaf6] px-4 py-3">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#8b7750]">
+                    <div className="min-w-0 border-t border-[#eee8df] pt-4 lg:border-l lg:border-t-0 lg:px-5 lg:py-1">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#90794f]">
                         What needs your attention
                       </p>
-                      <p className="mt-1 text-sm font-medium leading-5 text-[#31445d]">
+                      <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-5 text-[#2d415b]">
                         {lead.next_action ||
                           operation.actionLabel ||
                           "Review this customer now."}
                       </p>
                     </div>
 
-                    <div className="min-w-0 text-sm text-[#40526a]">
-                      <span className="flex items-center gap-2 truncate font-medium">
-                        <CarFront className="h-4 w-4 shrink-0 text-[#9b6f1a]" />
+                    <div className="min-w-0 border-t border-[#eee8df] pt-4 text-sm text-[#40526a] lg:border-l lg:border-t-0 lg:px-5 lg:py-1">
+                      <span className="flex items-center gap-2 truncate font-semibold text-[#40526a]">
+                        <CarFront
+                          className="h-4 w-4 shrink-0 text-[#a57721]"
+                          strokeWidth={1.8}
+                        />
                         {lead.vehicle_preference || "Vehicle not selected"}
                       </span>
-                      <span className="mt-1.5 block text-xs text-[#88909a]">
+                      <span className="mt-1.5 block text-xs font-medium text-[#88909a]">
                         {dateValue(lead.pickup_datetime)} ·{" "}
                         {rentalStageLabel(operation.stage)}
                       </span>
@@ -230,10 +256,14 @@ export default function RentalToday() {
                       onClick={() =>
                         navigate(rentalActionPath(lead, operation.actionTarget))
                       }
-                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#0b213a] px-4 text-sm font-semibold text-white shadow-[0_5px_14px_rgba(11,33,58,.18)] transition hover:bg-[#123354] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8862f]"
+                      className="inline-flex min-h-12 w-full items-center justify-between gap-3 rounded-[14px] bg-[#0b213a] px-4 text-left text-[13px] font-semibold leading-4 text-white shadow-[0_8px_18px_rgba(11,33,58,.18)] transition hover:-translate-y-0.5 hover:bg-[#123354] hover:shadow-[0_12px_22px_rgba(11,33,58,.23)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8862f] lg:ml-5"
                     >
-                      {needsReply ? "Open & respond" : operation.actionLabel}
-                      <ArrowRight className="h-4 w-4" />
+                      <span>
+                        {needsReply ? "Open & respond" : operation.actionLabel}
+                      </span>
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 transition group-hover:bg-white/15">
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </span>
                     </button>
                   </article>
                 );
@@ -253,7 +283,7 @@ export default function RentalToday() {
         </section>
 
         <section
-          className="grid grid-cols-2 gap-2.5 lg:grid-cols-4"
+          className="grid grid-cols-2 gap-3 lg:grid-cols-4"
           aria-label="Operational overview"
         >
           <Metric
@@ -304,30 +334,30 @@ function Metric({
   onClick: () => void;
 }) {
   const tones = {
-    gold: "bg-[#fff7e5] text-[#956a18] border-[#ecd9ac]",
-    navy: "bg-[#eef3f8] text-[#1e456b] border-[#d8e1ea]",
-    red: "bg-rose-50 text-rose-700 border-rose-200",
-    green: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    gold: "bg-[#fff8e8] text-[#956a18] border-[#ead4a2]",
+    navy: "bg-[#eef4f9] text-[#1e456b] border-[#d4e0ea]",
+    red: "bg-rose-50 text-rose-700 border-rose-200/90",
+    green: "bg-emerald-50 text-emerald-700 border-emerald-200/90",
   };
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group min-h-24 rounded-2xl border border-[#e2ddd3] bg-white p-3 text-left shadow-[0_8px_26px_rgba(24,37,52,.045)] transition hover:-translate-y-0.5 hover:border-[#ccb77f] hover:shadow-[0_12px_30px_rgba(24,37,52,.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8862f] sm:p-4"
+      className="group min-h-24 rounded-[20px] border border-[#e0d9ce] bg-[linear-gradient(145deg,#ffffff_0%,#fdfcf9_100%)] p-3.5 text-left shadow-[0_8px_26px_rgba(24,37,52,.045)] transition duration-200 hover:-translate-y-0.5 hover:border-[#cbb784] hover:shadow-[0_14px_30px_rgba(24,37,52,.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b8862f] sm:p-5"
       aria-label={`${label}: ${value}. Open matching customers`}
     >
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-[11px] font-medium leading-4 text-[#6d7784] sm:text-xs">
+          <p className="text-[10px] font-semibold uppercase leading-4 tracking-[0.065em] text-[#6d7784] sm:text-[11px]">
             {label}
           </p>
-          <p className="mt-1.5 text-2xl font-semibold tracking-[-0.04em] text-[#0b213a] sm:text-3xl">
+          <p className="mt-1.5 text-[1.7rem] font-semibold leading-none tracking-[-0.055em] text-[#0b213a] sm:text-[2rem]">
             {value}
           </p>
         </div>
         <span
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition group-hover:scale-105 sm:h-11 sm:w-11",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-[13px] border shadow-[inset_0_1px_0_rgba(255,255,255,.8)] transition group-hover:scale-105 sm:h-11 sm:w-11",
             tones[tone],
           )}
         >
