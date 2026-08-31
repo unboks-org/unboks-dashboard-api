@@ -87,6 +87,7 @@ interface RentalDashboardShellProps {
   searchQuery?: string;
   onSearchChange?: (value: string) => void;
   rightSlot?: ReactNode;
+  actionCount?: number;
   children: ReactNode;
 }
 
@@ -97,6 +98,7 @@ export function RentalDashboardShell({
   searchQuery = "",
   onSearchChange,
   rightSlot,
+  actionCount = 0,
   children,
 }: RentalDashboardShellProps) {
   const [location, navigate] = useLocation();
@@ -229,7 +231,20 @@ export function RentalDashboardShell({
                 className="h-[19px] w-[19px]"
                 strokeWidth={selected ? 2.2 : 1.7}
               />
-              {item.label}
+              <span className="min-w-0 flex-1 truncate">{item.label}</span>
+              {item.id === "today" && actionCount > 0 ? (
+                <span
+                  className={cn(
+                    "inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-bold",
+                    selected
+                      ? "bg-[#081c33] text-white"
+                      : "bg-[#d4aa58] text-[#081c33]",
+                  )}
+                  aria-label={`${actionCount} actions need attention`}
+                >
+                  {actionCount > 99 ? "99+" : actionCount}
+                </span>
+              ) : null}
             </button>
           );
         })}
@@ -355,7 +370,20 @@ export function RentalDashboardShell({
                   selected ? "text-[#9b6f1a]" : "text-[#6d7784]",
                 )}
               >
-                <Icon className="h-5 w-5" strokeWidth={selected ? 2.3 : 1.7} />
+                <span className="relative">
+                  <Icon
+                    className="h-5 w-5"
+                    strokeWidth={selected ? 2.3 : 1.7}
+                  />
+                  {item.id === "today" && actionCount > 0 ? (
+                    <span
+                      className="absolute -right-3 -top-2 inline-flex min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[9px] font-bold leading-4 text-white"
+                      aria-label={`${actionCount} actions need attention`}
+                    >
+                      {actionCount > 9 ? "9+" : actionCount}
+                    </span>
+                  ) : null}
+                </span>
                 <span className="max-w-full truncate px-1">
                   {item.id === "fleet" ? "Fleet" : item.label}
                 </span>
