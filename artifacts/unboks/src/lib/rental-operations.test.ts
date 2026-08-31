@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { FollowUp } from "@/lib/api";
 import {
   projectRentalLead,
+  rentalActionPath,
+  rentalLeadNeedsStaffAction,
   rentalStage,
   type RentalOperationsContract,
 } from "@/lib/rental-operations";
@@ -87,6 +89,31 @@ describe("rental operations projection", () => {
     expect(projection.responsibleParty).toBe("Staff");
     expect(projection.operatorAction).toBe("verify_payment");
     expect(projection.priority).toBe(2);
+  });
+
+  it("identifies active staff work for Today and links conversations directly", () => {
+    const item = lead({
+      responsibleParty: "staff",
+      operatorAction: "answer_customer",
+      actionLabel: "Answer customer",
+      actionTarget: "conversation",
+      actionPriority: "critical",
+    });
+
+    expect(rentalLeadNeedsStaffAction(item)).toBe(true);
+    expect(rentalActionPath(item, "conversation")).toBe(
+      "/conversations?c=conversation-1&from=today",
+    );
+  });
+
+  it("keeps customer waits out of Today and routes file work to the customer", () => {
+    const item = lead({
+      responsibleParty: "client",
+      actionTarget: "documents",
+    });
+
+    expect(rentalLeadNeedsStaffAction(item)).toBe(false);
+    expect(rentalActionPath(item, "documents")).toBe("/customers/lead-1");
   });
 
   it("keeps client and system waits out of staff work", () => {

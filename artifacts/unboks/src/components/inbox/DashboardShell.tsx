@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { Header } from "@/components/inbox/Header";
 import { Drawer, NavId } from "@/components/inbox/Drawer";
@@ -28,6 +29,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { isRentalDashboardV2Enabled } from "@/lib/tenant-ui";
 import { RentalDashboardShell } from "@/components/rental/RentalDashboardShell";
 import { useRentalControlCapability } from "@/hooks/use-rental-control-capability";
+import { fetchQuoteLeads } from "@/lib/api";
+import { tenantKey } from "@/lib/query-keys";
+import { rentalLeadNeedsStaffAction } from "@/lib/rental-operations";
 
 export const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   today: "/today",
@@ -152,6 +156,21 @@ export function DashboardShell({
   const search = useSearch();
   const { logout } = useAuth();
   const rentalCapability = useRentalControlCapability();
+  const useRentalShell =
+    rentalCapability.enabled ||
+    (rentalCapability.isLoading && isRentalDashboardV2Enabled()) ||
+    (rentalCapability.isUnavailable && isRentalDashboardV2Enabled());
+  const rentalActionQueue = useQuery({
+    queryKey: tenantKey("quote-leads"),
+    queryFn: () => fetchQuoteLeads(),
+    enabled: useRentalShell,
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+  });
+  const rentalActionCount = (rentalActionQueue.data || []).filter(
+    rentalLeadNeedsStaffAction,
+  ).length;
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const {
@@ -347,11 +366,6 @@ export function DashboardShell({
     [location, search, navigate, onNavSelect],
   );
 
-  const useRentalShell =
-    rentalCapability.enabled ||
-    (rentalCapability.isLoading && isRentalDashboardV2Enabled()) ||
-    (rentalCapability.isUnavailable && isRentalDashboardV2Enabled());
-
   return useRentalShell ? (
     <RentalDashboardShell
       active={activeNav}
@@ -360,6 +374,7 @@ export function DashboardShell({
       searchQuery={searchQuery}
       onSearchChange={onSearchChange}
       rightSlot={hideRefresh ? null : <RefreshButton />}
+      actionCount={rentalActionCount}
     >
       {children}
     </RentalDashboardShell>

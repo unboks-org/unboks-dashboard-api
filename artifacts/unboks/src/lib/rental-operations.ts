@@ -77,7 +77,10 @@ export interface RentalLeadProjection {
   contractAvailable: boolean;
 }
 
-const PRIORITY: Record<RentalOperationsContract["actionPriority"], 0 | 1 | 2 | 3> = {
+const PRIORITY: Record<
+  RentalOperationsContract["actionPriority"],
+  0 | 1 | 2 | 3
+> = {
   none: 0,
   normal: 1,
   high: 2,
@@ -156,14 +159,14 @@ export function projectRentalLead(lead: FollowUp): RentalLeadProjection {
     priority: PRIORITY[operations.actionPriority],
     exception: Boolean(operations.exception),
     exceptionCode: operations.exception?.code || null,
-    progress:
-      Number.isFinite(operations.progress?.percent)
-        ? operations.progress.percent
-        : STAGE_PROGRESS[operations.stage],
+    progress: Number.isFinite(operations.progress?.percent)
+      ? operations.progress.percent
+      : STAGE_PROGRESS[operations.stage],
     clientTimeRemainingSeconds: operations.clientTimeRemainingSeconds,
     canPrintDossier: Boolean(operations.capabilities?.printDossier),
     workflowState: operations.workflowState,
-    isClosed: operations.lifecycle === "closed" || operations.stage === "closed",
+    isClosed:
+      operations.lifecycle === "closed" || operations.stage === "closed",
     contractAvailable: true,
   };
 }
@@ -193,6 +196,22 @@ export function customerDisplayName(lead: FollowUp): string {
 
 export function customerWorkspacePath(lead: FollowUp): string {
   return `/customers/${encodeURIComponent(lead.reservation_public_id || `lead-${lead.id}`)}`;
+}
+
+export function rentalLeadNeedsStaffAction(lead: FollowUp): boolean {
+  const operation = projectRentalLead(lead);
+  return operation.responsibleParty === "Staff" && !operation.isClosed;
+}
+
+export function rentalActionPath(
+  lead: FollowUp,
+  actionTarget: RentalOperationsContract["actionTarget"],
+  source = "today",
+): string {
+  if (actionTarget === "conversation") {
+    return `/conversations?c=${encodeURIComponent(lead.conversation_id)}&from=${encodeURIComponent(source)}`;
+  }
+  return customerWorkspacePath(lead);
 }
 
 export function rentalStageLabel(stage: RentalStage): string {
