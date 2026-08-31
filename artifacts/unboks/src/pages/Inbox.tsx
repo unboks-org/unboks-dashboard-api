@@ -109,6 +109,10 @@ import {
   rentalStageLabel,
 } from "@/lib/rental-operations";
 import { useRentalControlCapability } from "@/hooks/use-rental-control-capability";
+import {
+  latestConversationMessage,
+  orderConversationMessagesChronologically,
+} from "@/lib/conversation-message-order";
 
 const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   bookings: "/bookings",
@@ -493,14 +497,11 @@ function ConversationDetailPane({
   } = useConversation(conversation.id);
   const { unresolve, resolve: headerResolve } = useEscalationMutations();
   const badgeColor = CHANNEL_BADGE_COLORS[conversation.channel] ?? "#9aa0a6";
-  // Sort newest-first by parsed backend timestamp so the latest message is
-  // always at the top of the thread (Inbox / Escalation trail / WhatsApp /
-  // Email all share this single render path). Spread first — never mutate
-  // the React Query cache array. Messages with timestampMs === 0 (missing
-  // or unparseable backend timestamp) sort to the bottom by stable order.
+  // Chat trails read naturally from oldest to newest. Keep the React Query
+  // cache immutable while protecting the pane from out-of-order API rows.
   const messages: ApiMessage[] = useMemo(() => {
     const src = detail?.messages ?? [];
-    return [...src].sort((a, b) => (b.timestampMs ?? 0) - (a.timestampMs ?? 0));
+    return orderConversationMessagesChronologically(src);
   }, [detail?.messages]);
   // Surface the underlying API status/message so an email conversation that
   // 404s (or whose id breaks server-side routing) doesn't render as a blank
@@ -1251,8 +1252,8 @@ function ConversationDetailPane({
 // LatestCustomerMessagePreview — quoted card showing the newest inbound
 // (role === "user") message so the operator has the latest customer
 // context inline with the decision flow, without needing to expand the
-// full conversation trail. `messages` is already sorted newest-first
-// by ConversationDetailPane, so we take the first match.
+// full conversation trail. Pick by timestamp so this preview remains correct
+// even if another caller supplies a different array order.
 // ---------------------------------------------------------------------------
 function LatestCustomerMessagePreview({
   messages,
@@ -1261,9 +1262,12 @@ function LatestCustomerMessagePreview({
 }) {
   const latest = useMemo(() => {
     if (!messages || messages.length === 0) return null;
-    // Newest inbound first; fall back to the newest message overall if
+    // Prefer the newest inbound; fall back to the newest message overall if
     // we haven't received an inbound yet (e.g. agent-initiated thread).
-    return messages.find((m) => m.role === "user") ?? messages[0];
+    return (
+      latestConversationMessage(messages, (message) => message.role === "user")
+      ?? latestConversationMessage(messages)
+    );
   }, [messages]);
 
   if (!latest || !latest.content) return null;
@@ -1318,8 +1322,17 @@ function ConversationThreadBody({
   conversation: Conversation;
   errorDetail: { status: number | null; message: string } | null;
 }) {
+  const threadRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const thread = threadRef.current;
+    if (!thread || isLoading) return;
+    thread.scrollTop = thread.scrollHeight;
+  }, [conversation.id, isLoading, messages.length]);
+
   return (
     <div
+      ref={threadRef}
       className={cn(
         "flex-1 overflow-y-auto px-3 sm:px-4 py-4 pb-8",
         conversation.channel === "Email"

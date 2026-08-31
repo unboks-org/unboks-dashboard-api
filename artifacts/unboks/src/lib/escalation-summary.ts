@@ -395,8 +395,8 @@ function firstName(name?: string | null): string {
 
 /**
  * Order-agnostic "latest message" picker. We can't assume the input is
- * sorted ascending OR descending — Inbox now passes a newest-first sorted
- * array to render the thread, but other callers may pass raw backend
+ * sorted ascending OR descending — Inbox passes a chronological array to
+ * render the thread, but other callers may pass raw backend
  * order. Pick by `timestampMs` first; if the whole array has 0 (no
  * parseable timestamps), fall back to the last item in array order
  * (matches the historical assumption that backends emit oldest-first).
@@ -417,8 +417,8 @@ function pickLatest(
     }
   }
   if (best && bestMs > 0) return best;
-  // No usable timestamps — fall back to scanning array order. Try tail
-  // first (oldest-first backend), then head (newest-first sorted UI).
+  // No usable timestamps — fall back to scanning array order from the tail,
+  // matching the historical backend and chronological UI contract.
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     if (!predicate || predicate(messages[i])) return messages[i];
   }
@@ -692,8 +692,8 @@ export function buildEscalationBriefing({
 
   // Build the corpus from the latest customer message + the latest
   // message overall (which may be Marina's reply). Order-agnostic so it
-  // works whether the caller passes oldest-first (raw backend) or
-  // newest-first (Inbox's sorted thread). The customer message drives
+  // works whether the caller passes oldest-first or newest-first. The
+  // customer message drives
   // intent; the latest assistant turn occasionally carries clarifying
   // topic/slot words (e.g. "we have a slot Wednesday at 10:00 — does
   // that work?").
