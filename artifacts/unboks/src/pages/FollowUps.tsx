@@ -240,6 +240,20 @@ function received(value: string): string {
   }).format(date);
 }
 
+function lastInboundTime(value?: string): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("es-ES", {
+    timeZone: "Europe/Madrid",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(date).replace(",", " ·");
+}
+
 function followUpStatusLabel(status: FollowUpStatus): string {
   return tenantText(statusLabels[status], spanishStatusLabels[status]);
 }
@@ -659,10 +673,20 @@ export default function FollowUps() {
                       )}
                     </span>
                   </span>
-                  <span className="pt-1">
+                  <span className="flex min-w-[108px] flex-col items-end pt-1">
                     <span className={cn("inline-flex max-w-[105px] rounded-full border px-2.5 py-1 text-[11px] font-medium leading-tight", statusStyles[item.status])}>
                       {followUpStatusLabel(item.status)}
                     </span>
+                    {isDespertares && lastInboundTime(item.last_inbound_at) && (
+                      <span
+                        className="mt-2 inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-medium text-slate-500"
+                        aria-label={`Último mensaje recibido: ${lastInboundTime(item.last_inbound_at)}`}
+                        title={`Último mensaje recibido: ${lastInboundTime(item.last_inbound_at)}`}
+                      >
+                        <Clock3 className="h-3.5 w-3.5 text-slate-400" />
+                        {lastInboundTime(item.last_inbound_at)}
+                      </span>
+                    )}
                   </span>
                 </button>
               ))}
