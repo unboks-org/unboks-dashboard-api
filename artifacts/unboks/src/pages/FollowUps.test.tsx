@@ -63,6 +63,7 @@ const completeLead = {
   handoff_reason: "Review and answer the customer conversation.",
   created_at: "2026-08-27T06:00:00Z",
   updated_at: "2026-08-27T06:11:34Z",
+  last_inbound_at: "2026-09-01T12:32:00Z",
   complete: true,
   missing_fields: [],
   required_fields: [],
@@ -110,6 +111,7 @@ describe("Quote Leads status contract", () => {
     expect(screen.getByRole("button", { name: /Needs an answer 1/ })).toBeTruthy();
     expect(screen.getByText("Post-quote reservation")).toBeTruthy();
     expect(screen.queryByText("No quote leads in this view.")).toBeNull();
+    expect(screen.queryByLabelText(/Último mensaje recibido/)).toBeNull();
   });
 
   it("preserves the existing non-rental needs_human_answer status", async () => {
@@ -126,5 +128,6 @@ describe("Quote Leads status contract", () => {
     expect((await screen.findAllByText("Calvin Adamus")).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: /Activos 1/ })).toBeTruthy();
     expect(screen.queryByText("Post-quote reservation")).toBeNull();
+    expect(screen.getByLabelText(/Último mensaje recibido: .*14:32/)).toBeTruthy();
   });
 });

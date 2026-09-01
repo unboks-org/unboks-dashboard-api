@@ -437,6 +437,7 @@ export interface FollowUp {
   handoff_reason: string;
   created_at: string;
   updated_at: string;
+  last_inbound_at?: string;
 }
 
 export async function fetchFollowUps(
