@@ -76,3 +76,11 @@ Public information is not live availability. Pickup pricing remains unverified; 
 - Automated accessibility checks on the checked screens finished without violations after corrections. Gradient/overlap contrast checks left some manual-review items; those were visually inspected. Automated accessibility is not a full accessibility certification.
 
 Release sequence: review frontend PR [#153](https://github.com/unboks-org/unboks-dashboard-api/pull/153); reconcile reservation PR #334 with the final hardened PR #324 foundation; confirm tenant identity and operator-send contracts; let the runtime owner perform the reviewed cutover; then verify login → actual chat → reservation → document evidence against real Mermaid data. Do not claim production completion before that final flow passes.
+
+## Follow-up: login available again, 21:54–21:57 UTC
+
+A new user report prompted read-only checks. The existing container had been restarted at 21:52:38 UTC, before this follow-up's checks, with the old `c55fb4a` image and `unless-stopped` policy. This dashboard task did not restart it. The runtime owner was notified because this does not establish that the earlier security defects were resolved.
+
+The public login endpoint returned HTTP 200, a token, the correct Mermaid tenant identity and correct CORS headers. A real browser sign-in then reached the existing Mermaid dashboard at `/`, with no browser errors and **Agent paused** visible. No agent activation, provider send or runtime/configuration write was performed. The premium dashboard is still not deployed; this verifies login only, not production reservation readiness or safe automation.
+
+The vague Safari `Load failed` copy came through `ApiError(0)`, which the login form had not classified as a connection failure. The frontend now gives a clear workspace-server connection message for status 0, browser fetch errors and server errors, while keeping rejected credentials and tenant-identity failures distinct. Six regression tests were added; all **148 frontend tests**, type checking and the production build pass. This message improvement is queued in PR #153, not deployed by this follow-up.
