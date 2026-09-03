@@ -48,6 +48,10 @@ export function isAliRentalTenant(slug = getClientSlug()): boolean {
   return slug === "ali-car-rental";
 }
 
+export function isConsultaDespertaresTenant(slug = getClientSlug()): boolean {
+  return slug === "consulta-despertares";
+}
+
 /**
  * Rental Dashboard V2 rollout gate. Keep this tenant-scoped so the premium
  * rental shell cannot leak into medical or general-purpose workspaces. New
