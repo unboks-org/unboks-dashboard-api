@@ -3,6 +3,7 @@ import { Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { replyToWhatsAppConversation } from "@/lib/api";
+import { useOperatorRequestId } from "@/hooks/use-operator-request-id";
 import { directReplyCopy } from "@/lib/direct-whatsapp-reply";
 import { ApiError } from "@/lib/error";
 import { isSpainSpanishTenant } from "@/lib/tenant-ui";
@@ -20,6 +21,7 @@ export function ConversationReplyComposer({
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const sendingRef = useRef(false);
+  const requestIdentity = useOperatorRequestId();
   const [error, setError] = useState<string | null>(null);
   const hasMessage = draft.trim().length > 0;
   const copy = directReplyCopy();
@@ -31,10 +33,13 @@ export function ConversationReplyComposer({
     setIsSending(true);
     setError(null);
     try {
+      const requestId = requestIdentity.forAttempt(conversationId, draft);
       const result = await replyToWhatsAppConversation(
         conversationId,
         draft,
+        requestId,
       );
+      requestIdentity.complete(requestId);
       setDraft("");
       if (result.delivery_mode === "template") {
         toast.success(copy.templateDelivered);
@@ -48,11 +53,12 @@ export function ConversationReplyComposer({
         // refresh the timeline if this immediate refresh happens to fail.
       }
     } catch (err) {
-      const message = isSpainSpanishTenant() && err instanceof ApiError && err.message
-        ? err.message
-        : err instanceof ApiError && err.status === 409
-          ? copy.windowClosedError
-          : copy.genericError;
+      const message =
+        isSpainSpanishTenant() && err instanceof ApiError && err.message
+          ? err.message
+          : err instanceof ApiError && err.status === 409
+            ? copy.windowClosedError
+            : copy.genericError;
       setError(message);
       toast.error(message);
     } finally {
@@ -104,15 +110,25 @@ export function ConversationReplyComposer({
           aria-label={isSending ? copy.sending : copy.send}
         >
           <Send className="h-4 w-4" strokeWidth={1.8} />
-          <span className="hidden sm:inline">{isSending ? copy.sending : copy.send}</span>
+          <span className="hidden sm:inline">
+            {isSending ? copy.sending : copy.send}
+          </span>
         </button>
       </div>
       <div className="mt-1.5 flex min-h-4 items-center justify-between gap-3 px-1">
-        <p className={cn("text-[11.5px]", error ? "text-destructive" : "text-muted-foreground")} role={error ? "alert" : undefined}>
+        <p
+          className={cn(
+            "text-[11.5px]",
+            error ? "text-destructive" : "text-muted-foreground",
+          )}
+          role={error ? "alert" : undefined}
+        >
           {error ?? copy.hint}
         </p>
         {draft.length >= 3800 && (
-          <span className="text-[11px] text-muted-foreground">{draft.length}/4096</span>
+          <span className="text-[11px] text-muted-foreground">
+            {draft.length}/4096
+          </span>
         )}
       </div>
     </form>

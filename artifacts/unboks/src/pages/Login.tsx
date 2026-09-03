@@ -5,32 +5,10 @@ import { Lock, Building2 } from "lucide-react";
 import { useAuth } from "@/components/auth/useAuth";
 import { isValidTenantSlug, type ValidClient } from "@/lib/api";
 import { DEBUG_LOGS_ENABLED, debugLog } from "@/lib/debug-log";
-import { ApiError } from "@/lib/error";
+import { getLoginError } from "@/lib/login-error";
 import { isSpainSpanishTenant } from "@/lib/tenant-ui";
 import { motion } from "framer-motion";
 import unboksLogo from "@assets/unboks-login-logo-optimized_1778556585382.webp";
-
-function getLoginError(err: unknown, spanish: boolean): string {
-  if (err instanceof TypeError) {
-    return spanish
-      ? "No se puede conectar con el servidor. Comprueba tu conexión o contacta con soporte."
-      : "Can't reach server. Check your connection or contact support.";
-  }
-  if (err instanceof ApiError) {
-    if (err.status === 401 || err.status === 403) {
-      return spanish ? "Clave de acceso no válida" : "Invalid access key";
-    }
-    if (err.status >= 500) {
-      return spanish
-        ? "No se puede conectar con el servidor. Comprueba tu conexión o contacta con soporte."
-        : "Can't reach server. Check your connection or contact support.";
-    }
-    return err.message || (spanish ? "Clave de acceso no válida" : "Invalid access key");
-  }
-  return spanish
-    ? "No se puede conectar con el servidor. Comprueba tu conexión o contacta con soporte."
-    : "Can't reach server. Check your connection or contact support.";
-}
 
 // J3-N2-10: workspace slugs are fully dynamic. There is no hardcoded
 // list and no client-side membership check. We accept any URL-safe slug

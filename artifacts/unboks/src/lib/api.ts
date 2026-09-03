@@ -3131,6 +3131,7 @@ export interface WhatsAppConversationReplyResponse {
 export async function replyToWhatsAppConversation(
   conversationId: string,
   message: string,
+  requestId?: string,
 ): Promise<WhatsAppConversationReplyResponse> {
   const key = (conversationId ?? "").replace(/[\r\n]+/g, "").trim();
   const text = message ?? "";
@@ -3144,7 +3145,11 @@ export async function replyToWhatsAppConversation(
     "/messages/whatsapp/reply",
     {
       method: "POST",
-      body: JSON.stringify({ conversation_id: key, message: text }),
+      body: JSON.stringify({
+        conversation_id: key,
+        message: text,
+        ...(requestId ? { request_id: requestId } : {}),
+      }),
     },
   );
 }
@@ -4095,4 +4100,147 @@ export async function updateEscalationAlertSettings(
     body: JSON.stringify(payload),
   });
   return normalizeEscalationAlertSettings(raw);
+}
+
+export type MermaidReservationStage =
+  | "details"
+  | "quote"
+  | "payment"
+  | "booked"
+  | "cancelled";
+
+export interface MermaidReservationItem {
+  key: string;
+  label: string;
+  quantity: number;
+  unit_amount: number;
+  line_total: number;
+}
+
+export interface MermaidPrimaryAction {
+  id: "review_details" | "view_quote" | "open_conversation" | "view_receipt";
+  label: string;
+  href: string;
+}
+
+export interface MermaidReservationSummary {
+  publicId: string;
+  conversationId: string;
+  customerName: string;
+  language: string;
+  tripDate: string;
+  adults: number;
+  children: number;
+  infants: number;
+  pickupPreference: "pier" | "pickup_requested";
+  pickupLocation?: string | null;
+  dietaryRequirements?: string | null;
+  accessibilityNotes?: string | null;
+  specialRequests?: string | null;
+  catalogVersion: string;
+  currency: string;
+  total: number;
+  items: MermaidReservationItem[];
+  state: string;
+  stage: MermaidReservationStage;
+  availabilitySource: "demo_assumed";
+  bookingCode?: string | null;
+  quotePublicId?: string | null;
+  paymentReference?: string | null;
+  receiptPublicId?: string | null;
+  humanTakeover: boolean;
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+  primaryAction: MermaidPrimaryAction | null;
+  demo: true;
+}
+
+export interface MermaidReservationDetail extends MermaidReservationSummary {
+  documents: Array<{
+    public_id: string;
+    kind: "quote" | "receipt";
+    filename: string;
+    sha256: string;
+    delivery_status?: string | null;
+    delivery_attempts?: number | null;
+    delivery_error?: string | null;
+    created_at: string;
+  }>;
+  events: Array<{
+    id: number;
+    type: string;
+    fromState?: string | null;
+    toState?: string | null;
+    actor: string;
+    reason: string;
+    revision: number;
+    createdAt: string;
+  }>;
+  conversation: Array<{ role: string; text: string; created_at: string }>;
+}
+
+export interface MermaidCatalogResponse {
+  catalog: {
+    version: string;
+    service: {
+      name: string;
+      operating_weekdays: string[];
+      meeting_point: string;
+      arrival_time: string;
+      island_departure_time: string;
+    };
+    pricing: {
+      currencies: Record<string, Record<string, number>>;
+      default_currency: string;
+      pickup_price: null;
+    };
+    included: string[];
+    extras?: string[];
+    bring: string[];
+    policies: { cancellation: string; safety: string; insurance: string };
+  };
+  demo: true;
+  remindersEnabled: false;
+}
+
+export async function fetchMermaidReservations(
+  query = "",
+): Promise<MermaidReservationSummary[]> {
+  const params = new URLSearchParams({ _refresh: Date.now().toString() });
+  if (query.trim()) params.set("query", query.trim());
+  const response = await apiFetch<{
+    items: MermaidReservationSummary[];
+    demo: true;
+    remindersEnabled: false;
+  }>(
+    `/mermaid-reservations?${params.toString()}`,
+    {
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+    },
+    false,
+    true,
+  );
+  return response.items;
+}
+
+export function fetchMermaidReservation(
+  publicId: string,
+): Promise<MermaidReservationDetail> {
+  return apiFetch<MermaidReservationDetail>(
+    `/mermaid-reservations/${encodeURIComponent(publicId)}`,
+    { cache: "no-store" },
+    false,
+    true,
+  );
+}
+
+export function fetchMermaidCatalog(): Promise<MermaidCatalogResponse> {
+  return apiFetch<MermaidCatalogResponse>(
+    "/mermaid-reservations/catalog",
+    { cache: "no-store" },
+    false,
+    true,
+  );
 }

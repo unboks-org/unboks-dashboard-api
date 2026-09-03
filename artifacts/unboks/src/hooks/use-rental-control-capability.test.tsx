@@ -12,7 +12,9 @@ vi.mock("@/lib/rental-catalog", () => ({
 
 function NestedRentalObserver() {
   const capability = useRentalControlCapability();
-  return <span>{capability.enabled ? "editor ready" : "editor unavailable"}</span>;
+  return (
+    <span>{capability.enabled ? "editor ready" : "editor unavailable"}</span>
+  );
 }
 
 function RentalCapabilityBoundary() {
@@ -29,7 +31,9 @@ function RentalCapabilityBoundary() {
 
 function wrapper(client: QueryClient) {
   return function RentalQueryProvider({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    return (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
   };
 }
 
@@ -39,6 +43,19 @@ describe("useRentalControlCapability", () => {
     sessionStorage.clear();
     sessionStorage.setItem("unboks_active_tenant", "ali-car-rental");
     vi.mocked(fetchRentalCapability).mockReset();
+  });
+
+  it("does not block Mermaid navigation on an unrelated rental capability", () => {
+    sessionStorage.setItem("unboks_active_tenant", "mermaid");
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(<RentalCapabilityBoundary />, { wrapper: wrapper(client) });
+
+    expect(screen.getByText("controls unavailable")).toBeTruthy();
+    expect(screen.queryByText("loading controls")).toBeNull();
+    expect(fetchRentalCapability).not.toHaveBeenCalled();
   });
 
   it("does not refetch forever when the authorized rental editor mounts", async () => {
@@ -58,7 +75,9 @@ describe("useRentalControlCapability", () => {
   });
 
   it("keeps loaded controls mounted during a background verification", async () => {
-    let finishRefresh: ((value: { tenantSlug: string; enabled: boolean }) => void) | undefined;
+    let finishRefresh:
+      | ((value: { tenantSlug: string; enabled: boolean }) => void)
+      | undefined;
     vi.mocked(fetchRentalCapability)
       .mockResolvedValueOnce({ tenantSlug: "ali-car-rental", enabled: true })
       .mockImplementationOnce(
