@@ -40,21 +40,29 @@ describe("ConversationReplyComposer", () => {
   });
 
   it("renders approved English for Ali and unchanged Spanish for Clínica", () => {
-    const { unmount } = render(<ConversationReplyComposer conversationId="ali-1" />);
+    const { unmount } = render(
+      <ConversationReplyComposer conversationId="ali-1" />,
+    );
     expect(screen.getByPlaceholderText("Type a message…")).toBeTruthy();
-    expect(screen.getByText("Enter to send · Shift+Enter for a new line")).toBeTruthy();
+    expect(
+      screen.getByText("Enter to send · Shift+Enter for a new line"),
+    ).toBeTruthy();
     unmount();
 
     useTenant("consulta-despertares");
     render(<ConversationReplyComposer conversationId="clinic-1" />);
     expect(screen.getByPlaceholderText("Escribe un mensaje…")).toBeTruthy();
-    expect(screen.getByText("Enter para enviar · Mayús+Enter para una nueva línea")).toBeTruthy();
+    expect(
+      screen.getByText("Enter para enviar · Mayús+Enter para una nueva línea"),
+    ).toBeTruthy();
   });
 
   it("sends exact text once, clears after success, and refreshes the thread", async () => {
     const onSent = vi.fn();
     vi.mocked(replyToWhatsAppConversation).mockResolvedValue(successfulReply());
-    render(<ConversationReplyComposer conversationId="zernio-42" onSent={onSent} />);
+    render(
+      <ConversationReplyComposer conversationId="zernio-42" onSent={onSent} />,
+    );
     const textarea = screen.getByLabelText("Message for the customer");
     const exactText = "  Hello Carlos\nSecond line  ";
     fireEvent.change(textarea, { target: { value: exactText } });
@@ -62,7 +70,11 @@ describe("ConversationReplyComposer", () => {
 
     await waitFor(() => {
       expect(replyToWhatsAppConversation).toHaveBeenCalledTimes(1);
-      expect(replyToWhatsAppConversation).toHaveBeenCalledWith("zernio-42", exactText);
+      expect(replyToWhatsAppConversation).toHaveBeenCalledWith(
+        "zernio-42",
+        exactText,
+        expect.any(String),
+      );
       expect(onSent).toHaveBeenCalledTimes(1);
       expect((textarea as HTMLTextAreaElement).value).toBe("");
     });
@@ -84,6 +96,51 @@ describe("ConversationReplyComposer", () => {
     expect(replyToWhatsAppConversation).toHaveBeenCalledTimes(1);
   });
 
+  it("reuses the request identity after an uncertain failure, but not after success", async () => {
+    vi.mocked(replyToWhatsAppConversation)
+      .mockRejectedValueOnce(new ApiError(0, "Network error"))
+      .mockResolvedValue(successfulReply());
+    render(<ConversationReplyComposer conversationId="zernio-42" />);
+    const textarea = screen.getByLabelText("Message for the customer");
+    fireEvent.change(textarea, { target: { value: "One message" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByRole("alert");
+    const firstId = vi.mocked(replyToWhatsAppConversation).mock.calls[0][2];
+    expect(firstId).toMatch(/^[\da-f-]{36}$/i);
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() =>
+      expect((textarea as HTMLTextAreaElement).value).toBe(""),
+    );
+    expect(vi.mocked(replyToWhatsAppConversation).mock.calls[1][2]).toBe(
+      firstId,
+    );
+
+    fireEvent.change(textarea, { target: { value: "One message" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() =>
+      expect(replyToWhatsAppConversation).toHaveBeenCalledTimes(3),
+    );
+    expect(vi.mocked(replyToWhatsAppConversation).mock.calls[2][2]).not.toBe(
+      firstId,
+    );
+  });
+
+  it("uses a new request identity when the operator changes a failed message", async () => {
+    vi.mocked(replyToWhatsAppConversation).mockRejectedValue(
+      new ApiError(0, "Network error"),
+    );
+    render(<ConversationReplyComposer conversationId="zernio-42" />);
+    const textarea = screen.getByLabelText("Message for the customer");
+    fireEvent.change(textarea, { target: { value: "First draft" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByRole("alert");
+    fireEvent.change(textarea, { target: { value: "Revised draft" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByRole("alert");
+    const calls = vi.mocked(replyToWhatsAppConversation).mock.calls;
+    expect(calls[1][2]).not.toBe(calls[0][2]);
+  });
+
   it("keeps Clínica's provider error experience unchanged", async () => {
     useTenant("consulta-despertares");
     vi.mocked(replyToWhatsAppConversation).mockRejectedValue(
@@ -101,10 +158,15 @@ describe("ConversationReplyComposer", () => {
   });
 
   it("prevents rapid duplicate sends before React commits the pending state", async () => {
-    let resolveDelivery: ((value: ReturnType<typeof successfulReply>) => void) | undefined;
-    vi.mocked(replyToWhatsAppConversation).mockImplementation(() => new Promise((resolve) => {
-      resolveDelivery = resolve;
-    }));
+    let resolveDelivery:
+      | ((value: ReturnType<typeof successfulReply>) => void)
+      | undefined;
+    vi.mocked(replyToWhatsAppConversation).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDelivery = resolve;
+        }),
+    );
     render(<ConversationReplyComposer conversationId="zernio-42" />);
     const textarea = screen.getByLabelText("Message for the customer");
     fireEvent.change(textarea, { target: { value: "One message" } });
@@ -114,7 +176,9 @@ describe("ConversationReplyComposer", () => {
     expect(replyToWhatsAppConversation).toHaveBeenCalledTimes(1);
 
     resolveDelivery?.(successfulReply());
-    await waitFor(() => expect((textarea as HTMLTextAreaElement).value).toBe(""));
+    await waitFor(() =>
+      expect((textarea as HTMLTextAreaElement).value).toBe(""),
+    );
   });
 
   it("uses Enter to send and Shift+Enter to keep composing", async () => {
@@ -126,6 +190,8 @@ describe("ConversationReplyComposer", () => {
     expect(replyToWhatsAppConversation).not.toHaveBeenCalled();
 
     fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
-    await waitFor(() => expect(replyToWhatsAppConversation).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(replyToWhatsAppConversation).toHaveBeenCalledTimes(1),
+    );
   });
 });

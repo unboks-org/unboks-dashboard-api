@@ -55,8 +55,11 @@ describe("Mermaid reservation navigation", () => {
     expect(
       screen.queryByRole("button", { name: "Fleet & pricing" }),
     ).toBeNull();
-    expect(screen.getByText("WhatsApp trip reservations · Demo")).toBeTruthy();
+    expect(screen.getByText("TRACY · Guest operations")).toBeTruthy();
     expect(screen.getByText("TRACY is active")).toBeTruthy();
+    expect(
+      screen.getByRole("navigation", { name: "Mermaid guest operations" }),
+    ).toBeTruthy();
   });
 
   it("routes Reservations without leaking the Ali customer path", () => {
@@ -66,6 +69,19 @@ describe("Mermaid reservation navigation", () => {
       </RentalDashboardShell>,
     );
     fireEvent.click(screen.getAllByRole("button", { name: "Reservations" })[0]);
+    expect(window.location.pathname).toBe("/reservations");
+  });
+
+  it("returns a directly opened reservation to the Mermaid list", () => {
+    window.history.replaceState({}, "", "/reservations/mer-preview");
+    render(
+      <RentalDashboardShell active="customers" title="Reservation">
+        <div>Guest journey</div>
+      </RentalDashboardShell>,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Back to previous dashboard page" }),
+    );
     expect(window.location.pathname).toBe("/reservations");
   });
 });

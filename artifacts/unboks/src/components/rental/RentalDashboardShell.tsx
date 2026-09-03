@@ -165,9 +165,21 @@ export function RentalDashboardShell({
   const mermaid = isMermaidReservationTenant(tenant);
   const items = mermaid ? mermaidItems : rentalItems;
   const activeNav = normalizeRentalNav(active, items);
+  const searchLabel =
+    activeNav === "conversations"
+      ? "Search conversations"
+      : "Search reservations";
+  const searchPlaceholder =
+    activeNav === "conversations"
+      ? "Search guest or message"
+      : mermaid
+        ? "Search name, WhatsApp, quote or code"
+        : "Search name, phone or reference";
   const fallbackBackHref = location.startsWith("/customers/")
     ? "/customers"
-    : null;
+    : location.startsWith("/reservations/")
+      ? "/reservations"
+      : null;
   const hasHistoryBack = hasRentalBackHistory(tenant);
   const showBack = hasHistoryBack || Boolean(fallbackBackHref);
   const businessName =
@@ -219,17 +231,20 @@ export function RentalDashboardShell({
   const sidebar = (
     <div className="flex h-full flex-col bg-[#081c33] text-white">
       <div className="flex min-h-[88px] items-center gap-3 border-b border-white/10 px-5">
-        <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-[#d4aa58] text-sm font-bold text-[#081c33] shadow-[0_8px_24px_rgba(0,0,0,.2)]">
-          {initials}
+        <div
+          className={cn(
+            "flex h-11 w-11 items-center justify-center rounded-[14px] text-sm font-bold text-[#081c33] shadow-[0_8px_24px_rgba(0,0,0,.2)]",
+            mermaid ? "bg-[#65d8d0]" : "bg-[#d4aa58]",
+          )}
+        >
+          {mermaid ? <ShipWheel className="h-5 w-5" /> : initials}
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[15px] font-semibold tracking-[-0.01em]">
             {businessName}
           </p>
           <p className="mt-0.5 truncate text-xs text-white/50">
-            {mermaid
-              ? "WhatsApp trip reservations · Demo"
-              : "Rental operations"}
+            {mermaid ? "TRACY · Guest operations" : "Rental operations"}
           </p>
         </div>
         <button
@@ -265,7 +280,10 @@ export function RentalDashboardShell({
         </button>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3" aria-label="Rental workspace">
+      <nav
+        className="flex-1 space-y-1 px-3"
+        aria-label={mermaid ? "Mermaid guest operations" : "Rental workspace"}
+      >
         {items.map((item) => {
           const Icon = item.icon;
           const selected = activeNav === item.id;
@@ -280,7 +298,9 @@ export function RentalDashboardShell({
               className={cn(
                 "flex min-h-12 w-full items-center gap-3 rounded-[13px] px-3 text-left text-[14px] font-medium transition",
                 selected
-                  ? "bg-[#d4aa58] text-[#081c33] shadow-[0_8px_22px_rgba(0,0,0,.16)]"
+                  ? mermaid
+                    ? "bg-[#65d8d0] text-[#062f3d] shadow-[0_8px_22px_rgba(0,0,0,.16)]"
+                    : "bg-[#d4aa58] text-[#081c33] shadow-[0_8px_22px_rgba(0,0,0,.16)]"
                   : "text-white/68 hover:bg-white/[0.07] hover:text-white",
               )}
             >
@@ -295,7 +315,9 @@ export function RentalDashboardShell({
                     "inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-bold",
                     selected
                       ? "bg-[#081c33] text-white"
-                      : "bg-[#d4aa58] text-[#081c33]",
+                      : mermaid
+                        ? "bg-[#65d8d0] text-[#062f3d]"
+                        : "bg-[#d4aa58] text-[#081c33]",
                   )}
                   aria-label={`${actionCount} actions need attention`}
                 >
@@ -320,7 +342,12 @@ export function RentalDashboardShell({
   );
 
   return (
-    <div className="rental-v2 flex h-[100dvh] w-full overflow-hidden bg-[#f5f2ec] font-sans text-[#10243e]">
+    <div
+      className={cn(
+        "rental-v2 flex h-[100dvh] w-full overflow-hidden font-sans text-[#10243e]",
+        mermaid ? "bg-[#f3f8f7]" : "bg-[#f5f2ec]",
+      )}
+    >
       <aside className="hidden w-[264px] shrink-0 md:block">{sidebar}</aside>
 
       {mobileOpen && (
@@ -363,7 +390,7 @@ export function RentalDashboardShell({
               {title}
             </h1>
             {subtitle ? (
-              <div className="mt-0.5 truncate text-xs text-[#6d7784] sm:text-[13px]">
+              <div className="mt-0.5 truncate text-xs text-[#626d79] sm:text-[13px]">
                 {subtitle}
               </div>
             ) : null}
@@ -371,16 +398,12 @@ export function RentalDashboardShell({
           {typeof onSearchChange === "function" ? (
             <label className="hidden h-10 w-[min(34vw,360px)] items-center gap-2 rounded-xl border border-[#ded8cd] bg-white px-3 shadow-[0_1px_2px_rgba(17,33,52,.04)] md:flex">
               <Search className="h-4 w-4 text-[#7c8794]" />
-              <span className="sr-only">Search reservations</span>
+              <span className="sr-only">{searchLabel}</span>
               <input
                 type="search"
                 value={searchQuery}
                 onChange={(event) => onSearchChange(event.target.value)}
-                placeholder={
-                  mermaid
-                    ? "Search name, WhatsApp, quote or code"
-                    : "Search name, phone or reference"
-                }
+                placeholder={searchPlaceholder}
                 className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#9aa2ab]"
               />
             </label>
@@ -389,19 +412,19 @@ export function RentalDashboardShell({
         </header>
 
         {typeof onSearchChange === "function" ? (
-          <div className="border-b border-[#e5dfd5] bg-[#fbfaf7] px-3 pb-3 md:hidden">
+          <div
+            role="search"
+            aria-label={searchLabel}
+            className="border-b border-[#e5dfd5] bg-[#fbfaf7] px-3 pb-3 md:hidden"
+          >
             <label className="flex min-h-11 items-center gap-2 rounded-xl border border-[#ded8cd] bg-white px-3">
               <Search className="h-4 w-4 text-[#7c8794]" />
-              <span className="sr-only">Search reservations</span>
+              <span className="sr-only">{searchLabel}</span>
               <input
                 type="search"
                 value={searchQuery}
                 onChange={(event) => onSearchChange(event.target.value)}
-                placeholder={
-                  mermaid
-                    ? "Search name, WhatsApp, quote or code"
-                    : "Search name, phone or reference"
-                }
+                placeholder={searchPlaceholder}
                 className="min-w-0 flex-1 bg-transparent text-[15px] outline-none"
               />
             </label>
@@ -410,6 +433,7 @@ export function RentalDashboardShell({
 
         <main
           ref={mainRef}
+          tabIndex={0}
           className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-[calc(72px+env(safe-area-inset-bottom))] md:pb-0"
         >
           {children}
@@ -432,7 +456,11 @@ export function RentalDashboardShell({
                 aria-current={selected ? "page" : undefined}
                 className={cn(
                   "flex min-h-11 flex-col items-center justify-center gap-1 text-[9px] font-semibold",
-                  selected ? "text-[#9b6f1a]" : "text-[#6d7784]",
+                  selected
+                    ? mermaid
+                      ? "text-[#08777b]"
+                      : "text-[#9b6f1a]"
+                    : "text-[#626d79]",
                 )}
               >
                 <span className="relative">

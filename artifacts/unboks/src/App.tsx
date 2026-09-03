@@ -302,6 +302,10 @@ function RentalOnlyRoute({ children }: { children: ReactNode }) {
   return enabled ? children : <NotFound />;
 }
 
+function MermaidOnlyRoute({ children }: { children: ReactNode }) {
+  return isMermaidReservationTenant() ? children : <NotFound />;
+}
+
 function FollowUpsRoute() {
   return (
     <ProtectedRoute>
@@ -523,16 +527,16 @@ function Router() {
       </Route>
       <Route path="/reservations/:reservationId">
         <ProtectedRoute>
-          <RentalOnlyRoute>
+          <MermaidOnlyRoute>
             <MermaidReservationWorkspace />
-          </RentalOnlyRoute>
+          </MermaidOnlyRoute>
         </ProtectedRoute>
       </Route>
       <Route path="/reservations">
         <ProtectedRoute>
-          <RentalOnlyRoute>
+          <MermaidOnlyRoute>
             <MermaidReservations />
-          </RentalOnlyRoute>
+          </MermaidOnlyRoute>
         </ProtectedRoute>
       </Route>
       <Route path="/customers/:reservationId">
@@ -575,9 +579,9 @@ function Router() {
       </Route>
       <Route path="/trip">
         <ProtectedRoute>
-          <RentalOnlyRoute>
+          <MermaidOnlyRoute>
             <MermaidTripPricing />
-          </RentalOnlyRoute>
+          </MermaidOnlyRoute>
         </ProtectedRoute>
       </Route>
       {/* Deep links into Escalations. Both the bare /escalations

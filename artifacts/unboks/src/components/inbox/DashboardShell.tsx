@@ -32,8 +32,9 @@ import {
 } from "@/lib/tenant-ui";
 import { RentalDashboardShell } from "@/components/rental/RentalDashboardShell";
 import { useRentalControlCapability } from "@/hooks/use-rental-control-capability";
-import { fetchQuoteLeads } from "@/lib/api";
+import { fetchMermaidReservations, fetchQuoteLeads } from "@/lib/api";
 import { tenantKey } from "@/lib/query-keys";
+import { countMermaidActions } from "@/lib/mermaid-operations";
 import { rentalLeadNeedsStaffAction } from "@/lib/rental-operations";
 
 export const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
@@ -173,7 +174,15 @@ export function DashboardShell({
     refetchOnWindowFocus: true,
     staleTime: 0,
   });
-  const rentalActionCount = (rentalActionQueue.data || []).filter(
+  const mermaidActionQueue = useQuery({
+    queryKey: tenantKey("mermaid-reservations", ""),
+    queryFn: () => fetchMermaidReservations(),
+    enabled: useRentalShell && mermaid,
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+  });
+  const aliActionCount = (rentalActionQueue.data || []).filter(
     rentalLeadNeedsStaffAction,
   ).length;
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -218,6 +227,10 @@ export function DashboardShell({
       (c) => !isRowBlocked(collectConversationHideKeys(c)),
     );
   }, [enrichmentConversations, isRowBlocked]);
+
+  const rentalActionCount = mermaid
+    ? countMermaidActions(mermaidActionQueue.data ?? [], allConversations)
+    : aliActionCount;
 
   const hasConvData = !convLoading && !isError && Boolean(apiConversations);
   const hasEscData = !escLoading && Boolean(apiEscalations);

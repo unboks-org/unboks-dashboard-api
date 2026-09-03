@@ -24,7 +24,10 @@ describe("Mermaid reservation API", () => {
             }),
             {
               status: 200,
-              headers: { "Content-Type": "application/json" },
+              headers: {
+                "Content-Type": "application/json",
+                "X-Unboks-Tenant": "mermaid",
+              },
             },
           ),
         ),
@@ -47,4 +50,29 @@ describe("Mermaid reservation API", () => {
       expect(request?.cache).toBe("no-store");
     }
   });
+
+  it.each([null, "ali-car-rental", "mermaid, consulta-despertares"])(
+    "rejects unproven or conflicting workspace identity: %s",
+    async (tenant) => {
+      vi.mocked(fetch).mockImplementation(
+        async () =>
+          new Response(JSON.stringify({ items: [], catalog: {} }), {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+              ...(tenant ? { "X-Unboks-Tenant": tenant } : {}),
+            },
+          }),
+      );
+      await expect(fetchMermaidReservations()).rejects.toThrow(
+        "Workspace response rejected",
+      );
+      await expect(fetchMermaidReservation("mer-1")).rejects.toThrow(
+        "Workspace response rejected",
+      );
+      await expect(fetchMermaidCatalog()).rejects.toThrow(
+        "Workspace response rejected",
+      );
+    },
+  );
 });

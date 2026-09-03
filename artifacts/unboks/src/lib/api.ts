@@ -3131,6 +3131,7 @@ export interface WhatsAppConversationReplyResponse {
 export async function replyToWhatsAppConversation(
   conversationId: string,
   message: string,
+  requestId?: string,
 ): Promise<WhatsAppConversationReplyResponse> {
   const key = (conversationId ?? "").replace(/[\r\n]+/g, "").trim();
   const text = message ?? "";
@@ -3144,7 +3145,11 @@ export async function replyToWhatsAppConversation(
     "/messages/whatsapp/reply",
     {
       method: "POST",
-      body: JSON.stringify({ conversation_id: key, message: text }),
+      body: JSON.stringify({
+        conversation_id: key,
+        message: text,
+        ...(requestId ? { request_id: requestId } : {}),
+      }),
     },
   );
 }
@@ -4191,6 +4196,7 @@ export interface MermaidCatalogResponse {
       pickup_price: null;
     };
     included: string[];
+    extras?: string[];
     bring: string[];
     policies: { cancellation: string; safety: string; insurance: string };
   };
@@ -4207,10 +4213,15 @@ export async function fetchMermaidReservations(
     items: MermaidReservationSummary[];
     demo: true;
     remindersEnabled: false;
-  }>(`/mermaid-reservations?${params.toString()}`, {
-    cache: "no-store",
-    headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
-  });
+  }>(
+    `/mermaid-reservations?${params.toString()}`,
+    {
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+    },
+    false,
+    true,
+  );
   return response.items;
 }
 
@@ -4220,11 +4231,16 @@ export function fetchMermaidReservation(
   return apiFetch<MermaidReservationDetail>(
     `/mermaid-reservations/${encodeURIComponent(publicId)}`,
     { cache: "no-store" },
+    false,
+    true,
   );
 }
 
 export function fetchMermaidCatalog(): Promise<MermaidCatalogResponse> {
-  return apiFetch<MermaidCatalogResponse>("/mermaid-reservations/catalog", {
-    cache: "no-store",
-  });
+  return apiFetch<MermaidCatalogResponse>(
+    "/mermaid-reservations/catalog",
+    { cache: "no-store" },
+    false,
+    true,
+  );
 }
