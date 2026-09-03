@@ -2335,6 +2335,19 @@ export interface InfoUpdateUpdatePayload {
   endDate?: string | null;
 }
 
+export interface InfoUpdateImprovePayload {
+  text: string;
+  type: string;
+  startDate?: string | null;
+  endDate?: string | null;
+}
+
+export interface InfoUpdateImproveResponse {
+  originalScore: number;
+  improvedScore: number;
+  improvedText: string;
+}
+
 // ---------------------------------------------------------------------------
 // Core fetch wrapper
 // ---------------------------------------------------------------------------
@@ -2772,6 +2785,15 @@ export async function saveProductSettings(
 
 export async function fetchInfoUpdates(): Promise<InfoUpdatesApiResponse> {
   return apiFetch<InfoUpdatesApiResponse>("/settings/info-updates");
+}
+
+export async function improveInfoUpdateInstruction(
+  payload: InfoUpdateImprovePayload,
+): Promise<InfoUpdateImproveResponse> {
+  return apiFetch<InfoUpdateImproveResponse>("/settings/info-updates/improve", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function createInfoUpdate(

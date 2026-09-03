@@ -38,6 +38,7 @@ import {
 import { useYourInfoUpdates, UPDATE_TYPES, type YourInfoUpdate, type YourInfoUpdateType } from "@/hooks/use-your-info-updates";
 import { KnowledgeFileUploader } from "@/components/settings/KnowledgeFileUploader";
 import { KnowledgeMediaAttachments } from "@/components/settings/KnowledgeMediaAttachments";
+import { KnowledgeInstructionOptimizer } from "@/components/settings/KnowledgeInstructionOptimizer";
 import { CloudKnowledgeConnections } from "@/components/settings/CloudKnowledgeConnections";
 import { DataRetentionSettings } from "@/components/settings/DataRetentionSettings";
 import { BlockedSendersList } from "@/components/settings/BlockedSendersList";
@@ -50,6 +51,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   getTenantUiConfig,
+  isConsultaDespertaresTenant,
   isRentalDashboardV2Enabled,
   isSpainSpanishTenant,
   tenantText,
@@ -962,6 +964,7 @@ function SavedKnowledgeUpdateCard({
   const [draftStart, setDraftStart] = useState(update.startDate ?? "");
   const [draftEnd, setDraftEnd] = useState(update.endDate ?? "");
   const [busy, setBusy] = useState(false);
+  const showInstructionOptimizer = isConsultaDespertaresTenant();
   const typeLabel = UPDATE_TYPES.find((t) => t.value === update.type)?.label ?? update.type;
   const draftDirty =
     draftType !== update.type ||
@@ -1112,6 +1115,16 @@ function SavedKnowledgeUpdateCard({
               className="mt-1 w-full min-w-0 resize-y rounded-lg border border-[#dadce0] bg-white px-3 py-2 text-[13px] text-[#202124] outline-none placeholder:text-[#9aa0a6] focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] disabled:bg-[#f8f9fa]"
             />
           </label>
+          {showInstructionOptimizer && (
+            <KnowledgeInstructionOptimizer
+              text={draftText}
+              type={draftType}
+              startDate={draftStart}
+              endDate={draftEnd}
+              disabled={busy}
+              onApply={setDraftText}
+            />
+          )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
               <FieldLabel>
@@ -1237,6 +1250,7 @@ export default function Settings() {
     rentalCapability.enabled ||
     (rentalCapability.isLoading && isRentalDashboardV2Enabled()) ||
     (rentalCapability.isUnavailable && isRentalDashboardV2Enabled());
+  const showInstructionOptimizer = isConsultaDespertaresTenant();
   // Keep local state in sync if the URL changes from outside (deep link
   // arrives, browser back/forward, etc.).
   useEffect(() => {
@@ -1837,6 +1851,16 @@ export default function Settings() {
                           className="mt-1 w-full min-w-0 resize-y rounded-lg border border-[#dadce0] bg-white px-3 py-2 text-[13px] text-[#202124] outline-none placeholder:text-[#9aa0a6] focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
                         />
                       </label>
+
+                      {showInstructionOptimizer && (
+                        <KnowledgeInstructionOptimizer
+                          text={updateText}
+                          type={updateType}
+                          startDate={updateStart}
+                          endDate={updateEnd}
+                          onApply={setUpdateText}
+                        />
+                      )}
 
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <label className="block">
