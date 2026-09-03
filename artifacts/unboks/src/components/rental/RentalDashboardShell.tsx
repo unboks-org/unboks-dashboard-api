@@ -9,8 +9,10 @@ import {
   MessageCircleMore,
   Search,
   Settings,
+  ShipWheel,
   UsersRound,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/useAuth";
 import { useAgentStatus, useSetAgentStatus } from "@/hooks/use-agent-status";
@@ -23,16 +25,26 @@ import {
   rentalScrollPosition,
 } from "@/lib/rental-navigation-history";
 import { getClientSlug } from "@/lib/tenant";
+import { isMermaidReservationTenant } from "@/lib/tenant-ui";
 import { cn } from "@/lib/utils";
 
 export type RentalNavId =
   | "today"
   | "customers"
+  | "reservations"
   | "conversations"
   | "fleet"
+  | "trip"
   | "settings";
 
-const items = [
+interface RentalNavItem {
+  id: RentalNavId;
+  href: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+const rentalItems: RentalNavItem[] = [
   {
     id: "today" as const,
     href: "/today",
@@ -65,9 +77,48 @@ const items = [
   },
 ];
 
-export function normalizeRentalNav(active: string): RentalNavId {
-  if (active === "followups") return "customers";
-  if (active === "rental") return "fleet";
+const mermaidItems: RentalNavItem[] = [
+  {
+    id: "today" as const,
+    href: "/today",
+    label: "Today",
+    icon: CalendarCheck2,
+  },
+  {
+    id: "reservations" as const,
+    href: "/reservations",
+    label: "Reservations",
+    icon: UsersRound,
+  },
+  {
+    id: "conversations" as const,
+    href: "/conversations",
+    label: "Conversations",
+    icon: MessageCircleMore,
+  },
+  {
+    id: "trip" as const,
+    href: "/trip",
+    label: "Trip & pricing",
+    icon: ShipWheel,
+  },
+  {
+    id: "settings" as const,
+    href: "/settings",
+    label: "Settings",
+    icon: Settings,
+  },
+];
+
+export function normalizeRentalNav(
+  active: string,
+  items = rentalItems,
+): RentalNavId {
+  const mermaid = items === mermaidItems;
+  if (mermaid && active === "customers") return "reservations";
+  if (mermaid && active === "fleet") return "trip";
+  if (active === "followups") return mermaid ? "reservations" : "customers";
+  if (active === "rental") return mermaid ? "trip" : "fleet";
   if (
     active === "inbox" ||
     active === "escalations" ||
@@ -110,14 +161,18 @@ export function RentalDashboardShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
   const restoredEntryRef = useRef<string | null>(null);
-  const activeNav = normalizeRentalNav(active);
   const tenant = getClientSlug();
+  const mermaid = isMermaidReservationTenant(tenant);
+  const items = mermaid ? mermaidItems : rentalItems;
+  const activeNav = normalizeRentalNav(active, items);
   const fallbackBackHref = location.startsWith("/customers/")
     ? "/customers"
     : null;
   const hasHistoryBack = hasRentalBackHistory(tenant);
   const showBack = hasHistoryBack || Boolean(fallbackBackHref);
-  const businessName = profile.data?.name?.trim() || "Ali Car Rental";
+  const businessName =
+    profile.data?.name?.trim() ||
+    (mermaid ? "Mermaid Boat Trips Curaçao" : "Ali Car Rental");
   const initials =
     businessName
       .split(/\s+/)
@@ -172,7 +227,9 @@ export function RentalDashboardShell({
             {businessName}
           </p>
           <p className="mt-0.5 truncate text-xs text-white/50">
-            Rental operations
+            {mermaid
+              ? "WhatsApp trip reservations · Demo"
+              : "Rental operations"}
           </p>
         </div>
         <button
@@ -201,10 +258,10 @@ export function RentalDashboardShell({
             )}
           />
           {agent.isLoading
-            ? "Checking Nick…"
+            ? `Checking ${mermaid ? "TRACY" : "Nick"}…`
             : agent.data?.active
-              ? "Nick is active"
-              : "Nick is paused"}
+              ? `${mermaid ? "TRACY" : "Nick"} is active`
+              : `${mermaid ? "TRACY" : "Nick"} is paused`}
         </button>
       </div>
 
@@ -314,12 +371,16 @@ export function RentalDashboardShell({
           {typeof onSearchChange === "function" ? (
             <label className="hidden h-10 w-[min(34vw,360px)] items-center gap-2 rounded-xl border border-[#ded8cd] bg-white px-3 shadow-[0_1px_2px_rgba(17,33,52,.04)] md:flex">
               <Search className="h-4 w-4 text-[#7c8794]" />
-              <span className="sr-only">Search customers</span>
+              <span className="sr-only">Search reservations</span>
               <input
                 type="search"
                 value={searchQuery}
                 onChange={(event) => onSearchChange(event.target.value)}
-                placeholder="Search name, phone or reference"
+                placeholder={
+                  mermaid
+                    ? "Search name, WhatsApp, quote or code"
+                    : "Search name, phone or reference"
+                }
                 className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#9aa2ab]"
               />
             </label>
@@ -331,12 +392,16 @@ export function RentalDashboardShell({
           <div className="border-b border-[#e5dfd5] bg-[#fbfaf7] px-3 pb-3 md:hidden">
             <label className="flex min-h-11 items-center gap-2 rounded-xl border border-[#ded8cd] bg-white px-3">
               <Search className="h-4 w-4 text-[#7c8794]" />
-              <span className="sr-only">Search customers</span>
+              <span className="sr-only">Search reservations</span>
               <input
                 type="search"
                 value={searchQuery}
                 onChange={(event) => onSearchChange(event.target.value)}
-                placeholder="Search name, phone or reference"
+                placeholder={
+                  mermaid
+                    ? "Search name, WhatsApp, quote or code"
+                    : "Search name, phone or reference"
+                }
                 className="min-w-0 flex-1 bg-transparent text-[15px] outline-none"
               />
             </label>
@@ -385,7 +450,11 @@ export function RentalDashboardShell({
                   ) : null}
                 </span>
                 <span className="max-w-full truncate px-1">
-                  {item.id === "fleet" ? "Fleet" : item.label}
+                  {item.id === "fleet"
+                    ? "Fleet"
+                    : item.id === "trip"
+                      ? "Trip"
+                      : item.label}
                 </span>
               </button>
             );

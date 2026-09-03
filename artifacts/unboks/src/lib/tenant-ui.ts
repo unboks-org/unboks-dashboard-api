@@ -48,6 +48,10 @@ export function isAliRentalTenant(slug = getClientSlug()): boolean {
   return slug === "ali-car-rental";
 }
 
+export function isMermaidReservationTenant(slug = getClientSlug()): boolean {
+  return slug === "mermaid";
+}
+
 export function isConsultaDespertaresTenant(slug = getClientSlug()): boolean {
   return slug === "consulta-despertares";
 }
@@ -58,7 +62,7 @@ export function isConsultaDespertaresTenant(slug = getClientSlug()): boolean {
  * rental tenants are added only after their workflow configuration is ready.
  */
 export function isRentalDashboardV2Enabled(slug = getClientSlug()): boolean {
-  return slug === "ali-car-rental";
+  return slug === "ali-car-rental" || slug === "mermaid";
 }
 
 export function isSpainSpanishTenant(slug = getClientSlug()): boolean {

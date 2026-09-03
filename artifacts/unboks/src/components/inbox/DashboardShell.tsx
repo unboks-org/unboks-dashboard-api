@@ -26,7 +26,10 @@ import { filterActiveAppointments } from "@/lib/appointment-classifier";
 import { RefreshButton } from "@/components/inbox/RefreshButton";
 import { OnboardingBanner } from "@/components/onboarding/OnboardingBanner";
 import { motion, AnimatePresence } from "framer-motion";
-import { isRentalDashboardV2Enabled } from "@/lib/tenant-ui";
+import {
+  isMermaidReservationTenant,
+  isRentalDashboardV2Enabled,
+} from "@/lib/tenant-ui";
 import { RentalDashboardShell } from "@/components/rental/RentalDashboardShell";
 import { useRentalControlCapability } from "@/hooks/use-rental-control-capability";
 import { fetchQuoteLeads } from "@/lib/api";
@@ -156,14 +159,16 @@ export function DashboardShell({
   const search = useSearch();
   const { logout } = useAuth();
   const rentalCapability = useRentalControlCapability();
+  const mermaid = isMermaidReservationTenant();
   const useRentalShell =
+    mermaid ||
     rentalCapability.enabled ||
     (rentalCapability.isLoading && isRentalDashboardV2Enabled()) ||
     (rentalCapability.isUnavailable && isRentalDashboardV2Enabled());
   const rentalActionQueue = useQuery({
     queryKey: tenantKey("quote-leads"),
     queryFn: () => fetchQuoteLeads(),
-    enabled: useRentalShell,
+    enabled: useRentalShell && !mermaid,
     refetchInterval: 10_000,
     refetchOnWindowFocus: true,
     staleTime: 0,

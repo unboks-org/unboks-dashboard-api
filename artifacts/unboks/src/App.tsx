@@ -28,6 +28,7 @@ import { FeatureTogglesProvider } from "@/lib/feature-toggles";
 import { DEBUG_LOGS_ENABLED, debugLog } from "@/lib/debug-log";
 import {
   isRentalDashboardV2Enabled,
+  isMermaidReservationTenant,
   isSpainSpanishTenant,
   tenantText,
 } from "@/lib/tenant-ui";
@@ -47,6 +48,12 @@ const RentalCustomers = lazy(() => import("@/pages/RentalCustomers"));
 const RentalCustomerWorkspace = lazy(
   () => import("@/pages/RentalCustomerWorkspace"),
 );
+const MermaidToday = lazy(() => import("@/pages/MermaidToday"));
+const MermaidReservations = lazy(() => import("@/pages/MermaidReservations"));
+const MermaidReservationWorkspace = lazy(
+  () => import("@/pages/MermaidReservationWorkspace"),
+);
+const MermaidTripPricing = lazy(() => import("@/pages/MermaidTripPricing"));
 const Analytics = lazy(() => import("@/pages/Analytics"));
 const Help = lazy(() => import("@/pages/Help"));
 const Images = lazy(() => import("@/pages/Images"));
@@ -279,14 +286,17 @@ const KNOWN_TENANT_SECTIONS = new Set([
   "follow-ups",
   "today",
   "customers",
+  "reservations",
   "conversations",
   "fleet",
+  "trip",
 ]);
 
 function RentalOnlyRoute({ children }: { children: ReactNode }) {
   const capability = useRentalControlCapability();
   if (capability.isLoading) return <RouteLoading />;
   const enabled =
+    isMermaidReservationTenant() ||
     capability.enabled ||
     (capability.isUnavailable && isRentalDashboardV2Enabled());
   return enabled ? children : <NotFound />;
@@ -304,6 +314,7 @@ function FollowUpsCapabilityRoute() {
   const capability = useRentalControlCapability();
   if (capability.isLoading) return <RouteLoading />;
   if (
+    isMermaidReservationTenant() ||
     capability.enabled ||
     (capability.isUnavailable && isRentalDashboardV2Enabled())
   ) {
@@ -324,6 +335,7 @@ function LegacyRentalCapabilityRoute() {
   const capability = useRentalControlCapability();
   if (capability.isLoading) return <RouteLoading />;
   if (
+    isMermaidReservationTenant() ||
     capability.enabled ||
     (capability.isUnavailable && isRentalDashboardV2Enabled())
   ) {
@@ -348,6 +360,7 @@ function HomeCapabilityRoute() {
   const capability = useRentalControlCapability();
   if (capability.isLoading) return <RouteLoading />;
   if (
+    isMermaidReservationTenant() ||
     capability.enabled ||
     (capability.isUnavailable && isRentalDashboardV2Enabled())
   ) {
@@ -504,7 +517,21 @@ function Router() {
       <Route path="/today">
         <ProtectedRoute>
           <RentalOnlyRoute>
-            <RentalToday />
+            {isMermaidReservationTenant() ? <MermaidToday /> : <RentalToday />}
+          </RentalOnlyRoute>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/reservations/:reservationId">
+        <ProtectedRoute>
+          <RentalOnlyRoute>
+            <MermaidReservationWorkspace />
+          </RentalOnlyRoute>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/reservations">
+        <ProtectedRoute>
+          <RentalOnlyRoute>
+            <MermaidReservations />
           </RentalOnlyRoute>
         </ProtectedRoute>
       </Route>
@@ -518,7 +545,11 @@ function Router() {
       <Route path="/customers">
         <ProtectedRoute>
           <RentalOnlyRoute>
-            <RentalCustomers />
+            {isMermaidReservationTenant() ? (
+              <Redirect to="/reservations" replace />
+            ) : (
+              <RentalCustomers />
+            )}
           </RentalOnlyRoute>
         </ProtectedRoute>
       </Route>
@@ -533,8 +564,19 @@ function Router() {
         <ProtectedRoute>
           <RentalOnlyRoute>
             <SettingsErrorBoundary>
-              <Rental />
+              {isMermaidReservationTenant() ? (
+                <Redirect to="/trip" replace />
+              ) : (
+                <Rental />
+              )}
             </SettingsErrorBoundary>
+          </RentalOnlyRoute>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/trip">
+        <ProtectedRoute>
+          <RentalOnlyRoute>
+            <MermaidTripPricing />
           </RentalOnlyRoute>
         </ProtectedRoute>
       </Route>
