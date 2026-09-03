@@ -1,0 +1,98 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { EscalationReplyComposer } from "./EscalationReplyComposer";
+
+describe("escalation delivery confirmation", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    localStorage.clear();
+    sessionStorage.setItem("unboks_active_tenant", "mermaid");
+    localStorage.setItem("wtyj_token_mermaid", "synthetic-test-token");
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  function composer(mode: "soft" | "hard") {
+    const onDone = vi.fn();
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <EscalationReplyComposer
+          conversationDbId="test"
+          conversationId="guest"
+          mode={mode}
+          channel="WhatsApp"
+          onDone={onDone}
+        />
+      </QueryClientProvider>,
+    );
+    const draft = screen.getByRole("textbox");
+    fireEvent.change(draft, { target: { value: "Synthetic test message" } });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name:
+          mode === "soft"
+            ? "Send guidance and mark resolved"
+            : "Reply to customer and mark resolved",
+      }),
+    );
+    return { draft: draft as HTMLTextAreaElement, onDone };
+  }
+
+  it.each(["soft", "hard"] as const)(
+    "keeps %s draft and never resolves after lost delivery confirmation",
+    async (mode) => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        new Response(JSON.stringify({ detail: "Lost confirmation" }), {
+          status: 502,
+        }),
+      );
+      const { draft, onDone } = composer(mode);
+      await waitFor(() =>
+        expect(screen.getByRole("status").textContent).toMatch(
+          /delivery.*is not confirmed/,
+        ),
+      );
+      expect(screen.getByRole("status").textContent).not.toContain(
+        "was not delivered",
+      );
+      expect(draft.value).toBe("Synthetic test message");
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(onDone).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["soft", "hard"] as const)(
+    "clears a confirmed %s send even if subsequent resolution loses its response",
+    async (mode) => {
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ ok: true }), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({ detail: "Lost resolution confirmation" }),
+            { status: 502 },
+          ),
+        );
+      const { draft, onDone } = composer(mode);
+      await waitFor(() =>
+        expect(screen.getByRole("status").textContent).toContain(
+          "resolution is not confirmed",
+        ),
+      );
+      expect(screen.getByRole("status").textContent).toContain(
+        mode === "soft" ? "Guidance sent to the Agent" : "Message sent",
+      );
+      expect(draft.value).toBe("");
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(String(vi.mocked(fetch).mock.calls[1][0])).toContain("/resolve");
+      expect(onDone).not.toHaveBeenCalled();
+    },
+  );
+});

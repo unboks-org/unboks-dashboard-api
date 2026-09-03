@@ -1,3 +1,10 @@
+import { webcrypto } from "node:crypto";
+
+Object.defineProperty(globalThis, "crypto", {
+  configurable: true,
+  value: webcrypto,
+});
+
 class MemoryStorage implements Storage {
   private values = new Map<string, string>();
 

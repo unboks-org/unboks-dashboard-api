@@ -17,11 +17,9 @@
  * customer-facing reply, so AI rewriting would be off-purpose; the AI Editor
  * button and panel are hidden entirely.
  *
- * If a send endpoint isn't connected (status 0 / 404 / 501 / 503), the
- * composer shows the calm fallback copy specified by product:
- *
- *   Soft: "Saved. Marina connection will be completed by the Unboks team."
- *   Hard: "Direct customer reply will be connected by the Unboks team."
+ * A failed response does not prove delivery failed. Keep the draft and
+ * explain that confirmation is missing; unchanged retries reuse the same
+ * durable request identity at the API boundary.
  *
  * Imperative handle
  * -----------------
@@ -188,7 +186,7 @@ export const EscalationReplyComposer = forwardRef<
   // When the operator toggles soft/hard we deliberately keep `draft` and
   // `prevDraft` so an in-progress message survives the switch. We do reset
   // the AI panel and any stale per-action notice, since both are tied to the
-  // previous mode's intent (notices say "Saved..." vs "Reply will be...";
+  // previous mode's intent (internal guidance vs customer reply;
   // the AI panel makes no sense in soft mode).
   useEffect(() => {
     setAiOpen(false);
@@ -248,8 +246,8 @@ export const EscalationReplyComposer = forwardRef<
               setNotice({
                 tone: "info",
                 text: tenantText(
-                  "Saved. Agent connection will be completed by the Unboks team.",
-                  "Guardado. El equipo de Unboks completará la conexión con el agente.",
+                  "Delivery is not confirmed. Your draft is still here. Retry it unchanged to reuse the same request.",
+                  "El envío no está confirmado. El borrador sigue aquí. Reinténtalo sin modificarlo para reutilizar la misma solicitud.",
                 ),
               });
               return;
@@ -258,8 +256,8 @@ export const EscalationReplyComposer = forwardRef<
               tone: "error",
               text:
                 tenantText(
-                  "Couldn't send guidance: ",
-                  "No se han podido enviar las instrucciones: ",
+                  "Guidance delivery is not confirmed. Retry unchanged. Details: ",
+                  "El envío de instrucciones no está confirmado. Reinténtalo sin cambios. Detalles: ",
                 ) +
                 (err instanceof Error ? err.message : tenantText("Unknown error", "Error desconocido")),
             });
@@ -288,8 +286,8 @@ export const EscalationReplyComposer = forwardRef<
             setNotice({
               tone: "info",
               text: tenantText(
-                "Direct customer reply will be connected by the Unboks team.",
-                "El equipo de Unboks habilitará la respuesta directa a la persona.",
+                "Delivery is not confirmed. Your draft is still here. Retry it unchanged to reuse the same request.",
+                "El envío no está confirmado. El borrador sigue aquí. Reinténtalo sin modificarlo para reutilizar la misma solicitud.",
               ),
             });
             return;
@@ -297,7 +295,7 @@ export const EscalationReplyComposer = forwardRef<
           setNotice({
             tone: "error",
             text:
-              tenantText("Couldn't send reply: ", "No se ha podido enviar la respuesta: ") +
+              tenantText("Reply delivery is not confirmed. Retry unchanged. Details: ", "El envío de la respuesta no está confirmado. Reinténtalo sin cambios. Detalles: ") +
               (err instanceof Error ? err.message : tenantText("Unknown error", "Error desconocido")),
           });
         },
@@ -368,8 +366,8 @@ export const EscalationReplyComposer = forwardRef<
                 tone: "warning",
                 text:
                   tenantText(
-                    "Message sent. Mark resolved will be connected by the Unboks team.",
-                    "Mensaje enviado. El equipo de Unboks habilitará la opción de marcar como resuelto.",
+                    isSoft ? "Guidance sent to the Agent. Resolution is not confirmed. Refresh before retrying Resolve." : "Message sent. Resolution is not confirmed. Refresh before retrying Resolve.",
+                    isSoft ? "Instrucciones enviadas al agente. La resolución no está confirmada. Actualiza antes de volver a resolver." : "Mensaje enviado. La resolución no está confirmada. Actualiza antes de volver a resolver.",
                   ),
               });
               return;
@@ -378,8 +376,8 @@ export const EscalationReplyComposer = forwardRef<
               tone: "warning",
               text:
                 tenantText(
-                  "Message sent, but escalation was not marked resolved: ",
-                  "Mensaje enviado, pero la solicitud no se ha marcado como resuelta: ",
+                  isSoft ? "Guidance sent to the Agent, but resolution is not confirmed: " : "Message sent, but resolution is not confirmed: ",
+                  isSoft ? "Instrucciones enviadas al agente, pero la resolución no está confirmada: " : "Mensaje enviado, pero la resolución no está confirmada: ",
                 ) +
                 (err instanceof Error ? err.message : tenantText("Unknown error", "Error desconocido")),
             });
@@ -403,17 +401,13 @@ export const EscalationReplyComposer = forwardRef<
           onError: (err) => {
             setCombinedStep(null);
             if (isNotConnected(err)) {
-              // Send endpoint not connected. Per product spec, we keep
-              // the calm placeholder wording for missing endpoints, but
-              // for the combined action we also state explicitly that
-              // the escalation was not resolved so the operator isn't
-              // misled into thinking the second step ran.
+              // Without delivery confirmation, do not attempt resolution.
               setNotice({
                 tone: "info",
                 text:
                   tenantText(
-                    "Saved. Agent connection will be completed by the Unboks team. Escalation was not resolved.",
-                    "Guardado. El equipo de Unboks completará la conexión con el agente. La solicitud no se ha resuelto.",
+                    "Delivery is not confirmed. Escalation was not resolved. Retry the unchanged draft to reuse the same request.",
+                    "El envío no está confirmado. La solicitud no se ha resuelto. Reintenta el borrador sin modificarlo para reutilizar la misma solicitud.",
                   ),
               });
               return;
@@ -439,8 +433,8 @@ export const EscalationReplyComposer = forwardRef<
               tone: "info",
               text:
                 tenantText(
-                  "Direct customer reply will be connected by the Unboks team. Escalation was not resolved.",
-                  "El equipo de Unboks habilitará la respuesta directa a la persona. La solicitud no se ha resuelto.",
+                  "Delivery is not confirmed. Escalation was not resolved. Retry the unchanged draft to reuse the same request.",
+                  "El envío no está confirmado. La solicitud no se ha resuelto. Reintenta el borrador sin modificarlo para reutilizar la misma solicitud.",
                 ),
             });
             return;
@@ -1099,15 +1093,15 @@ function formatSendAndResolveFailure(err: unknown, directCustomerReply: boolean)
     : tenantText("Unknown error", "Error desconocido");
   const target = directCustomerReply
     ? tenantText(
-        "Message was not delivered through WhatsApp",
-        "El mensaje no se ha entregado por WhatsApp",
+        "WhatsApp message delivery is not confirmed",
+        "La entrega del mensaje de WhatsApp no está confirmada",
       )
     : tenantText(
-        "Guidance was not delivered to the AI Agent",
-        "Las instrucciones no se han entregado al agente de IA",
+        "Guidance delivery to the AI Agent is not confirmed",
+        "La entrega de instrucciones al agente de IA no está confirmada",
       );
   return tenantText(
-    `${target}. Escalation remains open. Reason: ${reason}`,
-    `${target}. La solicitud sigue abierta. Motivo: ${reason}`,
+    `${target}. Escalation remains open. Retry unchanged to reuse the same request. Details: ${reason}`,
+    `${target}. La solicitud sigue abierta. Reinténtalo sin cambios para reutilizar la misma solicitud. Detalles: ${reason}`,
   );
 }

@@ -56,9 +56,16 @@ export function ConversationReplyComposer({
       const message =
         isSpainSpanishTenant() && err instanceof ApiError && err.message
           ? err.message
-          : err instanceof ApiError && err.status === 409
+          : err instanceof ApiError &&
+              err.status === 409 &&
+              /24\s*(hours?|horas?)|window.*closed|ventana.*cerrada/i.test(
+                err.message,
+              )
             ? copy.windowClosedError
-            : copy.genericError;
+            : err instanceof ApiError &&
+                err.message.startsWith("Safe retry storage")
+              ? err.message
+              : copy.genericError;
       setError(message);
       toast.error(message);
     } finally {

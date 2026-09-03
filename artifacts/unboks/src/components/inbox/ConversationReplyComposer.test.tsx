@@ -82,7 +82,7 @@ describe("ConversationReplyComposer", () => {
 
   it("retains the draft and explains Ali's closed 24-hour window", async () => {
     vi.mocked(replyToWhatsAppConversation).mockRejectedValue(
-      new ApiError(409, "Backend-localized message"),
+      new ApiError(409, "Han pasado más de 24 horas desde el último mensaje."),
     );
     render(<ConversationReplyComposer conversationId="zernio-42" />);
     const textarea = screen.getByLabelText("Message for the customer");
@@ -155,6 +155,17 @@ describe("ConversationReplyComposer", () => {
       "La ventana de 24 horas está cerrada.",
     );
     expect((textarea as HTMLTextAreaElement).value).toBe("Hola");
+  });
+
+  it("does not mistake a busy delivery for a closed WhatsApp window", async () => {
+    vi.mocked(replyToWhatsAppConversation).mockRejectedValue(new ApiError(409, "This reply is already being prepared or sent"));
+    render(<ConversationReplyComposer conversationId="zernio-42" />);
+    fireEvent.change(screen.getByLabelText("Message for the customer"), { target: { value: "Hello" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Delivery is not confirmed");
+    expect(alert.textContent).not.toContain("24 hours");
+    expect(alert.textContent).not.toContain("No message was sent");
   });
 
   it("prevents rapid duplicate sends before React commits the pending state", async () => {
