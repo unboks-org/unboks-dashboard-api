@@ -43,8 +43,12 @@ describe("replyToWhatsAppConversation", () => {
       body: JSON.stringify({
         conversation_id: "zernio-123",
         message: exactText,
+        request_id: JSON.parse(String(request?.body)).request_id,
       }),
     });
+    expect(JSON.parse(String(request?.body)).request_id).toMatch(
+      /^[\da-f-]{36}$/i,
+    );
   });
 
   it("rejects empty and over-limit messages before any provider call", async () => {

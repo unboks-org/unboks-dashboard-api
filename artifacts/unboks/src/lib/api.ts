@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/error";
+import { withOperatorRequest } from "@/lib/operator-request";
 import { DEBUG_LOGS_ENABLED, debugInfo } from "@/lib/debug-log";
 import {
   captureTenantRequestScope,
@@ -229,6 +230,7 @@ export interface Escalation {
 
 export interface GuidancePayload {
   guidance: string;
+  request_id?: string;
   saveToYourInfo?: boolean;
   autoUseNextTime?: boolean;
   category?: string;
@@ -3141,16 +3143,19 @@ export async function replyToWhatsAppConversation(
     throw new ApiError(400, "WhatsApp messages cannot exceed 4096 characters.");
   }
 
-  return apiFetch<WhatsAppConversationReplyResponse>(
-    "/messages/whatsapp/reply",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        conversation_id: key,
-        message: text,
-        ...(requestId ? { request_id: requestId } : {}),
+  return withOperatorRequest(
+    "inbox:reply",
+    { conversation_id: key, message: text },
+    (stableId) =>
+      apiFetch<WhatsAppConversationReplyResponse>("/messages/whatsapp/reply", {
+        method: "POST",
+        body: JSON.stringify({
+          conversation_id: key,
+          message: text,
+          request_id: stableId,
+        }),
       }),
-    },
+    requestId,
   );
 }
 
@@ -3360,11 +3365,19 @@ export async function replyEscalation(
   id: string,
   message: string,
   mediaId?: string,
+  requestId?: string,
 ): Promise<void> {
-  return apiFetch<void>(`/escalations/${id}/reply`, {
-    method: "POST",
-    body: JSON.stringify({ message, ...(mediaId ? { mediaId } : {}) }),
-  });
+  const payload = { message, ...(mediaId ? { mediaId } : {}) };
+  return withOperatorRequest(
+    `escalations:${id}:reply`,
+    payload,
+    (stableId) =>
+      apiFetch<void>(`/escalations/${id}/reply`, {
+        method: "POST",
+        body: JSON.stringify({ ...payload, request_id: stableId }),
+      }),
+    requestId,
+  );
 }
 
 export async function deleteEscalation(id: string): Promise<void> {
@@ -3375,10 +3388,17 @@ export async function submitGuidance(
   id: string,
   payload: GuidancePayload,
 ): Promise<{ ok: boolean; learningEntryId?: string | null }> {
-  return apiFetch(`/escalations/${id}/guidance`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  const { request_id, ...body } = payload;
+  return withOperatorRequest(
+    `escalations:${id}:guidance`,
+    body,
+    (stableId) =>
+      apiFetch(`/escalations/${id}/guidance`, {
+        method: "POST",
+        body: JSON.stringify({ ...body, request_id: stableId }),
+      }),
+    request_id,
+  );
 }
 
 export async function takeoverEscalation(

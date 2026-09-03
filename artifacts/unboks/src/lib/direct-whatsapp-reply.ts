@@ -27,7 +27,7 @@ const ENGLISH_COPY: DirectReplyCopy = {
   sending: "Sending…",
   hint: "Enter to send · Shift+Enter for a new line",
   delivered: "Message delivered on WhatsApp.",
-  genericError: "The message could not be sent. Please try again.",
+  genericError: "Delivery is not confirmed. Retry this unchanged message; the same request will be reused.",
   windowClosedError:
     "No message was sent. More than 24 hours have passed since the customer's " +
     "last message, so WhatsApp does not allow this free-text reply.",
@@ -44,7 +44,7 @@ const SPANISH_COPY: DirectReplyCopy = {
   sending: "Enviando…",
   hint: "Enter para enviar · Mayús+Enter para una nueva línea",
   delivered: "Mensaje entregado a WhatsApp.",
-  genericError: "No se pudo enviar el mensaje. Inténtalo de nuevo.",
+  genericError: "El envío no está confirmado. Reintenta el mensaje sin modificarlo; se reutilizará la misma solicitud.",
   windowClosedError:
     "No se ha enviado ningún mensaje. Han pasado más de 24 horas desde el " +
     "último mensaje del contacto y WhatsApp no permite enviar este texto libre.",
