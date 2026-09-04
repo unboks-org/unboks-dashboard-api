@@ -92,6 +92,32 @@ describe("Mermaid receipt printing", () => {
     expect(window.print).not.toHaveBeenCalled();
   });
 
+  it.each([true, false])(
+    "keeps receipt printing available when a booked journey has a handover action: %s",
+    (hasHandoverAction) => {
+      state.item!.humanTakeover = true;
+      state.item!.primaryAction = hasHandoverAction
+        ? {
+            id: "open_conversation",
+            label: "Continue as human",
+            href: "/conversations",
+          }
+        : null;
+      render(<MermaidReservationWorkspace />);
+      fireEvent.click(screen.getByRole("button", { name: "Print receipt" }));
+      expect(window.print).toHaveBeenCalledTimes(1);
+      expect(state.navigate).not.toHaveBeenCalled();
+      if (hasHandoverAction) {
+        fireEvent.click(
+          screen.getByRole("button", { name: "Continue as human" }),
+        );
+        expect(state.navigate).toHaveBeenCalledWith(
+          "/conversations?c=synthetic-guest-contact",
+        );
+      }
+    },
+  );
+
   it("escapes guest content and removes print-only styles when leaving the page", () => {
     state.item!.customerName = '<img src=x onerror="alert(1)">';
     const { unmount } = render(<MermaidReservationWorkspace />);
