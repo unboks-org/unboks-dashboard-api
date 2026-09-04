@@ -58,7 +58,8 @@ import { ApiError } from "@/lib/error";
 import type { KnowledgeMedia } from "@/lib/api";
 import type { Channel } from "@/data/conversations";
 import { cn } from "@/lib/utils";
-import { tenantText } from "@/lib/tenant-ui";
+import { isMermaidReservationTenant } from "@/lib/tenant-ui";
+import { escalationText as tenantText } from "@/lib/escalation-copy";
 import { AIEditorPanel } from "./AIEditorPanel";
 import { motion } from "framer-motion";
 
@@ -947,7 +948,7 @@ export const EscalationReplyComposer = forwardRef<
           <Send className="h-3.5 w-3.5" />
           {sendPending && !combinedPending
             ? tenantText("Sending...", "Enviando...")
-            : tenantText("Send", "Enviar")}
+            : isMermaidReservationTenant() ? sendLabel : tenantText("Send", "Enviar")}
         </motion.button>
 
         {/* 2) Resolve — outline secondary */}

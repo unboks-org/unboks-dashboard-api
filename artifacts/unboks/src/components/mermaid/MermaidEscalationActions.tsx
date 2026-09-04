@@ -34,7 +34,7 @@ export function MermaidEscalationActions({
   );
   const hard = issue.mode === "hard";
   const draft = hard ? customerReply : advice;
-  const supported = channel === "whatsapp" || channel === "email";
+  const supported = ["whatsapp", "email"].includes(channel.toLowerCase());
 
   const refresh = () =>
     Promise.all([

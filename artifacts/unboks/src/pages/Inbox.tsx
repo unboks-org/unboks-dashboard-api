@@ -97,9 +97,11 @@ import {
   getTenantUiConfig,
   isRentalDashboardV2Enabled,
   isSpainSpanishTenant,
+  isMermaidReservationTenant,
   tenantText,
 } from "@/lib/tenant-ui";
 import { canShowDirectWhatsAppReply } from "@/lib/direct-whatsapp-reply";
+import { mermaidIssue } from "@/lib/mermaid-attention";
 import { fetchQuoteLeads } from "@/lib/api";
 import { tenantKey } from "@/lib/query-keys";
 import {
@@ -386,7 +388,7 @@ function EscalationModeToggle({
           <AlertCircle
             className={cn("w-3.5 h-3.5", isSoft ? "text-[#f59e0b]" : "")}
           />
-          {tenantText("Agent needs help", "El agente necesita ayuda")}
+          {isMermaidReservationTenant() ? "TRACY needs the crew" : tenantText("Agent needs help", "El agente necesita ayuda")}
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.97 }}
@@ -542,6 +544,10 @@ function ConversationDetailPane({
     }
     return null;
   }, [escalations, conversation.escalationId, conversation.id]);
+
+  const mermaidBriefing = isMermaidReservationTenant()
+    ? (escalations ?? []).map(mermaidIssue).find((issue) => issue?.id === dbId)
+    : null;
 
   const escalationState = resolveEscalationRenderState({
     detailEscalated: detail?.escalated,
@@ -1088,7 +1094,7 @@ function ConversationDetailPane({
         </div>
 
         {/* Mobile/tablet: escalation summary on its own line — hidden for resolved context */}
-        {showBanner && !resolvedContext && detail?.escalationSummary && (
+        {showBanner && !resolvedContext && !isMermaidReservationTenant() && detail?.escalationSummary && (
           <p
             className="md:hidden text-[13.5px] text-muted-foreground mt-2.5 leading-snug"
             title={detail.escalationSummary}
@@ -1117,15 +1123,16 @@ function ConversationDetailPane({
         <div className="flex-1 overflow-y-auto flex flex-col">
           <EscalationReasonPanel
             mode={selectedMode}
-            summary={detail?.escalationSummary}
+            summary={detail?.escalationSummary || mermaidBriefing?.reason}
             reason={detail?.escalationReason}
             aiMuted={detail?.aiMuted}
             messages={messages}
             customerName={conversation.sender}
             recommendedOptions={detail?.recommendedOptions}
             proposedTimes={detail?.extractedDetails?.proposedTimes}
-            customerWants={detail?.customerWants}
-            operatorNeedsToDecide={detail?.operatorNeedsToDecide}
+            customerWants={detail?.customerWants || mermaidBriefing?.customerRequest}
+            operatorNeedsToDecide={detail?.operatorNeedsToDecide || mermaidBriefing?.decision}
+            guestMessage={detail?.escalationCustomerMessage || mermaidBriefing?.customerMessage}
             onChipAction={onChipAction}
           />
 
@@ -1277,7 +1284,7 @@ function LatestCustomerMessagePreview({
   return (
     <section
       aria-label={tenantText(
-        "Latest customer message",
+        isMermaidReservationTenant() ? "Latest guest message" : "Latest customer message",
         "Último mensaje de la persona",
       )}
       className="bg-white px-3 sm:px-4 pb-3 flex-shrink-0"
@@ -1287,7 +1294,7 @@ function LatestCustomerMessagePreview({
           <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#5f6368]">
             {isInbound
               ? tenantText(
-                  "Latest customer message",
+                  isMermaidReservationTenant() ? "Latest guest message" : "Latest customer message",
                   "Último mensaje de la persona",
                 )
               : tenantText("Latest message", "Último mensaje")}

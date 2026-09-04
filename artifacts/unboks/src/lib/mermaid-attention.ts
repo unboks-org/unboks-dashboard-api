@@ -83,7 +83,7 @@ export function buildMermaidAttention(
     const phone = n.phone || text(record(raw).customer_id) || null;
     const c = phone ? byAlias.get(phone) : undefined;
     const conversationId = c?.conversationKey || c?.id || phone;
-    const channel = c?.channel || n.platform.toLowerCase() || "whatsapp";
+    const channel = (c?.channel || n.platform || "whatsapp").toLowerCase();
     const key = conversationId
       ? `${channel}:${conversationId}`
       : `escalation:${n.id}`;
@@ -115,7 +115,7 @@ export function buildMermaidAttention(
   for (const r of reservations) {
     const c = byAlias.get(r.conversationId);
     const id = c?.conversationKey || c?.id || r.conversationId;
-    const key = `${c?.channel || "whatsapp"}:${id}`;
+    const key = `${(c?.channel || "whatsapp").toLowerCase()}:${id}`;
     if (!visible([id, r.conversationId, c?.id ?? ""])) continue;
     const existing = cases.get(key);
     if (existing) {
@@ -126,7 +126,7 @@ export function buildMermaidAttention(
         key,
         conversationId: id,
         customerName: r.customerName,
-        channel: c?.channel || "whatsapp",
+        channel: (c?.channel || "whatsapp").toLowerCase(),
         issues: [],
         reservation: r,
         fallbackReason:
@@ -138,7 +138,7 @@ export function buildMermaidAttention(
   }
   for (const c of conversations) {
     const id = c.conversationKey || c.id;
-    const key = `${c.channel}:${id}`;
+    const key = `${c.channel.toLowerCase()}:${id}`;
     if (
       !c.escalated ||
       known.has(key) ||
@@ -150,7 +150,7 @@ export function buildMermaidAttention(
       key,
       conversationId: id,
       customerName: c.sender,
-      channel: c.channel,
+      channel: c.channel.toLowerCase(),
       issues: [],
       fallbackReason:
         c.escalationSummary ||

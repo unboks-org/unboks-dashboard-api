@@ -12,6 +12,18 @@ describe("escalation delivery confirmation", () => {
     vi.stubGlobal("fetch", vi.fn());
   });
 
+  it("renders Mermaid-specific guidance and examples in the actual conversation composer", () => {
+    const client = new QueryClient();
+    render(<QueryClientProvider client={client}><EscalationReplyComposer conversationDbId="test" conversationId="guest" mode="soft" channel="WhatsApp" onDone={vi.fn()} /></QueryClientProvider>);
+    expect(screen.getByText("Guidance for TRACY")).toBeTruthy();
+    expect(screen.getByText("Tell TRACY what the Mermaid crew has confirmed. TRACY uses your guidance to reply to the guest.")).toBeTruthy();
+    expect((screen.getByRole("textbox") as HTMLTextAreaElement).placeholder).toContain("crew");
+    expect((screen.getByRole("textbox") as HTMLTextAreaElement).placeholder).not.toMatch(/Sunday|08:00|phone number/);
+    expect(screen.getByRole("button", { name: "Send guidance to TRACY without resolving" })).toBeTruthy();
+    expect(screen.getAllByText("Take over & reply to guest")).toHaveLength(2);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   function composer(mode: "soft" | "hard") {
     const onDone = vi.fn();
     const client = new QueryClient({
@@ -38,7 +50,7 @@ describe("escalation delivery confirmation", () => {
         name:
           mode === "soft"
             ? "Send guidance and mark resolved"
-            : "Reply to customer and mark resolved",
+            : "Reply to guest and mark resolved",
       }),
     );
     return { draft: draft as HTMLTextAreaElement, onDone };
@@ -87,7 +99,7 @@ describe("escalation delivery confirmation", () => {
         ),
       );
       expect(screen.getByRole("status").textContent).toContain(
-        mode === "soft" ? "Guidance sent to the Agent" : "Message sent",
+        mode === "soft" ? "Guidance sent to TRACY" : "Message sent",
       );
       expect(draft.value).toBe("");
       expect(fetch).toHaveBeenCalledTimes(2);
