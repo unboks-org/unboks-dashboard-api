@@ -4233,6 +4233,8 @@ export interface MermaidReservationDetail extends MermaidReservationSummary {
 }
 
 export interface MermaidCatalogResponse {
+  revision?: string;
+  editable?: boolean;
   catalog: {
     version: string;
     service: {
@@ -4241,11 +4243,17 @@ export interface MermaidCatalogResponse {
       meeting_point: string;
       arrival_time: string;
       island_departure_time: string;
+      pickup_minutes_before_arrival?: number;
     };
     pricing: {
       currencies: Record<string, Record<string, number>>;
       default_currency: string;
-      pickup_price: null;
+      pickup_price?: number | null;
+      pickup_currency?: string;
+      pickup_basis?: "per_vehicle" | "per_booking";
+      pickup_coverage?: string;
+      pickup_vehicles?: Array<{ key: string; capacity: number; price: number }>;
+      pickup_overflow?: "team_review" | "multiple_vans";
     };
     included: string[];
     extras?: string[];
@@ -4292,6 +4300,17 @@ export function fetchMermaidCatalog(): Promise<MermaidCatalogResponse> {
   return apiFetch<MermaidCatalogResponse>(
     "/mermaid-reservations/catalog",
     { cache: "no-store" },
+    false,
+    true,
+  );
+}
+
+export type MermaidCatalogChanges = Pick<MermaidCatalogResponse["catalog"], "service" | "pricing" | "included" | "bring" | "extras" | "policies">;
+
+export function publishMermaidCatalog(expectedRevision: string, changes: MermaidCatalogChanges): Promise<MermaidCatalogResponse> {
+  return apiFetch<MermaidCatalogResponse>(
+    "/mermaid-reservations/catalog",
+    { method: "PUT", body: JSON.stringify({ expected_revision: expectedRevision, changes }) },
     false,
     true,
   );

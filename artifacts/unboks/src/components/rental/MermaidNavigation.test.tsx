@@ -34,7 +34,7 @@ describe("Mermaid reservation navigation", () => {
     expect(isRentalDashboardV2Enabled("consulta-despertares")).toBe(false);
   });
 
-  it("shows the six Mermaid destinations on desktop and mobile", () => {
+  it("keeps daily destinations and moves trip pricing out of the main menu", () => {
     render(
       <RentalDashboardShell active="today" title="Today">
         <div>Dashboard</div>
@@ -45,7 +45,6 @@ describe("Mermaid reservation navigation", () => {
       "Reservations",
       "Customers",
       "Conversations",
-      "Trip & pricing",
       "Settings",
     ]) {
       expect(
@@ -56,6 +55,7 @@ describe("Mermaid reservation navigation", () => {
     expect(
       screen.queryByRole("button", { name: "Fleet & pricing" }),
     ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Trip & pricing" })).toBeNull();
     expect(screen.getByText("TRACY · Guest operations")).toBeTruthy();
     expect(screen.getByText("TRACY is active")).toBeTruthy();
     expect(

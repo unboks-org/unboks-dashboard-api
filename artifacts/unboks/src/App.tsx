@@ -57,7 +57,6 @@ const MermaidReservations = lazy(() => import("@/pages/MermaidReservations"));
 const MermaidReservationWorkspace = lazy(
   () => import("@/pages/MermaidReservationWorkspace"),
 );
-const MermaidTripPricing = lazy(() => import("@/pages/MermaidTripPricing"));
 const Analytics = lazy(() => import("@/pages/Analytics"));
 const Help = lazy(() => import("@/pages/Help"));
 const Images = lazy(() => import("@/pages/Images"));
@@ -577,7 +576,7 @@ function Router() {
           <RentalOnlyRoute>
             <SettingsErrorBoundary>
               {isMermaidReservationTenant() ? (
-                <Redirect to="/trip" replace />
+                <Redirect to="/settings?category=trip-pricing" replace />
               ) : (
                 <Rental />
               )}
@@ -588,7 +587,7 @@ function Router() {
       <Route path="/trip">
         <ProtectedRoute>
           <MermaidOnlyRoute>
-            <MermaidTripPricing />
+            <Redirect to="/settings?category=trip-pricing" replace />
           </MermaidOnlyRoute>
         </ProtectedRoute>
       </Route>

@@ -6,6 +6,8 @@ import {
   fetchMermaidCustomerHistory,
   fetchMermaidReservation,
   fetchMermaidReservations,
+  publishMermaidCatalog,
+  type MermaidCatalogChanges,
 } from "@/lib/api";
 
 describe("Mermaid reservation API", () => {
@@ -93,6 +95,17 @@ describe("Mermaid reservation API", () => {
       await expect(fetchMermaidCatalog()).rejects.toThrow(
         "Workspace response rejected",
       );
+      await expect(publishMermaidCatalog("a".repeat(64), {} as MermaidCatalogChanges)).rejects.toThrow("Workspace response rejected");
     },
   );
+
+  it("publishes with tenant authentication, JSON and a mandatory revision", async () => {
+    const changes = { included: ["Breakfast"] } as MermaidCatalogChanges;
+    await publishMermaidCatalog("a".repeat(64), changes);
+    const [url, request] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain("/api/mermaid/dashboard/api/mermaid-reservations/catalog");
+    expect(request?.method).toBe("PUT");
+    expect(request?.headers).toMatchObject({ Authorization: "Bearer test-token", "Content-Type": "application/json" });
+    expect(JSON.parse(request?.body as string)).toEqual({ expected_revision: "a".repeat(64), changes });
+  });
 });
