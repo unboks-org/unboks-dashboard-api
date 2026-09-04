@@ -21,6 +21,12 @@ const escalation = (id: string, phone = id, patch = {}) => ({
 });
 
 describe("Mermaid attention projection", () => {
+  it("normalizes display channel casing before matching and enabling WhatsApp replies", () => {
+    const chat = mapApiConversation({ phone: "guest", platform: "whatsapp", name: "Guest" });
+    expect(chat.channel).toBe("WhatsApp");
+    const items = buildMermaidAttention([], [chat], [escalation("1", "guest")]);
+    expect(items[0].channel).toBe("whatsapp");
+  });
   it("counts ten actual attention conversations among thirty unread chats, without a seven-item cap", () => {
     const chats = Array.from({ length: 30 }, (_, i) =>
       mapApiConversation({

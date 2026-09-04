@@ -190,6 +190,8 @@ export interface ConversationDetail {
    * Surfaced as the "Suggested next step" row when present.
    */
   operatorNeedsToDecide?: string | null;
+  /** Guest message captured with the escalation, distinct from later follow-ups. */
+  escalationCustomerMessage?: string | null;
   humanGuidance?: string | null;
   humanResponder?: string | null;
   humanRespondedAt?: string | null;
@@ -3005,6 +3007,12 @@ export async function fetchConversation(
       : {}
   ) as Record<string, unknown>;
 
+  // The backend returns a structured object here, not just a string. Dropping
+  // it used to erase the real reason and send the UI into generic heuristics.
+  const summaryValue = env.escalationSummary ?? env.escalation_summary;
+  const structuredSummary = summaryValue && typeof summaryValue === "object" && !Array.isArray(summaryValue)
+    ? summaryValue as Record<string, unknown> : {};
+
   return {
     phone: pickStr(env, "phone", "external_id", "externalId") ?? key,
     name: pickStr(env, "name", "customerName", "customer_name") ?? "",
@@ -3028,14 +3036,15 @@ export async function fetchConversation(
           : undefined,
     escalationMode: (pickStr(env, "escalationMode", "escalation_mode") ??
       null) as ConversationDetail["escalationMode"],
-    escalationReason: pickStr(env, "escalationReason", "escalation_reason"),
-    escalationSummary: pickStr(env, "escalationSummary", "escalation_summary"),
-    customerWants: pickStr(env, "customerWants", "customer_wants"),
+    escalationReason: pickStr(env, "escalationReason", "escalation_reason") ?? pickStr(structuredSummary, "reason"),
+    escalationSummary: pickStr(env, "escalationSummary", "escalation_summary") ?? pickStr(structuredSummary, "reason", "summary"),
+    customerWants: pickStr(env, "customerWants", "customer_wants") ?? pickStr(structuredSummary, "customerWants", "customer_wants"),
     operatorNeedsToDecide: pickStr(
       env,
       "operatorNeedsToDecide",
       "operator_needs_to_decide",
-    ),
+    ) ?? pickStr(structuredSummary, "operatorNeedsToDecide", "operator_needs_to_decide"),
+    escalationCustomerMessage: pickStr(structuredSummary, "latestCustomerMessage", "latest_customer_message"),
     humanGuidance: pickStr(env, "humanGuidance", "human_guidance"),
     humanResponder: pickStr(env, "humanResponder", "human_responder"),
     humanRespondedAt: pickStr(env, "humanRespondedAt", "human_responded_at"),
@@ -3048,12 +3057,12 @@ export async function fetchConversation(
           : undefined,
     learningStatus: (pickStr(env, "learningStatus", "learning_status") ??
       undefined) as ConversationDetail["learningStatus"],
-    recommendedOptions: pickStringArray(
+    recommendedOptions: Array.isArray(env.recommendedOptions) || Array.isArray(env.recommended_options) ? pickStringArray(
       env,
       "recommendedOptions",
       "recommended_options",
-    ),
-    extractedDetails: pickExtractedDetails(env),
+    ) : pickStringArray(structuredSummary, "recommendedOptions", "recommended_options"),
+    extractedDetails: pickExtractedDetails(env) ?? pickExtractedDetails(structuredSummary),
   };
 }
 

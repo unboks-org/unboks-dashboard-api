@@ -54,7 +54,7 @@ function setup(mode: "soft" | "hard" | null = "soft") {
     <QueryClientProvider client={client}>
       <MermaidEscalationActions
         issue={{ ...issue, mode: value }}
-        channel="whatsapp"
+        channel="WhatsApp"
       />
     </QueryClientProvider>
   );

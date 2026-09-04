@@ -28,7 +28,8 @@
 import { motion } from "framer-motion";
 import type { ApiMessage } from "@/lib/api";
 import { buildEscalationBriefing } from "@/lib/escalation-summary";
-import { tenantText } from "@/lib/tenant-ui";
+import { buildMermaidEscalationBriefing } from "@/lib/mermaid-escalation-briefing";
+import { isMermaidReservationTenant, tenantText } from "@/lib/tenant-ui";
 
 /**
  * Kept exported for compatibility with parent code that still imports
@@ -54,6 +55,7 @@ interface EscalationReasonPanelProps {
   customerWants?: string | null;
   /** Backend-supplied "what the operator needs to decide" line (verbatim if set). */
   operatorNeedsToDecide?: string | null;
+  guestMessage?: string | null;
   /**
    * Retained for backward compatibility with the parent's wiring.
    * Currently unused — the action surface lives in the composer.
@@ -71,10 +73,13 @@ export function EscalationReasonPanel({
   proposedTimes,
   customerWants,
   operatorNeedsToDecide,
+  guestMessage,
 }: EscalationReasonPanelProps) {
   const isSoft = mode === "soft";
   const isOrder = mode === "order";
-  const briefing = buildEscalationBriefing({
+  const mermaid = isMermaidReservationTenant();
+  const buildBriefing = mermaid ? buildMermaidEscalationBriefing : buildEscalationBriefing;
+  const briefing = buildBriefing({
     mode,
     summary,
     reason,
@@ -88,7 +93,7 @@ export function EscalationReasonPanel({
 
   return (
     <section
-      aria-label={tenantText("Decision needed", "Respuesta necesaria")}
+      aria-label={mermaid ? "Crew decision needed" : tenantText("Decision needed", "Respuesta necesaria")}
       className="bg-white px-3 sm:px-4 pt-3 pb-2 flex-shrink-0"
     >
       <motion.article
@@ -109,7 +114,7 @@ export function EscalationReasonPanel({
             id="decision-needed-title"
             className="text-[14px] font-semibold tracking-[-0.01em] text-[#111827]"
           >
-            {tenantText("Decision needed", "Respuesta necesaria")}
+            {mermaid ? "Crew decision needed" : tenantText("Decision needed", "Respuesta necesaria")}
           </h2>
         </header>
 
@@ -117,22 +122,26 @@ export function EscalationReasonPanel({
             label and a one-paragraph answer in primary text. The grid
             collapses to a single column on mobile. */}
         <dl className="grid grid-cols-1 gap-y-3 gap-x-6 sm:grid-cols-2">
-          <Section label={tenantText("What happened", "Qué ha ocurrido")} className="sm:col-span-2">
+          <Section label={mermaid ? "Why TRACY needs the crew" : tenantText("What happened", "Qué ha ocurrido")} className="sm:col-span-2">
             {briefing.reason}
           </Section>
-          <Section label={isOrder
+          <Section label={mermaid ? "Guest request" : isOrder
             ? tenantText("Order status", "Estado de la solicitud")
             : isSoft
             ? tenantText("Customer wants", "Qué solicita la persona")
             : tenantText("Customer needs", "Qué necesita la persona")}>
             {briefing.customerWants}
           </Section>
-          <Section label={isOrder
+          <Section label={mermaid ? "What the crew needs to decide" : isOrder
             ? tenantText("Operator next step", "Siguiente paso del equipo")
             : tenantText("Suggested next step", "Siguiente paso sugerido")}>
             {briefing.marinaNeeds}
           </Section>
         </dl>
+        {mermaid && guestMessage ? <div className="mt-4 border-t border-slate-200 pt-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[#5f6368]">Guest message that needs attention</p>
+          <blockquote className="mt-1 whitespace-pre-wrap break-words text-[13.5px] leading-[1.55] text-[#1f2937]">{guestMessage}</blockquote>
+        </div> : null}
       </motion.article>
     </section>
   );
