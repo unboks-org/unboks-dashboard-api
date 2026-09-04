@@ -48,6 +48,20 @@ describe("Mermaid receipt printing", () => {
     expect(state.navigate).not.toHaveBeenCalled();
   });
 
+  it("shows an exact supplied infant age in the reservation and printable receipt", () => {
+    state.item!.partyDescription = "3 adults · 1 infant (9 months)";
+    render(<MermaidReservationWorkspace />);
+    expect(
+      screen.getAllByText("3 adults · 1 infant (9 months)").length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      document.querySelector(".mermaid-print-receipt")?.textContent,
+    ).toContain("1 infant (9 months)");
+    expect(
+      document.querySelector(".mermaid-print-receipt")?.textContent,
+    ).not.toContain("little one");
+  });
+
   it("prints the captured receipt amounts and operator details, not chat history", () => {
     render(<MermaidReservationWorkspace />);
     const paper = document.querySelector<HTMLElement>(

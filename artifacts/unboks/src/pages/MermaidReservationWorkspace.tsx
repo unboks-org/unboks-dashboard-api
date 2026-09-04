@@ -219,7 +219,10 @@ export default function MermaidReservationWorkspace() {
                     />
                     <Datum
                       label="Party"
-                      value={`${item.adults} ${item.adults === 1 ? "adult" : "adults"} · ${item.children} ${item.children === 1 ? "child" : "children"} 4–12 · ${item.infants} age 0–3`}
+                      value={
+                        item.partyDescription ||
+                        `${item.adults} ${item.adults === 1 ? "adult" : "adults"} · ${item.children} ${item.children === 1 ? "child" : "children"} 4–12 · ${item.infants} age 0–3`
+                      }
                     />
                     <Datum
                       label="Contact number"

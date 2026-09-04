@@ -42,6 +42,10 @@ function Details({ data }: { data: MermaidCustomerDetails }) {
     ["Children (4–12)", data.children],
     ["Children (0–3)", data.infants],
     [
+      "Children’s known ages",
+      data.child_ages?.map((age) => `${age.value} ${age.unit}`).join(", "),
+    ],
+    [
       "Transport",
       data.pickup_preference === "pier"
         ? "Meeting at the pier"
