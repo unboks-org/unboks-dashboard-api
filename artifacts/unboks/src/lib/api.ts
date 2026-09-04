@@ -3010,8 +3010,12 @@ export async function fetchConversation(
   // The backend returns a structured object here, not just a string. Dropping
   // it used to erase the real reason and send the UI into generic heuristics.
   const summaryValue = env.escalationSummary ?? env.escalation_summary;
-  const structuredSummary = summaryValue && typeof summaryValue === "object" && !Array.isArray(summaryValue)
-    ? summaryValue as Record<string, unknown> : {};
+  const structuredSummary =
+    summaryValue &&
+    typeof summaryValue === "object" &&
+    !Array.isArray(summaryValue)
+      ? (summaryValue as Record<string, unknown>)
+      : {};
 
   return {
     phone: pickStr(env, "phone", "external_id", "externalId") ?? key,
@@ -3036,15 +3040,27 @@ export async function fetchConversation(
           : undefined,
     escalationMode: (pickStr(env, "escalationMode", "escalation_mode") ??
       null) as ConversationDetail["escalationMode"],
-    escalationReason: pickStr(env, "escalationReason", "escalation_reason") ?? pickStr(structuredSummary, "reason"),
-    escalationSummary: pickStr(env, "escalationSummary", "escalation_summary") ?? pickStr(structuredSummary, "reason", "summary"),
-    customerWants: pickStr(env, "customerWants", "customer_wants") ?? pickStr(structuredSummary, "customerWants", "customer_wants"),
-    operatorNeedsToDecide: pickStr(
-      env,
-      "operatorNeedsToDecide",
-      "operator_needs_to_decide",
-    ) ?? pickStr(structuredSummary, "operatorNeedsToDecide", "operator_needs_to_decide"),
-    escalationCustomerMessage: pickStr(structuredSummary, "latestCustomerMessage", "latest_customer_message"),
+    escalationReason:
+      pickStr(env, "escalationReason", "escalation_reason") ??
+      pickStr(structuredSummary, "reason"),
+    escalationSummary:
+      pickStr(env, "escalationSummary", "escalation_summary") ??
+      pickStr(structuredSummary, "reason", "summary"),
+    customerWants:
+      pickStr(env, "customerWants", "customer_wants") ??
+      pickStr(structuredSummary, "customerWants", "customer_wants"),
+    operatorNeedsToDecide:
+      pickStr(env, "operatorNeedsToDecide", "operator_needs_to_decide") ??
+      pickStr(
+        structuredSummary,
+        "operatorNeedsToDecide",
+        "operator_needs_to_decide",
+      ),
+    escalationCustomerMessage: pickStr(
+      structuredSummary,
+      "latestCustomerMessage",
+      "latest_customer_message",
+    ),
     humanGuidance: pickStr(env, "humanGuidance", "human_guidance"),
     humanResponder: pickStr(env, "humanResponder", "human_responder"),
     humanRespondedAt: pickStr(env, "humanRespondedAt", "human_responded_at"),
@@ -3057,12 +3073,17 @@ export async function fetchConversation(
           : undefined,
     learningStatus: (pickStr(env, "learningStatus", "learning_status") ??
       undefined) as ConversationDetail["learningStatus"],
-    recommendedOptions: Array.isArray(env.recommendedOptions) || Array.isArray(env.recommended_options) ? pickStringArray(
-      env,
-      "recommendedOptions",
-      "recommended_options",
-    ) : pickStringArray(structuredSummary, "recommendedOptions", "recommended_options"),
-    extractedDetails: pickExtractedDetails(env) ?? pickExtractedDetails(structuredSummary),
+    recommendedOptions:
+      Array.isArray(env.recommendedOptions) ||
+      Array.isArray(env.recommended_options)
+        ? pickStringArray(env, "recommendedOptions", "recommended_options")
+        : pickStringArray(
+            structuredSummary,
+            "recommendedOptions",
+            "recommended_options",
+          ),
+    extractedDetails:
+      pickExtractedDetails(env) ?? pickExtractedDetails(structuredSummary),
   };
 }
 
@@ -4153,6 +4174,8 @@ export interface MermaidPrimaryAction {
 }
 
 export interface MermaidReservationSummary {
+  contactPhone?: string | null;
+  customerId?: number | null;
   publicId: string;
   conversationId: string;
   customerName: string;
@@ -4272,4 +4295,106 @@ export function fetchMermaidCatalog(): Promise<MermaidCatalogResponse> {
     false,
     true,
   );
+}
+
+export interface MermaidCustomerDetails {
+  customer_name?: string;
+  contact_phone?: string;
+  language?: string;
+  trip_date?: string;
+  adults?: number;
+  children?: number;
+  infants?: number;
+  pickup_preference?: string;
+  pickup_location?: string;
+  dietary_requirements?: string;
+  accessibility_notes?: string;
+  special_requests?: string;
+  phase?: string;
+}
+export interface MermaidCustomer {
+  id: number;
+  customerName: string;
+  conversationId: string;
+  firstSeen: string;
+  lastSeen: string;
+  details: MermaidCustomerDetails;
+  reservationCount: number;
+  messageCount: number;
+}
+export interface MermaidCustomerAccount extends MermaidCustomer {
+  reservations: Array<
+    MermaidReservationSummary & {
+      documents: MermaidReservationDetail["documents"];
+    }
+  >;
+}
+export interface MermaidCustomerMessage {
+  id: number;
+  role: string;
+  text: string;
+  created_at: string;
+  sender_name: string;
+  channel: string;
+}
+export interface MermaidCustomerRevision {
+  id: number;
+  details: MermaidCustomerDetails;
+  createdAt: string;
+}
+export function fetchMermaidCustomers(query = "", offset = 0) {
+  const params = new URLSearchParams({ query, offset: String(offset) });
+  return apiFetch<{ items: MermaidCustomer[]; nextOffset: number | null }>(
+    `/mermaid-customers?${params}`,
+    { cache: "no-store" },
+    false,
+    true,
+  );
+}
+export function fetchMermaidCustomer(id: string) {
+  return apiFetch<MermaidCustomerAccount>(
+    `/mermaid-customers/${encodeURIComponent(id)}`,
+    { cache: "no-store" },
+    false,
+    true,
+  );
+}
+export function fetchMermaidCustomerHistory<
+  T extends MermaidCustomerMessage | MermaidCustomerRevision,
+>(id: string, before: number | null, changes = false) {
+  const params = new URLSearchParams({ changes: String(changes) });
+  if (before !== null) params.set("before", String(before));
+  return apiFetch<{ items: T[]; nextBefore: number | null }>(
+    `/mermaid-customers/${encodeURIComponent(id)}/history?${params}`,
+    { cache: "no-store" },
+    false,
+    true,
+  );
+}
+export async function fetchMermaidCustomerDocument(
+  customerId: string,
+  documentId: string,
+): Promise<Blob> {
+  const { tenantSlug, token } = captureTenantRequestScope();
+  if (tenantSlug !== "mermaid")
+    throw new ApiError(409, "Workspace response rejected");
+  const path = `/mermaid-customers/${encodeURIComponent(customerId)}/documents/${encodeURIComponent(documentId)}`;
+  const response = await fetch(`${getApiBase(tenantSlug)}${path}`, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if ((response.status === 401 || response.status === 403) && token)
+    handleAuthFailure(tenantSlug);
+  if (!response.ok)
+    throw new ApiError(
+      response.status,
+      "The PDF could not be downloaded. Please try again.",
+    );
+  assertResponseTenant(response, null, tenantSlug, path, true);
+  const blob = await response.blob();
+  if (getClientSlug() !== tenantSlug)
+    throw new ApiError(409, "Workspace response rejected");
+  if (!blob.type.startsWith("application/pdf"))
+    throw new ApiError(422, "Unexpected document format.");
+  return blob;
 }

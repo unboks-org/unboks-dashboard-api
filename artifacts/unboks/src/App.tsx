@@ -49,6 +49,10 @@ const RentalCustomerWorkspace = lazy(
   () => import("@/pages/RentalCustomerWorkspace"),
 );
 const MermaidToday = lazy(() => import("@/pages/MermaidToday"));
+const MermaidCustomers = lazy(() => import("@/pages/MermaidCustomers"));
+const MermaidCustomerAccount = lazy(
+  () => import("@/pages/MermaidCustomerAccount"),
+);
 const MermaidReservations = lazy(() => import("@/pages/MermaidReservations"));
 const MermaidReservationWorkspace = lazy(
   () => import("@/pages/MermaidReservationWorkspace"),
@@ -542,7 +546,11 @@ function Router() {
       <Route path="/customers/:reservationId">
         <ProtectedRoute>
           <RentalOnlyRoute>
-            <RentalCustomerWorkspace />
+            {isMermaidReservationTenant() ? (
+              <MermaidCustomerAccount />
+            ) : (
+              <RentalCustomerWorkspace />
+            )}
           </RentalOnlyRoute>
         </ProtectedRoute>
       </Route>
@@ -550,7 +558,7 @@ function Router() {
         <ProtectedRoute>
           <RentalOnlyRoute>
             {isMermaidReservationTenant() ? (
-              <Redirect to="/reservations" replace />
+              <MermaidCustomers />
             ) : (
               <RentalCustomers />
             )}
