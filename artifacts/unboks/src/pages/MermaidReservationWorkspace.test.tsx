@@ -5,6 +5,13 @@ import type { MermaidReservationDetail } from "@/lib/api";
 import { mermaidReceiptFixture } from "@/test/mermaid-receipt-fixture";
 import MermaidReservationWorkspace from "./MermaidReservationWorkspace";
 
+vi.mock("@/components/mermaid/MermaidAttentionQueue", () => ({
+  MermaidReservationAttention: () => null,
+}));
+vi.mock("@/hooks/use-mermaid-attention", () => ({
+  useMermaidAttention: () => ({ items: [], complete: true }),
+}));
+
 const state = vi.hoisted(() => ({
   item: undefined as MermaidReservationDetail | undefined,
   navigate: vi.fn(),

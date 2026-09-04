@@ -34,7 +34,7 @@ import { RentalDashboardShell } from "@/components/rental/RentalDashboardShell";
 import { useRentalControlCapability } from "@/hooks/use-rental-control-capability";
 import { fetchMermaidReservations, fetchQuoteLeads } from "@/lib/api";
 import { tenantKey } from "@/lib/query-keys";
-import { countMermaidActions } from "@/lib/mermaid-operations";
+import { buildMermaidAttention } from "@/lib/mermaid-attention";
 import { rentalLeadNeedsStaffAction } from "@/lib/rental-operations";
 
 export const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
@@ -229,7 +229,8 @@ export function DashboardShell({
   }, [enrichmentConversations, isRowBlocked]);
 
   const rentalActionCount = mermaid
-    ? countMermaidActions(mermaidActionQueue.data ?? [], allConversations)
+    ? buildMermaidAttention(mermaidActionQueue.data ?? [], enrichmentConversations, apiEscalations ?? [],
+        (keys) => !isRowHidden(keys) && !isRowBlocked(keys)).length
     : aliActionCount;
 
   const hasConvData = !convLoading && !isError && Boolean(apiConversations);

@@ -15,6 +15,8 @@ import {
   UsersRound,
 } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
+import { MermaidReservationAttention } from "@/components/mermaid/MermaidAttentionQueue";
+import { useMermaidAttention } from "@/hooks/use-mermaid-attention";
 import {
   canPrintMermaidReceipt,
   MermaidPrintReceipt,
@@ -54,6 +56,10 @@ export default function MermaidReservationWorkspace() {
     refetchInterval: 10_000,
   });
   const item = query.data;
+  const attention = useMermaidAttention();
+  const needsAttention = attention.complete
+    ? attention.items.some((entry) => entry.conversationId === item?.conversationId || entry.reservation?.conversationId === item?.conversationId)
+    : Boolean(item?.humanTakeover);
   const receiptAction = item?.primaryAction?.id === "view_receipt";
   const currentIndex = item
     ? stages.findIndex((stage) => stage.id === item.stage)
@@ -108,13 +114,13 @@ export default function MermaidReservationWorkspace() {
                     >
                       {MERMAID_STAGE_META[item.stage].label}
                     </span>
-                    {item.humanTakeover ? (
+                    {needsAttention ? (
                       <span className="rounded-full bg-rose-600 px-3 py-1 text-[11px] font-bold text-white">
                         Crew attention required
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold text-cyan-100">
-                        <Sparkles className="h-3 w-3" /> TRACY handling
+                        <Sparkles className="h-3 w-3" /> {attention.complete ? "No open crew decision" : "Checking crew attention"}
                       </span>
                     )}
                   </div>
@@ -149,6 +155,8 @@ export default function MermaidReservationWorkspace() {
                 no reminder messages
               </div>
             </section>
+
+            <MermaidReservationAttention conversationId={item.conversationId} />
 
             <section className="rounded-[24px] border border-slate-200 bg-white px-4 py-5 shadow-sm sm:px-7">
               {item.stage === "cancelled" ? (

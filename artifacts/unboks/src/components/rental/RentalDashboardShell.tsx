@@ -344,7 +344,7 @@ export function RentalDashboardShell({
                   )}
                   aria-label={`${actionCount} actions need attention`}
                 >
-                  {actionCount > 99 ? "99+" : actionCount}
+                  {mermaid ? actionCount : actionCount > 99 ? "99+" : actionCount}
                 </span>
               ) : null}
             </button>
@@ -496,7 +496,7 @@ export function RentalDashboardShell({
                       className="absolute -right-3 -top-2 inline-flex min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[9px] font-bold leading-4 text-white"
                       aria-label={`${actionCount} actions need attention`}
                     >
-                      {actionCount > 9 ? "9+" : actionCount}
+                      {mermaid ? actionCount : actionCount > 9 ? "9+" : actionCount}
                     </span>
                   ) : null}
                 </span>

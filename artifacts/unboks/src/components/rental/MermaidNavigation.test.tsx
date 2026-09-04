@@ -72,6 +72,12 @@ describe("Mermaid reservation navigation", () => {
     expect(window.location.pathname).toBe("/reservations");
   });
 
+  it("shows the exact attention count on desktop and mobile", () => {
+    render(<RentalDashboardShell active="today" title="Today" actionCount={10}><div>Dashboard</div></RentalDashboardShell>);
+    expect(screen.getAllByLabelText("10 actions need attention").every((badge) => badge.textContent === "10")).toBe(true);
+    expect(screen.queryByText("9+")).toBeNull();
+  });
+
   it("returns a directly opened reservation to the Mermaid list", () => {
     window.history.replaceState({}, "", "/reservations/mer-preview");
     render(
