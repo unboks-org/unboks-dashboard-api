@@ -61,7 +61,10 @@ export function MermaidPrintReceipt({
         <Field label="WhatsApp / conversation" value={item.conversationId} />
         <Field
           label="Guests"
-          value={`${mermaidGuestCount(item)} total: ${item.adults} ${item.adults === 1 ? "adult" : "adults"}, ${item.children} ${item.children === 1 ? "child" : "children"} (4-12), ${item.infants} ${item.infants === 1 ? "infant" : "infants"} (0-3)`}
+          value={
+            item.partyDescription ||
+            `${mermaidGuestCount(item)} total: ${item.adults} ${item.adults === 1 ? "adult" : "adults"}, ${item.children} ${item.children === 1 ? "child" : "children"} (4-12), ${item.infants} ${item.infants === 1 ? "infant" : "infants"} (0-3)`
+          }
         />
         <Field
           label="Transport"

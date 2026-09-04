@@ -31,6 +31,7 @@ const account = {
     customer_name: "Test Guest",
     contact_phone: "+12025550123",
     adults: 0,
+    child_ages: [{ value: 9, unit: "months" as const }],
     special_requests: "A quiet spot\nNear the shade",
   },
   reservations: [],
@@ -99,6 +100,7 @@ it("opens a pre-booking customer and preserves paragraphs, zeros and earlier his
     ),
   ).toBe("tel:+12025550123");
   expect(screen.getByText("0")).toBeTruthy();
+  expect(screen.getByText("9 months")).toBeTruthy();
   expect(screen.getByText(/No booking yet/)).toBeTruthy();
   const text = await screen.findByText(
     (_, el) => el?.tagName === "P" && el.textContent === "Hello\n\nWelcome",

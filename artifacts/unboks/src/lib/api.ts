@@ -4175,6 +4175,8 @@ export interface MermaidPrimaryAction {
 
 export interface MermaidReservationSummary {
   contactPhone?: string | null;
+  childAges?: Array<{ value: number; unit: "months" | "years" }>;
+  partyDescription?: string;
   customerId?: number | null;
   publicId: string;
   conversationId: string;
@@ -4305,12 +4307,21 @@ export function fetchMermaidCatalog(): Promise<MermaidCatalogResponse> {
   );
 }
 
-export type MermaidCatalogChanges = Pick<MermaidCatalogResponse["catalog"], "service" | "pricing" | "included" | "bring" | "extras" | "policies">;
+export type MermaidCatalogChanges = Pick<
+  MermaidCatalogResponse["catalog"],
+  "service" | "pricing" | "included" | "bring" | "extras" | "policies"
+>;
 
-export function publishMermaidCatalog(expectedRevision: string, changes: MermaidCatalogChanges): Promise<MermaidCatalogResponse> {
+export function publishMermaidCatalog(
+  expectedRevision: string,
+  changes: MermaidCatalogChanges,
+): Promise<MermaidCatalogResponse> {
   return apiFetch<MermaidCatalogResponse>(
     "/mermaid-reservations/catalog",
-    { method: "PUT", body: JSON.stringify({ expected_revision: expectedRevision, changes }) },
+    {
+      method: "PUT",
+      body: JSON.stringify({ expected_revision: expectedRevision, changes }),
+    },
     false,
     true,
   );
@@ -4324,6 +4335,7 @@ export interface MermaidCustomerDetails {
   adults?: number;
   children?: number;
   infants?: number;
+  child_ages?: Array<{ value: number; unit: "months" | "years" }>;
   pickup_preference?: string;
   pickup_location?: string;
   dietary_requirements?: string;
