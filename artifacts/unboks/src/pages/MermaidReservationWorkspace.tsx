@@ -73,7 +73,7 @@ export default function MermaidReservationWorkspace() {
       }
       hideRefresh
     >
-      <div className="mx-auto w-full max-w-[1440px] space-y-5 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+      <div className="mx-auto min-w-0 w-full max-w-[1440px] space-y-5 px-4 py-5 [overflow-wrap:anywhere] sm:px-6 lg:px-8 lg:py-8">
         {!item ? (
           <div className="rounded-[26px] border border-slate-200 bg-white p-12 text-center shadow-sm">
             <ShipWheel className="mx-auto h-8 w-8 text-teal-700" />
@@ -193,8 +193,8 @@ export default function MermaidReservationWorkspace() {
               )}
             </section>
 
-            <div className="grid gap-5 xl:grid-cols-[1.16fr_.84fr]">
-              <div className="space-y-5">
+            <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.16fr)_minmax(0,.84fr)]">
+              <div className="min-w-0 space-y-5">
                 <Card eyebrow="Guest profile" title="Reservation details">
                   <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
                     <Datum label="Guest" value={item.customerName} />
@@ -284,7 +284,7 @@ export default function MermaidReservationWorkspace() {
                 </Card>
               </div>
 
-              <div className="space-y-5">
+              <div className="min-w-0 space-y-5">
                 <Card eyebrow="Commercial" title="Quote & checkout">
                   <div className="flex items-end justify-between gap-4">
                     <div>
