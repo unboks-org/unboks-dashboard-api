@@ -32,7 +32,11 @@ import {
 } from "@/lib/tenant-ui";
 import { RentalDashboardShell } from "@/components/rental/RentalDashboardShell";
 import { useRentalControlCapability } from "@/hooks/use-rental-control-capability";
-import { fetchMermaidReservations, fetchQuoteLeads } from "@/lib/api";
+import {
+  fetchMermaidCrewAssistance,
+  fetchMermaidReservations,
+  fetchQuoteLeads,
+} from "@/lib/api";
 import { tenantKey } from "@/lib/query-keys";
 import { buildMermaidAttention } from "@/lib/mermaid-attention";
 import { rentalLeadNeedsStaffAction } from "@/lib/rental-operations";
@@ -182,6 +186,14 @@ export function DashboardShell({
     refetchOnWindowFocus: true,
     staleTime: 0,
   });
+  const mermaidCrewAssistanceQueue = useQuery({
+    queryKey: tenantKey("mermaid-crew-assistance", "unacknowledged"),
+    queryFn: () => fetchMermaidCrewAssistance("unacknowledged"),
+    enabled: useRentalShell && mermaid,
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+  });
   const aliActionCount = (rentalActionQueue.data || []).filter(
     rentalLeadNeedsStaffAction,
   ).length;
@@ -228,9 +240,27 @@ export function DashboardShell({
     );
   }, [enrichmentConversations, isRowBlocked]);
 
+  const mermaidCrewActionCount = new Set(
+    (mermaidCrewAssistanceQueue.data ?? [])
+      .filter(
+        (item) =>
+          item.status === "unacknowledged" &&
+          !isRowHidden([
+            item.conversationId,
+            item.reservationPublicId ?? "",
+            item.id,
+          ]) &&
+          !isRowBlocked([item.conversationId]),
+      )
+      .map((item) => item.id),
+  ).size;
   const rentalActionCount = mermaid
-    ? buildMermaidAttention(mermaidActionQueue.data ?? [], enrichmentConversations, apiEscalations ?? [],
-        (keys) => !isRowHidden(keys) && !isRowBlocked(keys)).length
+    ? buildMermaidAttention(
+        mermaidActionQueue.data ?? [],
+        enrichmentConversations,
+        apiEscalations ?? [],
+        (keys) => !isRowHidden(keys) && !isRowBlocked(keys),
+      ).length + mermaidCrewActionCount
     : aliActionCount;
 
   const hasConvData = !convLoading && !isError && Boolean(apiConversations);

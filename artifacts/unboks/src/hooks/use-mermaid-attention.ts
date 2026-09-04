@@ -3,7 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useConversations, useEscalations } from "@/hooks/use-client-api";
 import { useHiddenConversations } from "@/hooks/use-hidden-conversations";
 import { useBlockedLookup } from "@/hooks/use-blocked-senders";
-import { fetchMermaidReservations } from "@/lib/api";
+import { useMermaidCrewAssistance } from "@/hooks/use-mermaid-crew-assistance";
+import {
+  fetchMermaidReservations,
+  type MermaidCrewAssistanceQueueItem,
+} from "@/lib/api";
 import {
   mapApiConversation,
   normalizeEscalation,
@@ -19,6 +23,7 @@ export function useMermaidAttention() {
   });
   const conversations = useConversations();
   const escalations = useEscalations("all");
+  const crewAssistance = useMermaidCrewAssistance();
   const { isHidden } = useHiddenConversations();
   const { isBlocked } = useBlockedLookup();
   const items = useMemo(
@@ -39,19 +44,47 @@ export function useMermaidAttention() {
       isBlocked,
     ],
   );
+  const assistanceItems = useMemo(() => {
+    const unique = new Map<string, MermaidCrewAssistanceQueueItem>();
+    for (const item of Array.isArray(crewAssistance.data)
+      ? crewAssistance.data
+      : []) {
+      if (
+        item.status !== "unacknowledged" ||
+        isHidden([
+          item.conversationId,
+          item.reservationPublicId ?? "",
+          item.id,
+        ]) ||
+        isBlocked([item.conversationId])
+      ) {
+        continue;
+      }
+      unique.set(item.id, item);
+    }
+    return [...unique.values()];
+  }, [crewAssistance.data, isHidden, isBlocked]);
   const isLoading =
-    reservations.isLoading || conversations.isLoading || escalations.isLoading;
+    reservations.isLoading ||
+    conversations.isLoading ||
+    escalations.isLoading ||
+    crewAssistance.isLoading;
   const isError =
-    reservations.isError || conversations.isError || escalations.isError;
+    reservations.isError ||
+    conversations.isError ||
+    escalations.isError ||
+    crewAssistance.isError;
   const complete =
     !isLoading &&
     !isError &&
     Array.isArray(reservations.data) &&
     Array.isArray(conversations.data) &&
     Array.isArray(escalations.data) &&
+    Array.isArray(crewAssistance.data) &&
     escalations.data.every((row) => normalizeEscalation(row) !== null);
   return {
     items,
+    assistanceItems,
     isLoading,
     isError,
     complete,
@@ -60,6 +93,7 @@ export function useMermaidAttention() {
         reservations.refetch(),
         conversations.refetch(),
         escalations.refetch(),
+        crewAssistance.refetch(),
       ]),
   };
 }

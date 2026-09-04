@@ -8,6 +8,14 @@ import MermaidReservationWorkspace from "./MermaidReservationWorkspace";
 vi.mock("@/components/mermaid/MermaidAttentionQueue", () => ({
   MermaidReservationAttention: () => null,
 }));
+vi.mock("@/components/mermaid/MermaidCrewAssistance", () => ({
+  MermaidCrewAssistanceBadge: () => <span>Wheelchair assistance</span>,
+  MermaidCrewAssistanceCard: ({
+    item,
+  }: {
+    item: MermaidReservationDetail["crewAssistance"];
+  }) => <section>{item?.note}</section>,
+}));
 vi.mock("@/hooks/use-mermaid-attention", () => ({
   useMermaidAttention: () => ({ items: [], complete: true }),
 }));
@@ -79,6 +87,36 @@ describe("Mermaid receipt printing", () => {
     expect(paper.textContent).toContain("NOT PROOF OF PAYMENT");
     expect(paper.textContent).not.toContain("Private conversation text");
     expect(within(paper).getAllByRole("row", { hidden: true })).toHaveLength(4);
+  });
+
+  it("keeps the wheelchair marker after booking but excludes its private note from print", () => {
+    state.item!.accessibilityNotes =
+      "Guest's mother uses a folding wheelchair.";
+    state.item!.crewAssistance = {
+      id: "assist-1",
+      kind: "wheelchair",
+      note: "Guest's mother uses a folding wheelchair.",
+      relationship: "Guest's mother",
+      tripDate: "2026-09-12",
+      reservationPublicId: "synthetic-reservation",
+      status: "acknowledged",
+      revision: 4,
+      createdAt: "2026-09-04T12:00:00Z",
+      updatedAt: "2026-09-04T12:10:00Z",
+      acknowledgedAt: "2026-09-04T12:10:00Z",
+      acknowledgedBy: "Calvin",
+    };
+
+    render(<MermaidReservationWorkspace />);
+    expect(screen.getAllByText("Wheelchair assistance")).toHaveLength(1);
+    expect(
+      screen.getByText("Guest's mother uses a folding wheelchair."),
+    ).toBeTruthy();
+    const paper = document.querySelector<HTMLElement>(
+      ".mermaid-print-receipt",
+    )!;
+    expect(paper.textContent).not.toContain("wheelchair");
+    expect(paper.textContent).not.toContain("Accessibility");
   });
 
   it.each([

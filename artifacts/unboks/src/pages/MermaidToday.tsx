@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, ArrowRight } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { MermaidAttentionQueue } from "@/components/mermaid/MermaidAttentionQueue";
+import { MermaidCrewAssistanceBadge } from "@/components/mermaid/MermaidCrewAssistance";
 import { useConversations } from "@/hooks/use-client-api";
 import {
   collectConversationHideKeys,
@@ -124,6 +125,14 @@ export default function MermaidToday() {
                     {formatMermaidTripDate(item.tripDate)} ·{" "}
                     {mermaidGuestCount(item)} guests
                   </span>
+                  {item.crewAssistance ? (
+                    <span className="mt-2 block">
+                      <MermaidCrewAssistanceBadge
+                        item={item.crewAssistance}
+                        compact
+                      />
+                    </span>
+                  ) : null}
                 </span>
                 <span className="text-sm font-semibold capitalize text-teal-800">
                   {item.stage}

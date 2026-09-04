@@ -16,6 +16,10 @@ import {
 } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
 import { MermaidReservationAttention } from "@/components/mermaid/MermaidAttentionQueue";
+import {
+  MermaidCrewAssistanceBadge,
+  MermaidCrewAssistanceCard,
+} from "@/components/mermaid/MermaidCrewAssistance";
 import { useMermaidAttention } from "@/hooks/use-mermaid-attention";
 import {
   canPrintMermaidReceipt,
@@ -118,6 +122,9 @@ export default function MermaidReservationWorkspace() {
                     >
                       {MERMAID_STAGE_META[item.stage].label}
                     </span>
+                    {item.crewAssistance ? (
+                      <MermaidCrewAssistanceBadge item={item.crewAssistance} />
+                    ) : null}
                     {needsAttention ? (
                       <span className="rounded-full bg-rose-600 px-3 py-1 text-[11px] font-bold text-white">
                         Crew attention required
@@ -162,6 +169,16 @@ export default function MermaidReservationWorkspace() {
                 no reminder messages
               </div>
             </section>
+
+            {item.crewAssistance ? (
+              <MermaidCrewAssistanceCard
+                item={item.crewAssistance}
+                customerName={item.customerName}
+                conversationId={item.conversationId}
+                reservationPublicId={item.publicId}
+                showLinks
+              />
+            ) : null}
 
             <MermaidReservationAttention conversationId={item.conversationId} />
 
@@ -255,7 +272,9 @@ export default function MermaidReservationWorkspace() {
                           value={item.dietaryRequirements}
                         />
                       ) : null}
-                      {item.accessibilityNotes ? (
+                      {item.accessibilityNotes &&
+                      item.accessibilityNotes.trim() !==
+                        item.crewAssistance?.note.trim() ? (
                         <Note
                           label="Accessibility"
                           value={item.accessibilityNotes}

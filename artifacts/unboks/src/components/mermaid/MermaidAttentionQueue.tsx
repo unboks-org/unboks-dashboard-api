@@ -8,6 +8,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { MermaidEscalationActions } from "./MermaidEscalationActions";
+import { MermaidCrewAssistanceCard } from "./MermaidCrewAssistance";
 import {
   attentionGuestMessage,
   type MermaidAttentionCase,
@@ -164,6 +165,8 @@ export function MermaidAttentionCaseCard({
 
 export function MermaidAttentionQueue() {
   const queue = useMermaidAttention();
+  const assistanceItems = queue.assistanceItems ?? [];
+  const count = queue.items.length + assistanceItems.length;
   return (
     <section
       aria-label="Needs your attention"
@@ -176,15 +179,15 @@ export function MermaidAttentionQueue() {
             Needs your attention{" "}
             <span className="ml-2 rounded-full bg-rose-50 px-3 py-1 text-rose-800">
               {queue.complete
-                ? queue.items.length
-                : queue.items.length
-                  ? `${queue.items.length}+`
+                ? count
+                : count
+                  ? `${count}+`
                   : "—"}
             </span>
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            All unresolved conversations, including earlier days. Unread chats
-            alone are not escalations.
+            Unacknowledged crew notes and unresolved conversations, including
+            earlier days. Reading an item does not acknowledge it.
           </p>
         </div>
         <button
@@ -201,18 +204,28 @@ export function MermaidAttentionQueue() {
           className="mb-4 rounded-xl bg-amber-50 p-4 text-sm leading-6 text-amber-950"
         >
           {queue.isLoading
-            ? "Checking escalations, conversations and reservation handovers…"
+            ? "Checking crew notes, escalations, conversations and reservation handovers…"
             : "Queue status is incomplete. A source could not be loaded; the count may be higher. Refresh before assuming everything is handled."}
         </p>
       ) : null}
       <div className="space-y-4">
+        {assistanceItems.map((item) => (
+          <MermaidCrewAssistanceCard
+            key={`assistance:${item.id}`}
+            item={item}
+            customerName={item.customerName}
+            conversationId={item.conversationId}
+            reservationPublicId={item.reservationPublicId}
+            showLinks
+          />
+        ))}
         {queue.items.map((item) => (
           <MermaidAttentionCaseCard key={item.key} item={item} />
         ))}
       </div>
-      {queue.complete && queue.items.length === 0 ? (
+      {queue.complete && count === 0 ? (
         <p className="rounded-2xl border border-dashed border-teal-200 bg-teal-50 p-6 text-center font-medium text-teal-900">
-          No unresolved escalations or reservation handovers.
+          No unacknowledged crew notes, escalations or reservation handovers.
         </p>
       ) : null}
     </section>
