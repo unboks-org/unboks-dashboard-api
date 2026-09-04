@@ -68,7 +68,11 @@ export function summarizeMermaidOperations(
       (total, row) => total + mermaidGuestCount(row),
       0,
     ),
-    needsCrew: reservations.filter((row) => row.humanTakeover).length,
+    needsCrew: reservations.filter(
+      (row) =>
+        row.humanTakeover ||
+        row.crewAssistance?.status === "unacknowledged",
+    ).length,
     awaitingGuest: active.filter((row) => !row.humanTakeover).length,
     unreadConversations: conversations.filter(
       (conversation) => conversation.unread,
@@ -82,7 +86,11 @@ export function countMermaidActions(
 ): number {
   const actionConversationIds = new Set(
     reservations
-      .filter((row) => row.humanTakeover)
+      .filter(
+        (row) =>
+          row.humanTakeover ||
+          row.crewAssistance?.status === "unacknowledged",
+      )
       .map((row) => row.conversationId),
   );
   for (const conversation of conversations) {

@@ -56,6 +56,30 @@ export type ValidClient = string;
 export type EscalationMode = "soft" | "hard" | "order" | null;
 export type LearningStatus = "none" | "suggested" | "approved" | "saved";
 
+/** Staff-only operational note. This object must never be projected into
+ * guest-facing documents or public links. Acknowledgement clears the staff
+ * task, not the underlying note. */
+export interface MermaidCrewAssistance {
+  id: string;
+  kind: "wheelchair";
+  note: string;
+  relationship: string | null;
+  tripDate: string | null;
+  reservationPublicId: string | null;
+  status: "unacknowledged" | "acknowledged" | "withdrawn";
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+  acknowledgedAt: string | null;
+  acknowledgedBy: string | null;
+}
+
+export interface MermaidCrewAssistanceQueueItem
+  extends MermaidCrewAssistance {
+  conversationId: string;
+  customerName: string;
+}
+
 export interface ApiConversation {
   phone: string;
   /**
@@ -213,6 +237,8 @@ export interface ConversationDetail {
   extractedDetails?: {
     proposedTimes?: string[] | null;
   } | null;
+  /** Structured staff-only note; ordinary wheelchair use is not escalation. */
+  crewAssistance?: MermaidCrewAssistance | null;
 }
 
 export interface Escalation {
@@ -3084,6 +3110,10 @@ export async function fetchConversation(
           ),
     extractedDetails:
       pickExtractedDetails(env) ?? pickExtractedDetails(structuredSummary),
+    crewAssistance: parseMermaidCrewAssistance(
+      env.crewAssistance ?? env.crew_assistance,
+      "conversation",
+    ),
   };
 }
 
@@ -4206,6 +4236,8 @@ export interface MermaidReservationSummary {
   updatedAt: string;
   primaryAction: MermaidPrimaryAction | null;
   demo: true;
+  /** Staff-only and intentionally excluded from printable/public documents. */
+  crewAssistance?: MermaidCrewAssistance | null;
 }
 
 export interface MermaidReservationDetail extends MermaidReservationSummary {
@@ -4264,6 +4296,69 @@ export interface MermaidCatalogResponse {
   remindersEnabled: false;
 }
 
+function parseMermaidCrewAssistance(
+  raw: unknown,
+  source: string,
+): MermaidCrewAssistance | null | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === null) return null;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new ApiError(502, `Invalid ${source} crew-assistance data.`);
+  }
+  const row = raw as Record<string, unknown>;
+  const id = pickStr(row, "id");
+  const kind = pickStr(row, "kind");
+  const note = pickStr(row, "note");
+  const status = pickStr(row, "status");
+  const revision = row.revision;
+  const createdAt = pickStr(row, "createdAt", "created_at");
+  const updatedAt = pickStr(row, "updatedAt", "updated_at");
+  const acknowledgedAt =
+    pickStr(row, "acknowledgedAt", "acknowledged_at") ?? null;
+  const acknowledgedBy =
+    pickStr(row, "acknowledgedBy", "acknowledged_by") ?? null;
+  if (
+    !id ||
+    kind !== "wheelchair" ||
+    !note ||
+    !["unacknowledged", "acknowledged", "withdrawn"].includes(status ?? "") ||
+    !Number.isInteger(revision) ||
+    (revision as number) < 0 ||
+    !createdAt ||
+    !updatedAt ||
+    (status === "acknowledged" && (!acknowledgedAt || !acknowledgedBy))
+  ) {
+    throw new ApiError(502, `Invalid ${source} crew-assistance data.`);
+  }
+  return {
+    id,
+    kind: "wheelchair",
+    note,
+    relationship: pickStr(row, "relationship") ?? null,
+    tripDate: pickStr(row, "tripDate", "trip_date") ?? null,
+    reservationPublicId:
+      pickStr(row, "reservationPublicId", "reservation_public_id") ?? null,
+    status: status as MermaidCrewAssistance["status"],
+    revision: revision as number,
+    createdAt,
+    updatedAt,
+    acknowledgedAt,
+    acknowledgedBy,
+  };
+}
+
+function parseMermaidReservationSummary<T extends MermaidReservationSummary>(
+  raw: T,
+): T {
+  return {
+    ...raw,
+    crewAssistance: parseMermaidCrewAssistance(
+      raw.crewAssistance,
+      "reservation",
+    ),
+  };
+}
+
 export async function fetchMermaidReservations(
   query = "",
 ): Promise<MermaidReservationSummary[]> {
@@ -4282,18 +4377,85 @@ export async function fetchMermaidReservations(
     false,
     true,
   );
-  return response.items;
+  if (!Array.isArray(response.items)) {
+    throw new ApiError(502, "Invalid Mermaid reservation response.");
+  }
+  return response.items.map(parseMermaidReservationSummary);
 }
 
-export function fetchMermaidReservation(
+export async function fetchMermaidReservation(
   publicId: string,
 ): Promise<MermaidReservationDetail> {
-  return apiFetch<MermaidReservationDetail>(
+  const response = await apiFetch<MermaidReservationDetail>(
     `/mermaid-reservations/${encodeURIComponent(publicId)}`,
     { cache: "no-store" },
     false,
     true,
   );
+  return parseMermaidReservationSummary(response);
+}
+
+export async function fetchMermaidCrewAssistance(
+  status: "unacknowledged" | "acknowledged" | "withdrawn" | "all" =
+    "unacknowledged",
+): Promise<MermaidCrewAssistanceQueueItem[]> {
+  const params = new URLSearchParams({
+    status,
+    _refresh: Date.now().toString(),
+  });
+  const response = await apiFetch<{ items: unknown[] }>(
+    `/mermaid-crew-assistance?${params.toString()}`,
+    {
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+    },
+    false,
+    true,
+  );
+  if (!Array.isArray(response.items)) {
+    throw new ApiError(502, "Invalid Mermaid crew-assistance response.");
+  }
+  const deduplicated = new Map<string, MermaidCrewAssistanceQueueItem>();
+  for (const raw of response.items) {
+    const item = parseMermaidCrewAssistance(raw, "queue");
+    const row = raw as Record<string, unknown>;
+    const conversationId = pickStr(row, "conversationId", "conversation_id");
+    const customerName = pickStr(row, "customerName", "customer_name");
+    if (!item || !conversationId || !customerName) {
+      throw new ApiError(502, "Invalid Mermaid crew-assistance response.");
+    }
+    const queueItem = { ...item, conversationId, customerName };
+    const current = deduplicated.get(item.id);
+    if (
+      !current ||
+      item.revision > current.revision ||
+      (item.revision === current.revision && item.updatedAt > current.updatedAt)
+    ) {
+      deduplicated.set(item.id, queueItem);
+    }
+  }
+  return [...deduplicated.values()];
+}
+
+export async function acknowledgeMermaidCrewAssistance(
+  id: string,
+  expectedRevision: number,
+  acknowledgedBy: string,
+): Promise<MermaidCrewAssistance> {
+  const response = await apiFetch<{ item: unknown }>(
+    `/mermaid-crew-assistance/${encodeURIComponent(id)}/acknowledge`,
+    {
+      method: "POST",
+      body: JSON.stringify({ expectedRevision, acknowledgedBy }),
+    },
+    false,
+    true,
+  );
+  const item = parseMermaidCrewAssistance(response.item, "acknowledgement");
+  if (!item) {
+    throw new ApiError(502, "Invalid Mermaid acknowledgement response.");
+  }
+  return item;
 }
 
 export function fetchMermaidCatalog(): Promise<MermaidCatalogResponse> {

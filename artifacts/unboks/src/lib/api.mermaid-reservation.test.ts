@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  acknowledgeMermaidCrewAssistance,
   fetchMermaidCatalog,
+  fetchMermaidCrewAssistance,
   fetchMermaidCustomers,
   fetchMermaidCustomer,
   fetchMermaidCustomerHistory,
@@ -9,6 +11,21 @@ import {
   publishMermaidCatalog,
   type MermaidCatalogChanges,
 } from "@/lib/api";
+
+const crewAssistance = {
+  id: "assist-1",
+  kind: "wheelchair" as const,
+  note: "Guest's mother uses a wheelchair.",
+  relationship: "Guest's mother",
+  tripDate: "2026-09-12",
+  reservationPublicId: "mer-1",
+  status: "unacknowledged" as const,
+  revision: 3,
+  createdAt: "2026-09-04T12:00:00Z",
+  updatedAt: "2026-09-04T12:00:00Z",
+  acknowledgedAt: null,
+  acknowledgedBy: null,
+};
 
 describe("Mermaid reservation API", () => {
   beforeEach(() => {
@@ -95,6 +112,9 @@ describe("Mermaid reservation API", () => {
       await expect(fetchMermaidCatalog()).rejects.toThrow(
         "Workspace response rejected",
       );
+      await expect(fetchMermaidCrewAssistance()).rejects.toThrow(
+        "Workspace response rejected",
+      );
       await expect(publishMermaidCatalog("a".repeat(64), {} as MermaidCatalogChanges)).rejects.toThrow("Workspace response rejected");
     },
   );
@@ -107,5 +127,91 @@ describe("Mermaid reservation API", () => {
     expect(request?.method).toBe("PUT");
     expect(request?.headers).toMatchObject({ Authorization: "Bearer test-token", "Content-Type": "application/json" });
     expect(JSON.parse(request?.body as string)).toEqual({ expected_revision: "a".repeat(64), changes });
+  });
+
+  it("keeps only the newest repeated assistance event and retains corrections", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          items: [
+            {
+              ...crewAssistance,
+              conversationId: "guest-1",
+              customerName: "Alex Guest",
+            },
+            {
+              ...crewAssistance,
+              note: "Guest's mother uses a folding wheelchair.",
+              tripDate: "2026-09-19",
+              revision: 4,
+              updatedAt: "2026-09-04T12:05:00Z",
+              conversationId: "guest-1",
+              customerName: "Alex Guest",
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Unboks-Tenant": "mermaid",
+          },
+        },
+      ),
+    );
+
+    const items = await fetchMermaidCrewAssistance();
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      id: "assist-1",
+      note: "Guest's mother uses a folding wheelchair.",
+      tripDate: "2026-09-19",
+      revision: 4,
+      conversationId: "guest-1",
+      customerName: "Alex Guest",
+    });
+    const [url, request] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain(
+      "/mermaid-crew-assistance?status=unacknowledged",
+    );
+    expect(request?.cache).toBe("no-store");
+  });
+
+  it("acknowledges an exact revision as the selected operator", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          item: {
+            ...crewAssistance,
+            status: "acknowledged",
+            acknowledgedAt: "2026-09-04T12:10:00Z",
+            acknowledgedBy: "Jr",
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Unboks-Tenant": "mermaid",
+          },
+        },
+      ),
+    );
+
+    const item = await acknowledgeMermaidCrewAssistance("assist/1", 3, "Jr");
+    expect(item).toMatchObject({
+      id: "assist-1",
+      status: "acknowledged",
+      acknowledgedBy: "Jr",
+    });
+    const [url, request] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain(
+      "/mermaid-crew-assistance/assist%2F1/acknowledge",
+    );
+    expect(request?.method).toBe("POST");
+    expect(JSON.parse(request?.body as string)).toEqual({
+      expectedRevision: 3,
+      acknowledgedBy: "Jr",
+    });
   });
 });

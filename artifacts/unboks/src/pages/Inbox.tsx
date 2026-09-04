@@ -8,6 +8,7 @@ import {
   navIdFromInboxUrl,
 } from "@/components/inbox/DashboardShell";
 import { MessageRow } from "@/components/inbox/MessageRow";
+import { MermaidCrewAssistanceCard } from "@/components/mermaid/MermaidCrewAssistance";
 import type { Channel, Conversation } from "@/data/conversations";
 import {
   useConversations,
@@ -1103,6 +1104,17 @@ function ConversationDetailPane({
           </p>
         )}
       </div>
+
+      {detail?.crewAssistance ? (
+        <div className="border-b border-border bg-amber-50/30 p-3 sm:p-4">
+          <MermaidCrewAssistanceCard
+            item={detail.crewAssistance}
+            customerName={conversation.sender}
+            reservationPublicId={detail.crewAssistance.reservationPublicId}
+            showLinks={Boolean(detail.crewAssistance.reservationPublicId)}
+          />
+        </div>
+      ) : null}
 
       {isEscalation ? (
         // ----- DECISION-FIRST ESCALATION LAYOUT -------------------------

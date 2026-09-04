@@ -10,6 +10,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
+import { MermaidCrewAssistanceBadge } from "@/components/mermaid/MermaidCrewAssistance";
 import {
   fetchMermaidReservations,
   type MermaidReservationSummary,
@@ -44,7 +45,12 @@ function matchesFilter(
   if (filter === "active") {
     return reservation.stage !== "booked" && reservation.stage !== "cancelled";
   }
-  if (filter === "crew") return reservation.humanTakeover;
+  if (filter === "crew") {
+    return (
+      reservation.humanTakeover ||
+      reservation.crewAssistance?.status === "unacknowledged"
+    );
+  }
   if (filter === "booked") return reservation.stage === "booked";
   if (filter === "cancelled") return reservation.stage === "cancelled";
   return true;
@@ -73,7 +79,7 @@ export default function MermaidReservations() {
   const counts = useMemo(
     () => ({
       active: rows.filter((row) => matchesFilter(row, "active")).length,
-      crew: rows.filter((row) => row.humanTakeover).length,
+      crew: rows.filter((row) => matchesFilter(row, "crew")).length,
       booked: rows.filter((row) => row.stage === "booked").length,
       guests: rows.reduce((total, row) => total + mermaidGuestCount(row), 0),
     }),
@@ -240,6 +246,14 @@ export default function MermaidReservations() {
                           </span>
                         ) : null}
                       </span>
+                      {item.crewAssistance ? (
+                        <span className="mt-2 block">
+                          <MermaidCrewAssistanceBadge
+                            item={item.crewAssistance}
+                            compact
+                          />
+                        </span>
+                      ) : null}
                       <span className="mt-1 block truncate text-xs text-slate-500">
                         Updated {formatMermaidActivity(item.updatedAt)}
                       </span>

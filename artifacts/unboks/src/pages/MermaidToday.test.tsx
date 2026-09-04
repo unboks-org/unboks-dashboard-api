@@ -57,7 +57,9 @@ describe("Mermaid Today", () => {
   it("shows a truthful empty state when both live sources return no rows", () => {
     render(<MermaidToday />);
     expect(
-      screen.getByText("No unresolved escalations or reservation handovers."),
+      screen.getByText(
+        "No unacknowledged crew notes, escalations or reservation handovers.",
+      ),
     ).toBeTruthy();
     expect(screen.getByText("Ready for the first journey")).toBeTruthy();
   });
@@ -71,7 +73,9 @@ describe("Mermaid Today", () => {
 
     expect(screen.getByText(/Queue status is incomplete/)).toBeTruthy();
     expect(
-      screen.queryByText("No unresolved escalations or reservation handovers."),
+      screen.queryByText(
+        "No unacknowledged crew notes, escalations or reservation handovers.",
+      ),
     ).toBeNull();
     expect(screen.getAllByText("—")).toHaveLength(4);
   });

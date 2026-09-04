@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MermaidAttentionCase } from "@/lib/mermaid-attention";
+import type { MermaidCrewAssistanceQueueItem } from "@/lib/api";
 import {
   MermaidAttentionQueue,
   MermaidReservationAttention,
@@ -8,6 +9,7 @@ import {
 
 const state = vi.hoisted(() => ({
   items: [] as MermaidAttentionCase[],
+  assistanceItems: [] as MermaidCrewAssistanceQueueItem[],
   complete: true,
   isLoading: false,
   refresh: vi.fn(),
@@ -36,6 +38,19 @@ vi.mock("./MermaidEscalationActions", () => ({
     <textarea aria-label="Your guidance to TRACY" />
   ),
 }));
+vi.mock("./MermaidCrewAssistance", () => ({
+  MermaidCrewAssistanceCard: ({
+    item,
+    customerName,
+  }: {
+    item: MermaidCrewAssistanceQueueItem;
+    customerName: string;
+  }) => (
+    <article aria-label="Wheelchair assistance">
+      {customerName}: {item.note}
+    </article>
+  ),
+}));
 
 const item = (id: string): MermaidAttentionCase => ({
   key: id,
@@ -59,6 +74,7 @@ const item = (id: string): MermaidAttentionCase => ({
 describe("Mermaid attention workspace", () => {
   beforeEach(() => {
     state.items = [];
+    state.assistanceItems = [];
     state.complete = true;
     state.isLoading = false;
     state.refresh.mockClear();
@@ -108,7 +124,7 @@ describe("Mermaid attention workspace", () => {
       render(<MermaidAttentionQueue />);
       expect(
         screen.queryByText(
-          "No unresolved escalations or reservation handovers.",
+          "No unacknowledged crew notes, escalations or reservation handovers.",
         ),
       ).toBeNull();
       expect(
@@ -120,7 +136,9 @@ describe("Mermaid attention workspace", () => {
   it("only claims clear after every source succeeds", () => {
     render(<MermaidAttentionQueue />);
     expect(
-      screen.getByText("No unresolved escalations or reservation handovers."),
+      screen.getByText(
+        "No unacknowledged crew notes, escalations or reservation handovers.",
+      ),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Refresh queue" }));
     expect(state.refresh).toHaveBeenCalledOnce();
@@ -132,6 +150,33 @@ describe("Mermaid attention workspace", () => {
     expect(
       screen.getByRole("heading", { name: "Needs your attention 1+" }),
     ).toBeTruthy();
+  });
+  it("counts an unacknowledged wheelchair note as a first-class staff item", () => {
+    state.assistanceItems = [
+      {
+        id: "assist-1",
+        kind: "wheelchair",
+        note: "Guest's mother uses a folding wheelchair.",
+        relationship: "Guest's mother",
+        tripDate: "2026-09-19",
+        reservationPublicId: null,
+        conversationId: "guest-a",
+        customerName: "Alex Guest",
+        status: "unacknowledged",
+        revision: 2,
+        createdAt: "2026-09-04T12:00:00Z",
+        updatedAt: "2026-09-04T12:05:00Z",
+        acknowledgedAt: null,
+        acknowledgedBy: null,
+      },
+    ];
+    render(<MermaidAttentionQueue />);
+    expect(
+      screen.getByRole("heading", { name: "Needs your attention 1" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByLabelText("Wheelchair assistance").textContent,
+    ).toContain("folding wheelchair");
   });
   it("opens the matching reservation's problem and composer immediately", () => {
     state.items = [item("a"), item("b")];

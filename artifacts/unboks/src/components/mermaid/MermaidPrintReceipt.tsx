@@ -114,19 +114,14 @@ export function MermaidPrintReceipt({
         </p>
       ) : null}
 
-      {item.dietaryRequirements ||
-      item.accessibilityNotes ||
-      item.specialRequests ? (
+      {/* Accessibility/crew-assistance notes stay in authenticated dashboard
+          surfaces only. They are intentionally excluded from printable PDFs. */}
+      {item.dietaryRequirements || item.specialRequests ? (
         <section className="receipt-notes">
           <h2>Crew notes</h2>
           {item.dietaryRequirements ? (
             <p>
               <strong>Dietary:</strong> {item.dietaryRequirements}
-            </p>
-          ) : null}
-          {item.accessibilityNotes ? (
-            <p>
-              <strong>Accessibility:</strong> {item.accessibilityNotes}
             </p>
           ) : null}
           {item.specialRequests ? (

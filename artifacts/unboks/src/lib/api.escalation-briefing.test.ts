@@ -77,4 +77,32 @@ describe("conversation escalation briefing payload", () => {
       expect(detail.escalationCustomerMessage).toBeNull();
     },
   );
+  it("keeps wheelchair assistance structured without creating an escalation", async () => {
+    respond({
+      messages: [],
+      crewAssistance: {
+        id: "assist-1",
+        kind: "wheelchair",
+        note: "The guest's mother uses a folding wheelchair.",
+        relationship: "Guest's mother",
+        tripDate: "2026-09-19",
+        reservationPublicId: null,
+        status: "unacknowledged",
+        revision: 2,
+        createdAt: "2026-09-04T12:00:00Z",
+        updatedAt: "2026-09-04T12:05:00Z",
+        acknowledgedAt: null,
+        acknowledgedBy: null,
+      },
+    });
+
+    const detail = await fetchConversation("guest");
+    expect(detail.escalated).toBeUndefined();
+    expect(detail.crewAssistance).toMatchObject({
+      id: "assist-1",
+      note: "The guest's mother uses a folding wheelchair.",
+      status: "unacknowledged",
+      revision: 2,
+    });
+  });
 });
