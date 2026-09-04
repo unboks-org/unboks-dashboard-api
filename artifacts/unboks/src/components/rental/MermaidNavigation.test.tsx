@@ -34,7 +34,7 @@ describe("Mermaid reservation navigation", () => {
     expect(isRentalDashboardV2Enabled("consulta-despertares")).toBe(false);
   });
 
-  it("shows the five Mermaid destinations on desktop and mobile", () => {
+  it("shows the six Mermaid destinations on desktop and mobile", () => {
     render(
       <RentalDashboardShell active="today" title="Today">
         <div>Dashboard</div>
@@ -43,6 +43,7 @@ describe("Mermaid reservation navigation", () => {
     for (const label of [
       "Today",
       "Reservations",
+      "Customers",
       "Conversations",
       "Trip & pricing",
       "Settings",
@@ -51,7 +52,7 @@ describe("Mermaid reservation navigation", () => {
         screen.getAllByRole("button", { name: label }).length,
       ).toBeGreaterThanOrEqual(1);
     }
-    expect(screen.queryByRole("button", { name: "Customers" })).toBeNull();
+
     expect(
       screen.queryByRole("button", { name: "Fleet & pricing" }),
     ).toBeNull();
@@ -73,8 +74,16 @@ describe("Mermaid reservation navigation", () => {
   });
 
   it("shows the exact attention count on desktop and mobile", () => {
-    render(<RentalDashboardShell active="today" title="Today" actionCount={10}><div>Dashboard</div></RentalDashboardShell>);
-    expect(screen.getAllByLabelText("10 actions need attention").every((badge) => badge.textContent === "10")).toBe(true);
+    render(
+      <RentalDashboardShell active="today" title="Today" actionCount={10}>
+        <div>Dashboard</div>
+      </RentalDashboardShell>,
+    );
+    expect(
+      screen
+        .getAllByLabelText("10 actions need attention")
+        .every((badge) => badge.textContent === "10"),
+    ).toBe(true);
     expect(screen.queryByText("9+")).toBeNull();
   });
 

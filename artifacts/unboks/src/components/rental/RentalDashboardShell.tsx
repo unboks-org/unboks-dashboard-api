@@ -84,6 +84,7 @@ const mermaidItems: RentalNavItem[] = [
     label: "Today",
     icon: CalendarCheck2,
   },
+  { id: "customers", href: "/customers", label: "Customers", icon: UsersRound },
   {
     id: "reservations" as const,
     href: "/reservations",
@@ -115,7 +116,6 @@ export function normalizeRentalNav(
   items = rentalItems,
 ): RentalNavId {
   const mermaid = items === mermaidItems;
-  if (mermaid && active === "customers") return "reservations";
   if (mermaid && active === "fleet") return "trip";
   if (active === "followups") return mermaid ? "reservations" : "customers";
   if (active === "rental") return mermaid ? "trip" : "fleet";
@@ -169,17 +169,24 @@ export function RentalDashboardShell({
     agent.data?.available === true &&
     typeof agent.data.active === "boolean";
   const items = mermaid ? mermaidItems : rentalItems;
-  const activeNav = normalizeRentalNav(active, items);
+  const activeNav =
+    mermaid && location.startsWith("/reservations")
+      ? "reservations"
+      : normalizeRentalNav(active, items);
   const searchLabel =
     activeNav === "conversations"
       ? "Search conversations"
-      : "Search reservations";
+      : activeNav === "customers"
+        ? "Search customers"
+        : "Search reservations";
   const searchPlaceholder =
     activeNav === "conversations"
       ? "Search guest or message"
-      : mermaid
-        ? "Search name, WhatsApp, quote or code"
-        : "Search name, phone or reference";
+      : activeNav === "customers" && mermaid
+        ? "Search name, contact or trip details"
+        : mermaid
+          ? "Search name, WhatsApp, quote or code"
+          : "Search name, phone or reference";
   const fallbackBackHref = location.startsWith("/customers/")
     ? "/customers"
     : location.startsWith("/reservations/")
@@ -344,7 +351,11 @@ export function RentalDashboardShell({
                   )}
                   aria-label={`${actionCount} actions need attention`}
                 >
-                  {mermaid ? actionCount : actionCount > 99 ? "99+" : actionCount}
+                  {mermaid
+                    ? actionCount
+                    : actionCount > 99
+                      ? "99+"
+                      : actionCount}
                 </span>
               ) : null}
             </button>
@@ -463,7 +474,10 @@ export function RentalDashboardShell({
         </main>
 
         <nav
-          className="fixed inset-x-0 bottom-0 z-30 grid h-[calc(66px+env(safe-area-inset-bottom))] grid-cols-5 border-t border-[#e5dfd5] bg-[#fbfaf7]/97 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+          className={cn(
+            "fixed inset-x-0 bottom-0 z-30 grid h-[calc(66px+env(safe-area-inset-bottom))] border-t border-[#e5dfd5] bg-[#fbfaf7]/97 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden",
+            mermaid ? "grid-cols-6" : "grid-cols-5",
+          )}
           aria-label="Primary navigation"
         >
           {items.map((item) => {
@@ -496,7 +510,11 @@ export function RentalDashboardShell({
                       className="absolute -right-3 -top-2 inline-flex min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[9px] font-bold leading-4 text-white"
                       aria-label={`${actionCount} actions need attention`}
                     >
-                      {mermaid ? actionCount : actionCount > 9 ? "9+" : actionCount}
+                      {mermaid
+                        ? actionCount
+                        : actionCount > 9
+                          ? "9+"
+                          : actionCount}
                     </span>
                   ) : null}
                 </span>

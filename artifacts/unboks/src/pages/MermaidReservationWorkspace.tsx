@@ -58,7 +58,11 @@ export default function MermaidReservationWorkspace() {
   const item = query.data;
   const attention = useMermaidAttention();
   const needsAttention = attention.complete
-    ? attention.items.some((entry) => entry.conversationId === item?.conversationId || entry.reservation?.conversationId === item?.conversationId)
+    ? attention.items.some(
+        (entry) =>
+          entry.conversationId === item?.conversationId ||
+          entry.reservation?.conversationId === item?.conversationId,
+      )
     : Boolean(item?.humanTakeover);
   const receiptAction = item?.primaryAction?.id === "view_receipt";
   const currentIndex = item
@@ -120,7 +124,10 @@ export default function MermaidReservationWorkspace() {
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold text-cyan-100">
-                        <Sparkles className="h-3 w-3" /> {attention.complete ? "No open crew decision" : "Checking crew attention"}
+                        <Sparkles className="h-3 w-3" />{" "}
+                        {attention.complete
+                          ? "No open crew decision"
+                          : "Checking crew attention"}
                       </span>
                     )}
                   </div>
@@ -215,6 +222,10 @@ export default function MermaidReservationWorkspace() {
                       value={`${item.adults} ${item.adults === 1 ? "adult" : "adults"} · ${item.children} ${item.children === 1 ? "child" : "children"} 4–12 · ${item.infants} age 0–3`}
                     />
                     <Datum
+                      label="Contact number"
+                      value={item.contactPhone || "Not provided"}
+                    />
+                    <Datum
                       label="Transport"
                       value={
                         item.pickupPreference === "pier"
@@ -257,6 +268,15 @@ export default function MermaidReservationWorkspace() {
                   ) : null}
                 </Card>
 
+                {item.customerId ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/customers/${item.customerId}`)}
+                    className="min-h-11 rounded-xl bg-white px-4 text-sm font-semibold text-teal-900 ring-1 ring-slate-200"
+                  >
+                    Open customer account
+                  </button>
+                ) : null}
                 <Card eyebrow="Context" title="Conversation snapshot">
                   <div className="max-h-[440px] space-y-3 overflow-y-auto pr-1">
                     {item.conversation.map((message, index) => (
@@ -269,7 +289,7 @@ export default function MermaidReservationWorkspace() {
                             : "ml-auto bg-[#0b6370] text-white",
                         )}
                       >
-                        <p>{message.text}</p>
+                        <p className="whitespace-pre-wrap">{message.text}</p>
                         <p className="mt-1 text-[10px] opacity-80">
                           {formatMermaidActivity(message.created_at)}
                         </p>
