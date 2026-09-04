@@ -214,17 +214,23 @@ export function Drawer({
   const { data: profile } = useClientProfile();
   const agentStatus = useAgentStatus();
   const setAgentStatus = useSetAgentStatus();
+  const verifiedAgentStatus =
+    !agentStatus.isError &&
+    agentStatus.data?.available === true &&
+    typeof agentStatus.data.active === "boolean"
+      ? agentStatus.data
+      : undefined;
 
   const content = (
     <div className="flex flex-col h-full bg-[#fbfbfd]">
       <WorkspaceBlock
         profile={profile}
-        agentStatus={agentStatus.data}
+        agentStatus={verifiedAgentStatus}
         isAgentStatusLoading={agentStatus.isLoading}
         isAgentStatusUpdating={setAgentStatus.isPending}
         onToggleAgent={() => {
-          if (agentStatus.data?.available) {
-            setAgentStatus.mutate(!agentStatus.data.active);
+          if (verifiedAgentStatus) {
+            setAgentStatus.mutate(!verifiedAgentStatus.active);
           }
         }}
       />
