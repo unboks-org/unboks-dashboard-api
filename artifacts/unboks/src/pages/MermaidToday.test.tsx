@@ -22,6 +22,12 @@ vi.mock("@tanstack/react-query", () => ({
   }),
 }));
 vi.mock("@/hooks/use-client-api", () => ({
+  useEscalations: () => ({ data: [], isLoading: false, isError: false }),
+  useConversation: () => ({
+    data: { messages: [] },
+    isLoading: false,
+    isError: false,
+  }),
   useConversations: () => ({
     data: state.conversations,
     isLoading: false,
@@ -50,7 +56,9 @@ describe("Mermaid Today", () => {
 
   it("shows a truthful empty state when both live sources return no rows", () => {
     render(<MermaidToday />);
-    expect(screen.getByText("The deck is clear")).toBeTruthy();
+    expect(
+      screen.getByText("No unresolved escalations or reservation handovers."),
+    ).toBeTruthy();
     expect(screen.getByText("Ready for the first journey")).toBeTruthy();
   });
 
@@ -61,16 +69,33 @@ describe("Mermaid Today", () => {
     state.conversationError = true;
     render(<MermaidToday />);
 
-    expect(screen.getByText("Queue status is incomplete")).toBeTruthy();
-    expect(screen.queryByText("The deck is clear")).toBeNull();
-    expect(screen.getAllByText("—")).toHaveLength(6);
+    expect(screen.getByText(/Queue status is incomplete/)).toBeTruthy();
+    expect(
+      screen.queryByText("No unresolved escalations or reservation handovers."),
+    ).toBeNull();
+    expect(screen.getAllByText("—")).toHaveLength(4);
   });
 
   it("respects the same hidden and blocked chat filters as the inbox", () => {
     state.conversations = [
-      { phone: "visible-guest", name: "Visible guest", unread: true },
-      { phone: "hidden-guest", name: "Hidden guest", unread: true },
-      { phone: "blocked-guest", name: "Blocked guest", unread: true },
+      {
+        phone: "visible-guest",
+        name: "Visible guest",
+        unread: true,
+        escalated: true,
+      },
+      {
+        phone: "hidden-guest",
+        name: "Hidden guest",
+        unread: true,
+        escalated: true,
+      },
+      {
+        phone: "blocked-guest",
+        name: "Blocked guest",
+        unread: true,
+        escalated: true,
+      },
     ];
     render(<MermaidToday />);
 
