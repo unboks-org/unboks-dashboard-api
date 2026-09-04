@@ -163,6 +163,11 @@ export function RentalDashboardShell({
   const restoredEntryRef = useRef<string | null>(null);
   const tenant = getClientSlug();
   const mermaid = isMermaidReservationTenant(tenant);
+  const agentName = mermaid ? "TRACY" : "Nick";
+  const agentStateKnown =
+    !agent.isError &&
+    agent.data?.available === true &&
+    typeof agent.data.active === "boolean";
   const items = mermaid ? mermaidItems : rentalItems;
   const activeNav = normalizeRentalNav(active, items);
   const searchLabel =
@@ -258,25 +263,43 @@ export function RentalDashboardShell({
       </div>
 
       <div className="px-4 py-4">
-        <button
-          type="button"
-          disabled={!agent.data?.available || setAgent.isPending}
-          onClick={() => {
-            if (agent.data?.available) setAgent.mutate(!agent.data.active);
-          }}
-          className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-3 text-left text-xs font-medium text-white/80 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+        <div
+          role="status"
+          className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-3 text-xs font-medium text-white/80"
         >
           <span
             className={cn(
               "h-2 w-2 rounded-full",
-              agent.data?.active ? "bg-emerald-400" : "bg-amber-400",
+              !agentStateKnown
+                ? "bg-slate-400"
+                : agent.data?.active
+                  ? "bg-emerald-400"
+                  : "bg-amber-400",
             )}
           />
           {agent.isLoading
-            ? `Checking ${mermaid ? "TRACY" : "Nick"}…`
-            : agent.data?.active
-              ? `${mermaid ? "TRACY" : "Nick"} is active`
-              : `${mermaid ? "TRACY" : "Nick"} is paused`}
+            ? `Checking ${agentName}…`
+            : !agentStateKnown
+              ? `${agentName} status unavailable`
+              : agent.data?.active
+                ? `${agentName} is active`
+                : `${agentName} is paused`}
+        </div>
+        <button
+          type="button"
+          disabled={!agentStateKnown || setAgent.isPending}
+          onClick={() => {
+            if (agentStateKnown) setAgent.mutate(!agent.data?.active);
+          }}
+          className="mt-2 flex min-h-11 w-full items-center justify-center rounded-xl border border-white/10 px-3 text-xs font-medium text-white/80 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {setAgent.isPending
+            ? `Updating ${agentName}…`
+            : !agentStateKnown
+              ? `${agentName} controls unavailable`
+              : agent.data?.active
+                ? `Pause ${agentName}`
+                : `Resume ${agentName}`}
         </button>
       </div>
 

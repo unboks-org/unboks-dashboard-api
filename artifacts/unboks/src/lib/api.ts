@@ -2548,8 +2548,8 @@ export interface ClientProfile {
 }
 
 export interface AgentStatus {
-  active: boolean;
-  status: "active" | "paused";
+  active: boolean | null;
+  status: "active" | "paused" | "unavailable";
   available: boolean;
   source: string;
   updatedAt: string | null;
