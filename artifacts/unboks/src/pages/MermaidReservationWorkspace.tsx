@@ -8,12 +8,17 @@ import {
   FileText,
   MapPin,
   MessageCircleMore,
+  Printer,
   ShieldCheck,
   ShipWheel,
   Sparkles,
   UsersRound,
 } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
+import {
+  canPrintMermaidReceipt,
+  MermaidPrintReceipt,
+} from "@/components/mermaid/MermaidPrintReceipt";
 import {
   fetchMermaidReservation,
   type MermaidReservationStage,
@@ -49,6 +54,7 @@ export default function MermaidReservationWorkspace() {
     refetchInterval: 10_000,
   });
   const item = query.data;
+  const receiptAction = item?.primaryAction?.id === "view_receipt";
   const currentIndex = item
     ? stages.findIndex((stage) => stage.id === item.stage)
     : -1;
@@ -88,6 +94,7 @@ export default function MermaidReservationWorkspace() {
           </div>
         ) : (
           <>
+            <MermaidPrintReceipt item={item} />
             <section className="relative overflow-hidden rounded-[28px] bg-[#073b49] text-white shadow-[0_20px_55px_rgba(7,59,73,.18)]">
               <div className="absolute -right-16 -top-24 h-64 w-64 rounded-full bg-cyan-300/15 blur-3xl" />
               <div className="relative grid gap-6 p-6 sm:p-8 lg:grid-cols-[1fr_auto] lg:items-end">
@@ -353,15 +360,29 @@ export default function MermaidReservationWorkspace() {
                 {item.primaryAction ? (
                   <button
                     type="button"
-                    onClick={() =>
-                      item.primaryAction?.id === "open_conversation"
-                        ? openConversation()
-                        : navigate(item.primaryAction?.href ?? "/reservations")
+                    disabled={receiptAction && !canPrintMermaidReceipt(item)}
+                    title={
+                      receiptAction && !canPrintMermaidReceipt(item)
+                        ? "The receipt will be printable once its booking and receipt references are available."
+                        : undefined
                     }
-                    className="flex min-h-13 w-full items-center justify-center gap-2 rounded-2xl bg-[#073b49] px-4 text-sm font-bold text-white shadow-[0_10px_25px_rgba(7,59,73,.2)] transition hover:-translate-y-px hover:bg-[#0a4b5b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+                    onClick={() =>
+                      receiptAction
+                        ? window.print()
+                        : item.primaryAction?.id === "open_conversation"
+                          ? openConversation()
+                          : navigate(
+                              item.primaryAction?.href ?? "/reservations",
+                            )
+                    }
+                    className="flex min-h-13 w-full items-center justify-center gap-2 rounded-2xl bg-[#073b49] px-4 text-sm font-bold text-white shadow-[0_10px_25px_rgba(7,59,73,.2)] transition hover:-translate-y-px hover:bg-[#0a4b5b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
                   >
-                    {item.primaryAction.label}{" "}
-                    <ArrowRight className="h-4 w-4" />
+                    {receiptAction ? "Print receipt" : item.primaryAction.label}{" "}
+                    {receiptAction ? (
+                      <Printer className="h-4 w-4" />
+                    ) : (
+                      <ArrowRight className="h-4 w-4" />
+                    )}
                   </button>
                 ) : null}
               </div>
