@@ -12,6 +12,7 @@ import {
   Plus,
   Sparkles,
   SlidersHorizontal,
+  ShipWheel,
   Trash2,
   X,
 } from "lucide-react";
@@ -46,6 +47,7 @@ import { AutoBlockRulesSettings } from "@/components/settings/AutoBlockRulesSett
 import { ExcludedContactsSettings } from "@/components/settings/ExcludedContactsSettings";
 import { AgentLearningsList } from "@/components/settings/AgentLearningsList";
 import { AgentPersonalityWizard } from "@/components/settings/AgentPersonalityWizard";
+import { MermaidTripSettings } from "@/components/settings/MermaidTripSettings";
 import { useSot, type SotBlock, type SotSubsection } from "@/data/sot";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -53,6 +55,7 @@ import {
   getTenantUiConfig,
   isConsultaDespertaresTenant,
   isRentalDashboardV2Enabled,
+  isMermaidReservationTenant,
   isSpainSpanishTenant,
   tenantText,
 } from "@/lib/tenant-ui";
@@ -113,6 +116,7 @@ function agentNameDraftError(value: string): string | null {
 }
 
 type CategoryId =
+  | "trip-pricing"
   | "workspace"
   | "your-info"
   | "agent-personality"
@@ -130,6 +134,12 @@ const CATEGORIES: {
   description: string;
   icon: typeof Building2;
 }[] = [
+  {
+    id: "trip-pricing",
+    label: "Trip & pricing",
+    description: "Manage the trip details, fares and policies TRACY uses for Mermaid enquiries and new quotes.",
+    icon: ShipWheel,
+  },
   {
     id: "workspace",
     label: "Workspace",
@@ -238,6 +248,7 @@ const RENTAL_SETTINGS_GROUPS: Array<{
 ];
 
 const SPANISH_CATEGORIES: Record<CategoryId, { label: string; description: string }> = {
+  "trip-pricing": { label: "Excursión y precios", description: "Información y tarifas de la excursión." },
   workspace: {
     label: "Espacio de trabajo",
     description: "Gestiona los datos básicos que se muestran en tu espacio de trabajo de Unboks.",
@@ -1214,6 +1225,7 @@ function SavedKnowledgeUpdateCard({
 // =====================================================
 
 const CATEGORY_IDS: ReadonlySet<string> = new Set<CategoryId>([
+  "trip-pricing",
   "workspace",
   "your-info",
   "agent-personality",
@@ -1230,7 +1242,7 @@ function categoryFromSearch(search: string): CategoryId | null {
   try {
     const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
     const raw = params.get("category");
-    if (raw && CATEGORY_IDS.has(raw)) return raw as CategoryId;
+    if (raw && CATEGORY_IDS.has(raw) && (raw !== "trip-pricing" || isMermaidReservationTenant())) return raw as CategoryId;
   } catch {
     // ignore — fall through to null
   }
@@ -1238,6 +1250,8 @@ function categoryFromSearch(search: string): CategoryId | null {
 }
 
 export default function Settings() {
+  const mermaidSettings = isMermaidReservationTenant();
+  const categories = CATEGORIES.filter((category) => category.id !== "trip-pricing" || mermaidSettings);
   // Settings supports `?category=<id>` deep links so other surfaces
   // can jump straight to the right tab. URL is the source of truth:
   // clicks update the URL, the URL drives `active`.
@@ -1461,7 +1475,7 @@ export default function Settings() {
     const t = window.setTimeout(() => setNotifySaved(false), 1800);
     return () => window.clearTimeout(t);
   }, [notifySaved]);
-  const currentCategoryBase = CATEGORIES.find((c) => c.id === active) ?? CATEGORIES[0];
+  const currentCategoryBase = categories.find((c) => c.id === active) ?? categories.find((c) => c.id === "workspace")!;
   const currentCategory = isSpainSpanishTenant()
     ? { ...currentCategoryBase, ...SPANISH_CATEGORIES[currentCategoryBase.id] }
     : currentCategoryBase;
@@ -1476,7 +1490,7 @@ export default function Settings() {
       activeNav="settings"
       pageTitle={tenantText("Settings", "Configuración")}
       pageSubtitle={tenantText(
-        rentalSettings
+        mermaidSettings ? "Trip, TRACY, workspace and crew settings." : rentalSettings
           ? "Company, Nick, channels and security controls."
           : "Manage your workspace, Agent information, alerts, and preferences.",
         "Gestiona tu espacio de trabajo, la información del agente, las alertas y las preferencias.",
@@ -1509,7 +1523,7 @@ export default function Settings() {
                 }}
                 className="w-full rounded-xl border border-[#dadce0] bg-white px-3 py-2.5 text-[14px] font-medium text-[#202124] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
               >
-                {(rentalSettings ? RENTAL_SETTINGS_GROUPS : CATEGORIES).map(
+                {(rentalSettings ? RENTAL_SETTINGS_GROUPS : categories).map(
                   (item) => (
                     <option key={item.id} value={item.id}>
                       {rentalSettings
@@ -1525,7 +1539,7 @@ export default function Settings() {
               className="-mb-px hidden gap-1 overflow-x-auto md:flex sm:gap-2"
               style={{ scrollbarWidth: "none" }}
             >
-              {(rentalSettings ? RENTAL_SETTINGS_GROUPS : CATEGORIES).map((cat) => {
+              {(rentalSettings ? RENTAL_SETTINGS_GROUPS : categories).map((cat) => {
                 const Icon = cat.icon;
                 const isActive = rentalSettings
                   ? cat.id === activeRentalGroup.id
@@ -1602,6 +1616,8 @@ export default function Settings() {
                 title={currentCategory.label}
                 description={currentCategory.description}
               />
+
+              {active === "trip-pricing" && mermaidSettings ? <MermaidTripSettings /> : null}
 
               {active === "workspace" && (
                 <div className="space-y-5">

@@ -98,12 +98,6 @@ const mermaidItems: RentalNavItem[] = [
     icon: MessageCircleMore,
   },
   {
-    id: "trip" as const,
-    href: "/trip",
-    label: "Trip & pricing",
-    icon: ShipWheel,
-  },
-  {
     id: "settings" as const,
     href: "/settings",
     label: "Settings",
@@ -116,9 +110,9 @@ export function normalizeRentalNav(
   items = rentalItems,
 ): RentalNavId {
   const mermaid = items === mermaidItems;
-  if (mermaid && active === "fleet") return "trip";
+  if (mermaid && (active === "fleet" || active === "trip")) return "settings";
   if (active === "followups") return mermaid ? "reservations" : "customers";
-  if (active === "rental") return mermaid ? "trip" : "fleet";
+  if (active === "rental") return mermaid ? "settings" : "fleet";
   if (
     active === "inbox" ||
     active === "escalations" ||
