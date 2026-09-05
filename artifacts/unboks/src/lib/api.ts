@@ -4545,6 +4545,7 @@ export function publishMermaidCatalog(
 export interface MermaidCustomerDetails {
   customer_name?: string;
   contact_phone?: string;
+  email?: string;
   language?: string;
   trip_date?: string;
   adults?: number;

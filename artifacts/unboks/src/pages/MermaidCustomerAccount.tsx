@@ -33,6 +33,7 @@ function Details({ data }: { data: MermaidCustomerDetails }) {
   const entries: Array<[string, string | number | undefined]> = [
     ["Name", data.customer_name],
     ["Contact number", data.contact_phone],
+    ["Email", data.email],
     ["Language", data.language?.toUpperCase()],
     [
       "Trip date",
