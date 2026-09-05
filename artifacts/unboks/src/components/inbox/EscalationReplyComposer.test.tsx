@@ -210,4 +210,64 @@ describe("escalation delivery confirmation", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(onDone).not.toHaveBeenCalled();
   });
+
+  it("keeps an image-only draft pinned to the revision where the image was selected", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              id: "media-one",
+              knowledge_id: "knowledge-one",
+              caption: "Deck photo",
+              url: "https://example.invalid/deck.jpg",
+            },
+          ]),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            { id: "test", mode: "hard", status: "sent", content_revision: 2 },
+          ]),
+          { status: 200 },
+        ),
+      );
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const onDone = vi.fn();
+    const ui = (contentRevision: number) => (
+      <QueryClientProvider client={client}>
+        <EscalationReplyComposer
+          conversationDbId="test"
+          conversationId="guest"
+          mode="hard"
+          channel="WhatsApp"
+          contentRevision={contentRevision}
+          onDone={onDone}
+        />
+      </QueryClientProvider>
+    );
+    const view = render(ui(1));
+    fireEvent.click(screen.getByRole("button", { name: "Attach image" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Deck photo/ }));
+    const draft = screen.getByRole("textbox") as HTMLTextAreaElement;
+    fireEvent.change(draft, { target: { value: "Temporary caption" } });
+    fireEvent.change(draft, { target: { value: "" } });
+
+    view.rerender(ui(2));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Reply to guest without resolving" }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole("status").textContent).toContain(
+        "This case changed while you were writing",
+      ),
+    );
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(onDone).not.toHaveBeenCalled();
+  });
 });

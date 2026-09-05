@@ -689,7 +689,8 @@ export const EscalationReplyComposer = forwardRef<
         if (!incoming) return;
         let nextDraft = "";
         setDraft((current) => {
-          if (!current.trim()) draftRevisionRef.current = contentRevision;
+          if (!current.trim() && draftRevisionRef.current === null)
+            draftRevisionRef.current = contentRevision;
           nextDraft = current.trim().length === 0
             ? incoming
             : `${current.replace(/\s+$/u, "")}\n\n${incoming}`;
@@ -785,7 +786,8 @@ export const EscalationReplyComposer = forwardRef<
             const next = e.target.value;
             if (draftRevisionRef.current === null && next.trim())
               draftRevisionRef.current = contentRevision;
-            if (!next.trim()) draftRevisionRef.current = null;
+            if (!next.trim() && !selectedImage)
+              draftRevisionRef.current = null;
             setDraft(next);
             if (notice) setNotice(null);
           }}
