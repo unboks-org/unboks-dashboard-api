@@ -105,6 +105,24 @@ describe("Mermaid receipt printing", () => {
     expect(state.navigate).not.toHaveBeenCalled();
   });
 
+  it("keeps the customer account action inside the reservation details card", () => {
+    state.item!.customerId = 123;
+    render(<MermaidReservationWorkspace />);
+
+    const detailsCard = screen
+      .getByRole("heading", { name: "Reservation details" })
+      .closest("section");
+    expect(detailsCard).not.toBeNull();
+    const action = within(detailsCard!).getByRole("button", {
+      name: "Open customer account",
+    });
+    expect(
+      screen.getAllByRole("button", { name: "Open customer account" }),
+    ).toHaveLength(1);
+    fireEvent.click(action);
+    expect(state.navigate).toHaveBeenCalledWith("/customers/123");
+  });
+
   it("shows an exact supplied infant age in the reservation and printable receipt", () => {
     state.item!.partyDescription = "3 adults · 1 infant (9 months)";
     render(<MermaidReservationWorkspace />);

@@ -272,7 +272,24 @@ export default function MermaidReservationWorkspace() {
 
             <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.16fr)_minmax(0,.84fr)]">
               <div className="min-w-0 space-y-5">
-                <Card eyebrow="Guest profile" title="Reservation details">
+                <Card
+                  eyebrow="Guest profile"
+                  title="Reservation details"
+                  action={
+                    item.customerId ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate(`/customers/${item.customerId}`)
+                        }
+                        className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-teal-100 bg-teal-50 px-3.5 text-xs font-bold text-teal-900 transition-colors hover:border-teal-200 hover:bg-teal-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+                      >
+                        Open customer account
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </button>
+                    ) : null
+                  }
+                >
                   <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
                     <Datum label="Guest" value={item.customerName} />
                     <Datum
@@ -335,15 +352,6 @@ export default function MermaidReservationWorkspace() {
                   ) : null}
                 </Card>
 
-                {item.customerId ? (
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/customers/${item.customerId}`)}
-                    className="min-h-11 rounded-xl bg-white px-4 text-sm font-semibold text-teal-900 ring-1 ring-slate-200"
-                  >
-                    Open customer account
-                  </button>
-                ) : null}
                 <Card eyebrow="Context" title="Conversation snapshot">
                   <div className="max-h-[440px] space-y-3 overflow-y-auto pr-1">
                     {item.conversation.map((message, index) => (
@@ -693,20 +701,27 @@ function JourneyFact({
 function Card({
   eyebrow,
   title,
+  action,
   children,
 }: {
   eyebrow: string;
   title: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_10px_35px_rgba(15,36,51,.045)] sm:p-6">
-      <p className="text-[10px] font-bold uppercase tracking-[.17em] text-teal-700">
-        {eyebrow}
-      </p>
-      <h2 className="mb-5 mt-1 text-lg font-semibold tracking-[-.02em] text-slate-950">
-        {title}
-      </h2>
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[.17em] text-teal-700">
+            {eyebrow}
+          </p>
+          <h2 className="mt-1 text-lg font-semibold tracking-[-.02em] text-slate-950">
+            {title}
+          </h2>
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
       {children}
     </section>
   );
