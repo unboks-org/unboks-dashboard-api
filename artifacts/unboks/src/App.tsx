@@ -14,8 +14,9 @@ import {
   useLocation,
   useParams,
   useSearch,
+  type AroundNavHandler,
 } from "wouter";
-import { getToken } from "@/lib/tenant";
+import { getClientSlug, getToken } from "@/lib/tenant";
 import { isValidTenantSlug } from "@/lib/api";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
@@ -35,6 +36,44 @@ import {
 import { useRentalControlCapability } from "@/hooks/use-rental-control-capability";
 import { loginRedirectStorageKey } from "@/lib/deep-link";
 import { isLegacyRentalSettingsSearch } from "@/lib/rental-navigation";
+import { prepareRentalNavigationState } from "@/lib/rental-navigation-history";
+
+const exactDashboardNavigation: AroundNavHandler = (
+  navigate,
+  destination,
+  options,
+) => {
+  if (typeof window === "undefined") {
+    navigate(destination, options);
+    return;
+  }
+
+  const target = new URL(destination, window.location.href);
+  const sourceIsLogin = window.location.pathname.endsWith("/login");
+  const targetIsLogin = target.pathname.endsWith("/login");
+  const tenant = getClientSlug();
+  const scrollContainer = document.querySelector<HTMLElement>(
+    "[data-dashboard-scroll-container]",
+  );
+  if (
+    target.origin !== window.location.origin ||
+    !tenant ||
+    !scrollContainer ||
+    sourceIsLogin ||
+    targetIsLogin
+  ) {
+    navigate(destination, options);
+    return;
+  }
+
+  const state = prepareRentalNavigationState(
+    tenant,
+    scrollContainer.scrollTop,
+    options?.state,
+    Boolean(options?.replace),
+  );
+  navigate(destination, { ...options, state });
+};
 
 const NotFound = lazy(() => import("@/pages/not-found"));
 const Inbox = lazy(() => import("@/pages/Inbox"));
@@ -690,7 +729,10 @@ function App() {
   return (
     <AppErrorBoundary>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+        <WouterRouter
+          base={import.meta.env.BASE_URL.replace(/\/$/, "")}
+          aroundNav={exactDashboardNavigation}
+        >
           <AuthProvider>
             <TenantRuntime />
           </AuthProvider>

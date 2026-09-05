@@ -1,4 +1,11 @@
-import { useState, useMemo, useCallback, ReactNode } from "react";
+import {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+  ReactNode,
+} from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { Header } from "@/components/inbox/Header";
@@ -40,6 +47,11 @@ import {
 import { tenantKey } from "@/lib/query-keys";
 import { buildMermaidAttention } from "@/lib/mermaid-attention";
 import { rentalLeadNeedsStaffAction } from "@/lib/rental-operations";
+import { getClientSlug } from "@/lib/tenant";
+import {
+  rentalHistoryEntryId,
+  rentalScrollPosition,
+} from "@/lib/rental-navigation-history";
 
 export const EXTERNAL_ROUTES: Partial<Record<NavId, string>> = {
   today: "/today",
@@ -162,6 +174,8 @@ export function DashboardShell({
 }: DashboardShellProps) {
   const [location, navigate] = useLocation();
   const search = useSearch();
+  const mainRef = useRef<HTMLElement>(null);
+  const restoredEntryRef = useRef<string | null>(null);
   const { logout } = useAuth();
   const rentalCapability = useRentalControlCapability();
   const mermaid = isMermaidReservationTenant();
@@ -198,6 +212,29 @@ export function DashboardShell({
     rentalLeadNeedsStaffAction,
   ).length;
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    if (useRentalShell) return undefined;
+    const tenant = getClientSlug();
+    const scrollTop = rentalScrollPosition(tenant);
+    const entryId = rentalHistoryEntryId(tenant);
+    if (
+      scrollTop === null ||
+      entryId === null ||
+      restoredEntryRef.current === entryId
+    ) {
+      return undefined;
+    }
+    restoredEntryRef.current = entryId;
+    const restore = () => {
+      if (mainRef.current) mainRef.current.scrollTop = scrollTop;
+    };
+    restore();
+    const timers = [100, 350, 800].map((delay) =>
+      window.setTimeout(restore, delay),
+    );
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [location, search, useRentalShell]);
 
   const {
     data: apiConversations,
@@ -452,6 +489,8 @@ export function DashboardShell({
         />
 
         <main
+          ref={mainRef}
+          data-dashboard-scroll-container
           className="flex-1 overflow-x-hidden overflow-y-auto relative bg-background"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >

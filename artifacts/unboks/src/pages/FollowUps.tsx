@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   Archive, BadgeDollarSign, BellRing, CalendarClock, Car, Check, CheckCircle2,
   Clock3, Copy, FileCheck2, MapPin, MessageCircle, Phone, RefreshCw,
@@ -754,12 +754,12 @@ export default function FollowUps() {
                                 ),
                               )}
                             </ul>
-                            <a
+                            <Link
                               href="/rental"
                               className="mt-4 inline-flex min-h-10 items-center rounded-xl bg-amber-400 px-4 text-sm font-semibold text-slate-950 hover:bg-amber-300"
                             >
                               Open rental settings
-                            </a>
+                            </Link>
                           </section>
                         )
                       ) : (

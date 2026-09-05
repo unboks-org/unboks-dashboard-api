@@ -11,11 +11,14 @@ type BrowserHistoryState = Record<string, unknown> & {
   [RENTAL_HISTORY_KEY]?: RentalHistoryMetadata;
 };
 
-function currentState(): BrowserHistoryState {
-  const state = window.history.state;
-  return state && typeof state === "object"
-    ? (state as BrowserHistoryState)
+function stateRecord(value: unknown): BrowserHistoryState {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as BrowserHistoryState)
     : {};
+}
+
+function currentState(): BrowserHistoryState {
+  return stateRecord(window.history.state);
 }
 
 function metadata(): RentalHistoryMetadata | null {
@@ -58,6 +61,25 @@ export function rentalNavigationState(tenant: string): BrowserHistoryState {
       internal: true,
     } satisfies RentalHistoryMetadata,
   };
+}
+
+/**
+ * Capture the page being left and return state for the destination entry.
+ * Pushes receive a fresh internal entry marker; URL-only replacements keep
+ * the same entry id and scroll snapshot so filters/search remain one page in
+ * browser history.
+ */
+export function prepareRentalNavigationState(
+  tenant: string,
+  scrollTop: number,
+  destinationState: unknown,
+  replace: boolean,
+): BrowserHistoryState {
+  rememberRentalScroll(tenant, scrollTop);
+  const supplied = stateRecord(destinationState);
+  return replace
+    ? { ...currentState(), ...supplied }
+    : { ...supplied, ...rentalNavigationState(tenant) };
 }
 
 export function hasRentalBackHistory(tenant: string): boolean {

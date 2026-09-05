@@ -461,6 +461,7 @@ export function RentalDashboardShell({
 
         <main
           ref={mainRef}
+          data-dashboard-scroll-container
           tabIndex={0}
           className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-[calc(72px+env(safe-area-inset-bottom))] md:pb-0"
         >

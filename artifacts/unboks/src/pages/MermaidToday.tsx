@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, ArrowRight } from "lucide-react";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
@@ -69,12 +69,12 @@ export default function MermaidToday() {
                 " unread"
               : "Conversation status unavailable"}
           </p>
-          <a
+          <Link
             href="/conversations"
             className="flex min-h-11 items-center gap-2 font-semibold text-teal-800"
           >
             All conversations <ArrowRight className="h-4 w-4" />
-          </a>
+          </Link>
         </div>
         <MermaidAttentionQueue />
         <section
@@ -99,12 +99,12 @@ export default function MermaidToday() {
             <h2 className="text-lg font-semibold text-slate-950">
               Upcoming guest journeys
             </h2>
-            <a
+            <Link
               href="/reservations"
               className="flex min-h-11 items-center text-sm font-semibold text-teal-800"
             >
               All reservations
-            </a>
+            </Link>
           </div>
           <div className="space-y-2">
             {upcoming.map((item) => (

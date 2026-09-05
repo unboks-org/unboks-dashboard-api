@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "wouter";
 import { BookOpen, CheckCircle2, Copy, ExternalLink, MessageCircle, Search, Settings, Sparkles, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardShell } from "@/components/inbox/DashboardShell";
@@ -298,13 +299,13 @@ export default function Help() {
                       Send Unboks the section link and a screenshot of what you see.
                     </p>
                   </div>
-                  <a
+                  <Link
                     href="/settings"
                     className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#1a73e8] px-4 text-[14px] font-medium text-white transition hover:bg-[#1765cc]"
                   >
                     Open Settings
                     <ExternalLink className="h-4 w-4" />
-                  </a>
+                  </Link>
                 </div>
               </section>
             </main>
