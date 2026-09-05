@@ -44,6 +44,55 @@ describe("Mermaid receipt printing", () => {
     vi.spyOn(window, "print").mockImplementation(() => {});
   });
 
+  it("renders the forensic trail in one chronological oldest-to-newest sequence", () => {
+    state.item!.events = [
+      {
+        id: 30,
+        type: "booking_updated",
+        fromState: "booked",
+        toState: "booked",
+        actor: "customer",
+        reason: "Latest date change",
+        revision: 3,
+        createdAt: "2026-09-04T13:15:00Z",
+      },
+      {
+        id: 10,
+        type: "availability_approved",
+        fromState: "details",
+        toState: "quote_ready",
+        actor: "tracy",
+        reason: "First availability decision",
+        revision: 1,
+        createdAt: "2026-09-04T12:00:00Z",
+      },
+      {
+        id: 20,
+        type: "payment_completed",
+        fromState: "payment_pending",
+        toState: "booked",
+        actor: "demo_checkout",
+        reason: "Payment callback recorded",
+        revision: 2,
+        createdAt: "2026-09-04T12:30:00Z",
+      },
+    ];
+
+    render(<MermaidReservationWorkspace />);
+
+    const timeline = screen.getByRole("list", { name: "Journey timeline" });
+    const milestones = within(timeline).getAllByRole("listitem");
+    expect(milestones).toHaveLength(3);
+    expect(milestones[0].textContent).toContain("First availability decision");
+    expect(milestones[1].textContent).toContain("Payment callback recorded");
+    expect(milestones[2].textContent).toContain("Latest date change");
+    expect(milestones[0].textContent).toContain("01");
+    expect(milestones[1].textContent).toContain("02");
+    expect(milestones[2].textContent).toContain("Latest");
+    expect(milestones[2].textContent).toContain("Reservation updated");
+    expect(milestones[2].textContent).toContain("Customer · Revision 3");
+  });
+
   it("replaces the evidence link with a print-dialog action and allows reprinting", () => {
     render(<MermaidReservationWorkspace />);
     expect(

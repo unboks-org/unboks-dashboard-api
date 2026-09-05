@@ -27,6 +27,7 @@ import {
 } from "@/components/mermaid/MermaidPrintReceipt";
 import {
   fetchMermaidReservation,
+  type MermaidReservationDetail,
   type MermaidReservationStage,
 } from "@/lib/api";
 import {
@@ -49,6 +50,49 @@ const stages: Array<{
   { id: "booked", label: "Booked" },
 ];
 
+type MermaidJourneyEvent = MermaidReservationDetail["events"][number];
+
+const journeyDateFormatter = new Intl.DateTimeFormat("en", {
+  timeZone: "America/Curacao",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+const journeyTimeFormatter = new Intl.DateTimeFormat("en", {
+  timeZone: "America/Curacao",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+function sortMermaidJourneyEvents(
+  events: MermaidJourneyEvent[],
+): MermaidJourneyEvent[] {
+  return events
+    .map((event, sourceIndex) => ({
+      event,
+      sourceIndex,
+      timestamp: Date.parse(event.createdAt),
+    }))
+    .sort((left, right) => {
+      const leftHasTime = Number.isFinite(left.timestamp);
+      const rightHasTime = Number.isFinite(right.timestamp);
+      if (leftHasTime && rightHasTime && left.timestamp !== right.timestamp) {
+        return left.timestamp - right.timestamp;
+      }
+      if (leftHasTime !== rightHasTime) return leftHasTime ? -1 : 1;
+      if (left.event.revision !== right.event.revision) {
+        return left.event.revision - right.event.revision;
+      }
+      if (left.event.id !== right.event.id) {
+        return left.event.id - right.event.id;
+      }
+      return left.sourceIndex - right.sourceIndex;
+    })
+    .map(({ event }) => event);
+}
+
 export default function MermaidReservationWorkspace() {
   const { reservationId = "" } = useParams<{ reservationId: string }>();
   const [, navigate] = useLocation();
@@ -60,6 +104,7 @@ export default function MermaidReservationWorkspace() {
     refetchInterval: 10_000,
   });
   const item = query.data;
+  const journeyEvents = item ? sortMermaidJourneyEvents(item.events) : [];
   const attention = useMermaidAttention();
   const needsAttention = attention.complete
     ? attention.items.some(
@@ -454,31 +499,175 @@ export default function MermaidReservationWorkspace() {
             </div>
 
             <Card eyebrow="Forensic trail" title="Journey timeline">
-              <div className="grid gap-0 md:grid-cols-2 xl:grid-cols-3">
-                {item.events.map((event) => (
-                  <div
-                    key={event.id}
-                    className="relative border-l-2 border-teal-100 pb-6 pl-5 pr-4 last:pb-0"
-                  >
-                    <span className="absolute -left-[6px] top-1 h-2.5 w-2.5 rounded-full bg-teal-700 ring-4 ring-teal-50" />
-                    <p className="text-sm font-semibold capitalize text-slate-900">
-                      {(event.toState || event.type).replaceAll("_", " ")}
-                    </p>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                      {event.reason}
-                    </p>
-                    <p className="mt-2 text-[10px] uppercase tracking-wide text-slate-500">
-                      {event.actor} · {formatMermaidActivity(event.createdAt)}
-                    </p>
-                  </div>
-                ))}
+              <div className="-mt-2 mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-5">
+                <p className="max-w-2xl text-sm leading-6 text-slate-500">
+                  Every reservation milestone in the order it happened, from
+                  first contact to the latest change.
+                </p>
+                <span className="inline-flex rounded-full bg-teal-50 px-3 py-1.5 text-[11px] font-bold text-teal-800 ring-1 ring-inset ring-teal-100">
+                  {journeyEvents.length} recorded{" "}
+                  {journeyEvents.length === 1 ? "event" : "events"}
+                </span>
               </div>
+
+              {journeyEvents.length ? (
+                <ol aria-label="Journey timeline" className="space-y-4">
+                  {journeyEvents.map((event, index) => {
+                    const isLatest = index === journeyEvents.length - 1;
+                    const eventState = event.toState || event.type;
+                    const previousState = index
+                      ? journeyEvents[index - 1].toState ||
+                        journeyEvents[index - 1].type
+                      : null;
+                    const isReservationUpdate =
+                      event.type === "booking_updated" ||
+                      (event.fromState && event.fromState === event.toState) ||
+                      (previousState && previousState === eventState);
+                    const label = isReservationUpdate
+                      ? "Reservation updated"
+                      : formatTimelineLabel(eventState);
+                    return (
+                      <li
+                        key={event.id}
+                        className="grid min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 sm:grid-cols-[9rem_2.75rem_minmax(0,1fr)] sm:gap-x-4"
+                      >
+                        <time
+                          dateTime={event.createdAt}
+                          className="hidden pt-2 text-right sm:block"
+                        >
+                          <span className="block text-xs font-semibold text-slate-800">
+                            {formatJourneyDate(event.createdAt)}
+                          </span>
+                          <span className="mt-1 block text-[11px] text-slate-500">
+                            {formatJourneyTime(event.createdAt)} AST
+                          </span>
+                        </time>
+
+                        <div className="relative col-start-1 row-start-1 flex justify-center sm:col-start-2">
+                          <span
+                            className={cn(
+                              "relative z-10 flex h-9 w-9 items-center justify-center rounded-full border text-[11px] font-bold shadow-sm",
+                              isLatest
+                                ? "border-teal-700 bg-teal-700 text-white ring-4 ring-teal-50"
+                                : "border-teal-200 bg-white text-teal-800 ring-4 ring-white",
+                            )}
+                          >
+                            {isLatest ? (
+                              <Check className="h-4 w-4" />
+                            ) : (
+                              String(index + 1).padStart(2, "0")
+                            )}
+                          </span>
+                          {!isLatest ? (
+                            <span className="absolute bottom-[-1rem] top-9 w-px bg-gradient-to-b from-teal-300 to-teal-100" />
+                          ) : null}
+                        </div>
+
+                        <article
+                          className={cn(
+                            "col-start-2 row-start-1 min-w-0 rounded-[20px] border p-4 shadow-[0_8px_24px_rgba(15,36,51,.045)] sm:col-start-3 sm:p-5",
+                            isLatest
+                              ? "border-teal-200 bg-gradient-to-br from-teal-50/80 to-white"
+                              : "border-slate-200 bg-gradient-to-br from-white to-slate-50/50",
+                          )}
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="text-sm font-semibold text-slate-950 sm:text-[15px]">
+                                  {label}
+                                </h3>
+                                {isLatest ? (
+                                  <span className="rounded-full bg-teal-700 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[.12em] text-white">
+                                    Latest
+                                  </span>
+                                ) : null}
+                              </div>
+                              <time
+                                dateTime={event.createdAt}
+                                className="mt-1 block text-[11px] font-medium text-slate-500 sm:hidden"
+                              >
+                                {formatJourneyDate(event.createdAt)} ·{" "}
+                                {formatJourneyTime(event.createdAt)} AST
+                              </time>
+                            </div>
+                            <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-500 ring-1 ring-inset ring-slate-200">
+                              {formatMermaidActivity(event.createdAt)}
+                            </span>
+                          </div>
+
+                          {event.fromState &&
+                          event.toState &&
+                          event.fromState !== event.toState ? (
+                            <div className="mt-3 flex min-w-0 items-center gap-2 text-[10px] font-semibold text-slate-500">
+                              <span className="min-w-0 truncate rounded-lg bg-slate-100 px-2 py-1">
+                                {formatTimelineLabel(event.fromState)}
+                              </span>
+                              <ArrowRight className="h-3.5 w-3.5 shrink-0 text-teal-600" />
+                              <span className="min-w-0 truncate rounded-lg bg-teal-100 px-2 py-1 text-teal-900">
+                                {formatTimelineLabel(event.toState)}
+                              </span>
+                            </div>
+                          ) : null}
+
+                          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+                            {event.reason}
+                          </p>
+                          <p className="mt-4 border-t border-slate-200/70 pt-3 text-[10px] font-bold uppercase tracking-[.12em] text-slate-500">
+                            Recorded by {formatTimelineActor(event.actor)} ·
+                            Revision {event.revision}
+                          </p>
+                        </article>
+                      </li>
+                    );
+                  })}
+                </ol>
+              ) : (
+                <div className="rounded-[20px] border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center">
+                  <ShieldCheck className="mx-auto h-6 w-6 text-teal-700" />
+                  <p className="mt-2 text-sm font-semibold text-slate-800">
+                    No journey events recorded yet
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    New milestones will appear here in chronological order.
+                  </p>
+                </div>
+              )}
             </Card>
           </>
         )}
       </div>
     </DashboardShell>
   );
+}
+
+function formatTimelineLabel(value: string): string {
+  const words = value.replaceAll("_", " ").trim().toLowerCase();
+  return words
+    ? words.charAt(0).toUpperCase() + words.slice(1)
+    : "Journey update";
+}
+
+function formatTimelineActor(value: string): string {
+  const actor = value.replaceAll("_", " ").trim();
+  if (!actor) return "System";
+  if (actor.toLowerCase() === "tracy") return "TRACY";
+  return formatTimelineLabel(actor);
+}
+
+function journeyDate(createdAt: string): Date | null {
+  const date = new Date(createdAt);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatJourneyDate(createdAt: string): string {
+  const date = journeyDate(createdAt);
+  return date ? journeyDateFormatter.format(date) : "Date unavailable";
+}
+
+function formatJourneyTime(createdAt: string): string {
+  const date = journeyDate(createdAt);
+  return date ? journeyTimeFormatter.format(date) : "Time unavailable";
 }
 
 function JourneyFact({
