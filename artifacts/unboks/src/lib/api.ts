@@ -221,6 +221,10 @@ export interface ConversationDetail {
   humanRespondedAt?: string | null;
   humanTakeoverAt?: string | null;
   aiMuted?: boolean;
+  /** Mermaid safety latch: terminal automation loop, no operator action. */
+  loopStopped?: boolean;
+  loopStatus?: string | null;
+  loopStoppedAt?: string | null;
   learningStatus?: LearningStatus;
   /**
    * Backend-supplied recommended options for the operator. When present,
@@ -3107,6 +3111,14 @@ export async function fetchConversation(
         : typeof env.ai_muted === "boolean"
           ? (env.ai_muted as boolean)
           : undefined,
+    loopStopped:
+      typeof env.loopStopped === "boolean"
+        ? env.loopStopped
+        : typeof env.loop_stopped === "boolean"
+          ? (env.loop_stopped as boolean)
+          : undefined,
+    loopStatus: pickStr(env, "loopStatus", "loop_status"),
+    loopStoppedAt: pickStr(env, "loopStoppedAt", "loop_stopped_at"),
     learningStatus: (pickStr(env, "learningStatus", "learning_status") ??
       undefined) as ConversationDetail["learningStatus"],
     recommendedOptions:

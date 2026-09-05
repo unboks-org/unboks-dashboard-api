@@ -105,4 +105,22 @@ describe("conversation escalation briefing payload", () => {
       revision: 2,
     });
   });
+
+  it("preserves the terminal Mermaid loop status without inventing an escalation", async () => {
+    respond({
+      messages: [],
+      loopStopped: true,
+      loopStatus: "Loop detected and stopped",
+      loopStoppedAt: "2026-09-04T01:14:20+00:00",
+      escalated: false,
+      escalationMode: null,
+    });
+
+    const detail = await fetchConversation("loop-guest");
+    expect(detail.loopStopped).toBe(true);
+    expect(detail.loopStatus).toBe("Loop detected and stopped");
+    expect(detail.loopStoppedAt).toBe("2026-09-04T01:14:20+00:00");
+    expect(detail.escalated).toBe(false);
+    expect(detail.escalationMode).toBeNull();
+  });
 });

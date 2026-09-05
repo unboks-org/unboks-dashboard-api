@@ -1120,6 +1120,17 @@ function ConversationDetailPane({
         )}
       </div>
 
+      {isMermaidReservationTenant() &&
+      detail?.loopStopped &&
+      detail.loopStatus ? (
+        <div
+          role="status"
+          className="border-b border-teal-100 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-900"
+        >
+          {detail.loopStatus}
+        </div>
+      ) : null}
+
       {detail?.crewAssistance ? (
         <div className="border-b border-border bg-amber-50/30 p-3 sm:p-4">
           <MermaidCrewAssistanceCard
