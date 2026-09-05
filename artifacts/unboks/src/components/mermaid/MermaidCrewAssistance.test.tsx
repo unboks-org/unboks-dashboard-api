@@ -4,7 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import * as api from "@/lib/api";
 import type { MermaidCrewAssistance } from "@/lib/api";
-import { MermaidCrewAssistanceCard } from "./MermaidCrewAssistance";
+import {
+  MermaidCrewAssistanceBadge,
+  MermaidCrewAssistanceCard,
+} from "./MermaidCrewAssistance";
 
 vi.mock("@/lib/api", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/api")>();
@@ -38,7 +41,7 @@ function mount(children: ReactNode) {
   );
 }
 
-describe("Mermaid wheelchair assistance", () => {
+describe("Mermaid crew assistance", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.clear();
@@ -143,5 +146,27 @@ describe("Mermaid wheelchair assistance", () => {
       ),
     ).toBeTruthy();
     expect(screen.getByText(/Sep 26/)).toBeTruthy();
+  });
+
+  it("labels ordinary boarding help distinctly from a wheelchair note", () => {
+    const boardingNote: MermaidCrewAssistance = {
+      ...note,
+      id: "assist-boarding",
+      kind: "boarding_assistance",
+      note: "Guest requested extra help getting on and off the boat.",
+      relationship: "Guest's husband",
+    };
+    mount(
+      <>
+        <MermaidCrewAssistanceBadge item={boardingNote} />
+        <MermaidCrewAssistanceCard item={boardingNote} />
+      </>,
+    );
+
+    expect(screen.getAllByText("Boarding assistance")).toHaveLength(2);
+    expect(
+      screen.getByLabelText("Operator acknowledging boarding assistance"),
+    ).toBeTruthy();
+    expect(screen.getByText(boardingNote.note)).toBeTruthy();
   });
 });

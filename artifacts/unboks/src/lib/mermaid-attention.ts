@@ -12,6 +12,7 @@ export interface MermaidAttentionIssue {
   createdAt: string | null;
   customerRequest?: string;
   customerMessage?: string;
+  contentRevision: number;
 }
 
 export interface MermaidAttentionCase {
@@ -53,6 +54,7 @@ export function mermaidIssue(raw: unknown): MermaidAttentionIssue | null {
     customerRequest: text(summary.customerWants),
     customerMessage: text(summary.latestCustomerMessage),
     createdAt: n.createdAt,
+    contentRevision: n.contentRevision,
   };
 }
 

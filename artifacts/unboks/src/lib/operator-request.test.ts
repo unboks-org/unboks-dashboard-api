@@ -1,9 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/error";
 import {
+  deleteEscalation,
+  handbackEscalation,
   replyEscalation,
   replyToWhatsAppConversation,
+  resolveEscalation,
+  setEscalationMode,
   submitGuidance,
+  takeoverEscalation,
+  unresolveEscalation,
 } from "@/lib/api";
 
 function tenant(slug: string) {
@@ -26,7 +32,7 @@ const sends = [
   [
     "escalation reply with image",
     () => replyEscalation("esc-1", "Hello", "image-1"),
-    { message: "Hello", mediaId: "image-1" },
+    { message: "Hello", mediaId: "image-1", content_revision: 1 },
   ],
   [
     "guidance with image",
@@ -72,6 +78,32 @@ describe("durable operator request identities", () => {
     ).rejects.toThrow();
     await replyToWhatsAppConversation("guest", "hello", "new-component-id");
     expect(bodyAt(1).request_id).toBe("first-id");
+  });
+
+  it("sends the exact escalation content revision shown to the operator", async () => {
+    await replyEscalation("esc-9", "Current answer", undefined, undefined, 9);
+    expect(bodyAt(0)).toMatchObject({
+      message: "Current answer",
+      content_revision: 9,
+    });
+  });
+
+  it("versions every escalation state mutation", async () => {
+    await resolveEscalation("esc", { content_revision: 9 });
+    await takeoverEscalation("esc", "Crew handling", 9);
+    await handbackEscalation("esc", 9);
+    await setEscalationMode("esc", "hard", 9);
+    await unresolveEscalation("esc", 9);
+    await deleteEscalation("esc", 9);
+    expect(bodyAt(0)).toMatchObject({ content_revision: 9 });
+    expect(bodyAt(1)).toMatchObject({
+      note: "Crew handling",
+      content_revision: 9,
+    });
+    expect(bodyAt(2)).toEqual({ content_revision: 9 });
+    expect(bodyAt(3)).toEqual({ mode: "hard", content_revision: 9 });
+    expect(bodyAt(4)).toEqual({ content_revision: 9 });
+    expect(bodyAt(5)).toEqual({ content_revision: 9 });
   });
 
   it("retains the pending identity through a 401 and operator re-login", async () => {

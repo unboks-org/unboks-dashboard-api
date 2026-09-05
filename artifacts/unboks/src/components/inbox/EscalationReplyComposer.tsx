@@ -55,10 +55,12 @@ import {
 import { Check, ImageIcon, Loader2, Send, Sparkles, Undo2, VolumeX, X } from "lucide-react";
 import { useEscalationMutations, useKnowledgeMediaLibrary } from "@/hooks/use-client-api";
 import { ApiError } from "@/lib/error";
-import type { KnowledgeMedia } from "@/lib/api";
+import { fetchEscalations, type KnowledgeMedia } from "@/lib/api";
 import type { Channel } from "@/data/conversations";
 import { cn } from "@/lib/utils";
 import { isMermaidReservationTenant } from "@/lib/tenant-ui";
+import { getClientSlug } from "@/lib/tenant";
+import { normalizeEscalation } from "@/lib/conversation-mapper";
 import { escalationText as tenantText } from "@/lib/escalation-copy";
 import { AIEditorPanel } from "./AIEditorPanel";
 import { motion } from "framer-motion";
@@ -99,6 +101,8 @@ interface EscalationReplyComposerProps {
   mode: "soft" | "hard" | "order";
   channel: Channel;
   aiMuted?: boolean;
+  /** Work-item version shown when this draft starts. */
+  contentRevision?: number;
   /**
    * Invoked after any composer-driven mutation finishes successfully.
    *
@@ -124,12 +128,16 @@ export const EscalationReplyComposer = forwardRef<
     mode,
     channel,
     aiMuted = false,
+    contentRevision = 1,
     onDone,
   },
   ref,
 ) {
   const [draft, setDraft] = useState("");
-  const [prevDraft, setPrevDraft] = useState<string | null>(null);
+  const [prevDraft, setPrevDraft] = useState<{
+    text: string;
+    contentRevision: number | null;
+  } | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
   const [notice, setNotice] = useState<{
     tone: "info" | "warning" | "error";
@@ -145,9 +153,14 @@ export const EscalationReplyComposer = forwardRef<
   const [combinedStep, setCombinedStep] = useState<null | "sending" | "resolving">(null);
   const [imagePickerOpen, setImagePickerOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<KnowledgeMedia | null>(null);
+  const [revisionCheckPending, setRevisionCheckPending] = useState(false);
+  const revisionCheckInFlight = useRef(false);
+  const revisionCheckToken = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const conversationKey = `${channel}:${conversationDbId}:${conversationId}`;
   const previousConversationKey = useRef(conversationKey);
+  const currentConversationKey = useRef(conversationKey);
+  currentConversationKey.current = conversationKey;
 
   // Mirror the latest draft into a ref so the imperative handle exposed
   // to the Escalation Reason chips always reads the current text — even
@@ -156,6 +169,7 @@ export const EscalationReplyComposer = forwardRef<
   // draft as the resolutionNote, and for "Switch to human takeover" /
   // "Hand back" notice copy.
   const draftRef = useRef(draft);
+  const draftRevisionRef = useRef<number | null>(null);
   useEffect(() => {
     draftRef.current = draft;
   }, [draft]);
@@ -182,6 +196,10 @@ export const EscalationReplyComposer = forwardRef<
     setCombinedStep(null);
     setImagePickerOpen(false);
     setSelectedImage(null);
+    revisionCheckToken.current += 1;
+    setRevisionCheckPending(false);
+    revisionCheckInFlight.current = false;
+    draftRevisionRef.current = null;
   }, [conversationKey]);
 
   // When the operator toggles soft/hard we deliberately keep `draft` and
@@ -209,30 +227,103 @@ export const EscalationReplyComposer = forwardRef<
     resolve.isPending ||
     takeover.isPending ||
     handback.isPending ||
+    revisionCheckPending ||
     combinedPending;
 
+  async function confirmCurrentRevision(expectedRevision: number) {
+    if (revisionCheckInFlight.current) return false;
+    revisionCheckInFlight.current = true;
+    setRevisionCheckPending(true);
+    const checkToken = ++revisionCheckToken.current;
+    const expectedTenant = getClientSlug();
+    const expectedConversationKey = conversationKey;
+    try {
+      const current = (await fetchEscalations("all"))
+        .map(normalizeEscalation)
+        .find((row) => row?.id === conversationDbId);
+      if (
+        expectedTenant !== getClientSlug() ||
+        expectedConversationKey !== currentConversationKey.current
+      ) {
+        throw new Error(
+          "The workspace or conversation changed. Reopen this case before sending.",
+        );
+      }
+      if (!current || current.resolved) {
+        throw new Error(
+          "This escalation is no longer open. Refresh the conversation.",
+        );
+      }
+      if (current.contentRevision !== expectedRevision) {
+        throw new Error(
+          "This case changed while you were writing. Review the latest guest message before sending.",
+        );
+      }
+      if (current.mode !== mode) {
+        throw new Error(
+          "The reply mode changed. Review the updated case before sending.",
+        );
+      }
+      return true;
+    } catch (err) {
+      if (checkToken === revisionCheckToken.current) {
+        setNotice({
+          tone: "error",
+          text:
+            err instanceof Error &&
+            (err.message.startsWith("This ") ||
+              err.message.startsWith("The workspace") ||
+              err.message.startsWith("The reply"))
+              ? `${err.message} Your draft is kept.`
+              : "Could not confirm that this case is current. Your draft is kept. Refresh before sending.",
+        });
+      }
+      return false;
+    } finally {
+      if (checkToken === revisionCheckToken.current) {
+        revisionCheckInFlight.current = false;
+        setRevisionCheckPending(false);
+      }
+    }
+  }
+
   const onApplyEdit = (next: string) => {
-    setPrevDraft(draft);
+    const previousRevision = draft.trim()
+      ? (draftRevisionRef.current ?? contentRevision)
+      : null;
+    if (draftRevisionRef.current === null && next.trim())
+      draftRevisionRef.current = contentRevision;
+    if (!next.trim()) draftRevisionRef.current = null;
+    setPrevDraft({ text: draft, contentRevision: previousRevision });
     setDraft(next);
     setNotice(null);
   };
 
   const onUndo = () => {
     if (prevDraft === null) return;
-    setDraft(prevDraft);
+    draftRevisionRef.current = prevDraft.text.trim()
+      ? prevDraft.contentRevision
+      : null;
+    setDraft(prevDraft.text);
     setPrevDraft(null);
   };
 
-  const onSend = () => {
-    if (empty || sendPending) return;
+  const onSend = async () => {
+    if (empty || anyPending || revisionCheckInFlight.current) return;
     setNotice(null);
     const trimmed = draft.trim();
+    const expectedRevision = draftRevisionRef.current ?? contentRevision;
+    if (!(await confirmCurrentRevision(expectedRevision))) return;
 
     if (isSoft) {
       guidance.mutate(
         {
           id: conversationDbId,
-          payload: { guidance: trimmed, ...(selectedImage ? { mediaId: selectedImage.id } : {}) },
+          payload: {
+            guidance: trimmed,
+            content_revision: expectedRevision,
+            ...(selectedImage ? { mediaId: selectedImage.id } : {}),
+          },
         },
         {
           onSuccess: () => {
@@ -240,6 +331,7 @@ export const EscalationReplyComposer = forwardRef<
             setPrevDraft(null);
             setSelectedImage(null);
             setImagePickerOpen(false);
+            draftRevisionRef.current = null;
             onDone({ action: "send", sentText: trimmed });
           },
           onError: (err) => {
@@ -270,13 +362,19 @@ export const EscalationReplyComposer = forwardRef<
 
     // Hard escalation: direct customer reply.
     reply.mutate(
-      { id: conversationDbId, message: trimmed, mediaId: selectedImage?.id },
+      {
+        id: conversationDbId,
+        message: trimmed,
+        mediaId: selectedImage?.id,
+        contentRevision: expectedRevision,
+      },
       {
         onSuccess: () => {
           setDraft("");
           setPrevDraft(null);
           setSelectedImage(null);
           setImagePickerOpen(false);
+          draftRevisionRef.current = null;
           onDone({
             action: "send",
             sentText: trimmed || (selectedImage ? "[Image sent]" : null),
@@ -323,11 +421,13 @@ export const EscalationReplyComposer = forwardRef<
    * we also pass the operator's reply as the resolutionNote so the
    * resolution record reflects what the customer was told.
    */
-  const onSendAndResolve = () => {
-    if (empty || anyPending) return;
+  const onSendAndResolve = async () => {
+    if (empty || anyPending || revisionCheckInFlight.current) return;
     setNotice(null);
     const trimmed = draft.trim();
     const selectedImageId = selectedImage?.id;
+    const expectedRevision = draftRevisionRef.current ?? contentRevision;
+    if (!(await confirmCurrentRevision(expectedRevision))) return;
 
     const runResolve = () => {
       setCombinedStep("resolving");
@@ -338,6 +438,7 @@ export const EscalationReplyComposer = forwardRef<
             saveAsLearning: true,
             autoUseNextTime: true,
             category: "escalation_reply",
+            content_revision: expectedRevision,
             resolutionNote: isSoft ? undefined : trimmed,
           },
         },
@@ -348,6 +449,7 @@ export const EscalationReplyComposer = forwardRef<
             setPrevDraft(null);
             setSelectedImage(null);
             setImagePickerOpen(false);
+            draftRevisionRef.current = null;
             onDone({
               action: "send-and-resolve",
               sentText: trimmed || (selectedImage ? "[Image sent]" : null),
@@ -362,6 +464,7 @@ export const EscalationReplyComposer = forwardRef<
             setPrevDraft(null);
             setSelectedImage(null);
             setImagePickerOpen(false);
+            draftRevisionRef.current = null;
             if (isNotConnected(err)) {
               setNotice({
                 tone: "warning",
@@ -394,6 +497,7 @@ export const EscalationReplyComposer = forwardRef<
           id: conversationDbId,
           payload: {
             guidance: trimmed,
+            content_revision: expectedRevision,
             ...(selectedImageId ? { mediaId: selectedImageId } : {}),
           },
         },
@@ -424,7 +528,12 @@ export const EscalationReplyComposer = forwardRef<
     }
 
     reply.mutate(
-      { id: conversationDbId, message: trimmed, mediaId: selectedImageId },
+      {
+        id: conversationDbId,
+        message: trimmed,
+        mediaId: selectedImageId,
+        contentRevision: expectedRevision,
+      },
       {
         onSuccess: runResolve,
         onError: (err) => {
@@ -449,20 +558,26 @@ export const EscalationReplyComposer = forwardRef<
     );
   };
 
-  const onMarkResolved = () => {
-    if (resolve.isPending) return;
+  const onMarkResolved = async () => {
+    if (anyPending || revisionCheckInFlight.current) return;
     // Read draft + mode from refs so this handler stays correct when
     // invoked via the imperative handle (which is memoised across
     // renders). Without this, a chip click could send a stale resolution
     // note in hard mode.
     const currentDraft = draftRef.current;
     const currentIsSoft = isSoftRef.current;
+    const expectedRevision =
+      draftRevisionRef.current ?? contentRevision;
+    if (!(await confirmCurrentRevision(expectedRevision))) return;
     resolve.mutate(
       {
         id: conversationDbId,
         payload: currentIsSoft
-          ? {}
-          : { resolutionNote: currentDraft.trim() || undefined },
+          ? { content_revision: expectedRevision }
+          : {
+              content_revision: expectedRevision,
+              resolutionNote: currentDraft.trim() || undefined,
+            },
       },
       {
         onSuccess: () => {
@@ -494,10 +609,13 @@ export const EscalationReplyComposer = forwardRef<
     );
   };
 
-  const onTakeover = () => {
-    if (takeover.isPending) return;
+  const onTakeover = async () => {
+    if (anyPending || revisionCheckInFlight.current) return;
+    const expectedRevision =
+      draftRevisionRef.current ?? contentRevision;
+    if (!(await confirmCurrentRevision(expectedRevision))) return;
     takeover.mutate(
-      { id: conversationDbId },
+      { id: conversationDbId, contentRevision: expectedRevision },
       {
         onSuccess: () => onDone(),
         onError: (err) => {
@@ -525,10 +643,13 @@ export const EscalationReplyComposer = forwardRef<
     );
   };
 
-  const onHandback = () => {
-    if (handback.isPending) return;
+  const onHandback = async () => {
+    if (anyPending || revisionCheckInFlight.current) return;
+    const expectedRevision =
+      draftRevisionRef.current ?? contentRevision;
+    if (!(await confirmCurrentRevision(expectedRevision))) return;
     handback.mutate(
-      { id: conversationDbId },
+      { id: conversationDbId, contentRevision: expectedRevision },
       {
         onSuccess: () => onDone(),
         onError: (err) => {
@@ -568,6 +689,7 @@ export const EscalationReplyComposer = forwardRef<
         if (!incoming) return;
         let nextDraft = "";
         setDraft((current) => {
+          if (!current.trim()) draftRevisionRef.current = contentRevision;
           nextDraft = current.trim().length === 0
             ? incoming
             : `${current.replace(/\s+$/u, "")}\n\n${incoming}`;
@@ -600,7 +722,7 @@ export const EscalationReplyComposer = forwardRef<
     // updaters and the latest mutation hook objects, so we only need to
     // refresh the handle when those identities change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [conversationDbId, mode, resolve, takeover, handback],
+    [conversationDbId, mode, contentRevision, resolve, takeover, handback],
   );
 
   const headingText = isSoft
@@ -660,7 +782,11 @@ export const EscalationReplyComposer = forwardRef<
           ref={textareaRef}
           value={draft}
           onChange={(e) => {
-            setDraft(e.target.value);
+            const next = e.target.value;
+            if (draftRevisionRef.current === null && next.trim())
+              draftRevisionRef.current = contentRevision;
+            if (!next.trim()) draftRevisionRef.current = null;
+            setDraft(next);
             if (notice) setNotice(null);
           }}
           placeholder={placeholder}
@@ -736,6 +862,7 @@ export const EscalationReplyComposer = forwardRef<
                 type="button"
                 onClick={() => {
                   setSelectedImage(null);
+                  if (!draft.trim()) draftRevisionRef.current = null;
                   setNotice(null);
                 }}
                 disabled={anyPending}
@@ -803,6 +930,8 @@ export const EscalationReplyComposer = forwardRef<
                         key={media.id}
                         type="button"
                         onClick={() => {
+                          if (!draft.trim() && !selectedImage)
+                            draftRevisionRef.current = contentRevision;
                           setSelectedImage(media);
                           setImagePickerOpen(false);
                           setNotice(null);

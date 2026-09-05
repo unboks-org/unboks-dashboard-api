@@ -349,6 +349,7 @@ export interface NormalizedEscalation {
   summary: string | null;
   body: string | null;
   createdAt: string | null;
+  contentRevision: number;
 }
 
 function pickStr(o: Record<string, unknown>, ...keys: string[]): string | null {
@@ -437,6 +438,11 @@ export function normalizeEscalation(raw: unknown): NormalizedEscalation | null {
   const id = pickStr(o, "id", "_id", "escalation_id", "escalationId");
   if (!id) return null;
   const mode = inferEscalationMode(o);
+  const revisionValue = o.content_revision ?? o.contentRevision;
+  const contentRevision =
+    typeof revisionValue === "number" && Number.isSafeInteger(revisionValue) && revisionValue > 0
+      ? revisionValue
+      : 1;
   // Resolved: prefer explicit; else infer from `status`; else default false
   // so legacy rows with no resolved field still appear in "All".
   const resolvedExplicit = pickBool(
@@ -471,6 +477,7 @@ export function normalizeEscalation(raw: unknown): NormalizedEscalation | null {
     summary: pickStr(o, "summary", "issue", "reason", "subject", "title"),
     body: pickStr(o, "body", "message", "description", "text"),
     createdAt: pickStr(o, "createdAt", "created_at", "timestamp", "last_message_at"),
+    contentRevision,
   };
 }
 
@@ -507,6 +514,7 @@ export function escalationToConversationRow(
     id,
     conversationKey,
     escalationId: n.id,
+    escalationContentRevision: n.contentRevision,
     channel,
     sender,
     subject,

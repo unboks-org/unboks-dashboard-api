@@ -136,11 +136,13 @@ describe("Mermaid reservation API", () => {
           items: [
             {
               ...crewAssistance,
+              id: 17,
               conversationId: "guest-1",
               customerName: "Alex Guest",
             },
             {
               ...crewAssistance,
+              id: 17,
               note: "Guest's mother uses a folding wheelchair.",
               tripDate: "2026-09-19",
               revision: 4,
@@ -163,7 +165,7 @@ describe("Mermaid reservation API", () => {
     const items = await fetchMermaidCrewAssistance();
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({
-      id: "assist-1",
+      id: "17",
       note: "Guest's mother uses a folding wheelchair.",
       tripDate: "2026-09-19",
       revision: 4,
@@ -175,6 +177,42 @@ describe("Mermaid reservation API", () => {
       "/mermaid-crew-assistance?status=unacknowledged",
     );
     expect(request?.cache).toBe("no-store");
+  });
+
+  it("accepts a boarding-assistance crew item from the Mermaid API", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          items: [
+            {
+              ...crewAssistance,
+              id: 23,
+              kind: "boarding_assistance",
+              note: "Guest requested extra help boarding and disembarking.",
+              revision: 1,
+              conversationId: "guest-boarding",
+              customerName: "Boarding Guest",
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Unboks-Tenant": "mermaid",
+          },
+        },
+      ),
+    );
+
+    await expect(fetchMermaidCrewAssistance()).resolves.toMatchObject([
+      {
+        id: "23",
+        kind: "boarding_assistance",
+        note: "Guest requested extra help boarding and disembarking.",
+        revision: 1,
+      },
+    ]);
   });
 
   it("acknowledges an exact revision as the selected operator", async () => {

@@ -27,9 +27,11 @@ export function MermaidCrewAssistanceBadge({
   compact?: boolean;
 }) {
   const awaiting = item.status === "unacknowledged";
+  const label =
+    item.kind === "wheelchair" ? "Wheelchair assistance" : "Boarding assistance";
   return (
     <span
-      aria-label={`Wheelchair assistance${awaiting ? " — acknowledgement required" : ""}`}
+      aria-label={`${label}${awaiting ? " — acknowledgement required" : ""}`}
       className={cn(
         "inline-flex shrink-0 items-center gap-1.5 rounded-full font-bold ring-1 ring-inset",
         awaiting
@@ -41,7 +43,7 @@ export function MermaidCrewAssistanceBadge({
       )}
     >
       <Accessibility className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} />
-      Wheelchair assistance
+      {label}
       {awaiting ? <span className="h-1.5 w-1.5 rounded-full bg-amber-600" /> : null}
     </span>
   );
@@ -65,6 +67,8 @@ export function MermaidCrewAssistanceCard({
   const { identity, setIdentity } = useDashboardIdentity();
   const acknowledgement = useAcknowledgeMermaidCrewAssistance();
   const awaiting = item.status === "unacknowledged";
+  const label =
+    item.kind === "wheelchair" ? "Wheelchair assistance" : "Boarding assistance";
   const effectiveReservationId =
     reservationPublicId ?? item.reservationPublicId;
 
@@ -78,7 +82,7 @@ export function MermaidCrewAssistanceCard({
         expectedRevision: item.revision,
         acknowledgedBy: identity,
       });
-      toast.success("Wheelchair assistance acknowledged", {
+      toast.success(`${label} acknowledged`, {
         description: `Recorded for ${identity}. The booking note remains.`,
       });
     } catch {
@@ -89,8 +93,8 @@ export function MermaidCrewAssistanceCard({
 
   return (
     <section
-      aria-label="Wheelchair assistance"
-      data-private-staff-note="wheelchair-assistance"
+      aria-label={label}
+      data-private-staff-note="crew-assistance"
       className={cn(
         "min-w-0 rounded-2xl border p-4 [overflow-wrap:anywhere] sm:p-5",
         awaiting
@@ -115,7 +119,7 @@ export function MermaidCrewAssistanceCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-base font-semibold text-slate-950">
-              Wheelchair assistance
+              {label}
             </h3>
             {awaiting ? (
               <span className="rounded-full bg-amber-200 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-950">
@@ -180,7 +184,7 @@ export function MermaidCrewAssistanceCard({
           <label className="min-w-0 flex-1 text-xs font-semibold uppercase tracking-wide text-amber-950">
             Operator acknowledging
             <select
-              aria-label="Operator acknowledging wheelchair assistance"
+              aria-label={`Operator acknowledging ${label.toLowerCase()}`}
               value={identity}
               onChange={(event) =>
                 setIdentity(event.target.value as TaskUser)

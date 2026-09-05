@@ -61,7 +61,7 @@ export type LearningStatus = "none" | "suggested" | "approved" | "saved";
  * task, not the underlying note. */
 export interface MermaidCrewAssistance {
   id: string;
-  kind: "wheelchair";
+  kind: "wheelchair" | "boarding_assistance";
   note: string;
   relationship: string | null;
   tripDate: string | null;
@@ -254,10 +254,12 @@ export interface Escalation {
   summary?: string | null;
   learningStatus?: LearningStatus;
   aiMuted?: boolean;
+  contentRevision?: number;
 }
 
 export interface GuidancePayload {
   guidance: string;
+  content_revision?: number;
   request_id?: string;
   saveToYourInfo?: boolean;
   autoUseNextTime?: boolean;
@@ -266,6 +268,7 @@ export interface GuidancePayload {
 }
 
 export interface ResolvePayload {
+  content_revision?: number;
   resolutionNote?: string;
   saveAsLearning?: boolean;
   autoUseNextTime?: boolean;
@@ -330,6 +333,7 @@ export interface Appointment {
   humanActionRequired?: boolean;
   nextOperatorAction?: string | null;
   escalationId?: string | null;
+  escalationContentRevision?: number;
 }
 
 export interface OrderLine {
@@ -2115,6 +2119,12 @@ function normalizeOrderList(raw: unknown): Appointment[] {
         pickStr(o, "next_operator_action", "nextOperatorAction") ??
         defaultOrderNextAction(orderStatus),
       escalationId,
+      escalationContentRevision:
+        typeof (o.content_revision ?? o.contentRevision) === "number" &&
+        Number.isSafeInteger(o.content_revision ?? o.contentRevision) &&
+        Number(o.content_revision ?? o.contentRevision) > 0
+          ? Number(o.content_revision ?? o.contentRevision)
+          : 1,
     });
   }
   out.sort(
@@ -3415,9 +3425,13 @@ export async function markOrderPhoneConfirmed(
   });
 }
 
-export async function unresolveEscalation(id: string): Promise<Escalation> {
+export async function unresolveEscalation(
+  id: string,
+  contentRevision = 1,
+): Promise<Escalation> {
   return apiFetch<Escalation>(`/escalations/${id}/unresolve`, {
     method: "POST",
+    body: JSON.stringify({ content_revision: contentRevision }),
   });
 }
 
@@ -3426,8 +3440,13 @@ export async function replyEscalation(
   message: string,
   mediaId?: string,
   requestId?: string,
+  contentRevision = 1,
 ): Promise<void> {
-  const payload = { message, ...(mediaId ? { mediaId } : {}) };
+  const payload = {
+    message,
+    content_revision: contentRevision,
+    ...(mediaId ? { mediaId } : {}),
+  };
   return withOperatorRequest(
     `escalations:${id}:reply`,
     payload,
@@ -3440,8 +3459,14 @@ export async function replyEscalation(
   );
 }
 
-export async function deleteEscalation(id: string): Promise<void> {
-  return apiFetch<void>(`/escalations/${id}`, { method: "DELETE" });
+export async function deleteEscalation(
+  id: string,
+  contentRevision = 1,
+): Promise<void> {
+  return apiFetch<void>(`/escalations/${id}`, {
+    method: "DELETE",
+    body: JSON.stringify({ content_revision: contentRevision }),
+  });
 }
 
 export async function submitGuidance(
@@ -3464,25 +3489,33 @@ export async function submitGuidance(
 export async function takeoverEscalation(
   id: string,
   note?: string,
+  contentRevision = 1,
 ): Promise<void> {
   return apiFetch<void>(`/escalations/${id}/takeover`, {
     method: "POST",
-    body: JSON.stringify({ note }),
+    body: JSON.stringify({ note, content_revision: contentRevision }),
   });
 }
 
 export async function setEscalationMode(
   id: string,
   mode: "soft" | "hard" | "order",
+  contentRevision = 1,
 ): Promise<void> {
   return apiFetch<void>(`/escalations/${id}/mode`, {
     method: "POST",
-    body: JSON.stringify({ mode }),
+    body: JSON.stringify({ mode, content_revision: contentRevision }),
   });
 }
 
-export async function handbackEscalation(id: string): Promise<void> {
-  return apiFetch<void>(`/escalations/${id}/handback`, { method: "POST" });
+export async function handbackEscalation(
+  id: string,
+  contentRevision = 1,
+): Promise<void> {
+  return apiFetch<void>(`/escalations/${id}/handback`, {
+    method: "POST",
+    body: JSON.stringify({ content_revision: contentRevision }),
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -4308,7 +4341,15 @@ function parseMermaidCrewAssistance(
     throw new ApiError(502, `Invalid ${source} crew-assistance data.`);
   }
   const row = raw as Record<string, unknown>;
-  const id = pickStr(row, "id");
+  const rawId = row.id;
+  const id =
+    typeof rawId === "string" && rawId.trim()
+      ? rawId.trim()
+      : typeof rawId === "number" &&
+          Number.isSafeInteger(rawId) &&
+          rawId > 0
+        ? String(rawId)
+        : undefined;
   const kind = pickStr(row, "kind");
   const note = pickStr(row, "note");
   const status = pickStr(row, "status");
@@ -4321,11 +4362,11 @@ function parseMermaidCrewAssistance(
     pickStr(row, "acknowledgedBy", "acknowledged_by") ?? null;
   if (
     !id ||
-    kind !== "wheelchair" ||
+    !["wheelchair", "boarding_assistance"].includes(kind ?? "") ||
     !note ||
     !["unacknowledged", "acknowledged", "withdrawn"].includes(status ?? "") ||
     !Number.isInteger(revision) ||
-    (revision as number) < 0 ||
+    (revision as number) < 1 ||
     !createdAt ||
     !updatedAt ||
     (status === "acknowledged" && (!acknowledgedAt || !acknowledgedBy))
@@ -4334,7 +4375,7 @@ function parseMermaidCrewAssistance(
   }
   return {
     id,
-    kind: "wheelchair",
+    kind: kind as MermaidCrewAssistance["kind"],
     note,
     relationship: pickStr(row, "relationship") ?? null,
     tripDate: pickStr(row, "tripDate", "trip_date") ?? null,

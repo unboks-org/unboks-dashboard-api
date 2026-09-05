@@ -27,6 +27,8 @@ export function MermaidEscalationActions({
   // the HO changes mode. Never silently convert an internal draft into a reply.
   const [advice, setAdvice] = useState("");
   const [customerReply, setCustomerReply] = useState("");
+  const adviceRevision = useRef<number | null>(null);
+  const customerReplyRevision = useRef<number | null>(null);
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
   const [notice, setNotice] = useState<{ error: boolean; text: string } | null>(
@@ -52,6 +54,9 @@ export function MermaidEscalationActions({
     setNotice(null);
     const tenant = getClientSlug();
     const body = draft.trim();
+    const expectedRevision =
+      (hard ? customerReplyRevision.current : adviceRevision.current) ??
+      issue.contentRevision;
     try {
       // Another HO may have changed the mode or resolved the case since this
       // screen loaded. Recheck before sending; never guess the recipient.
@@ -66,6 +71,10 @@ export function MermaidEscalationActions({
         throw new Error(
           "This escalation is no longer open. Refresh the queue.",
         );
+      if (fresh.contentRevision !== expectedRevision)
+        throw new Error(
+          "This case changed while you were writing. Review the latest guest message before sending.",
+        );
       if (action === "send" && (fresh.mode !== issue.mode || !fresh.mode)) {
         throw new Error(
           "The reply mode changed. Review the updated case before sending.",
@@ -75,14 +84,23 @@ export function MermaidEscalationActions({
         if (!supported)
           throw new Error("Replies for this channel are not supported here.");
         if (hard) {
-          await reply.mutateAsync({ id: issue.id, message: body });
+          await reply.mutateAsync({
+            id: issue.id,
+            message: body,
+            contentRevision: expectedRevision,
+          });
           setCustomerReply("");
+          customerReplyRevision.current = null;
         } else {
           await guidance.mutateAsync({
             id: issue.id,
-            payload: { guidance: body },
+            payload: {
+              guidance: body,
+              content_revision: expectedRevision,
+            },
           });
           setAdvice("");
+          adviceRevision.current = null;
         }
         setNotice({
           error: false,
@@ -91,19 +109,28 @@ export function MermaidEscalationActions({
             : "TRACY’s reply was sent using your guidance. Mark resolved when the issue is handled.",
         });
       } else if (action === "takeover") {
-        await takeover.mutateAsync({ id: issue.id });
+        await takeover.mutateAsync({
+          id: issue.id,
+          contentRevision: expectedRevision,
+        });
         setNotice({
           error: false,
           text: "Takeover requested. Direct reply is available once the updated mode is confirmed.",
         });
       } else if (action === "handback") {
-        await handback.mutateAsync({ id: issue.id });
+        await handback.mutateAsync({
+          id: issue.id,
+          contentRevision: expectedRevision,
+        });
         setNotice({
           error: false,
           text: "Returned to TRACY. Review the updated mode before sending guidance.",
         });
       } else {
-        const result = await resolve.mutateAsync({ id: issue.id, payload: {} });
+        const result = await resolve.mutateAsync({
+          id: issue.id,
+          payload: { content_revision: expectedRevision },
+        });
         if (result?.ok !== true)
           throw new Error("Resolution was not confirmed.");
         setNotice({ error: false, text: "Escalation resolved." });
@@ -159,9 +186,20 @@ export function MermaidEscalationActions({
         <textarea
           value={draft}
           onChange={(event) =>
-            hard
-              ? setCustomerReply(event.target.value)
-              : setAdvice(event.target.value)
+            (() => {
+              const next = event.target.value;
+              if (hard) {
+                if (!customerReply.trim() && next.trim())
+                  customerReplyRevision.current = issue.contentRevision;
+                if (!next.trim()) customerReplyRevision.current = null;
+                setCustomerReply(next);
+              } else {
+                if (!advice.trim() && next.trim())
+                  adviceRevision.current = issue.contentRevision;
+                if (!next.trim()) adviceRevision.current = null;
+                setAdvice(next);
+              }
+            })()
           }
           disabled={busy || !supported || !issue.mode}
           rows={4}

@@ -287,6 +287,7 @@ function isModeNotConnected(err: unknown): boolean {
 
 interface EscalationModeToggleProps {
   conversationDbId: string;
+  contentRevision: number;
   selectedMode: "soft" | "hard";
   onChange: (next: "soft" | "hard") => void;
 }
@@ -295,17 +296,16 @@ interface EscalationModeToggleProps {
  * Persistent mode toggle shown above the message thread for any open
  * escalation. Clicking either button:
  *   1. Updates the local `selectedMode` immediately so the composer below
- *      re-renders without a backend round trip (operator never sees a dead
- *      button).
- *   2. POSTs to /escalations/:id/mode. On 0/404/501/503 we keep the local
- *      pick and show a calm "Mode saved locally" notice. On other errors we
- *      surface the message and still keep the local pick (so the composer
- *      stays correct), but we do NOT claim backend saved it.
+ *      re-renders without a backend round trip.
+ *   2. POSTs the exact escalation revision to /escalations/:id/mode. A failed
+ *      or stale write restores the confirmed mode so the UI never presents a
+ *      local-only pause as real state.
  *   3. 401/403 is handled globally by AuthProvider (session-expired toast),
  *      so we don't duplicate that here.
  */
-function EscalationModeToggle({
+export function EscalationModeToggle({
   conversationDbId,
+  contentRevision,
   selectedMode,
   onChange,
 }: EscalationModeToggleProps) {
@@ -322,19 +322,20 @@ function EscalationModeToggle({
     setPendingMode(next);
     onChange(next);
     setMode.mutate(
-      { id: conversationDbId, mode: next },
+      { id: conversationDbId, mode: next, contentRevision },
       {
         onSuccess: () => {
           setPendingMode(null);
         },
         onError: (err) => {
           setPendingMode(null);
+          onChange(selectedMode);
           if (isModeNotConnected(err)) {
             setNotice({
               tone: "info",
               text: tenantText(
-                "Mode saved locally. Backend connection will complete this soon.",
-                "El modo se ha guardado localmente. La conexión con el servidor se completará pronto.",
+                "The mode change was not saved. Refresh the case before trying again.",
+                "El cambio de modo no se guardó. Actualiza el caso antes de volver a intentarlo.",
               ),
             });
             return;
@@ -351,8 +352,8 @@ function EscalationModeToggle({
             tone: "error",
             text:
               tenantText(
-                "Mode saved locally, but couldn't sync to backend: ",
-                "El modo se ha guardado localmente, pero no se pudo sincronizar con el servidor: ",
+                "The mode change was not saved: ",
+                "El cambio de modo no se guardó: ",
               ) +
               (err instanceof Error
                 ? err.message
@@ -549,6 +550,14 @@ function ConversationDetailPane({
   const mermaidBriefing = isMermaidReservationTenant()
     ? (escalations ?? []).map(mermaidIssue).find((issue) => issue?.id === dbId)
     : null;
+  const matchedContentRevision = useMemo(() => {
+    if (!dbId) return conversation.escalationContentRevision ?? 1;
+    for (const raw of escalations ?? []) {
+      const normalized = normalizeEscalation(raw);
+      if (normalized?.id === dbId) return normalized.contentRevision;
+    }
+    return conversation.escalationContentRevision ?? 1;
+  }, [dbId, escalations, conversation.escalationContentRevision]);
 
   const escalationState = resolveEscalationRenderState({
     detailEscalated: detail?.escalated,
@@ -616,7 +625,7 @@ function ConversationDetailPane({
     )
       return;
     unresolve.mutate(
-      { id: escalationId },
+      { id: escalationId, contentRevision: matchedContentRevision },
       {
         onSuccess: () => {
           toast.success(
@@ -642,6 +651,7 @@ function ConversationDetailPane({
   }, [
     conversation.escalationId,
     conversation.escalationMode,
+    matchedContentRevision,
     onUnresolveSuccess,
     unresolve,
   ]);
@@ -736,7 +746,10 @@ function ConversationDetailPane({
   const onResolveFromHeader = useCallback(() => {
     if (!dbId || headerResolve.isPending) return;
     headerResolve.mutate(
-      { id: dbId, payload: {} },
+      {
+        id: dbId,
+        payload: { content_revision: matchedContentRevision },
+      },
       {
         onSuccess: () => {
           toast.success(
@@ -759,7 +772,7 @@ function ConversationDetailPane({
         },
       },
     );
-  }, [dbId, headerResolve, onClose]);
+  }, [dbId, headerResolve, matchedContentRevision, onClose]);
 
   const onChipAction = useCallback((action: ChipAction) => {
     const c = composerRef.current;
@@ -878,6 +891,7 @@ function ConversationDetailPane({
               <div className="hidden md:block flex-shrink-0 ml-2">
                 <EscalationModeToggle
                   conversationDbId={dbId}
+                  contentRevision={matchedContentRevision}
                   selectedMode={selectedMode}
                   onChange={setSelectedMode}
                 />
@@ -1076,6 +1090,7 @@ function ConversationDetailPane({
             selectedMode !== "order" && (
               <EscalationModeToggle
                 conversationDbId={dbId}
+                contentRevision={matchedContentRevision}
                 selectedMode={selectedMode}
                 onChange={setSelectedMode}
               />
@@ -1164,6 +1179,7 @@ function ConversationDetailPane({
               conversationId={conversation.id}
               mode={selectedMode}
               channel={conversation.channel}
+              contentRevision={matchedContentRevision}
               aiMuted={
                 selectedMode === "hard" ? (detail?.aiMuted ?? false) : false
               }

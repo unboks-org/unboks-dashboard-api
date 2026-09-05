@@ -268,6 +268,7 @@ export default function Bookings() {
         throw new Error("Call the customer and mark phone confirmation before fulfilling this order.");
       }
       await resolveEscalation(escalationId, {
+        content_revision: appointment.escalationContentRevision ?? 1,
         resolutionNote: "Order fulfilled by operator.",
         saveAsLearning: false,
       });

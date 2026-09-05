@@ -105,6 +105,7 @@ describe("Mermaid attention projection", () => {
     const issue = mermaidIssue(
       escalation("1", "a", {
         aiMuted: true,
+        content_revision: 6,
         escalationSummary: {
           reason: "Guest asks for a wheelchair-accessible transfer",
           customerWants: "Accessible pickup",
@@ -114,9 +115,12 @@ describe("Mermaid attention projection", () => {
       }),
     );
     expect(issue?.mode).toBe("soft");
+    expect(issue?.contentRevision).toBe(6);
     expect(issue?.reason).toContain("wheelchair");
     expect(issue?.decision).toContain("suitable vehicle");
-    expect(mermaidIssue(escalation("2", "b", { mode: null }))?.mode).toBeNull();
+    const legacy = mermaidIssue(escalation("2", "b", { mode: null }));
+    expect(legacy?.mode).toBeNull();
+    expect(legacy?.contentRevision).toBe(1);
   });
   it("shows the guest message before escalation, not a later routine exchange or TRACY reply", () => {
     const messages = [

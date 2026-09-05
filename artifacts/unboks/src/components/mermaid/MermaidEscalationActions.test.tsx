@@ -39,12 +39,14 @@ const issue: MermaidAttentionIssue = {
   context: "",
   decision: "",
   createdAt: null,
+  contentRevision: 1,
 };
 const row = {
   id: "42",
   mode: "soft",
   phone: "synthetic-guest",
   status: "sent",
+  content_revision: 1,
 };
 function setup(mode: "soft" | "hard" | null = "soft") {
   const client = new QueryClient({
@@ -83,6 +85,7 @@ describe("Mermaid HO actions", () => {
     await screen.findByText(/TRACY’s reply was sent/);
     expect(api.guidance).toHaveBeenCalledWith("42", {
       guidance: "Confirm pickup at 07:00",
+      content_revision: 1,
     });
     expect(api.reply).not.toHaveBeenCalled();
     expect(api.resolve).not.toHaveBeenCalled();
@@ -95,7 +98,7 @@ describe("Mermaid HO actions", () => {
       screen.getByRole("button", { name: "Take over & reply myself" }),
     );
     await waitFor(() =>
-      expect(api.takeover).toHaveBeenCalledWith("42", undefined),
+      expect(api.takeover).toHaveBeenCalledWith("42", undefined, 1),
     );
     await waitFor(() =>
       expect(
@@ -117,6 +120,8 @@ describe("Mermaid HO actions", () => {
       "42",
       "We will collect you at 07:00.",
       undefined,
+      undefined,
+      1,
     );
     expect(api.guidance).not.toHaveBeenCalled();
     view.mode("soft");
@@ -148,6 +153,21 @@ describe("Mermaid HO actions", () => {
       );
     },
   );
+  it("keeps the draft when a newer guest message changes the case revision", async () => {
+    setup();
+    type("Answer based on the old guest message");
+    api.list.mockResolvedValue([{ ...row, content_revision: 2 }]);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Send guidance to TRACY" }),
+    );
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "This case changed while you were writing",
+    );
+    expect(api.guidance).not.toHaveBeenCalled();
+    expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe(
+      "Answer based on the old guest message",
+    );
+  });
   it("keeps a failed draft and retry payload identical without resolving", async () => {
     api.guidance.mockRejectedValueOnce(new Error("Delivery not confirmed"));
     setup();
@@ -193,10 +213,32 @@ describe("Mermaid HO actions", () => {
     setup();
     fireEvent.click(screen.getByRole("button", { name: "Mark resolved" }));
     await screen.findByText("Escalation resolved.");
-    expect(api.resolve).toHaveBeenCalledWith("42", {});
+    expect(api.resolve).toHaveBeenCalledWith("42", {
+      content_revision: 1,
+    });
     expect(api.guidance).not.toHaveBeenCalled();
     expect(api.reply).not.toHaveBeenCalled();
   });
+  it.each(["takeover", "resolve"] as const)(
+    "blocks a stale %s action from changing a newer guest issue",
+    async (action) => {
+      api.list.mockResolvedValue([{ ...row, content_revision: 2 }]);
+      setup();
+      fireEvent.click(
+        screen.getByRole("button", {
+          name:
+            action === "takeover"
+              ? "Take over & reply myself"
+              : "Mark resolved",
+        }),
+      );
+      expect((await screen.findByRole("alert")).textContent).toContain(
+        "This case changed while you were writing",
+      );
+      expect(api.takeover).not.toHaveBeenCalled();
+      expect(api.resolve).not.toHaveBeenCalled();
+    },
+  );
   it("does not resolve with unsent advice and does not send with unknown mode", () => {
     const view = setup();
     type("Unsent internal note");

@@ -28,6 +28,8 @@ export interface Conversation {
    * Optional only because plain inbox rows don't have one.
    */
   escalationId?: string;
+  /** Generation of the escalation row represented by this list item. */
+  escalationContentRevision?: number;
   channel: Channel;
   sender: string;
   subject: string;

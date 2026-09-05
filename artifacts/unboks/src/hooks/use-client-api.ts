@@ -176,13 +176,22 @@ export function useEscalationMutations() {
     onSuccess: invalidate,
   });
   const unresolve = useMutation({
-    mutationFn: ({ id }: { id: string }) => unresolveEscalation(id),
+    mutationFn: ({ id, contentRevision }: { id: string; contentRevision: number }) =>
+      unresolveEscalation(id, contentRevision),
     onSuccess: invalidate,
   });
-  const remove = useMutation({ mutationFn: deleteEscalation, onSuccess: invalidate });
+  const remove = useMutation({
+    mutationFn: ({ id, contentRevision }: { id: string; contentRevision: number }) =>
+      deleteEscalation(id, contentRevision),
+    onSuccess: invalidate,
+  });
   const reply = useMutation({
-    mutationFn: ({ id, message, mediaId }: { id: string; message: string; mediaId?: string }) =>
-      replyEscalation(id, message, mediaId),
+    mutationFn: ({ id, message, mediaId, contentRevision }: {
+      id: string;
+      message: string;
+      mediaId?: string;
+      contentRevision?: number;
+    }) => replyEscalation(id, message, mediaId, undefined, contentRevision),
     onSuccess: invalidate,
   });
   const guidance = useMutation({
@@ -191,17 +200,24 @@ export function useEscalationMutations() {
     onSuccess: invalidate,
   });
   const takeover = useMutation({
-    mutationFn: ({ id, note }: { id: string; note?: string }) =>
-      takeoverEscalation(id, note),
+    mutationFn: ({ id, note, contentRevision }: {
+      id: string;
+      note?: string;
+      contentRevision: number;
+    }) => takeoverEscalation(id, note, contentRevision),
     onSuccess: invalidate,
   });
   const setMode = useMutation({
-    mutationFn: ({ id, mode }: { id: string; mode: "soft" | "hard" | "order" }) =>
-      setEscalationMode(id, mode),
+    mutationFn: ({ id, mode, contentRevision }: {
+      id: string;
+      mode: "soft" | "hard" | "order";
+      contentRevision: number;
+    }) => setEscalationMode(id, mode, contentRevision),
     onSuccess: invalidate,
   });
   const handback = useMutation({
-    mutationFn: ({ id }: { id: string }) => handbackEscalation(id),
+    mutationFn: ({ id, contentRevision }: { id: string; contentRevision: number }) =>
+      handbackEscalation(id, contentRevision),
     onSuccess: invalidate,
   });
 
