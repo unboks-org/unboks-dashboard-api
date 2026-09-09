@@ -1,3 +1,6 @@
+import { IslunoTodayPage } from "@/components/isluno/IslunoToday";
+import { useIslunoWorkspace } from "@/hooks/use-isluno-workspace";
+import { LegacyJourneyNotice } from "@/components/isluno/IslunoOperations";
 import { useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -22,6 +25,25 @@ import {
 import { tenantKey } from "@/lib/query-keys";
 
 export default function MermaidToday() {
+  const workspace = useIslunoWorkspace();
+  if (workspace.loading || workspace.unavailable)
+    return (
+      <DashboardShell activeNav="today" pageTitle="Today" hideRefresh>
+        <p role={workspace.unavailable ? "alert" : "status"} className="p-6">
+          {workspace.loading
+            ? "Loading workspace…"
+            : "Workspace unavailable. Reload to retry."}
+        </p>
+      </DashboardShell>
+    );
+  return workspace.enabled && !workspace.legacy ? (
+    <IslunoTodayPage />
+  ) : (
+    <LegacyMermaidToday />
+  );
+}
+function LegacyMermaidToday() {
+  const workspace = useIslunoWorkspace();
   const [, navigate] = useLocation();
   const reservationsQuery = useQuery({
     queryKey: tenantKey("mermaid-reservations", ""),
@@ -60,6 +82,7 @@ export default function MermaidToday() {
       hideRefresh
     >
       <div className="mx-auto min-w-0 w-full max-w-[1320px] space-y-5 px-4 py-5 sm:px-6 lg:px-8">
+        {workspace.enabled && <LegacyJourneyNotice />}
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
           <p>
             {conversationReady
@@ -100,7 +123,11 @@ export default function MermaidToday() {
               Upcoming guest journeys
             </h2>
             <Link
-              href="/reservations"
+              href={
+                workspace.enabled
+                  ? "/reservations?view=mermaid"
+                  : "/reservations"
+              }
               className="flex min-h-11 items-center text-sm font-semibold text-teal-800"
             >
               All reservations

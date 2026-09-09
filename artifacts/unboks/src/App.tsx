@@ -92,6 +92,16 @@ const MermaidCustomers = lazy(() => import("@/pages/MermaidCustomers"));
 const MermaidCustomerAccount = lazy(
   () => import("@/pages/MermaidCustomerAccount"),
 );
+const IslunoJourneyRoute = lazy(() =>
+  import("@/components/isluno/IslunoOperations").then((module) => ({
+    default: module.IslunoJourneyRoute,
+  })),
+);
+const IslunoGuestRoute = lazy(() =>
+  import("@/components/isluno/IslunoOperations").then((module) => ({
+    default: module.IslunoGuestRoute,
+  })),
+);
 const MermaidReservations = lazy(() => import("@/pages/MermaidReservations"));
 const MermaidReservationWorkspace = lazy(
   () => import("@/pages/MermaidReservationWorkspace"),
@@ -565,6 +575,20 @@ function Router() {
           <RentalOnlyRoute>
             {isMermaidReservationTenant() ? <MermaidToday /> : <RentalToday />}
           </RentalOnlyRoute>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/itineraries/:journeyId">
+        <ProtectedRoute>
+          <MermaidOnlyRoute>
+            <IslunoJourneyRoute />
+          </MermaidOnlyRoute>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/itinerary-guests/:guestId">
+        <ProtectedRoute>
+          <MermaidOnlyRoute>
+            <IslunoGuestRoute />
+          </MermaidOnlyRoute>
         </ProtectedRoute>
       </Route>
       <Route path="/reservations/:reservationId">

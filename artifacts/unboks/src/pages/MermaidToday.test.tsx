@@ -108,3 +108,5 @@ describe("Mermaid Today", () => {
     expect(screen.queryByText("Blocked guest")).toBeNull();
   });
 });
+
+vi.mock("@/hooks/use-isluno-workspace", () => ({useIslunoWorkspace:()=>({enabled:false,legacy:false,loading:false,unavailable:false,brand:null})}));

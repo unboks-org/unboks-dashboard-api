@@ -140,3 +140,5 @@ describe("RentalDashboardShell agent controls", () => {
     expect(mutateAgent).not.toHaveBeenCalled();
   });
 });
+
+vi.mock("@/hooks/use-isluno-workspace", () => ({useIslunoWorkspace:()=>({enabled:false,legacy:false,loading:false,unavailable:false,brand:null})}));

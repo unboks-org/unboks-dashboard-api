@@ -1,3 +1,8 @@
+import {
+  IslunoOperationsGate,
+  IslunoJourneysPage,
+  LegacyJourneyNotice,
+} from "@/components/isluno/IslunoOperations";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Link, useLocation, useSearch } from "wouter";
 import { ChevronRight, UsersRound } from "lucide-react";
@@ -7,8 +12,17 @@ import { tenantKey } from "@/lib/query-keys";
 import { formatMermaidActivity } from "@/lib/mermaid-operations";
 
 export default function MermaidCustomers() {
+  return (
+    <IslunoOperationsGate legacy={<LegacyCustomers />}>
+      <IslunoJourneysPage guestView />
+    </IslunoOperationsGate>
+  );
+}
+
+function LegacyCustomers() {
   const [, navigate] = useLocation();
-  const search = new URLSearchParams(useSearch()).get("q") ?? "";
+  const params = new URLSearchParams(useSearch());
+  const search = params.get("q") ?? "";
   const query = useInfiniteQuery({
     queryKey: tenantKey("mermaid-customers", search),
     queryFn: ({ pageParam }) => fetchMermaidCustomers(search, pageParam),
@@ -25,20 +39,25 @@ export default function MermaidCustomers() {
       searchQuery={search}
       onSearchChange={(value) =>
         navigate(
-          `/customers${value ? `?q=${encodeURIComponent(value)}` : ""}`,
+          `/customers?${new URLSearchParams({ ...(value ? { q: value } : {}), ...(params.get("view") === "mermaid" ? { view: "mermaid" } : {}) })}`,
           { replace: true },
         )
       }
       hideRefresh
     >
       <div className="mx-auto max-w-[1200px] space-y-5 px-4 py-6 sm:px-8">
+        {params.get("view") === "mermaid" && <LegacyJourneyNotice />}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="max-w-xl text-sm leading-6 text-slate-600">
             Tracy saves each enquiry here as it arrives. Open a guest to see
             their contact details, trip plans, bookings and conversations.
           </p>
           <Link
-            href="/reservations"
+            href={
+              params.get("view") === "mermaid"
+                ? "/reservations?view=mermaid"
+                : "/reservations"
+            }
             className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-teal-900"
           >
             View reservations

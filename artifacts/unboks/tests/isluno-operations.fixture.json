@@ -1,0 +1,2664 @@
+{
+  "listing": {
+    "items": [
+      {
+        "id": "d816ca8f0268be532bd2755336e87264c40a84cc4b54711d7f1f3d19c36a073b.66841bea0a1d19c3d8a02933c0fbf4a8",
+        "guest_id": "d816ca8f0268be532bd2755336e87264c40a84cc4b54711d7f1f3d19c36a073b",
+        "itinerary_id": "66841bea0a1d19c3d8a02933c0fbf4a8",
+        "brand": "Isluno",
+        "guest_name": "Calvin",
+        "customer_ref": "fixture-whatsapp-three",
+        "conversation_id": "fixture-guest-three",
+        "stage": "demo_paid",
+        "stage_label": "Demo paid",
+        "item_count": 1,
+        "totals": {
+          "currency": "USD",
+          "currency_exponent": 2,
+          "mode": "demo",
+          "real_money_moved": false,
+          "taxes_fees": "included",
+          "total_minor": 25000
+        },
+        "revision": 3,
+        "created_at": "2026-09-08T18:01:36+00:00",
+        "updated_at": "2026-09-08T18:02:12+00:00",
+        "valid_actions": {
+          "open_inbox": true,
+          "advance_booking": false,
+          "real_booking": false
+        },
+        "inbox_path": "/conversations?c=fixture-guest-three",
+        "real_money_charged": false,
+        "supplier_booking_made": false,
+        "latest_quote_valid": null,
+        "reference_codes": [
+          "251c1c08426757210aa341f221e8c0fa",
+          "95e9e5bc1e342b47462a38d9f97c50fb"
+        ],
+        "product_names": [
+          "Synthetic Cruise"
+        ],
+        "guest": {
+          "ages": [
+            35,
+            34,
+            8
+          ],
+          "name": "Calvin"
+        },
+        "item_details": {
+          "3d9b6b64ec8ae18c33aa40c9ede33656": {
+            "guest_name": "Calvin",
+            "pickup_location": null
+          }
+        }
+      },
+      {
+        "id": "caf5d6b04b5933bf36260f1510f80b7dd98e79ac9eaefd7a3a8d58183b16d54f.efe62612e2a2de359df807c16d819164",
+        "guest_id": "caf5d6b04b5933bf36260f1510f80b7dd98e79ac9eaefd7a3a8d58183b16d54f",
+        "itinerary_id": "efe62612e2a2de359df807c16d819164",
+        "brand": "Isluno",
+        "guest_name": "Second Party",
+        "customer_ref": "fixture-whatsapp-two",
+        "conversation_id": "fixture-guest-two",
+        "stage": "demo_paid",
+        "stage_label": "Demo paid",
+        "item_count": 2,
+        "totals": {
+          "currency": "USD",
+          "currency_exponent": 2,
+          "mode": "demo",
+          "real_money_moved": false,
+          "taxes_fees": "included",
+          "total_minor": 50000
+        },
+        "revision": 5,
+        "created_at": "2026-09-08T18:00:00+00:00",
+        "updated_at": "2026-09-08T18:01:18+00:00",
+        "valid_actions": {
+          "open_inbox": true,
+          "advance_booking": false,
+          "real_booking": false
+        },
+        "inbox_path": "/conversations?c=fixture-guest-two",
+        "real_money_charged": false,
+        "supplier_booking_made": false,
+        "latest_quote_valid": null,
+        "reference_codes": [
+          "3e48a85e8966ab1b3ce642f88ff25bd5",
+          "f28988c66a1cec71bdd2681581c6173f",
+          "bdb655a0ebeafb1adb9581367fd0b851"
+        ],
+        "product_names": [
+          "Synthetic Cruise",
+          "Synthetic Cruise"
+        ],
+        "guest": {
+          "ages": [
+            35,
+            34,
+            8
+          ],
+          "name": "Second Party"
+        },
+        "item_details": {
+          "3c511e4da9e86b5cfea0865b8d205c5c": {
+            "guest_name": "Second Party",
+            "pickup_location": null
+          },
+          "4e78b61f6c704666dacd5d885dc6ae1e": {
+            "guest_name": "Calvin",
+            "pickup_location": null
+          }
+        }
+      },
+      {
+        "id": "6622f5e7e91eda3d10f46e37a3e34ff01cbbd4cd3dc05971f4fc9ff35bdada6c.240f80c18c7c0f943d2c87db33f9a33d",
+        "guest_id": "6622f5e7e91eda3d10f46e37a3e34ff01cbbd4cd3dc05971f4fc9ff35bdada6c",
+        "itinerary_id": "240f80c18c7c0f943d2c87db33f9a33d",
+        "brand": "Isluno",
+        "guest_name": "Calvin",
+        "customer_ref": "fixture-whatsapp-one",
+        "conversation_id": "fixture-guest-one",
+        "stage": "draft",
+        "stage_label": "Collecting trip details",
+        "item_count": 1,
+        "totals": {
+          "currency": "USD",
+          "currency_exponent": 2,
+          "mode": "demo",
+          "real_money_moved": false,
+          "taxes_fees": "included",
+          "total_minor": 25000
+        },
+        "revision": 2,
+        "created_at": "2026-09-08T18:00:00+00:00",
+        "updated_at": "2026-09-08T18:00:00+00:00",
+        "valid_actions": {
+          "open_inbox": true,
+          "advance_booking": false,
+          "real_booking": false
+        },
+        "inbox_path": "/conversations?c=fixture-guest-one",
+        "real_money_charged": false,
+        "supplier_booking_made": false,
+        "latest_quote_valid": null,
+        "reference_codes": [],
+        "product_names": [
+          "Synthetic Cruise"
+        ],
+        "guest": {
+          "ages": [
+            35,
+            34,
+            8
+          ],
+          "name": "Calvin"
+        },
+        "item_details": {
+          "073530229952fa92072707fd1d1f9991": {
+            "guest_name": "Calvin",
+            "pickup_location": null
+          }
+        }
+      }
+    ],
+    "total": 3,
+    "next_offset": null
+  },
+  "detail": {
+    "id": "caf5d6b04b5933bf36260f1510f80b7dd98e79ac9eaefd7a3a8d58183b16d54f.efe62612e2a2de359df807c16d819164",
+    "guest_id": "caf5d6b04b5933bf36260f1510f80b7dd98e79ac9eaefd7a3a8d58183b16d54f",
+    "itinerary_id": "efe62612e2a2de359df807c16d819164",
+    "brand": "Isluno",
+    "guest_name": "Second Party",
+    "customer_ref": "fixture-whatsapp-two",
+    "conversation_id": "fixture-guest-two",
+    "stage": "demo_paid",
+    "stage_label": "Demo paid",
+    "item_count": 2,
+    "totals": {
+      "currency": "USD",
+      "currency_exponent": 2,
+      "mode": "demo",
+      "real_money_moved": false,
+      "taxes_fees": "included",
+      "total_minor": 50000
+    },
+    "revision": 5,
+    "created_at": "2026-09-08T18:00:00+00:00",
+    "updated_at": "2026-09-08T18:01:18+00:00",
+    "valid_actions": {
+      "open_inbox": true,
+      "advance_booking": false,
+      "real_booking": false
+    },
+    "inbox_path": "/conversations?c=fixture-guest-two",
+    "real_money_charged": false,
+    "supplier_booking_made": false,
+    "latest_quote_valid": null,
+    "reference_codes": [
+      "3e48a85e8966ab1b3ce642f88ff25bd5",
+      "f28988c66a1cec71bdd2681581c6173f",
+      "bdb655a0ebeafb1adb9581367fd0b851"
+    ],
+    "product_names": [
+      "Synthetic Cruise",
+      "Synthetic Cruise"
+    ],
+    "guest": {
+      "ages": [
+        35,
+        34,
+        8
+      ],
+      "name": "Second Party"
+    },
+    "item_details": {
+      "3c511e4da9e86b5cfea0865b8d205c5c": {
+        "guest_name": "Second Party",
+        "pickup_location": null
+      },
+      "4e78b61f6c704666dacd5d885dc6ae1e": {
+        "guest_name": "Calvin",
+        "pickup_location": null
+      }
+    },
+    "item_stages": {
+      "4e78b61f6c704666dacd5d885dc6ae1e": {
+        "stage": "demo_paid",
+        "label": "Demo paid \u00b7 ticket issued"
+      },
+      "3c511e4da9e86b5cfea0865b8d205c5c": {
+        "stage": "demo_paid",
+        "label": "Demo paid \u00b7 ticket issued"
+      }
+    },
+    "itinerary": {
+      "brand_snapshot": {
+        "assistant_name": "TRACY",
+        "id": "isluno",
+        "name": "Isluno",
+        "primary_color": "#125055",
+        "profile_version": "isluno-profile-v1-20260908",
+        "website": "https://isluno.com"
+      },
+      "created_at": "2026-09-08T18:00:00+00:00",
+      "id": "efe62612e2a2de359df807c16d819164",
+      "items": [
+        {
+          "availability_source": "demo_assumed",
+          "catalog_revision": "5ddfe59124f1bd916c71c2332f6d43f6459d2c63e55b563868811f55f2d788ae",
+          "catalog_version": "fixture-v1",
+          "check_in_at": "2026-10-19T09:00:00-04:00",
+          "currency": "USD",
+          "currency_exponent": 2,
+          "ends_at": "2026-10-19T12:00:00-04:00",
+          "id": "4e78b61f6c704666dacd5d885dc6ae1e",
+          "lines": [
+            {
+              "amount_minor": 5000,
+              "key": "child",
+              "kind": "base",
+              "quantity": 1,
+              "unit_minor": 5000
+            },
+            {
+              "amount_minor": 20000,
+              "key": "adult",
+              "kind": "base",
+              "quantity": 2,
+              "unit_minor": 10000
+            }
+          ],
+          "pricing_snapshot": {
+            "label": "Demo booking using catalog rules",
+            "pricing_mode": "verified_catalog",
+            "real_booking_eligible": false,
+            "rules": {
+              "guest_rules": {
+                "adult_min_age": 13,
+                "maximum_age": 120,
+                "minimum_age": 0
+              },
+              "options": [],
+              "pickup": {
+                "meeting_point": "Synthetic pier",
+                "mode": "meeting_point"
+              },
+              "policies": {
+                "cancellation": "Demo only; no real reservation.",
+                "evidence": "Synthetic fixture.",
+                "safety": "Synthetic eligibility.",
+                "verified": true
+              },
+              "price_rules": {
+                "age_bands": [
+                  {
+                    "amount_minor": 0,
+                    "id": "infant",
+                    "maximum_age": 5,
+                    "minimum_age": 0
+                  },
+                  {
+                    "amount_minor": 5000,
+                    "id": "child",
+                    "maximum_age": 12,
+                    "minimum_age": 6
+                  },
+                  {
+                    "amount_minor": 10000,
+                    "id": "adult",
+                    "maximum_age": 120,
+                    "minimum_age": 13
+                  }
+                ],
+                "basis": "per_person",
+                "currency": "USD",
+                "currency_exponent": 2,
+                "evidence": "Synthetic fixture, not a supplier price.",
+                "payment_terms": "demo_full_payment",
+                "taxes_fees": "included"
+              },
+              "schedule": {
+                "evidence": "Synthetic schedule.",
+                "slots": [
+                  {
+                    "duration_minutes": 180,
+                    "id": "morning",
+                    "start": "09:00"
+                  }
+                ],
+                "timezone": "America/Curacao",
+                "weekdays": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  6
+                ]
+              }
+            }
+          },
+          "product": {
+            "id": "fixture-cruise",
+            "name": "Synthetic Cruise",
+            "source": {
+              "fixture_only": true,
+              "observed_at": "2026-09-08T00:00:00+00:00",
+              "url": "https://example.invalid/tours/fixture"
+            },
+            "source_claims": {}
+          },
+          "real_booking_eligible": false,
+          "selection": {
+            "date": "2026-10-19",
+            "guest_ages": [
+              35,
+              34,
+              8
+            ],
+            "item_id": "4e78b61f6c704666dacd5d885dc6ae1e",
+            "options": {},
+            "pickup": false,
+            "product_id": "fixture-cruise",
+            "slot_id": "morning"
+          },
+          "starts_at": "2026-10-19T09:00:00-04:00",
+          "status": "demo_selected",
+          "timezone": "America/Curacao",
+          "total_minor": 25000
+        },
+        {
+          "availability_source": "demo_assumed",
+          "catalog_revision": "5ddfe59124f1bd916c71c2332f6d43f6459d2c63e55b563868811f55f2d788ae",
+          "catalog_version": "fixture-v1",
+          "check_in_at": "2026-10-16T09:00:00-04:00",
+          "currency": "USD",
+          "currency_exponent": 2,
+          "ends_at": "2026-10-16T12:00:00-04:00",
+          "id": "3c511e4da9e86b5cfea0865b8d205c5c",
+          "lines": [
+            {
+              "amount_minor": 5000,
+              "key": "child",
+              "kind": "base",
+              "quantity": 1,
+              "unit_minor": 5000
+            },
+            {
+              "amount_minor": 20000,
+              "key": "adult",
+              "kind": "base",
+              "quantity": 2,
+              "unit_minor": 10000
+            }
+          ],
+          "pricing_snapshot": {
+            "label": "Demo booking using catalog rules",
+            "pricing_mode": "verified_catalog",
+            "real_booking_eligible": false,
+            "rules": {
+              "guest_rules": {
+                "adult_min_age": 13,
+                "maximum_age": 120,
+                "minimum_age": 0
+              },
+              "options": [],
+              "pickup": {
+                "meeting_point": "Synthetic pier",
+                "mode": "meeting_point"
+              },
+              "policies": {
+                "cancellation": "Demo only; no real reservation.",
+                "evidence": "Synthetic fixture.",
+                "safety": "Synthetic eligibility.",
+                "verified": true
+              },
+              "price_rules": {
+                "age_bands": [
+                  {
+                    "amount_minor": 0,
+                    "id": "infant",
+                    "maximum_age": 5,
+                    "minimum_age": 0
+                  },
+                  {
+                    "amount_minor": 5000,
+                    "id": "child",
+                    "maximum_age": 12,
+                    "minimum_age": 6
+                  },
+                  {
+                    "amount_minor": 10000,
+                    "id": "adult",
+                    "maximum_age": 120,
+                    "minimum_age": 13
+                  }
+                ],
+                "basis": "per_person",
+                "currency": "USD",
+                "currency_exponent": 2,
+                "evidence": "Synthetic fixture, not a supplier price.",
+                "payment_terms": "demo_full_payment",
+                "taxes_fees": "included"
+              },
+              "schedule": {
+                "evidence": "Synthetic schedule.",
+                "slots": [
+                  {
+                    "duration_minutes": 180,
+                    "id": "morning",
+                    "start": "09:00"
+                  }
+                ],
+                "timezone": "America/Curacao",
+                "weekdays": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  6
+                ]
+              }
+            }
+          },
+          "product": {
+            "id": "fixture-cruise",
+            "name": "Synthetic Cruise",
+            "source": {
+              "fixture_only": true,
+              "observed_at": "2026-09-08T00:00:00+00:00",
+              "url": "https://example.invalid/tours/fixture"
+            },
+            "source_claims": {}
+          },
+          "real_booking_eligible": false,
+          "selection": {
+            "date": "2026-10-16",
+            "guest_ages": [
+              35,
+              34,
+              8
+            ],
+            "item_id": "3c511e4da9e86b5cfea0865b8d205c5c",
+            "options": {},
+            "pickup": false,
+            "product_id": "fixture-cruise",
+            "slot_id": "morning"
+          },
+          "starts_at": "2026-10-16T09:00:00-04:00",
+          "status": "demo_selected",
+          "timezone": "America/Curacao",
+          "total_minor": 25000
+        }
+      ],
+      "journey_type": "isluno_itinerary_demo_v1",
+      "revision": 5,
+      "schema_version": "isluno.v1",
+      "status": "demo_paid",
+      "totals": {
+        "currency": "USD",
+        "currency_exponent": 2,
+        "mode": "demo",
+        "real_money_moved": false,
+        "taxes_fees": "included",
+        "total_minor": 50000
+      },
+      "updated_at": "2026-09-08T18:01:18+00:00"
+    },
+    "versions": [
+      {
+        "brand_snapshot": {
+          "assistant_name": "TRACY",
+          "id": "isluno",
+          "name": "Isluno",
+          "primary_color": "#125055",
+          "profile_version": "isluno-profile-v1-20260908",
+          "website": "https://isluno.com"
+        },
+        "created_at": "2026-09-08T18:00:00+00:00",
+        "id": "efe62612e2a2de359df807c16d819164",
+        "items": [],
+        "journey_type": "isluno_itinerary_demo_v1",
+        "revision": 1,
+        "schema_version": "isluno.v1",
+        "status": "draft",
+        "totals": {
+          "currency": null,
+          "currency_exponent": null,
+          "mode": "demo",
+          "real_money_moved": false,
+          "taxes_fees": "included",
+          "total_minor": 0
+        },
+        "updated_at": "2026-09-08T18:00:00+00:00"
+      },
+      {
+        "brand_snapshot": {
+          "assistant_name": "TRACY",
+          "id": "isluno",
+          "name": "Isluno",
+          "primary_color": "#125055",
+          "profile_version": "isluno-profile-v1-20260908",
+          "website": "https://isluno.com"
+        },
+        "created_at": "2026-09-08T18:00:00+00:00",
+        "id": "efe62612e2a2de359df807c16d819164",
+        "items": [
+          {
+            "availability_source": "demo_assumed",
+            "catalog_revision": "5ddfe59124f1bd916c71c2332f6d43f6459d2c63e55b563868811f55f2d788ae",
+            "catalog_version": "fixture-v1",
+            "check_in_at": "2026-10-15T09:00:00-04:00",
+            "currency": "USD",
+            "currency_exponent": 2,
+            "ends_at": "2026-10-15T12:00:00-04:00",
+            "id": "4e78b61f6c704666dacd5d885dc6ae1e",
+            "lines": [
+              {
+                "amount_minor": 5000,
+                "key": "child",
+                "kind": "base",
+                "quantity": 1,
+                "unit_minor": 5000
+              },
+              {
+                "amount_minor": 20000,
+                "key": "adult",
+                "kind": "base",
+                "quantity": 2,
+                "unit_minor": 10000
+              }
+            ],
+            "pricing_snapshot": {
+              "label": "Demo booking using catalog rules",
+              "pricing_mode": "verified_catalog",
+              "real_booking_eligible": false,
+              "rules": {
+                "guest_rules": {
+                  "adult_min_age": 13,
+                  "maximum_age": 120,
+                  "minimum_age": 0
+                },
+                "options": [],
+                "pickup": {
+                  "meeting_point": "Synthetic pier",
+                  "mode": "meeting_point"
+                },
+                "policies": {
+                  "cancellation": "Demo only; no real reservation.",
+                  "evidence": "Synthetic fixture.",
+                  "safety": "Synthetic eligibility.",
+                  "verified": true
+                },
+                "price_rules": {
+                  "age_bands": [
+                    {
+                      "amount_minor": 0,
+                      "id": "infant",
+                      "maximum_age": 5,
+                      "minimum_age": 0
+                    },
+                    {
+                      "amount_minor": 5000,
+                      "id": "child",
+                      "maximum_age": 12,
+                      "minimum_age": 6
+                    },
+                    {
+                      "amount_minor": 10000,
+                      "id": "adult",
+                      "maximum_age": 120,
+                      "minimum_age": 13
+                    }
+                  ],
+                  "basis": "per_person",
+                  "currency": "USD",
+                  "currency_exponent": 2,
+                  "evidence": "Synthetic fixture, not a supplier price.",
+                  "payment_terms": "demo_full_payment",
+                  "taxes_fees": "included"
+                },
+                "schedule": {
+                  "evidence": "Synthetic schedule.",
+                  "slots": [
+                    {
+                      "duration_minutes": 180,
+                      "id": "morning",
+                      "start": "09:00"
+                    }
+                  ],
+                  "timezone": "America/Curacao",
+                  "weekdays": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                  ]
+                }
+              }
+            },
+            "product": {
+              "id": "fixture-cruise",
+              "name": "Synthetic Cruise",
+              "source": {
+                "fixture_only": true,
+                "observed_at": "2026-09-08T00:00:00+00:00",
+                "url": "https://example.invalid/tours/fixture"
+              },
+              "source_claims": {}
+            },
+            "real_booking_eligible": false,
+            "selection": {
+              "date": "2026-10-15",
+              "guest_ages": [
+                35,
+                34,
+                8
+              ],
+              "item_id": "4e78b61f6c704666dacd5d885dc6ae1e",
+              "options": {},
+              "pickup": false,
+              "product_id": "fixture-cruise",
+              "slot_id": "morning"
+            },
+            "starts_at": "2026-10-15T09:00:00-04:00",
+            "status": "demo_selected",
+            "timezone": "America/Curacao",
+            "total_minor": 25000
+          }
+        ],
+        "journey_type": "isluno_itinerary_demo_v1",
+        "revision": 2,
+        "schema_version": "isluno.v1",
+        "status": "draft",
+        "totals": {
+          "currency": "USD",
+          "currency_exponent": 2,
+          "mode": "demo",
+          "real_money_moved": false,
+          "taxes_fees": "included",
+          "total_minor": 25000
+        },
+        "updated_at": "2026-09-08T18:00:00+00:00"
+      },
+      {
+        "brand_snapshot": {
+          "assistant_name": "TRACY",
+          "id": "isluno",
+          "name": "Isluno",
+          "primary_color": "#125055",
+          "profile_version": "isluno-profile-v1-20260908",
+          "website": "https://isluno.com"
+        },
+        "created_at": "2026-09-08T18:00:00+00:00",
+        "id": "efe62612e2a2de359df807c16d819164",
+        "items": [
+          {
+            "availability_source": "demo_assumed",
+            "catalog_revision": "5ddfe59124f1bd916c71c2332f6d43f6459d2c63e55b563868811f55f2d788ae",
+            "catalog_version": "fixture-v1",
+            "check_in_at": "2026-10-15T09:00:00-04:00",
+            "currency": "USD",
+            "currency_exponent": 2,
+            "ends_at": "2026-10-15T12:00:00-04:00",
+            "id": "4e78b61f6c704666dacd5d885dc6ae1e",
+            "lines": [
+              {
+                "amount_minor": 5000,
+                "key": "child",
+                "kind": "base",
+                "quantity": 1,
+                "unit_minor": 5000
+              },
+              {
+                "amount_minor": 20000,
+                "key": "adult",
+                "kind": "base",
+                "quantity": 2,
+                "unit_minor": 10000
+              }
+            ],
+            "pricing_snapshot": {
+              "label": "Demo booking using catalog rules",
+              "pricing_mode": "verified_catalog",
+              "real_booking_eligible": false,
+              "rules": {
+                "guest_rules": {
+                  "adult_min_age": 13,
+                  "maximum_age": 120,
+                  "minimum_age": 0
+                },
+                "options": [],
+                "pickup": {
+                  "meeting_point": "Synthetic pier",
+                  "mode": "meeting_point"
+                },
+                "policies": {
+                  "cancellation": "Demo only; no real reservation.",
+                  "evidence": "Synthetic fixture.",
+                  "safety": "Synthetic eligibility.",
+                  "verified": true
+                },
+                "price_rules": {
+                  "age_bands": [
+                    {
+                      "amount_minor": 0,
+                      "id": "infant",
+                      "maximum_age": 5,
+                      "minimum_age": 0
+                    },
+                    {
+                      "amount_minor": 5000,
+                      "id": "child",
+                      "maximum_age": 12,
+                      "minimum_age": 6
+                    },
+                    {
+                      "amount_minor": 10000,
+                      "id": "adult",
+                      "maximum_age": 120,
+                      "minimum_age": 13
+                    }
+                  ],
+                  "basis": "per_person",
+                  "currency": "USD",
+                  "currency_exponent": 2,
+                  "evidence": "Synthetic fixture, not a supplier price.",
+                  "payment_terms": "demo_full_payment",
+                  "taxes_fees": "included"
+                },
+                "schedule": {
+                  "evidence": "Synthetic schedule.",
+                  "slots": [
+                    {
+                      "duration_minutes": 180,
+                      "id": "morning",
+                      "start": "09:00"
+                    }
+                  ],
+                  "timezone": "America/Curacao",
+                  "weekdays": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                  ]
+                }
+              }
+            },
+            "product": {
+              "id": "fixture-cruise",
+              "name": "Synthetic Cruise",
+              "source": {
+                "fixture_only": true,
+                "observed_at": "2026-09-08T00:00:00+00:00",
+                "url": "https://example.invalid/tours/fixture"
+              },
+              "source_claims": {}
+            },
+            "real_booking_eligible": false,
+            "selection": {
+              "date": "2026-10-15",
+              "guest_ages": [
+                35,
+                34,
+                8
+              ],
+              "item_id": "4e78b61f6c704666dacd5d885dc6ae1e",
+              "options": {},
+              "pickup": false,
+              "product_id": "fixture-cruise",
+              "slot_id": "morning"
+            },
+            "starts_at": "2026-10-15T09:00:00-04:00",
+            "status": "demo_selected",
+            "timezone": "America/Curacao",
+            "total_minor": 25000
+          },
+          {
+            "availability_source": "demo_assumed",
+            "catalog_revision": "5ddfe59124f1bd916c71c2332f6d43f6459d2c63e55b563868811f55f2d788ae",
+            "catalog_version": "fixture-v1",
+            "check_in_at": "2026-10-16T09:00:00-04:00",
+            "currency": "USD",
+            "currency_exponent": 2,
+            "ends_at": "2026-10-16T12:00:00-04:00",
+            "id": "3c511e4da9e86b5cfea0865b8d205c5c",
+            "lines": [
+              {
+                "amount_minor": 5000,
+                "key": "child",
+                "kind": "base",
+                "quantity": 1,
+                "unit_minor": 5000
+              },
+              {
+                "amount_minor": 20000,
+                "key": "adult",
+                "kind": "base",
+                "quantity": 2,
+                "unit_minor": 10000
+              }
+            ],
+            "pricing_snapshot": {
+              "label": "Demo booking using catalog rules",
+              "pricing_mode": "verified_catalog",
+              "real_booking_eligible": false,
+              "rules": {
+                "guest_rules": {
+                  "adult_min_age": 13,
+                  "maximum_age": 120,
+                  "minimum_age": 0
+                },
+                "options": [],
+                "pickup": {
+                  "meeting_point": "Synthetic pier",
+                  "mode": "meeting_point"
+                },
+                "policies": {
+                  "cancellation": "Demo only; no real reservation.",
+                  "evidence": "Synthetic fixture.",
+                  "safety": "Synthetic eligibility.",
+                  "verified": true
+                },
+                "price_rules": {
+                  "age_bands": [
+                    {
+                      "amount_minor": 0,
+                      "id": "infant",
+                      "maximum_age": 5,
+                      "minimum_age": 0
+                    },
+                    {
+                      "amount_minor": 5000,
+                      "id": "child",
+                      "maximum_age": 12,
+                      "minimum_age": 6
+                    },
+                    {
+                      "amount_minor": 10000,
+                      "id": "adult",
+                      "maximum_age": 120,
+                      "minimum_age": 13
+                    }
+                  ],
+                  "basis": "per_person",
+                  "currency": "USD",
+                  "currency_exponent": 2,
+                  "evidence": "Synthetic fixture, not a supplier price.",
+                  "payment_terms": "demo_full_payment",
+                  "taxes_fees": "included"
+                },
+                "schedule": {
+                  "evidence": "Synthetic schedule.",
+                  "slots": [
+                    {
+                      "duration_minutes": 180,
+                      "id": "morning",
+                      "start": "09:00"
+                    }
+                  ],
+                  "timezone": "America/Curacao",
+                  "weekdays": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                  ]
+                }
+              }
+            },
+            "product": {
+              "id": "fixture-cruise",
+              "name": "Synthetic Cruise",
+              "source": {
+                "fixture_only": true,
+                "observed_at": "2026-09-08T00:00:00+00:00",
+                "url": "https://example.invalid/tours/fixture"
+              },
+              "source_claims": {}
+            },
+            "real_booking_eligible": false,
+            "selection": {
+              "date": "2026-10-16",
+              "guest_ages": [
+                35,
+                34,
+                8
+              ],
+              "item_id": "3c511e4da9e86b5cfea0865b8d205c5c",
+              "options": {},
+              "pickup": false,
+              "product_id": "fixture-cruise",
+              "slot_id": "morning"
+            },
+            "starts_at": "2026-10-16T09:00:00-04:00",
+            "status": "demo_selected",
+            "timezone": "America/Curacao",
+            "total_minor": 25000
+          }
+        ],
+        "journey_type": "isluno_itinerary_demo_v1",
+        "revision": 3,
+        "schema_version": "isluno.v1",
+        "status": "draft",
+        "totals": {
+          "currency": "USD",
+          "currency_exponent": 2,
+          "mode": "demo",
+          "real_money_moved": false,
+          "taxes_fees": "included",
+          "total_minor": 50000
+        },
+        "updated_at": "2026-09-08T18:00:00+00:00"
+      },
+      {
+        "brand_snapshot": {
+          "assistant_name": "TRACY",
+          "id": "isluno",
+          "name": "Isluno",
+          "primary_color": "#125055",
+          "profile_version": "isluno-profile-v1-20260908",
+          "website": "https://isluno.com"
+        },
+        "created_at": "2026-09-08T18:00:00+00:00",
+        "id": "efe62612e2a2de359df807c16d819164",
+        "items": [
+          {
+            "availability_source": "demo_assumed",
+            "catalog_revision": "5ddfe59124f1bd916c71c2332f6d43f6459d2c63e55b563868811f55f2d788ae",
+            "catalog_version": "fixture-v1",
+            "check_in_at": "2026-10-19T09:00:00-04:00",
+            "currency": "USD",
+            "currency_exponent": 2,
+            "ends_at": "2026-10-19T12:00:00-04:00",
+            "id": "4e78b61f6c704666dacd5d885dc6ae1e",
+            "lines": [
+              {
+                "amount_minor": 5000,
+                "key": "child",
+                "kind": "base",
+                "quantity": 1,
+                "unit_minor": 5000
+              },
+              {
+                "amount_minor": 20000,
+                "key": "adult",
+                "kind": "base",
+                "quantity": 2,
+                "unit_minor": 10000
+              }
+            ],
+            "pricing_snapshot": {
+              "label": "Demo booking using catalog rules",
+              "pricing_mode": "verified_catalog",
+              "real_booking_eligible": false,
+              "rules": {
+                "guest_rules": {
+                  "adult_min_age": 13,
+                  "maximum_age": 120,
+                  "minimum_age": 0
+                },
+                "options": [],
+                "pickup": {
+                  "meeting_point": "Synthetic pier",
+                  "mode": "meeting_point"
+                },
+                "policies": {
+                  "cancellation": "Demo only; no real reservation.",
+                  "evidence": "Synthetic fixture.",
+                  "safety": "Synthetic eligibility.",
+                  "verified": true
+                },
+                "price_rules": {
+                  "age_bands": [
+                    {
+                      "amount_minor": 0,
+                      "id": "infant",
+                      "maximum_age": 5,
+                      "minimum_age": 0
+                    },
+                    {
+                      "amount_minor": 5000,
+                      "id": "child",
+                      "maximum_age": 12,
+                      "minimum_age": 6
+                    },
+                    {
+                      "amount_minor": 10000,
+                      "id": "adult",
+                      "maximum_age": 120,
+                      "minimum_age": 13
+                    }
+                  ],
+                  "basis": "per_person",
+                  "currency": "USD",
+                  "currency_exponent": 2,
+                  "evidence": "Synthetic fixture, not a supplier price.",
+                  "payment_terms": "demo_full_payment",
+                  "taxes_fees": "included"
+                },
+                "schedule": {
+                  "evidence": "Synthetic schedule.",
+                  "slots": [
+                    {
+                      "duration_minutes": 180,
+                      "id": "morning",
+                      "start": "09:00"
+                    }
+                  ],
+                  "timezone": "America/Curacao",
+                  "weekdays": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                  ]
+                }
+              }
+            },
+            "product": {
+              "id": "fixture-cruise",
+              "name": "Synthetic Cruise",
+              "source": {
+                "fixture_only": true,
+                "observed_at": "2026-09-08T00:00:00+00:00",
+                "url": "https://example.invalid/tours/fixture"
+              },
+              "source_claims": {}
+            },
+            "real_booking_eligible": false,
+            "selection": {
+              "date": "2026-10-19",
+              "guest_ages": [
+                35,
+                34,
+                8
+              ],
+              "item_id": "4e78b61f6c704666dacd5d885dc6ae1e",
+              "options": {},
+              "pickup": false,
+              "product_id": "fixture-cruise",
+              "slot_id": "morning"
+            },
+            "starts_at": "2026-10-19T09:00:00-04:00",
+            "status": "demo_selected",
+            "timezone": "America/Curacao",
+            "total_minor": 25000
+          },
+          {
+            "availability_source": "demo_assumed",
+            "catalog_revision": "5ddfe59124f1bd916c71c2332f6d43f6459d2c63e55b563868811f55f2d788ae",
+            "catalog_version": "fixture-v1",
+            "check_in_at": "2026-10-16T09:00:00-04:00",
+            "currency": "USD",
+            "currency_exponent": 2,
+            "ends_at": "2026-10-16T12:00:00-04:00",
+            "id": "3c511e4da9e86b5cfea0865b8d205c5c",
+            "lines": [
+              {
+                "amount_minor": 5000,
+                "key": "child",
+                "kind": "base",
+                "quantity": 1,
+                "unit_minor": 5000
+              },
+              {
+                "amount_minor": 20000,
+                "key": "adult",
+                "kind": "base",
+                "quantity": 2,
+                "unit_minor": 10000
+              }
+            ],
+            "pricing_snapshot": {
+              "label": "Demo booking using catalog rules",
+              "pricing_mode": "verified_catalog",
+              "real_booking_eligible": false,
+              "rules": {
+                "guest_rules": {
+                  "adult_min_age": 13,
+                  "maximum_age": 120,
+                  "minimum_age": 0
+                },
+                "options": [],
+                "pickup": {
+                  "meeting_point": "Synthetic pier",
+                  "mode": "meeting_point"
+                },
+                "policies": {
+                  "cancellation": "Demo only; no real reservation.",
+                  "evidence": "Synthetic fixture.",
+                  "safety": "Synthetic eligibility.",
+                  "verified": true
+                },
+                "price_rules": {
+                  "age_bands": [
+                    {
+                      "amount_minor": 0,
+                      "id": "infant",
+                      "maximum_age": 5,
+                      "minimum_age": 0
+                    },
+                    {
+                      "amount_minor": 5000,
+                      "id": "child",
+                      "maximum_age": 12,
+                      "minimum_age": 6
+                    },
+                    {
+                      "amount_minor": 10000,
+                      "id": "adult",
+                      "maximum_age": 120,
+                      "minimum_age": 13
+                    }
+                  ],
+                  "basis": "per_person",
+                  "currency": "USD",
+                  "currency_exponent": 2,
+                  "evidence": "Synthetic fixture, not a supplier price.",
+                  "payment_terms": "demo_full_payment",
+                  "taxes_fees": "included"
+                },
+                "schedule": {
+                  "evidence": "Synthetic schedule.",
+                  "slots": [
+                    {
+                      "duration_minutes": 180,
+                      "id": "morning",
+                      "start": "09:00"
+                    }
+                  ],
+                  "timezone": "America/Curacao",
+                  "weekdays": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                  ]
+                }
+              }
+            },
+            "product": {
+              "id": "fixture-cruise",
+              "name": "Synthetic Cruise",
+              "source": {
+                "fixture_only": true,
+                "observed_at": "2026-09-08T00:00:00+00:00",
+                "url": "https://example.invalid/tours/fixture"
+              },
+              "source_claims": {}
+            },
+            "real_booking_eligible": false,
+            "selection": {
+              "date": "2026-10-16",
+              "guest_ages": [
+                35,
+                34,
+                8
+              ],
+              "item_id": "3c511e4da9e86b5cfea0865b8d205c5c",
+              "options": {},
+              "pickup": false,
+              "product_id": "fixture-cruise",
+              "slot_id": "morning"
+            },
+            "starts_at": "2026-10-16T09:00:00-04:00",
+            "status": "demo_selected",
+            "timezone": "America/Curacao",
+            "total_minor": 25000
+          }
+        ],
+        "journey_type": "isluno_itinerary_demo_v1",
+        "revision": 4,
+        "schema_version": "isluno.v1",
+        "status": "draft",
+        "totals": {
+          "currency": "USD",
+          "currency_exponent": 2,
+          "mode": "demo",
+          "real_money_moved": false,
+          "taxes_fees": "included",
+          "total_minor": 50000
+        },
+        "updated_at": "2026-09-08T18:00:30+00:00"
+      },
+      {
+        "brand_snapshot": {
+          "assistant_name": "TRACY",
+          "id": "isluno",
+          "name": "Isluno",
+          "primary_color": "#125055",
+          "profile_version": "isluno-profile-v1-20260908",
+          "website": "https://isluno.com"
+        },
+        "created_at": "2026-09-08T18:00:00+00:00",
+        "id": "efe62612e2a2de359df807c16d819164",
+        "items": [
+          {
+            "availability_source": "demo_assumed",
+            "catalog_revision": "5ddfe59124f1bd916c71c2332f6d43f6459d2c63e55b563868811f55f2d788ae",
+            "catalog_version": "fixture-v1",
+            "check_in_at": "2026-10-19T09:00:00-04:00",
+            "currency": "USD",
+            "currency_exponent": 2,
+            "ends_at": "2026-10-19T12:00:00-04:00",
+            "id": "4e78b61f6c704666dacd5d885dc6ae1e",
+            "lines": [
+              {
+                "amount_minor": 5000,
+                "key": "child",
+                "kind": "base",
+                "quantity": 1,
+                "unit_minor": 5000
+              },
+              {
+                "amount_minor": 20000,
+                "key": "adult",
+                "kind": "base",
+                "quantity": 2,
+                "unit_minor": 10000
+              }
+            ],
+            "pricing_snapshot": {
+              "label": "Demo booking using catalog rules",
+              "pricing_mode": "verified_catalog",
+              "real_booking_eligible": false,
+              "rules": {
+                "guest_rules": {
+                  "adult_min_age": 13,
+                  "maximum_age": 120,
+                  "minimum_age": 0
+                },
+                "options": [],
+                "pickup": {
+                  "meeting_point": "Synthetic pier",
+                  "mode": "meeting_point"
+                },
+                "policies": {
+                  "cancellation": "Demo only; no real reservation.",
+                  "evidence": "Synthetic fixture.",
+                  "safety": "Synthetic eligibility.",
+                  "verified": true
+                },
+                "price_rules": {
+                  "age_bands": [
+                    {
+                      "amount_minor": 0,
+                      "id": "infant",
+                      "maximum_age": 5,
+                      "minimum_age": 0
+                    },
+                    {
+                      "amount_minor": 5000,
+                      "id": "child",
+                      "maximum_age": 12,
+                      "minimum_age": 6
+                    },
+                    {
+                      "amount_minor": 10000,
+                      "id": "adult",
+                      "maximum_age": 120,
+                      "minimum_age": 13
+                    }
+                  ],
+                  "basis": "per_person",
+                  "currency": "USD",
+                  "currency_exponent": 2,
+                  "evidence": "Synthetic fixture, not a supplier price.",
+                  "payment_terms": "demo_full_payment",
+                  "taxes_fees": "included"
+                },
+                "schedule": {
+                  "evidence": "Synthetic schedule.",
+                  "slots": [
+                    {
+                      "duration_minutes": 180,
+                      "id": "morning",
+                      "start": "09:00"
+                    }
+                  ],
+                  "timezone": "America/Curacao",
+                  "weekdays": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                  ]
+                }
+              }
+            },
+            "product": {
+              "id": "fixture-cruise",
+              "name": "Synthetic Cruise",
+              "source": {
+                "fixture_only": true,
+                "observed_at": "2026-09-08T00:00:00+00:00",
+                "url": "https://example.invalid/tours/fixture"
+              },
+              "source_claims": {}
+            },
+            "real_booking_eligible": false,
+            "selection": {
+              "date": "2026-10-19",
+              "guest_ages": [
+                35,
+                34,
+                8
+              ],
+              "item_id": "4e78b61f6c704666dacd5d885dc6ae1e",
+              "options": {},
+              "pickup": false,
+              "product_id": "fixture-cruise",
+              "slot_id": "morning"
+            },
+            "starts_at": "2026-10-19T09:00:00-04:00",
+            "status": "demo_selected",
+            "timezone": "America/Curacao",
+            "total_minor": 25000
+          },
+          {
+            "availability_source": "demo_assumed",
+            "catalog_revision": "5ddfe59124f1bd916c71c2332f6d43f6459d2c63e55b563868811f55f2d788ae",
+            "catalog_version": "fixture-v1",
+            "check_in_at": "2026-10-16T09:00:00-04:00",
+            "currency": "USD",
+            "currency_exponent": 2,
+            "ends_at": "2026-10-16T12:00:00-04:00",
+            "id": "3c511e4da9e86b5cfea0865b8d205c5c",
+            "lines": [
+              {
+                "amount_minor": 5000,
+                "key": "child",
+                "kind": "base",
+                "quantity": 1,
+                "unit_minor": 5000
+              },
+              {
+                "amount_minor": 20000,
+                "key": "adult",
+                "kind": "base",
+                "quantity": 2,
+                "unit_minor": 10000
+              }
+            ],
+            "pricing_snapshot": {
+              "label": "Demo booking using catalog rules",
+              "pricing_mode": "verified_catalog",
+              "real_booking_eligible": false,
+              "rules": {
+                "guest_rules": {
+                  "adult_min_age": 13,
+                  "maximum_age": 120,
+                  "minimum_age": 0
+                },
+                "options": [],
+                "pickup": {
+                  "meeting_point": "Synthetic pier",
+                  "mode": "meeting_point"
+                },
+                "policies": {
+                  "cancellation": "Demo only; no real reservation.",
+                  "evidence": "Synthetic fixture.",
+                  "safety": "Synthetic eligibility.",
+                  "verified": true
+                },
+                "price_rules": {
+                  "age_bands": [
+                    {
+                      "amount_minor": 0,
+                      "id": "infant",
+                      "maximum_age": 5,
+                      "minimum_age": 0
+                    },
+                    {
+                      "amount_minor": 5000,
+                      "id": "child",
+                      "maximum_age": 12,
+                      "minimum_age": 6
+                    },
+                    {
+                      "amount_minor": 10000,
+                      "id": "adult",
+                      "maximum_age": 120,
+                      "minimum_age": 13
+                    }
+                  ],
+                  "basis": "per_person",
+                  "currency": "USD",
+                  "currency_exponent": 2,
+                  "evidence": "Synthetic fixture, not a supplier price.",
+                  "payment_terms": "demo_full_payment",
+                  "taxes_fees": "included"
+                },
+                "schedule": {
+                  "evidence": "Synthetic schedule.",
+                  "slots": [
+                    {
+                      "duration_minutes": 180,
+                      "id": "morning",
+                      "start": "09:00"
+                    }
+                  ],
+                  "timezone": "America/Curacao",
+                  "weekdays": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                  ]
+                }
+              }
+            },
+            "product": {
+              "id": "fixture-cruise",
+              "name": "Synthetic Cruise",
+              "source": {
+                "fixture_only": true,
+                "observed_at": "2026-09-08T00:00:00+00:00",
+                "url": "https://example.invalid/tours/fixture"
+              },
+              "source_claims": {}
+            },
+            "real_booking_eligible": false,
+            "selection": {
+              "date": "2026-10-16",
+              "guest_ages": [
+                35,
+                34,
+                8
+              ],
+              "item_id": "3c511e4da9e86b5cfea0865b8d205c5c",
+              "options": {},
+              "pickup": false,
+              "product_id": "fixture-cruise",
+              "slot_id": "morning"
+            },
+            "starts_at": "2026-10-16T09:00:00-04:00",
+            "status": "demo_selected",
+            "timezone": "America/Curacao",
+            "total_minor": 25000
+          }
+        ],
+        "journey_type": "isluno_itinerary_demo_v1",
+        "revision": 5,
+        "schema_version": "isluno.v1",
+        "status": "demo_paid",
+        "totals": {
+          "currency": "USD",
+          "currency_exponent": 2,
+          "mode": "demo",
+          "real_money_moved": false,
+          "taxes_fees": "included",
+          "total_minor": 50000
+        },
+        "updated_at": "2026-09-08T18:01:18+00:00"
+      }
+    ],
+    "quotes": [
+      {
+        "id": "f28988c66a1cec71bdd2681581c6173f",
+        "version": 1,
+        "status": "superseded",
+        "snapshot": {
+          "catalog_revision": "5ddfe59124f1bd916c71c2332f6d43f6459d2c63e55b563868811f55f2d788ae",
+          "chat_language": "en",
+          "created_at": "2026-09-08T18:00:00+00:00",
+          "demo_only": true,
+          "document_language": "en",
+          "guest": {
+            "ages": [
+              35,
+              34,
+              8
+            ],
+            "name": "Second Party"
+          },
+          "id": "f28988c66a1cec71bdd2681581c6173f",
+          "item_details": {
+            "3c511e4da9e86b5cfea0865b8d205c5c": {
+              "guest_name": "Second Party",
+              "pickup_location": null
+            },
+            "4e78b61f6c704666dacd5d885dc6ae1e": {
+              "guest_name": "Calvin",
+              "pickup_location": null
+            }
+          },
+          "itinerary": {
+            "brand_snapshot": {
+              "assistant_name": "TRACY",
+              "id": "isluno",
+              "name": "Isluno",
+              "primary_color": "#125055",
+              "profile_version": "isluno-profile-v1-20260908",
+              "website": "https://isluno.com"
+            },
+            "created_at": "2026-09-08T18:00:00+00:00",
+            "id": "efe62612e2a2de359df807c16d819164",
+            "items": [
+              {
+                "availability_source": "demo_assumed",
+                "catalog_revision": "5ddfe59124f1bd916c71c2332f6d43f6459d2c63e55b563868811f55f2d788ae",
+                "catalog_version": "fixture-v1",
+                "check_in_at": "2026-10-15T09:00:00-04:00",
+                "currency": "USD",
+                "currency_exponent": 2,
+                "ends_at": "2026-10-15T12:00:00-04:00",
+                "id": "4e78b61f6c704666dacd5d885dc6ae1e",
+                "lines": [
+                  {
+                    "amount_minor": 5000,
+                    "key": "child",
+                    "kind": "base",
+                    "quantity": 1,
+                    "unit_minor": 5000
+                  },
+                  {
+                    "amount_minor": 20000,
+                    "key": "adult",
+                    "kind": "base",
+                    "quantity": 2,
+                    "unit_minor": 10000
+                  }
+                ],
+                "pricing_snapshot": {
+                  "label": "Demo booking using catalog rules",
+                  "pricing_mode": "verified_catalog",
+                  "real_booking_eligible": false,
+                  "rules": {
+                    "guest_rules": {
+                      "adult_min_age": 13,
+                      "maximum_age": 120,
+                      "minimum_age": 0
+                    },
+                    "options": [],
+                    "pickup": {
+                      "meeting_point": "Synthetic pier",
+                      "mode": "meeting_point"
+                    },
+                    "policies": {
+                      "cancellation": "Demo only; no real reservation.",
+                      "evidence": "Synthetic fixture.",
+                      "safety": "Synthetic eligibility.",
+                      "verified": true
+                    },
+                    "price_rules": {
+                      "age_bands": [
+                        {
+                          "amount_minor": 0,
+                          "id": "infant",
+                          "maximum_age": 5,
+                          "minimum_age": 0
+                        },
+                        {
+                          "amount_minor": 5000,
+                          "id": "child",
+                          "maximum_age": 12,
+                          "minimum_age": 6
+                        },
+                        {
+                          "amount_minor": 10000,
+                          "id": "adult",
+                          "maximum_age": 120,
+                          "minimum_age": 13
+                        }
+                      ],
+                      "basis": "per_person",
+                      "currency": "USD",
+                      "currency_exponent": 2,
+                      "evidence": "Synthetic fixture, not a supplier price.",
+                      "payment_terms": "demo_full_payment",
+                      "taxes_fees": "included"
+                    },
+                    "schedule": {
+                      "evidence": "Synthetic schedule.",
+                      "slots": [
+                        {
+                          "duration_minutes": 180,
+                          "id": "morning",
+                          "start": "09:00"
+                        }
+                      ],
+                      "timezone": "America/Curacao",
+                      "weekdays": [
+                        0,
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6
+                      ]
+                    }
+                  }
+                },
+                "product": {
+                  "id": "fixture-cruise",
+                  "name": "Synthetic Cruise",
+                  "source": {
+                    "fixture_only": true,
+                    "observed_at": "2026-09-08T00:00:00+00:00",
+                    "url": "https://example.invalid/tours/fixture"
+                  },
+                  "source_claims": {}
+                },
+                "real_booking_eligible": false,
+                "selection": {
+                  "date": "2026-10-15",
+                  "guest_ages": [
+                    35,
+                    34,
+                    8
+                  ],
+                  "item_id": "4e78b61f6c704666dacd5d885dc6ae1e",
+                  "options": {},
+                  "pickup": false,
+                  "product_id": "fixture-cruise",
+                  "slot_id": "morning"
+                },
+                "starts_at": "2026-10-15T09:00:00-04:00",
+                "status": "demo_selected",
+                "timezone": "America/Curacao",
+                "total_minor": 25000
+              },
+              {
+                "availability_source": "demo_assumed",
+                "catalog_revision": "5ddfe59124f1bd916c71c2332f6d43f6459d2c63e55b563868811f55f2d788ae",
+                "catalog_version": "fixture-v1",
+                "check_in_at": "2026-10-16T09:00:00-04:00",
+                "currency": "USD",
+                "currency_exponent": 2,
+                "ends_at": "2026-10-16T12:00:00-04:00",
+                "id": "3c511e4da9e86b5cfea0865b8d205c5c",
+                "lines": [
+                  {
+                    "amount_minor": 5000,
+                    "key": "child",
+                    "kind": "base",
+                    "quantity": 1,
+                    "unit_minor": 5000
+                  },
+                  {
+                    "amount_minor": 20000,
+                    "key": "adult",
+                    "kind": "base",
+                    "quantity": 2,
+                    "unit_minor": 10000
+                  }
+                ],
+                "pricing_snapshot": {
+                  "label": "Demo booking using catalog rules",
+                  "pricing_mode": "verified_catalog",
+                  "real_booking_eligible": false,
+                  "rules": {
+                    "guest_rules": {
+                      "adult_min_age": 13,
+                      "maximum_age": 120,
+                      "minimum_age": 0
+                    },
+                    "options": [],
+                    "pickup": {
+                      "meeting_point": "Synthetic pier",
+                      "mode": "meeting_point"
+                    },
+                    "policies": {
+                      "cancellation": "Demo only; no real reservation.",
+                      "evidence": "Synthetic fixture.",
+                      "safety": "Synthetic eligibility.",
+                      "verified": true
+                    },
+                    "price_rules": {
+                      "age_bands": [
+                        {
+                          "amount_minor": 0,
+                          "id": "infant",
+                          "maximum_age": 5,
+                          "minimum_age": 0
+                        },
+                        {
+                          "amount_minor": 5000,
+                          "id": "child",
+                          "maximum_age": 12,
+                          "minimum_age": 6
+                        },
+                        {
+                          "amount_minor": 10000,
+                          "id": "adult",
+                          "maximum_age": 120,
+                          "minimum_age": 13
+                        }
+                      ],
+                      "basis": "per_person",
+                      "currency": "USD",
+                      "currency_exponent": 2,
+                      "evidence": "Synthetic fixture, not a supplier price.",
+                      "payment_terms": "demo_full_payment",
+                      "taxes_fees": "included"
+                    },
+                    "schedule": {
+                      "evidence": "Synthetic schedule.",
+                      "slots": [
+                        {
+                          "duration_minutes": 180,
+                          "id": "morning",
+                          "start": "09:00"
+                        }
+                      ],
+                      "timezone": "America/Curacao",
+                      "weekdays": [
+                        0,
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6
+                      ]
+                    }
+                  }
+                },
+                "product": {
+                  "id": "fixture-cruise",
+                  "name": "Synthetic Cruise",
+                  "source": {
+                    "fixture_only": true,
+                    "observed_at": "2026-09-08T00:00:00+00:00",
+                    "url": "https://example.invalid/tours/fixture"
+                  },
+                  "source_claims": {}
+                },
+                "real_booking_eligible": false,
+                "selection": {
+                  "date": "2026-10-16",
+                  "guest_ages": [
+                    35,
+                    34,
+                    8
+                  ],
+                  "item_id": "3c511e4da9e86b5cfea0865b8d205c5c",
+                  "options": {},
+                  "pickup": false,
+                  "product_id": "fixture-cruise",
+                  "slot_id": "morning"
+                },
+                "starts_at": "2026-10-16T09:00:00-04:00",
+                "status": "demo_selected",
+                "timezone": "America/Curacao",
+                "total_minor": 25000
+              }
+            ],
+            "journey_type": "isluno_itinerary_demo_v1",
+            "revision": 3,
+            "schema_version": "isluno.v1",
+            "status": "draft",
+            "totals": {
+              "currency": "USD",
+              "currency_exponent": 2,
+              "mode": "demo",
+              "real_money_moved": false,
+              "taxes_fees": "included",
+              "total_minor": 50000
+            },
+            "updated_at": "2026-09-08T18:00:00+00:00"
+          },
+          "pending": {},
+          "real_booking_eligible": false,
+          "version": 1
+        },
+        "summary_confirmed_at": "2026-09-08T18:00:24+00:00",
+        "approved_at": null,
+        "expires_at": "2026-09-09T18:00:00+00:00",
+        "sha256": "92959c0a90bc500bb3e8c241509d0c909d25c1730966699761aeafb92553bbce"
+      },
+      {
+        "id": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "version": 2,
+        "status": "approved",
+        "snapshot": {
+          "catalog_revision": "5ddfe59124f1bd916c71c2332f6d43f6459d2c63e55b563868811f55f2d788ae",
+          "chat_language": "en",
+          "created_at": "2026-09-08T18:00:30+00:00",
+          "demo_only": true,
+          "document_language": "en",
+          "guest": {
+            "ages": [
+              35,
+              34,
+              8
+            ],
+            "name": "Second Party"
+          },
+          "id": "3e48a85e8966ab1b3ce642f88ff25bd5",
+          "item_details": {
+            "3c511e4da9e86b5cfea0865b8d205c5c": {
+              "guest_name": "Second Party",
+              "pickup_location": null
+            },
+            "4e78b61f6c704666dacd5d885dc6ae1e": {
+              "guest_name": "Calvin",
+              "pickup_location": null
+            }
+          },
+          "itinerary": {
+            "brand_snapshot": {
+              "assistant_name": "TRACY",
+              "id": "isluno",
+              "name": "Isluno",
+              "primary_color": "#125055",
+              "profile_version": "isluno-profile-v1-20260908",
+              "website": "https://isluno.com"
+            },
+            "created_at": "2026-09-08T18:00:00+00:00",
+            "id": "efe62612e2a2de359df807c16d819164",
+            "items": [
+              {
+                "availability_source": "demo_assumed",
+                "catalog_revision": "5ddfe59124f1bd916c71c2332f6d43f6459d2c63e55b563868811f55f2d788ae",
+                "catalog_version": "fixture-v1",
+                "check_in_at": "2026-10-19T09:00:00-04:00",
+                "currency": "USD",
+                "currency_exponent": 2,
+                "ends_at": "2026-10-19T12:00:00-04:00",
+                "id": "4e78b61f6c704666dacd5d885dc6ae1e",
+                "lines": [
+                  {
+                    "amount_minor": 5000,
+                    "key": "child",
+                    "kind": "base",
+                    "quantity": 1,
+                    "unit_minor": 5000
+                  },
+                  {
+                    "amount_minor": 20000,
+                    "key": "adult",
+                    "kind": "base",
+                    "quantity": 2,
+                    "unit_minor": 10000
+                  }
+                ],
+                "pricing_snapshot": {
+                  "label": "Demo booking using catalog rules",
+                  "pricing_mode": "verified_catalog",
+                  "real_booking_eligible": false,
+                  "rules": {
+                    "guest_rules": {
+                      "adult_min_age": 13,
+                      "maximum_age": 120,
+                      "minimum_age": 0
+                    },
+                    "options": [],
+                    "pickup": {
+                      "meeting_point": "Synthetic pier",
+                      "mode": "meeting_point"
+                    },
+                    "policies": {
+                      "cancellation": "Demo only; no real reservation.",
+                      "evidence": "Synthetic fixture.",
+                      "safety": "Synthetic eligibility.",
+                      "verified": true
+                    },
+                    "price_rules": {
+                      "age_bands": [
+                        {
+                          "amount_minor": 0,
+                          "id": "infant",
+                          "maximum_age": 5,
+                          "minimum_age": 0
+                        },
+                        {
+                          "amount_minor": 5000,
+                          "id": "child",
+                          "maximum_age": 12,
+                          "minimum_age": 6
+                        },
+                        {
+                          "amount_minor": 10000,
+                          "id": "adult",
+                          "maximum_age": 120,
+                          "minimum_age": 13
+                        }
+                      ],
+                      "basis": "per_person",
+                      "currency": "USD",
+                      "currency_exponent": 2,
+                      "evidence": "Synthetic fixture, not a supplier price.",
+                      "payment_terms": "demo_full_payment",
+                      "taxes_fees": "included"
+                    },
+                    "schedule": {
+                      "evidence": "Synthetic schedule.",
+                      "slots": [
+                        {
+                          "duration_minutes": 180,
+                          "id": "morning",
+                          "start": "09:00"
+                        }
+                      ],
+                      "timezone": "America/Curacao",
+                      "weekdays": [
+                        0,
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6
+                      ]
+                    }
+                  }
+                },
+                "product": {
+                  "id": "fixture-cruise",
+                  "name": "Synthetic Cruise",
+                  "source": {
+                    "fixture_only": true,
+                    "observed_at": "2026-09-08T00:00:00+00:00",
+                    "url": "https://example.invalid/tours/fixture"
+                  },
+                  "source_claims": {}
+                },
+                "real_booking_eligible": false,
+                "selection": {
+                  "date": "2026-10-19",
+                  "guest_ages": [
+                    35,
+                    34,
+                    8
+                  ],
+                  "item_id": "4e78b61f6c704666dacd5d885dc6ae1e",
+                  "options": {},
+                  "pickup": false,
+                  "product_id": "fixture-cruise",
+                  "slot_id": "morning"
+                },
+                "starts_at": "2026-10-19T09:00:00-04:00",
+                "status": "demo_selected",
+                "timezone": "America/Curacao",
+                "total_minor": 25000
+              },
+              {
+                "availability_source": "demo_assumed",
+                "catalog_revision": "5ddfe59124f1bd916c71c2332f6d43f6459d2c63e55b563868811f55f2d788ae",
+                "catalog_version": "fixture-v1",
+                "check_in_at": "2026-10-16T09:00:00-04:00",
+                "currency": "USD",
+                "currency_exponent": 2,
+                "ends_at": "2026-10-16T12:00:00-04:00",
+                "id": "3c511e4da9e86b5cfea0865b8d205c5c",
+                "lines": [
+                  {
+                    "amount_minor": 5000,
+                    "key": "child",
+                    "kind": "base",
+                    "quantity": 1,
+                    "unit_minor": 5000
+                  },
+                  {
+                    "amount_minor": 20000,
+                    "key": "adult",
+                    "kind": "base",
+                    "quantity": 2,
+                    "unit_minor": 10000
+                  }
+                ],
+                "pricing_snapshot": {
+                  "label": "Demo booking using catalog rules",
+                  "pricing_mode": "verified_catalog",
+                  "real_booking_eligible": false,
+                  "rules": {
+                    "guest_rules": {
+                      "adult_min_age": 13,
+                      "maximum_age": 120,
+                      "minimum_age": 0
+                    },
+                    "options": [],
+                    "pickup": {
+                      "meeting_point": "Synthetic pier",
+                      "mode": "meeting_point"
+                    },
+                    "policies": {
+                      "cancellation": "Demo only; no real reservation.",
+                      "evidence": "Synthetic fixture.",
+                      "safety": "Synthetic eligibility.",
+                      "verified": true
+                    },
+                    "price_rules": {
+                      "age_bands": [
+                        {
+                          "amount_minor": 0,
+                          "id": "infant",
+                          "maximum_age": 5,
+                          "minimum_age": 0
+                        },
+                        {
+                          "amount_minor": 5000,
+                          "id": "child",
+                          "maximum_age": 12,
+                          "minimum_age": 6
+                        },
+                        {
+                          "amount_minor": 10000,
+                          "id": "adult",
+                          "maximum_age": 120,
+                          "minimum_age": 13
+                        }
+                      ],
+                      "basis": "per_person",
+                      "currency": "USD",
+                      "currency_exponent": 2,
+                      "evidence": "Synthetic fixture, not a supplier price.",
+                      "payment_terms": "demo_full_payment",
+                      "taxes_fees": "included"
+                    },
+                    "schedule": {
+                      "evidence": "Synthetic schedule.",
+                      "slots": [
+                        {
+                          "duration_minutes": 180,
+                          "id": "morning",
+                          "start": "09:00"
+                        }
+                      ],
+                      "timezone": "America/Curacao",
+                      "weekdays": [
+                        0,
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6
+                      ]
+                    }
+                  }
+                },
+                "product": {
+                  "id": "fixture-cruise",
+                  "name": "Synthetic Cruise",
+                  "source": {
+                    "fixture_only": true,
+                    "observed_at": "2026-09-08T00:00:00+00:00",
+                    "url": "https://example.invalid/tours/fixture"
+                  },
+                  "source_claims": {}
+                },
+                "real_booking_eligible": false,
+                "selection": {
+                  "date": "2026-10-16",
+                  "guest_ages": [
+                    35,
+                    34,
+                    8
+                  ],
+                  "item_id": "3c511e4da9e86b5cfea0865b8d205c5c",
+                  "options": {},
+                  "pickup": false,
+                  "product_id": "fixture-cruise",
+                  "slot_id": "morning"
+                },
+                "starts_at": "2026-10-16T09:00:00-04:00",
+                "status": "demo_selected",
+                "timezone": "America/Curacao",
+                "total_minor": 25000
+              }
+            ],
+            "journey_type": "isluno_itinerary_demo_v1",
+            "revision": 4,
+            "schema_version": "isluno.v1",
+            "status": "draft",
+            "totals": {
+              "currency": "USD",
+              "currency_exponent": 2,
+              "mode": "demo",
+              "real_money_moved": false,
+              "taxes_fees": "included",
+              "total_minor": 50000
+            },
+            "updated_at": "2026-09-08T18:00:30+00:00"
+          },
+          "pending": {},
+          "real_booking_eligible": false,
+          "version": 2
+        },
+        "summary_confirmed_at": "2026-09-08T18:01:00+00:00",
+        "approved_at": "2026-09-08T18:01:12+00:00",
+        "expires_at": "2026-09-09T18:00:30+00:00",
+        "sha256": "9a06cb4ea29cd2f7600350240605bfd280593601ac4b70c0cd066834f3c29ae6"
+      }
+    ],
+    "payment": {
+      "id": "bdb655a0ebeafb1adb9581367fd0b851",
+      "quote_id": "3e48a85e8966ab1b3ce642f88ff25bd5",
+      "paid_at": "2026-09-08T18:01:18+00:00",
+      "mode": "simulated",
+      "real_money_charged": false,
+      "supplier_booking_made": false,
+      "emails": []
+    },
+    "documents": [
+      {
+        "id": "f28988c66a1cec71bdd2681581c6173f",
+        "kind": "quote",
+        "item_id": null,
+        "quote_version": 1,
+        "sha256": "92959c0a90bc500bb3e8c241509d0c909d25c1730966699761aeafb92553bbce"
+      },
+      {
+        "id": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "kind": "quote",
+        "item_id": null,
+        "quote_version": 2,
+        "sha256": "9a06cb4ea29cd2f7600350240605bfd280593601ac4b70c0cd066834f3c29ae6"
+      },
+      {
+        "id": "932061a07f9502759bd18eb19fc293bb",
+        "kind": "receipt",
+        "item_id": null,
+        "ticket_id": null,
+        "sha256": "3fe8a23cc9ffac6dd9cf6b0973bca76ff3c6662a9aad3c73ca1d0089ddfc3b83",
+        "expires_at": "2026-10-08T18:01:18+00:00"
+      },
+      {
+        "id": "d06329fdcca5bd183bc648c0605d790b",
+        "kind": "ticket",
+        "item_id": "4e78b61f6c704666dacd5d885dc6ae1e",
+        "ticket_id": "ISL-DEMO-CA0D0A539ABB132B",
+        "sha256": "b2363e13182ca3b8aee5c7decb614d855c78520cc259816443a6fc454f206c02",
+        "expires_at": "2026-10-08T18:01:18+00:00"
+      },
+      {
+        "id": "c22f81a547ee53f35e632854c087fc5c",
+        "kind": "ticket",
+        "item_id": "3c511e4da9e86b5cfea0865b8d205c5c",
+        "ticket_id": "ISL-DEMO-8772CE9045C8893B",
+        "sha256": "7b15f5e90561d03458c564a8dbdc56a5d97b670aa49b4d0526834ffef0b9c261",
+        "expires_at": "2026-10-08T18:01:18+00:00"
+      }
+    ],
+    "deliveries": [
+      {
+        "quote_id": "f28988c66a1cec71bdd2681581c6173f",
+        "quote_version": 1,
+        "quote_status": "superseded",
+        "document_kind": null,
+        "item_id": null,
+        "ticket_id": null,
+        "part_count": 5,
+        "job_id": "d705a7f02942f77483b35ac028b6f12a",
+        "part": 0,
+        "stage": "summary",
+        "status": "accepted",
+        "provider_id": "provider-1",
+        "document_id": null,
+        "label": "WhatsApp summary",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "f28988c66a1cec71bdd2681581c6173f",
+        "quote_version": 1,
+        "quote_status": "superseded",
+        "document_kind": null,
+        "item_id": null,
+        "ticket_id": null,
+        "part_count": 5,
+        "job_id": "d705a7f02942f77483b35ac028b6f12a",
+        "part": 1,
+        "stage": "summary",
+        "status": "accepted",
+        "provider_id": "provider-2",
+        "document_id": null,
+        "label": "WhatsApp summary",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "f28988c66a1cec71bdd2681581c6173f",
+        "quote_version": 1,
+        "quote_status": "superseded",
+        "document_kind": null,
+        "item_id": null,
+        "ticket_id": null,
+        "part_count": 5,
+        "job_id": "d705a7f02942f77483b35ac028b6f12a",
+        "part": 2,
+        "stage": "summary",
+        "status": "accepted",
+        "provider_id": "provider-3",
+        "document_id": null,
+        "label": "WhatsApp summary",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "f28988c66a1cec71bdd2681581c6173f",
+        "quote_version": 1,
+        "quote_status": "superseded",
+        "document_kind": null,
+        "item_id": null,
+        "ticket_id": null,
+        "part_count": 5,
+        "job_id": "d705a7f02942f77483b35ac028b6f12a",
+        "part": 3,
+        "stage": "summary",
+        "status": "accepted",
+        "provider_id": "provider-4",
+        "document_id": null,
+        "label": "WhatsApp summary",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "f28988c66a1cec71bdd2681581c6173f",
+        "quote_version": 1,
+        "quote_status": "superseded",
+        "document_kind": null,
+        "item_id": null,
+        "ticket_id": null,
+        "part_count": 5,
+        "job_id": "d705a7f02942f77483b35ac028b6f12a",
+        "part": 4,
+        "stage": "summary",
+        "status": "accepted",
+        "provider_id": "provider-5",
+        "document_id": null,
+        "label": "WhatsApp summary",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "f28988c66a1cec71bdd2681581c6173f",
+        "quote_version": 1,
+        "quote_status": "superseded",
+        "document_kind": "quote",
+        "item_id": null,
+        "ticket_id": null,
+        "part_count": 2,
+        "job_id": "b0656d1262d162f46f07e54cdc9ce84e",
+        "part": 0,
+        "stage": "quote",
+        "status": "ambiguous",
+        "provider_id": null,
+        "document_id": "f28988c66a1cec71bdd2681581c6173f",
+        "label": "WhatsApp quote",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "f28988c66a1cec71bdd2681581c6173f",
+        "quote_version": 1,
+        "quote_status": "superseded",
+        "document_kind": null,
+        "item_id": null,
+        "ticket_id": null,
+        "part_count": 2,
+        "job_id": "b0656d1262d162f46f07e54cdc9ce84e",
+        "part": 1,
+        "stage": "quote",
+        "status": "queued",
+        "provider_id": null,
+        "document_id": null,
+        "label": "WhatsApp quote",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "quote_version": 2,
+        "quote_status": "approved",
+        "document_kind": null,
+        "item_id": null,
+        "ticket_id": null,
+        "part_count": 5,
+        "job_id": "f9eda5cf1002062bb5916db78ef13fdb",
+        "part": 0,
+        "stage": "summary",
+        "status": "accepted",
+        "provider_id": "provider-7",
+        "document_id": null,
+        "label": "WhatsApp summary",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "quote_version": 2,
+        "quote_status": "approved",
+        "document_kind": null,
+        "item_id": null,
+        "ticket_id": null,
+        "part_count": 5,
+        "job_id": "f9eda5cf1002062bb5916db78ef13fdb",
+        "part": 1,
+        "stage": "summary",
+        "status": "accepted",
+        "provider_id": "provider-8",
+        "document_id": null,
+        "label": "WhatsApp summary",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "quote_version": 2,
+        "quote_status": "approved",
+        "document_kind": null,
+        "item_id": null,
+        "ticket_id": null,
+        "part_count": 5,
+        "job_id": "f9eda5cf1002062bb5916db78ef13fdb",
+        "part": 2,
+        "stage": "summary",
+        "status": "accepted",
+        "provider_id": "provider-9",
+        "document_id": null,
+        "label": "WhatsApp summary",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "quote_version": 2,
+        "quote_status": "approved",
+        "document_kind": null,
+        "item_id": null,
+        "ticket_id": null,
+        "part_count": 5,
+        "job_id": "f9eda5cf1002062bb5916db78ef13fdb",
+        "part": 3,
+        "stage": "summary",
+        "status": "accepted",
+        "provider_id": "provider-10",
+        "document_id": null,
+        "label": "WhatsApp summary",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "quote_version": 2,
+        "quote_status": "approved",
+        "document_kind": null,
+        "item_id": null,
+        "ticket_id": null,
+        "part_count": 5,
+        "job_id": "f9eda5cf1002062bb5916db78ef13fdb",
+        "part": 4,
+        "stage": "summary",
+        "status": "accepted",
+        "provider_id": "provider-11",
+        "document_id": null,
+        "label": "WhatsApp summary",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "quote_version": 2,
+        "quote_status": "approved",
+        "document_kind": "quote",
+        "item_id": null,
+        "ticket_id": null,
+        "part_count": 2,
+        "job_id": "0100a26e4c0890a5c1fe0d911ce7c3a9",
+        "part": 0,
+        "stage": "quote",
+        "status": "accepted",
+        "provider_id": "provider-12",
+        "document_id": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "label": "WhatsApp quote",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "quote_version": 2,
+        "quote_status": "approved",
+        "document_kind": null,
+        "item_id": null,
+        "ticket_id": null,
+        "part_count": 2,
+        "job_id": "0100a26e4c0890a5c1fe0d911ce7c3a9",
+        "part": 1,
+        "stage": "quote",
+        "status": "accepted",
+        "provider_id": "provider-13",
+        "document_id": null,
+        "label": "WhatsApp quote",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "quote_version": 2,
+        "quote_status": "approved",
+        "document_kind": null,
+        "item_id": null,
+        "ticket_id": null,
+        "part_count": 1,
+        "job_id": "a35367fdd04db3223913b45978421cf3",
+        "part": 0,
+        "stage": "approved",
+        "status": "accepted",
+        "provider_id": "provider-14",
+        "document_id": null,
+        "label": "WhatsApp approved",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "quote_version": 2,
+        "quote_status": "approved",
+        "document_kind": null,
+        "item_id": null,
+        "ticket_id": null,
+        "part_count": 5,
+        "job_id": "af3a091bb2b0b5c6df59c1aeb355a38f",
+        "part": 0,
+        "stage": "fulfilled",
+        "status": "accepted",
+        "provider_id": "fake-15",
+        "document_id": null,
+        "label": "WhatsApp fulfilled",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "quote_version": 2,
+        "quote_status": "approved",
+        "document_kind": "receipt",
+        "item_id": null,
+        "ticket_id": null,
+        "part_count": 5,
+        "job_id": "af3a091bb2b0b5c6df59c1aeb355a38f",
+        "part": 1,
+        "stage": "fulfilled",
+        "status": "accepted",
+        "provider_id": "fake-16",
+        "document_id": "932061a07f9502759bd18eb19fc293bb",
+        "label": "Isluno-receipt-bdb655a0ebeafb1adb9581367fd0b851.pdf",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "quote_version": 2,
+        "quote_status": "approved",
+        "document_kind": "ticket",
+        "item_id": "4e78b61f6c704666dacd5d885dc6ae1e",
+        "ticket_id": "ISL-DEMO-CA0D0A539ABB132B",
+        "part_count": 5,
+        "job_id": "af3a091bb2b0b5c6df59c1aeb355a38f",
+        "part": 2,
+        "stage": "fulfilled",
+        "status": "ambiguous",
+        "provider_id": null,
+        "document_id": "d06329fdcca5bd183bc648c0605d790b",
+        "label": "Isluno-ticket-ISL-DEMO-CA0D0A539ABB132B.pdf",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "quote_version": 2,
+        "quote_status": "approved",
+        "document_kind": "ticket",
+        "item_id": "3c511e4da9e86b5cfea0865b8d205c5c",
+        "ticket_id": "ISL-DEMO-8772CE9045C8893B",
+        "part_count": 5,
+        "job_id": "af3a091bb2b0b5c6df59c1aeb355a38f",
+        "part": 3,
+        "stage": "fulfilled",
+        "status": "queued",
+        "provider_id": null,
+        "document_id": "c22f81a547ee53f35e632854c087fc5c",
+        "label": "Isluno-ticket-ISL-DEMO-8772CE9045C8893B.pdf",
+        "delivered_at": null
+      },
+      {
+        "quote_id": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "quote_version": 2,
+        "quote_status": "approved",
+        "document_kind": null,
+        "item_id": null,
+        "ticket_id": null,
+        "part_count": 5,
+        "job_id": "af3a091bb2b0b5c6df59c1aeb355a38f",
+        "part": 4,
+        "stage": "fulfilled",
+        "status": "queued",
+        "provider_id": null,
+        "document_id": null,
+        "label": "WhatsApp fulfilled",
+        "delivered_at": null
+      }
+    ],
+    "events": [
+      {
+        "kind": "Quote prepared",
+        "at": "2026-09-08T18:00:00+00:00",
+        "reference": "f28988c66a1cec71bdd2681581c6173f",
+        "version": 1
+      },
+      {
+        "kind": "Itinerary revision",
+        "at": "2026-09-08T18:00:00+00:00",
+        "revision": 1,
+        "status": "draft"
+      },
+      {
+        "kind": "Itinerary revision",
+        "at": "2026-09-08T18:00:00+00:00",
+        "revision": 2,
+        "status": "draft"
+      },
+      {
+        "kind": "Itinerary revision",
+        "at": "2026-09-08T18:00:00+00:00",
+        "revision": 3,
+        "status": "draft"
+      },
+      {
+        "kind": "Summary confirmed",
+        "at": "2026-09-08T18:00:24+00:00",
+        "reference": "f28988c66a1cec71bdd2681581c6173f",
+        "version": 1
+      },
+      {
+        "kind": "Quote prepared",
+        "at": "2026-09-08T18:00:30+00:00",
+        "reference": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "version": 2
+      },
+      {
+        "kind": "Itinerary revision",
+        "at": "2026-09-08T18:00:30+00:00",
+        "revision": 4,
+        "status": "draft"
+      },
+      {
+        "kind": "Summary confirmed",
+        "at": "2026-09-08T18:01:00+00:00",
+        "reference": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "version": 2
+      },
+      {
+        "kind": "Quote approved",
+        "at": "2026-09-08T18:01:12+00:00",
+        "reference": "3e48a85e8966ab1b3ce642f88ff25bd5",
+        "version": 2
+      },
+      {
+        "kind": "Demo payment completed",
+        "at": "2026-09-08T18:01:18+00:00",
+        "reference": "bdb655a0ebeafb1adb9581367fd0b851"
+      },
+      {
+        "kind": "Itinerary revision",
+        "at": "2026-09-08T18:01:18+00:00",
+        "revision": 5,
+        "status": "demo_paid"
+      },
+      {
+        "kind": "Verified payment action recorded",
+        "at": null,
+        "reference": "turn-9"
+      }
+    ],
+    "operator_requests": [],
+    "related_itineraries": [],
+    "delivery_notice": "Accepted means provider acceptance, not guest delivery. Send timestamps are unavailable in the current ledger."
+  },
+  "guests": {
+    "items": [
+      {
+        "id": "d816ca8f0268be532bd2755336e87264c40a84cc4b54711d7f1f3d19c36a073b",
+        "customer_ref": "fixture-whatsapp-three",
+        "names": [
+          "Calvin"
+        ],
+        "itinerary_count": 1,
+        "item_count": 1,
+        "updated_at": "2026-09-08T18:02:12+00:00",
+        "inbox_path": "/conversations?c=fixture-guest-three"
+      },
+      {
+        "id": "caf5d6b04b5933bf36260f1510f80b7dd98e79ac9eaefd7a3a8d58183b16d54f",
+        "customer_ref": "fixture-whatsapp-two",
+        "names": [
+          "Second Party"
+        ],
+        "itinerary_count": 1,
+        "item_count": 2,
+        "updated_at": "2026-09-08T18:01:18+00:00",
+        "inbox_path": "/conversations?c=fixture-guest-two"
+      },
+      {
+        "id": "6622f5e7e91eda3d10f46e37a3e34ff01cbbd4cd3dc05971f4fc9ff35bdada6c",
+        "customer_ref": "fixture-whatsapp-one",
+        "names": [
+          "Calvin"
+        ],
+        "itinerary_count": 1,
+        "item_count": 1,
+        "updated_at": "2026-09-08T18:00:00+00:00",
+        "inbox_path": "/conversations?c=fixture-guest-one"
+      }
+    ],
+    "total": 3,
+    "next_offset": null
+  }
+}

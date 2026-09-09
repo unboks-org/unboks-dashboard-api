@@ -12,7 +12,7 @@ vi.mock("@/components/inbox/DashboardShell", () => ({
   DashboardShell: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({ ...state, isLoading: false, refetch: vi.fn() }),
+  useQuery: (options: {queryKey: string[]}) => options.queryKey.includes("isluno-capabilities") ? {data:{enabled:false},isPending:false} : ({ ...state, isLoading: false, refetch: vi.fn() }),
 }));
 
 describe("Mermaid reservation pipeline", () => {

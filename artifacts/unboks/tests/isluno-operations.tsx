@@ -1,0 +1,11 @@
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import {Switch,Route} from 'wouter';
+import MermaidReservations from '../src/pages/MermaidReservations';
+import MermaidCustomers from '../src/pages/MermaidCustomers';
+import {IslunoJourneyRoute,IslunoGuestRoute} from '../src/components/isluno/IslunoOperations';
+import '../src/index.css';
+sessionStorage.setItem('unboks_active_tenant','mermaid');localStorage.setItem('wtyj_token_mermaid','isluno-local-fixture-token');
+history.replaceState(null,'','/reservations');
+createRoot(document.getElementById('root')!).render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false,refetchOnWindowFocus:false}}})}><Switch><Route path="/reservations"><MermaidReservations/></Route><Route path="/customers"><MermaidCustomers/></Route><Route path="/itineraries/:journeyId"><IslunoJourneyRoute/></Route><Route path="/itinerary-guests/:guestId"><IslunoGuestRoute/></Route><Route><p>Existing inbox/legacy destination outside this isolated fixture.</p></Route></Switch></QueryClientProvider>);

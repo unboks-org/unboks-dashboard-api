@@ -100,3 +100,5 @@ describe("Mermaid reservation navigation", () => {
     expect(window.location.pathname).toBe("/reservations");
   });
 });
+
+vi.mock("@/hooks/use-isluno-workspace", () => ({useIslunoWorkspace:()=>({enabled:false,legacy:false,loading:false,unavailable:false,brand:null})}));

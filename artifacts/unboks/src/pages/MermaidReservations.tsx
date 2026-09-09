@@ -1,3 +1,8 @@
+import {
+  IslunoOperationsGate,
+  IslunoJourneysPage,
+  LegacyJourneyNotice,
+} from "@/components/isluno/IslunoOperations";
 import { useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -57,6 +62,14 @@ function matchesFilter(
 }
 
 export default function MermaidReservations() {
+  return (
+    <IslunoOperationsGate legacy={<LegacyReservations />}>
+      <IslunoJourneysPage />
+    </IslunoOperationsGate>
+  );
+}
+
+function LegacyReservations() {
   const [location, navigate] = useLocation();
   const searchString = useSearch();
   const params = new URLSearchParams(searchString);
@@ -109,6 +122,7 @@ export default function MermaidReservations() {
       hideRefresh
     >
       <div className="mx-auto w-full max-w-[1480px] space-y-5 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+        {params.get("view") === "mermaid" && <LegacyJourneyNotice />}
         <section className="overflow-hidden rounded-[28px] border border-teal-100 bg-gradient-to-br from-white via-white to-cyan-50 shadow-[0_14px_40px_rgba(15,36,51,.05)]">
           <div className="flex flex-col gap-6 p-6 lg:flex-row lg:items-end lg:justify-between lg:p-8">
             <div>

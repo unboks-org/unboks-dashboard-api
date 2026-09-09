@@ -26,6 +26,7 @@ import {
 } from "@/lib/rental-navigation-history";
 import { getClientSlug } from "@/lib/tenant";
 import { isMermaidReservationTenant } from "@/lib/tenant-ui";
+import { useIslunoWorkspace } from "@/hooks/use-isluno-workspace";
 import { cn } from "@/lib/utils";
 
 export type RentalNavId =
@@ -157,22 +158,73 @@ export function RentalDashboardShell({
   const restoredEntryRef = useRef<string | null>(null);
   const tenant = getClientSlug();
   const mermaid = isMermaidReservationTenant(tenant);
-  const agentName = mermaid ? "TRACY" : "Nick";
+  const workspace = useIslunoWorkspace();
+  const isluno = workspace.enabled && !workspace.legacy;
+  const agentName = isluno
+    ? workspace.brand!.assistant_name
+    : mermaid
+      ? "TRACY"
+      : "Nick";
   const agentStateKnown =
     !agent.isError &&
+    !setAgent.isError &&
     agent.data?.available === true &&
     typeof agent.data.active === "boolean";
-  const items = mermaid ? mermaidItems : rentalItems;
+  const items = isluno
+    ? mermaidItems
+        .map((item) => ({
+          ...item,
+          label:
+            item.id === "customers"
+              ? "Guests"
+              : item.id === "reservations"
+                ? "Itineraries"
+                : item.label,
+        }))
+        .flatMap((item) =>
+          item.id === "settings"
+            ? [
+                {
+                  id: "trip" as const,
+                  href: "/settings?category=trip-pricing",
+                  label: "Products & pricing",
+                  icon: ShipWheel,
+                },
+                item,
+              ]
+            : [item],
+        )
+    : mermaid
+      ? workspace.enabled && workspace.legacy
+        ? mermaidItems.map((item) =>
+            ["today", "customers", "reservations"].includes(item.id)
+              ? { ...item, href: item.href + "?view=mermaid" }
+              : item,
+          )
+        : mermaidItems
+      : rentalItems;
   const activeNav =
-    mermaid && location.startsWith("/reservations")
+    isluno && location.startsWith("/itineraries/")
       ? "reservations"
-      : normalizeRentalNav(active, items);
+      : isluno && location.startsWith("/itinerary-guests/")
+        ? "customers"
+        : isluno &&
+            location === "/settings" &&
+            new URLSearchParams(search).get("category") === "trip-pricing"
+          ? "trip"
+          : mermaid && location.startsWith("/reservations")
+            ? "reservations"
+            : normalizeRentalNav(active, mermaid ? mermaidItems : items);
   const searchLabel =
     activeNav === "conversations"
       ? "Search conversations"
       : activeNav === "customers"
-        ? "Search customers"
-        : "Search reservations";
+        ? isluno
+          ? "Search guests"
+          : "Search customers"
+        : isluno
+          ? "Search itineraries"
+          : "Search reservations";
   const searchPlaceholder =
     activeNav === "conversations"
       ? "Search guest or message"
@@ -181,16 +233,27 @@ export function RentalDashboardShell({
         : mermaid
           ? "Search name, WhatsApp, quote or code"
           : "Search name, phone or reference";
-  const fallbackBackHref = location.startsWith("/customers/")
-    ? "/customers"
-    : location.startsWith("/reservations/")
-      ? "/reservations"
-      : null;
+  const fallbackBackHref = location.startsWith("/itineraries/")
+    ? "/reservations"
+    : location.startsWith("/itinerary-guests/")
+      ? "/customers"
+      : location.startsWith("/customers/")
+        ? "/customers"
+        : location.startsWith("/reservations/")
+          ? "/reservations"
+          : null;
   const hasHistoryBack = hasRentalBackHistory(tenant);
   const showBack = hasHistoryBack || Boolean(fallbackBackHref);
-  const businessName =
-    profile.data?.name?.trim() ||
-    (mermaid ? "Mermaid Boat Trips Curaçao" : "Ali Car Rental");
+  const businessName = isluno
+    ? workspace.brand!.name
+    : mermaid && workspace.legacy
+      ? "Mermaid Boat Trips Curaçao"
+      : workspace.loading
+        ? "Loading workspace…"
+        : workspace.unavailable
+          ? "Workspace unavailable"
+          : profile.data?.name?.trim() ||
+            (mermaid ? "Mermaid Boat Trips Curaçao" : "Ali Car Rental");
   const initials =
     businessName
       .split(/\s+/)
@@ -250,7 +313,11 @@ export function RentalDashboardShell({
             {businessName}
           </p>
           <p className="mt-0.5 truncate text-xs text-white/50">
-            {mermaid ? "TRACY · Guest operations" : "Rental operations"}
+            {isluno
+              ? "Itinerary operations · Demo"
+              : mermaid
+                ? "TRACY · Guest operations"
+                : "Rental operations"}
           </p>
         </div>
         <button
@@ -302,11 +369,40 @@ export function RentalDashboardShell({
                 ? `Pause ${agentName}`
                 : `Resume ${agentName}`}
         </button>
+        {setAgent.isError && (
+          <p role="alert" className="mt-2 text-xs text-amber-200">
+            Automation change failed. Refresh status before trying again.
+          </p>
+        )}
+        {(!agentStateKnown || setAgent.isError) && !agent.isLoading && (
+          <button
+            type="button"
+            className="mt-2 min-h-11 w-full rounded-xl border border-white/10 text-xs"
+            disabled={agent.isFetching}
+            onClick={async () => {
+              const result = await agent.refetch();
+              if (!result.isError) setAgent.reset();
+            }}
+          >
+            Refresh automation status
+          </button>
+        )}
+        {isluno && (
+          <p className="mt-2 text-xs text-white/60">
+            Global replies only. Conversation takeover stays in the inbox.
+          </p>
+        )}
       </div>
 
       <nav
         className="flex-1 space-y-1 px-3"
-        aria-label={mermaid ? "Mermaid guest operations" : "Rental workspace"}
+        aria-label={
+          isluno
+            ? workspace.brand!.name + " guest operations"
+            : mermaid
+              ? "Mermaid guest operations"
+              : "Rental workspace"
+        }
       >
         {items.map((item) => {
           const Icon = item.icon;
@@ -316,7 +412,9 @@ export function RentalDashboardShell({
               key={item.id}
               type="button"
               onClick={() =>
-                selected ? setMobileOpen(false) : navigateTo(item.href)
+                selected && !(isluno && item.id === "settings" && search)
+                  ? setMobileOpen(false)
+                  : navigateTo(item.href)
               }
               aria-current={selected ? "page" : undefined}
               className={cn(
@@ -471,7 +569,7 @@ export function RentalDashboardShell({
         <nav
           className={cn(
             "fixed inset-x-0 bottom-0 z-30 grid h-[calc(66px+env(safe-area-inset-bottom))] border-t border-[#e5dfd5] bg-[#fbfaf7]/97 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden",
-            mermaid ? "grid-cols-6" : "grid-cols-5",
+            isluno ? "grid-cols-6" : "grid-cols-5",
           )}
           aria-label="Primary navigation"
         >
@@ -483,7 +581,8 @@ export function RentalDashboardShell({
                 key={item.id}
                 type="button"
                 onClick={() => {
-                  if (!selected) navigateTo(item.href);
+                  if (!selected || (isluno && item.id === "settings" && search))
+                    navigateTo(item.href);
                 }}
                 aria-current={selected ? "page" : undefined}
                 className={cn(
@@ -517,7 +616,9 @@ export function RentalDashboardShell({
                   {item.id === "fleet"
                     ? "Fleet"
                     : item.id === "trip"
-                      ? "Trip"
+                      ? isluno
+                        ? "Products"
+                        : "Trip"
                       : item.label}
                 </span>
               </button>

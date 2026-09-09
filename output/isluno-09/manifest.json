@@ -1,0 +1,45 @@
+{
+  "scope": "synthetic local catalog browser verification",
+  "screenshots": [
+    {
+      "file": "01-list.png",
+      "sha256": "5287329de08d3a8626def0d68c0d376baec12339ee0c1a8f1cc6c08ace2dbeb3",
+      "bytes": 67667
+    },
+    {
+      "file": "02-editor-saved.png",
+      "sha256": "fa800ad3d798d4a852c2566818d0eb8a9c243199075408870f4987105785bdb9",
+      "bytes": 164463
+    },
+    {
+      "file": "03-gallery-saved.png",
+      "sha256": "1c42113cac6fd18b4b1f3843cb1741ecaab99f9c7561f925f943fe53c3c7df42",
+      "bytes": 180805
+    },
+    {
+      "file": "04-invalid-rules.png",
+      "sha256": "a6dd06ef89b9133a63d4579e55f20bbf0e9dea40a7ef7d20950834062f0911e6",
+      "bytes": 322763
+    },
+    {
+      "file": "05-conflict.png",
+      "sha256": "9a23051153d4aa7124bb0e7261715eef89baa7587d77f56e6d975353b064196e",
+      "bytes": 147474
+    },
+    {
+      "file": "06-mobile-gallery.png",
+      "sha256": "e8210e76354d9eb6a8c00b075bfba4bf3a66d0ac9fe828e337774ca43f77f459",
+      "bytes": 145121
+    },
+    {
+      "file": "07-empty-search.png",
+      "sha256": "6d9db99df6ec4aa1ff1d368e0dead60306dba4e17cc8e1944a4210e97782b224",
+      "bytes": 68491
+    },
+    {
+      "file": "08-reload-error.png",
+      "sha256": "6f227b2f1259ab873abc5739b5763d6501dc05b605f85a0349b858d986187184",
+      "bytes": 81710
+    }
+  ]
+}

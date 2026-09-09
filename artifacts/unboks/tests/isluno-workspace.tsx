@@ -1,0 +1,17 @@
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import {Switch,Route} from 'wouter';
+import {AuthContext} from '../src/components/auth/AuthContext';
+import {RentalDashboardShell} from '../src/components/rental/RentalDashboardShell';
+import MermaidToday from '../src/pages/MermaidToday';
+import MermaidReservations from '../src/pages/MermaidReservations';
+import MermaidCustomers from '../src/pages/MermaidCustomers';
+import Settings from '../src/pages/Settings';
+import {IslunoJourneyRoute,IslunoGuestRoute} from '../src/components/isluno/IslunoOperations';
+import '../src/index.css';
+const tenant=new URLSearchParams(location.search).get('tenant')==='ali-car-rental'?'ali-car-rental':'mermaid';
+sessionStorage.setItem('unboks_active_tenant',tenant);localStorage.setItem('wtyj_token_'+tenant,'isluno-local-fixture-token');
+history.replaceState(null,'','/today');
+const auth={isAuthenticated:true,clientSlug:tenant,login:async()=>{throw new Error('Fixture login unavailable')},switchTenant:()=>false,logout:()=>{throw new Error('Fixture logout unavailable')}};
+createRoot(document.getElementById('root')!).render(<AuthContext.Provider value={auth}><QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false,refetchOnWindowFocus:false}}})}>{tenant==='ali-car-rental'?<RentalDashboardShell active="today" title="Today"><p className="p-6">Synthetic other-tenant shell verification.</p></RentalDashboardShell>:<Switch><Route path="/today"><MermaidToday/></Route><Route path="/reservations"><MermaidReservations/></Route><Route path="/customers"><MermaidCustomers/></Route><Route path="/itineraries/:journeyId"><IslunoJourneyRoute/></Route><Route path="/itinerary-guests/:guestId"><IslunoGuestRoute/></Route><Route path="/settings"><Settings/></Route><Route><p>Inbox content is outside this synthetic fixture; existing navigation destination retained.</p></Route></Switch>}</QueryClientProvider></AuthContext.Provider>);

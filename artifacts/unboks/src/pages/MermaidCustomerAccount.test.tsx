@@ -1,3 +1,4 @@
+import { fetchIslunoCapabilities } from "@/lib/isluno-catalog";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, expect, it, vi } from "vitest";
@@ -12,6 +13,13 @@ vi.mock("@/components/inbox/DashboardShell", () => ({
   DashboardShell: ({ children }: { children: ReactNode }) => (
     <main>{children}</main>
   ),
+}));
+vi.mock("@/lib/isluno-catalog", () => ({
+  fetchIslunoCapabilities: vi.fn().mockResolvedValue({
+    enabled: false,
+    tenant_slug: "mermaid",
+    capabilities: { itinerary_workspace: false },
+  }),
 }));
 vi.mock("@/lib/api", () => ({
   fetchMermaidCustomer: vi.fn(),
@@ -38,6 +46,13 @@ const account = {
 };
 beforeEach(() => {
   vi.clearAllMocks();
+  sessionStorage.setItem("unboks_active_tenant", "mermaid");
+  vi.mocked(fetchIslunoCapabilities).mockResolvedValue({
+    enabled: false,
+    known: true,
+    tenant_slug: "mermaid",
+    capabilities: { catalog_editor: false, itinerary_workspace: false },
+  });
   vi.mocked(api.fetchMermaidCustomer).mockResolvedValue(account);
   vi.mocked(api.fetchMermaidCustomers).mockResolvedValue({
     items: [account],

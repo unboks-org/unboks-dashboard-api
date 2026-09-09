@@ -1,3 +1,4 @@
+import { useIslunoWorkspace } from "@/hooks/use-isluno-workspace";
 import { useEffect, useMemo, useRef, useState, ChangeEvent } from "react";
 import { useLocation, useSearch } from "wouter";
 import {
@@ -1251,7 +1252,8 @@ function categoryFromSearch(search: string): CategoryId | null {
 
 export default function Settings() {
   const mermaidSettings = isMermaidReservationTenant();
-  const categories = CATEGORIES.filter((category) => category.id !== "trip-pricing" || mermaidSettings);
+  const islunoWorkspace = useIslunoWorkspace();
+  const categories = CATEGORIES.filter((category) => category.id !== "trip-pricing" || mermaidSettings).map(category => category.id === "trip-pricing" && islunoWorkspace.enabled ? {...category,label:"Products & pricing",description:"Manage product facts, galleries and approved demo rules for " + islunoWorkspace.brand!.name + "."} : category);
   // Settings supports `?category=<id>` deep links so other surfaces
   // can jump straight to the right tab. URL is the source of truth:
   // clicks update the URL, the URL drives `active`.

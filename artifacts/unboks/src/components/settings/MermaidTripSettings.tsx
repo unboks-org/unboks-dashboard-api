@@ -1,3 +1,4 @@
+import { IslunoCatalogGate } from "./IslunoCatalogSettings";
 import {
   useEffect,
   useState,
@@ -51,7 +52,7 @@ const primary =
 
 export function MermaidTripSettings() {
   return isMermaidReservationTenant() ? (
-    <TripEditor key={getClientSlug()} />
+    <IslunoCatalogGate key={getClientSlug()} legacy={<TripEditor />} />
   ) : null;
 }
 

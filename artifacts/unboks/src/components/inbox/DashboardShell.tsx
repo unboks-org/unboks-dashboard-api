@@ -1,3 +1,5 @@
+import { useIslunoWorkspace } from "@/hooks/use-isluno-workspace";
+import { fetchIslunoToday } from "@/lib/isluno-operations";
 import {
   useState,
   useMemo,
@@ -179,6 +181,15 @@ export function DashboardShell({
   const { logout } = useAuth();
   const rentalCapability = useRentalControlCapability();
   const mermaid = isMermaidReservationTenant();
+  const workspace = useIslunoWorkspace();
+  const isluno = workspace.enabled && !workspace.legacy;
+  const today = useQuery({
+    queryKey: tenantKey("isluno-today"),
+    queryFn: fetchIslunoToday,
+    enabled: isluno,
+    retry: false,
+    refetchInterval: 15_000,
+  });
   const useRentalShell =
     mermaid ||
     rentalCapability.enabled ||
@@ -195,7 +206,12 @@ export function DashboardShell({
   const mermaidActionQueue = useQuery({
     queryKey: tenantKey("mermaid-reservations", ""),
     queryFn: () => fetchMermaidReservations(),
-    enabled: useRentalShell && mermaid,
+    enabled:
+      useRentalShell &&
+      mermaid &&
+      !isluno &&
+      !workspace.loading &&
+      !workspace.unavailable,
     refetchInterval: 10_000,
     refetchOnWindowFocus: true,
     staleTime: 0,
@@ -203,7 +219,12 @@ export function DashboardShell({
   const mermaidCrewAssistanceQueue = useQuery({
     queryKey: tenantKey("mermaid-crew-assistance", "unacknowledged"),
     queryFn: () => fetchMermaidCrewAssistance("unacknowledged"),
-    enabled: useRentalShell && mermaid,
+    enabled:
+      useRentalShell &&
+      mermaid &&
+      !isluno &&
+      !workspace.loading &&
+      !workspace.unavailable,
     refetchInterval: 10_000,
     refetchOnWindowFocus: true,
     staleTime: 0,
@@ -460,7 +481,13 @@ export function DashboardShell({
       searchQuery={searchQuery}
       onSearchChange={onSearchChange}
       rightSlot={hideRefresh ? null : <RefreshButton />}
-      actionCount={rentalActionCount}
+      actionCount={
+        isluno
+          ? today.isError
+            ? undefined
+            : today.data?.counts.attention
+          : rentalActionCount
+      }
     >
       {children}
     </RentalDashboardShell>

@@ -1,0 +1,58 @@
+{
+  "issue": "ISL-11",
+  "fixture_only": true,
+  "screenshots": [
+    {
+      "file": "01-today-paused.png",
+      "sha256": "11a147963e262259a74a5518ab9f45d68fb9d3f11dba1809182ef90733add976"
+    },
+    {
+      "file": "02-catalog-navigation.png",
+      "sha256": "11928efaaaf0f29c41ea39b09d412a531ab1c6a98c1b25ded8389396c27e96f2"
+    },
+    {
+      "file": "03-itinerary-navigation.png",
+      "sha256": "df8fe3f3ed6a418bdb84ed40540122909fd5bbb713ec91de34b07444a412503b"
+    },
+    {
+      "file": "04-legacy-brand.png",
+      "sha256": "458b3a71baa389be7523d891bf6132a268dddebb32a782dbd32202ee4f793b17"
+    },
+    {
+      "file": "05-control-failure.png",
+      "sha256": "a61ba120b6905e75913b883b560512c8fb60531cebafca5e8f1836fd61cc4eec"
+    },
+    {
+      "file": "06-unknown-controls.png",
+      "sha256": "919ae3f25cba58f31086c46bb4bc41204d47ad07cb13b5e8005a78d341af376d"
+    },
+    {
+      "file": "07-mobile-today.png",
+      "sha256": "ea0a89561d42a8448b5080485ee65a3944ae2422e43aa9ba57f2f83d40caf3fd"
+    },
+    {
+      "file": "08-mobile-menu.png",
+      "sha256": "b0626588a4aad453bfa62501aebb510a9f7637bf793405dac1c77b086d65a6b7"
+    },
+    {
+      "file": "09-capability-off.png",
+      "sha256": "f8fc1108f6747bfa4254ea0785a4c7ddba910abf9214f9c0c787df2a66a64b83"
+    },
+    {
+      "file": "10-other-tenant.png",
+      "sha256": "0a5ff9ad503ade8a1360fa1e06b02cdeadfea46eeb63a4100ef22fbd8ab35b67"
+    },
+    {
+      "file": "11-control-recovery.png",
+      "sha256": "f681470e266f7e94e4f88a558f09bbac605d9a5676e286cba19e93c90b078451"
+    },
+    {
+      "file": "12-today-failure.png",
+      "sha256": "f2744373cd713379c150078884a586160859a0b90423a1be6a86106fa1aca94c"
+    },
+    {
+      "file": "13-status-error.png",
+      "sha256": "41f9a94b89abf3eeda2663f9b0027d693255001778999128e088147a665be03e"
+    }
+  ]
+}

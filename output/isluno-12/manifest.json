@@ -1,0 +1,27 @@
+{
+  "fixture_only": true,
+  "api": "loopback actual authenticated Today and journey handlers, synthetic token",
+  "backend_base": "41ded819d2102cf9b3fe284c31118552f231c0f4",
+  "desktop_width": 1280,
+  "mobile_width": 390,
+  "horizontal_overflow": false,
+  "browser_errors": [],
+  "screenshots": [
+    {
+      "file": "recovery-desktop.png",
+      "sha256": "68acfbd9ce9170bd23cbc16bc384af0306651b55cb45ecf53e3e3b1655d3d3b7"
+    },
+    {
+      "file": "recovery-mobile.png",
+      "sha256": "87585769def2d6a39b44af76ee492812c4a09b7a6e7d0a2485ff83820653ee7d"
+    },
+    {
+      "file": "saved-progress-desktop.png",
+      "sha256": "f2b4f150d743d46d32881236a95aedad99c0bcdbb480603a9d00d87b68cb9aec"
+    },
+    {
+      "file": "saved-progress-mobile.png",
+      "sha256": "dcef9cb73d4e3a4f872b69a7b0f2567522ef8f72ad9845b38fe6f58a964f32d2"
+    }
+  ]
+}

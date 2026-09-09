@@ -1,3 +1,4 @@
+import { fetchIslunoCapabilities } from "@/lib/isluno-catalog";
 import {
   act,
   fireEvent,
@@ -17,6 +18,16 @@ import {
 import { ApiError } from "@/lib/error";
 import { tenantKey } from "@/lib/query-keys";
 import { editableMermaidCatalog } from "@/lib/mermaid-catalog-settings";
+
+vi.mock("@/lib/isluno-catalog", () => ({
+  fetchIslunoCapabilities: vi
+    .fn()
+    .mockResolvedValue({
+      enabled: false,
+      tenant_slug: "mermaid",
+      capabilities: { catalog_editor: false },
+    }),
+}));
 
 vi.mock("@/lib/api", () => ({
   fetchMermaidCatalog: vi.fn(),
@@ -94,6 +105,12 @@ async function confirmPublish() {
 describe("Mermaid editable trip settings", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(fetchIslunoCapabilities).mockResolvedValue({
+      enabled: false,
+      known: true,
+      tenant_slug: "mermaid",
+      capabilities: { catalog_editor: false },
+    });
     sessionStorage.clear();
     sessionStorage.setItem("unboks_active_tenant", "mermaid");
     vi.mocked(fetchMermaidCatalog).mockResolvedValue(catalogFixture());
